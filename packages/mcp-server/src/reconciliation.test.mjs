@@ -19,6 +19,8 @@ import {
   requiredChecksEvidence,
   workspaceEvidence,
 } from "../dist/reconciliation.js";
+import { releaseChannelAction } from "../dist/release.js";
+import { failCoded } from "../dist/errors.js";
 
 // Salvaged from PR #286 (CORE-113); the apply test was dropped with the
 // mutating surface (CORE-122) and rebuilt on revisions and leases by CORE-131.
@@ -411,6 +413,143 @@ test("apply moves a PASS proof from Verifying to Done", async (t) => {
   const applied = await applyReconciliation(store, { id: ticket.id, expectedRevision: dry.recommendation.revision }, ghRun());
   assert.equal(applied.item.status, "done");
   assert.match(await store.getDoc(ticket.id, "scratch/execution"), /reconcile MOVE_TO_DONE by ctl-a; stage verifying → done; revision /u);
+});
+
+test("explicit apply recovers a pending pre-journal release epoch before fresh collection", async (t) => {
+  const { root, store } = await fixtureStore(t, "kanmer-apply-pending-epoch-");
+  store.setActor("ctl-a");
+  const ticket = await store.createItem({ type: "ticket", title: "Pending release epoch", profile: "custom", requires: {}, status: "verifying", prs: ["12"] });
+  await store.setDoc(ticket.id, "proof", proof("PASS"));
+  const dry = await reconcileTicket(store, ticket.id, ghRun());
+  assert.equal(dry.recommendation.action, "MOVE_TO_DONE");
+
+  const releases = path.join(root, ".kanmer", "releases");
+  await fs.mkdir(releases, { recursive: true });
+  await fs.writeFile(path.join(releases, "state.json"), `${JSON.stringify({
+    schema: 1,
+    revision: 1,
+    phase: "pending",
+    transaction_id: "crash-before-journal",
+    channel: "main",
+  }, null, 2)}\n`, "utf8");
+  const stranded = await reconcileTicket(store, ticket.id, ghRun());
+  assert.equal(stranded.evidence.release.state, "unavailable");
+  assert.equal(stranded.recommendation, null);
+
+  const applied = await applyReconciliation(store, {
+    id: ticket.id,
+    expectedRevision: dry.recommendation.revision,
+  }, ghRun());
+  assert.equal(applied.item.status, "done");
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(releases, "state.json"), "utf8")), {
+    schema: 1,
+    revision: 1,
+    phase: "stable",
+    transaction_id: "crash-before-journal",
+    channel: "main",
+  });
+});
+
+test("release crash recovery remains durable when the later ticket CAS refuses", async (t) => {
+  const { root, store } = await fixtureStore(t, "kanmer-apply-recovery-before-refusal-");
+  store.setActor("ctl-a");
+  const ticket = await store.createItem({ type: "ticket", title: "Recovery before refusal", profile: "custom", requires: {}, status: "verifying", prs: ["12"] });
+  await store.setDoc(ticket.id, "proof", proof("PASS"));
+  const releases = path.join(root, ".kanmer", "releases");
+  await fs.mkdir(releases, { recursive: true });
+  await fs.writeFile(path.join(releases, "state.json"), `${JSON.stringify({
+    schema: 1,
+    revision: 1,
+    phase: "pending",
+    transaction_id: "recover-before-revision-refusal",
+    channel: "main",
+  }, null, 2)}\n`, "utf8");
+
+  await assert.rejects(
+    () => applyReconciliation(store, { id: ticket.id, expectedRevision: "stale-revision" }, ghRun()),
+    /Conflict:.*revision changed/u,
+  );
+  assert.equal((await store.getItem(ticket.id)).status, "verifying");
+  assert.equal(await store.getDoc(ticket.id, "scratch/execution"), null);
+  assert.equal(JSON.parse(await fs.readFile(path.join(releases, "state.json"), "utf8")).phase, "stable");
+});
+
+test("explicit apply removes a fully applied release journal retained after the stable epoch", async (t) => {
+  const { root, store } = await fixtureStore(t, "kanmer-apply-retained-journal-");
+  store.setActor("ctl-a");
+  const ticket = await store.createItem({ type: "ticket", title: "Retained release journal", profile: "custom", requires: {}, status: "verifying", prs: ["12"] });
+  await store.setDoc(ticket.id, "proof", proof("PASS"));
+  const dry = await reconcileTicket(store, ticket.id, ghRun());
+  assert.equal(dry.recommendation.action, "MOVE_TO_DONE");
+
+  const release = await releaseChannelAction(store, {
+    action: "acquire",
+    integrationSha: headSha,
+    includedTickets: [ticket.id],
+  });
+  const releases = path.join(root, ".kanmer", "releases");
+  const state = JSON.parse(await fs.readFile(path.join(releases, "state.json"), "utf8"));
+  const head = JSON.parse(await fs.readFile(path.join(releases, "heads", "main.json"), "utf8"));
+  const journal = {
+    schema: 1,
+    transaction_id: state.transaction_id,
+    channel: "main",
+    created_at: release.attempt.created_at,
+    attempts: [{ before: null, after: release.attempt }],
+    head_record: { before: null, after: head },
+    channel_record: { before: null, after: release.lease },
+  };
+  const journalFile = path.join(releases, "transactions", "main.json");
+  await fs.writeFile(journalFile, `${JSON.stringify(journal, null, 2)}\n`, "utf8");
+  const stranded = await reconcileTicket(store, ticket.id, ghRun());
+  assert.equal(stranded.evidence.release.state, "unavailable");
+  assert.equal(stranded.recommendation, null);
+
+  const applied = await applyReconciliation(store, {
+    id: ticket.id,
+    expectedRevision: dry.recommendation.revision,
+  }, ghRun());
+  assert.equal(applied.item.status, "done");
+  await assert.rejects(fs.stat(journalFile), { code: "ENOENT" });
+});
+
+test("apply rechecks the release epoch under the write lock and refuses late drift", async (t) => {
+  const { store } = await fixtureStore(t, "kanmer-apply-release-drift-");
+  store.setActor("ctl-a");
+  const ticket = await store.createItem({ type: "ticket", title: "Release drift", profile: "custom", requires: {}, status: "verifying", prs: ["12"] });
+  await store.setDoc(ticket.id, "proof", proof("PASS"));
+  const release = await releaseChannelAction(store, {
+    action: "acquire",
+    integrationSha: headSha,
+    includedTickets: [ticket.id],
+  });
+  const dry = await reconcileTicket(store, ticket.id, ghRun());
+  assert.equal(dry.recommendation.action, "MOVE_TO_DONE");
+  assert.equal(dry.evidence.release.state, "not-applicable");
+  const revision = dry.recommendation.revision;
+  const activityBefore = (await store.getActivity({ id: ticket.id })).length;
+  const originalApply = store.applyReconciliation.bind(store);
+  store.applyReconciliation = async (...args) => {
+    await store.recordReleaseProgress({
+      leaseId: release.lease.lease_id,
+      leaseRevision: release.lease.lease_revision,
+      serviceUnavailable: "publisher became unavailable after collection",
+    });
+    return originalApply(...args);
+  };
+
+  await assert.rejects(
+    () => applyReconciliation(store, { id: ticket.id, expectedRevision: revision }, ghRun()),
+    /RECONCILIATION_DRIFT:.*release evidence is now unavailable/u,
+  );
+  assert.equal((await store.getItem(ticket.id)).status, "verifying");
+  assert.equal((await store.getRevision(ticket.id)).revision, revision, "release sidecar mutation does not move the ticket revision");
+  assert.equal((await store.getActivity({ id: ticket.id })).length, activityBefore);
+  assert.equal((await reconcileTicket(store, ticket.id, ghRun())).evidence.release.state, "unavailable");
+  assert.equal(
+    failCoded(new Error("RECONCILIATION_DRIFT: release evidence changed")).structuredContent.error.code,
+    "RECONCILIATION_DRIFT",
+  );
 });
 
 test("apply routes a FAIL proof by its failure_class and quotes the proof in the audited reason", async (t) => {

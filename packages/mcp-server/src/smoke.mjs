@@ -66,11 +66,12 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 40 tools", tools.tools.length === 40, `got ${tools.tools.length}`);
+  check("tools/list returns 41 tools", tools.tools.length === 41, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "reconcile_ticket",
     "apply_reconciliation",
+    "release_channel",
     "link_doc",
     "get_doc_gates",
     "migrate_board",
@@ -2409,6 +2410,150 @@ Second proof attempt passed; the first failure is retained.
       "update_item clears a delivery field with an empty string",
       cleared.delivery_sha === undefined && cleared.delivery_branch === undefined && cleared.delivery_state === "not-integrated",
       JSON.stringify(cleared.delivery_state),
+    );
+  }
+  // CORE-132 (FRD-031 AC2 candidate clause, AC3, AC4 and the unavailable-service edge case):
+  // one renewable lease owns a release channel, a release attempt is an
+  // immutable-identity record, and reconcile_ticket observes real release evidence.
+  {
+    const releaseSha = "c".repeat(40);
+    const supersedeSha = "d".repeat(40);
+    const releaseTicket = JSON.parse(
+      textOf(await client.callTool({ name: "create_item", arguments: { title: "release inclusion", status: "review", profile: "chore", docs_todo: true } })),
+    ).id;
+    const cleanRelease = JSON.parse(textOf(await client.callTool({ name: "reconcile_ticket", arguments: { id: releaseTicket } })));
+    check(
+      "reconcile_ticket reports not-applicable release evidence on a board that has never released",
+      cleanRelease.evidence?.release?.state === "not-applicable",
+      JSON.stringify(cleanRelease.evidence?.release ?? null),
+    );
+
+    const acquired = JSON.parse(textOf(await client.callTool({
+      name: "release_channel",
+      arguments: { action: "acquire", integration_sha: releaseSha, included_tickets: [releaseTicket] },
+    })));
+    check(
+      "release_channel acquire mints an immutable candidate identity for the exact integration SHA",
+      acquired.channel === "main" && acquired.attempt?.attempt_id === "main@1" &&
+        /^cand1:[0-9a-f]{16}$/.test(acquired.attempt?.candidate_id ?? "") &&
+        acquired.attempt?.integration_sha === releaseSha && acquired.attempt?.outcome === "active" &&
+        acquired.lease?.lease_revision === 1,
+      JSON.stringify(acquired.attempt ?? acquired),
+    );
+
+    const held = await client.callTool({ name: "release_channel", arguments: { action: "acquire", integration_sha: supersedeSha } });
+    check(
+      "a second concurrent release owner is refused with RELEASE_CHANNEL_HELD",
+      held.isError === true && textOf(held).includes("RELEASE_CHANNEL_HELD"),
+      textOf(held),
+    );
+
+    const heldStatus = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+    check(
+      "get_status.release reports the held channel, its candidate and its lease",
+      heldStatus.release?.channels?.length === 1 && heldStatus.release.channels[0].channel === "main" &&
+        heldStatus.release.channels[0].state === "current" && heldStatus.release.channels[0].attemptId === "main@1" &&
+        heldStatus.release.attemptCount === 1 && heldStatus.release.attempts?.length === 1 &&
+        heldStatus.release.attempts[0].attemptId === "main@1" &&
+        heldStatus.release.attempts[0].includedTickets?.includes(releaseTicket) &&
+        /^[0-9a-f]{64}$/.test(heldStatus.release.attempts[0].deliveryPolicyVersion ?? "") &&
+        heldStatus.release.pendingTransactions?.length === 0 && heldStatus.release.unreadable === false,
+      JSON.stringify(heldStatus.release ?? null),
+    );
+
+    const ignoredProgress = await client.callTool({
+      name: "release_channel",
+      arguments: {
+        action: "renew",
+        lease_id: acquired.lease.lease_id,
+        lease_revision: acquired.lease.lease_revision,
+        service_unavailable: "this field belongs only to record",
+      },
+    });
+    const afterIgnoredProgress = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+    check(
+      "release_channel refuses action-inapplicable progress before mutation",
+      ignoredProgress.isError === true && textOf(ignoredProgress).includes("RELEASE_INPUT_INVALID") &&
+        afterIgnoredProgress.release?.channels?.[0]?.leaseRevision === acquired.lease.lease_revision &&
+        afterIgnoredProgress.release?.attempts?.[0]?.retry === null,
+      JSON.stringify({ error: textOf(ignoredProgress), release: afterIgnoredProgress.release ?? null }),
+    );
+
+    const unavailable = JSON.parse(textOf(await client.callTool({
+      name: "release_channel",
+      arguments: {
+        action: "record",
+        lease_id: acquired.lease.lease_id,
+        lease_revision: acquired.lease.lease_revision,
+        service_unavailable: "artifact registry unreachable",
+      },
+    })));
+    const inconclusive = JSON.parse(textOf(await client.callTool({ name: "reconcile_ticket", arguments: { id: releaseTicket } })));
+    check(
+      "an unavailable release service records a BOUNDED retry schedule and makes only that attempt's evidence inconclusive",
+      unavailable.attempt?.retry?.attempts === 1 && unavailable.attempt.retry.exhausted === false &&
+        typeof unavailable.attempt.retry.max_attempts === "number" &&
+        inconclusive.evidence?.release?.state === "unavailable" &&
+        inconclusive.findings?.some((entry) => entry.code === "EVIDENCE_INCONCLUSIVE"),
+      JSON.stringify({ retry: unavailable.attempt?.retry ?? null, release: inconclusive.evidence?.release ?? null }),
+    );
+
+    const superseded = JSON.parse(textOf(await client.callTool({
+      name: "release_channel",
+      arguments: {
+        action: "supersede",
+        lease_id: unavailable.lease.lease_id,
+        lease_revision: unavailable.lease.lease_revision,
+        integration_sha: supersedeSha,
+        included_tickets: [releaseTicket],
+      },
+    })));
+    check(
+      "a changed candidate SHA mints a NEW candidate identity and carries no evidence forward",
+      superseded.attempt?.attempt_id === "main@2" && superseded.attempt.candidate_id !== acquired.attempt.candidate_id &&
+        superseded.attempt.supersedes === "main@1" && superseded.attempt.retry === null &&
+        superseded.attempt.verification_state === "pending" && superseded.lease?.lease_revision === 1,
+      JSON.stringify(superseded.attempt ?? superseded),
+    );
+
+    const stale = await client.callTool({
+      name: "release_channel",
+      arguments: { action: "renew", lease_id: acquired.lease.lease_id, lease_revision: acquired.lease.lease_revision },
+    });
+    check(
+      "a superseded lease id no longer renews the channel",
+      stale.isError === true && textOf(stale).includes("LEASE_EXPIRED"),
+      textOf(stale),
+    );
+
+    const completed = JSON.parse(textOf(await client.callTool({
+      name: "release_channel",
+      arguments: {
+        action: "complete",
+        lease_id: superseded.lease.lease_id,
+        lease_revision: superseded.lease.lease_revision,
+        release_tag: "v0.0.0-smoke",
+      },
+    })));
+    const clearedStatus = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+    const afterRelease = JSON.parse(textOf(await client.callTool({ name: "reconcile_ticket", arguments: { id: releaseTicket } })));
+    check(
+      "a successful release clears the channel lease, keeps both immutable attempts, and unblocks the ticket's own reconciliation",
+      completed.attempt?.outcome === "released" && completed.lease === null && completed.leaseState === "cleared" &&
+        clearedStatus.release?.channels?.length === 0 && clearedStatus.release.attemptCount === 2 &&
+        clearedStatus.release.attempts?.map((attempt) => attempt.outcome).join(",") === "superseded,released" &&
+        clearedStatus.release.attempts[1].releaseTag === "v0.0.0-smoke" &&
+        afterRelease.evidence?.release?.state === "not-applicable",
+      JSON.stringify({ lease: completed.lease, channels: clearedStatus.release?.channels, release: afterRelease.evidence?.release }),
+    );
+
+    const boardYml = fs.readFileSync(path.join(sandbox, ".kanmer", "data", "board.yml"), "utf8");
+    const kanmerDir = fs.readdirSync(path.join(sandbox, ".kanmer"));
+    check(
+      "release records live in .kanmer/releases/ and never in board.yml, so a stable v0.3.12 server still reads the board",
+      !boardYml.includes("release") && kanmerDir.includes("releases") &&
+        fs.readdirSync(path.join(sandbox, ".kanmer", "releases")).sort().join(",") === "attempts,channels,heads,state.json,transactions",
+      JSON.stringify({ kanmerDir }),
     );
   }
   // CORE-124 (FRD-030 batch mode): the first member's take declares and freezes the batch; members share one

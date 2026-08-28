@@ -106,6 +106,22 @@ describe("delivery policy validation (CORE-116)", () => {
     await expect(policy({ releaseCandidatePattern: "release" })).rejects.toThrow(/must contain "\*"/u);
   });
 
+  it.each([
+    "release/*.",
+    "release/~*",
+    "release/.hidden/*",
+    "release/*.lock",
+    "release/*@{next",
+    "release//*",
+  ])("rejects a candidate pattern that cannot produce a Git branch: %s", async (releaseCandidatePattern) => {
+    await expect(policy({ releaseCandidatePattern })).rejects.toThrow(/valid Git branch name/u);
+  });
+
+  it("matches Git's concrete branch-name exceptions", async () => {
+    await policy({ integrationBranch: "@", releaseBranch: "release/@", releaseCandidatePattern: "release/@-*" });
+    await expect(policy({ integrationBranch: "HEAD" })).rejects.toThrow(/valid Git branch name/u);
+  });
+
   it("accepts integrationBranch === releaseBranch — that is main-only", async () => {
     await policy({ integrationBranch: "trunk", releaseBranch: "trunk" });
     expect(resolveDelivery(await store.getBoard()).releaseBranch).toBe("trunk");

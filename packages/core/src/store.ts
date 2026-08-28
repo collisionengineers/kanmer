@@ -98,6 +98,42 @@ import {
 } from "./project.js";
 import { repoDocKindOf } from "./docs.js";
 import {
+  RELEASE_FROZEN_FIELDS,
+  RELEASE_RECORD_SCHEMA,
+  assertNoReleaseChannelCollision,
+  attemptIdFor,
+  candidateIdentity,
+  candidateRefFor,
+  classifyReleaseEvidence,
+  commitReleaseMutation,
+  deliveryPolicyVersion,
+  isTerminalAttempt,
+  newReleaseLeaseId,
+  nextOrdinal,
+  nextRetry,
+  normalizeReleaseChannel,
+  readAttemptRecord,
+  readChannelHeadRecord,
+  readChannelRecord,
+  readReleaseSnapshot,
+  readReleaseStateRecord,
+  recoverPendingReleaseMutation,
+  recoverReleaseMutation,
+  releaseEndpointConsistent,
+  releaseLeaseExpired,
+  type AcquireReleaseChannelInput,
+  type CompleteReleaseAttemptInput,
+  type FailReleaseAttemptInput,
+  type RecordReleaseProgressInput,
+  type ReleaseAttemptRecord,
+  type ReleaseChannelCasInput,
+  type ReleaseChannelHeadRecord,
+  type ReleaseChannelRecord,
+  type ReleaseChannelResult,
+  type ReleaseSnapshot,
+  type SupersedeReleaseAttemptInput,
+} from "./release.js";
+import {
   ItemTypeSchema,
   type BoardColumn,
   type BoardConfig,
@@ -395,25 +431,29 @@ export class KanmerStore {
    * proofless tickets in it.
    */
   async setBoard(board: BoardConfig): Promise<void> {
-    await withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
-      const previous = await this.getBoard(); // re-reads disk = the true prior state
-      // A whole-board write must not strand items on a removed column — the same
-      // protection removeColumn has, so no GUI/agent setBoard path can silently
-      // drop a stage/area/priority that items still reference (audit A3).
-      await this.assertNoStrandedColumns(previous, board);
-      await writeBoard(this.paths, board);
-    });
+    await this.withLeaseLock(() =>
+      withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+        const previous = await this.getBoard(); // re-reads disk = the true prior state
+        // A whole-board write must not strand items on a removed column — the same
+        // protection removeColumn has, so no GUI/agent setBoard path can silently
+        // drop a stage/area/priority that items still reference (audit A3).
+        await this.assertNoStrandedColumns(previous, board);
+        await writeBoard(this.paths, board);
+      }),
+    );
   }
 
   /** Read, mutate, and write the board while holding the cross-process board lock. */
   async updateBoard(mutator: (board: BoardConfig) => BoardConfig | Promise<BoardConfig>): Promise<BoardConfig> {
-    return withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
-      const previous = await this.getBoard();
-      const next = await mutator(structuredClone(previous));
-      await this.assertNoStrandedColumns(previous, next);
-      await writeBoard(this.paths, next);
-      return next;
-    });
+    return this.withLeaseLock(() =>
+      withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+        const previous = await this.getBoard();
+        const next = await mutator(structuredClone(previous));
+        await this.assertNoStrandedColumns(previous, next);
+        await writeBoard(this.paths, next);
+        return next;
+      }),
+    );
   }
 
   /** Reject a board write that removes a column still referenced by an item. */
@@ -1183,7 +1223,10 @@ export class KanmerStore {
 
   /**
    * Run `work` inside this board's write lock (CORE-115, widened to every
-   * ticket-file writer by CORE-125).
+   * ticket-file writer by CORE-125 and to board-policy/release/reconciliation
+   * writers by CORE-132). A write that needs both locks always takes this lease
+   * lock before `board.yml.lock`, so policy updates cannot interleave between a
+   * release candidate's policy compare and its durable journal commit.
    *
    * `withExclusiveFileLock` is a cross-process exclusive-create lock and is
    * **not** re-entrant: a second acquire from the same process gets `EEXIST`,
@@ -1629,16 +1672,17 @@ export class KanmerStore {
    * Apply ONE reconciliation action proposed by the FRD-028 inspector
    * (CORE-131). This is a dispatcher, not a mutation path: every branch reaches
    * an existing verb — `moveItem`, `releaseTicket` or `transferTicket` — and
-   * hands it the caller's `expectedRevision`, so the verb's own locked
-   * compare-and-set inside `withLeaseLock` is the atomicity boundary. There is
-   * no new lock section, no second ownership model and no new stage.
+   * hands it the caller's `expectedRevision`. The dispatcher holds the same
+   * re-entrant `withLeaseLock` section as release and ticket writes. The full
+   * release snapshot is read outside that lock and bracketed by the constant-size
+   * transaction epoch; the exact epoch is rechecked inside before the existing
+   * verb runs. This makes release observation, ticket CAS and mutation one
+   * consistency boundary without an unbounded history scan in the critical section.
    *
-   * The precondition re-check below reads the item OUTSIDE the lock, and that
-   * is deliberately not PR #286's defect: #286 took its CAS token from its own
-   * read, so the check validated nothing. Here `expectedRevision` comes from
-   * the caller — bound to the evidence the recommendation was computed from —
-   * and the verb re-reads and re-checks it under the lock. This read only fails
-   * fast and names the responsible controller for the audit line.
+   * `expectedRevision` still comes from the caller — bound to the evidence the
+   * recommendation was computed from — and the existing verb re-reads and
+   * re-checks it while re-entering this lock. No Git/GitHub work is moved into
+   * the critical section; only local release and ticket evidence is read here.
    *
    * Authority is unchanged: `review → implementing` is still judged by
    * `backwardMoveEffects`, so it needs a `needs-changes` attestation bound to
@@ -1647,6 +1691,61 @@ export class KanmerStore {
    * worktree and never cleans a workspace.
    */
   async applyReconciliation(id: string, input: ReconciliationApplyInput): Promise<ReconciliationApplyResult> {
+    const stateToken = (state: Awaited<ReturnType<typeof readReleaseStateRecord>>): string => JSON.stringify(state);
+    for (let sample = 0; sample < 3; sample += 1) {
+      let beforeState: Awaited<ReturnType<typeof readReleaseStateRecord>>;
+      let snapshot: ReleaseSnapshot;
+      let afterState: Awaited<ReturnType<typeof readReleaseStateRecord>>;
+      try {
+        beforeState = await readReleaseStateRecord(this.paths);
+        snapshot = await this.releaseSnapshot();
+        afterState = await readReleaseStateRecord(this.paths);
+      } catch (error) {
+        throw new Error(
+          `RECONCILIATION_DRIFT: "${id}" release transaction state is unreadable; ` +
+            `re-run reconcile_ticket after the release records are repaired (${error instanceof Error ? error.message : String(error)}).`,
+        );
+      }
+      if (stateToken(beforeState) !== stateToken(afterState)) continue;
+
+      let release = classifyReleaseEvidence(snapshot, id);
+      if (afterState === null && snapshot.pending.length === 0 &&
+          (snapshot.channels.length > 0 || snapshot.heads.length > 0 || snapshot.attempts.length > 0)) {
+        release = { state: "unavailable" };
+      }
+      let changed = false;
+      const result = await this.withLeaseLock(async () => {
+        if (await recoverPendingReleaseMutation(this.paths)) {
+          changed = true;
+          return null;
+        }
+        const currentState = await readReleaseStateRecord(this.paths);
+        if (stateToken(currentState) !== stateToken(afterState)) {
+          changed = true;
+          return null;
+        }
+        return this.applyReconciliationLocked(id, input, release.state);
+      });
+      if (!changed) return result!;
+    }
+    throw new Error(
+      `RECONCILIATION_DRIFT: "${id}" release evidence changed while the recommendation was being applied; ` +
+        `re-run reconcile_ticket against the current release state.`,
+    );
+  }
+
+  /** The local-only reconciliation body; callers hold the re-entrant board write lock. */
+  private async applyReconciliationLocked(
+    id: string,
+    input: ReconciliationApplyInput,
+    releaseState: ReturnType<typeof classifyReleaseEvidence>["state"],
+  ): Promise<ReconciliationApplyResult> {
+    if (releaseState !== "not-applicable") {
+      throw new Error(
+        `RECONCILIATION_DRIFT: "${id}" release evidence is now ${releaseState}; ` +
+          `the previously collected recommendation is no longer safe. Re-run reconcile_ticket.`,
+      );
+    }
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
@@ -1886,6 +1985,553 @@ export class KanmerStore {
         );
       }
       return next;
+    });
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Release-channel leases and immutable candidate identity (CORE-132, FRD-031)
+  //
+  // The same mechanism the ticket lease uses — one board-wide `withLeaseLock`
+  // critical section, records re-read inside it, a `lease_revision` CAS and a
+  // renewable expiry — applied to a different record, because a release channel
+  // is owned by a release *attempt* and has no ticket to hang off.
+  //
+  // Every verb below is pure filesystem work inside the lock. Nothing here
+  // spawns a subprocess or contacts a release service: the integration SHA and
+  // the "release service was unavailable" observation are both collected at the
+  // MCP boundary and passed in, exactly as CORE-131 collects Git/GitHub
+  // evidence before delegating to a locked store verb.
+  //
+  // These verbs append no activity op and write no ticket file. The records are
+  // themselves the durable audit — each carries its owner, its timestamps and
+  // its successor chain, and an attempt record is never deleted.
+  // ---------------------------------------------------------------------------
+
+  /** The channel a request names, defaulting to the board's resolved release branch. */
+  private async resolveReleaseChannel(channel: string | undefined): Promise<string> {
+    const named = channel?.trim();
+    const resolved = named || resolveDelivery(await this.getBoard()).releaseBranch;
+    return normalizeReleaseChannel(resolved);
+  }
+
+  /** Every release record on this board, read without a lock and never throwing. */
+  async releaseSnapshot(): Promise<ReleaseSnapshot> {
+    return readReleaseSnapshot(this.paths);
+  }
+
+  /**
+   * Finish the one already-authorised release transaction before an explicit
+   * reconciliation apply performs its fresh read. The read-only inspector never
+   * calls this; the write tool does, under the same board lock as release verbs.
+   */
+  async recoverPendingReleaseForWrite(): Promise<boolean> {
+    return this.withLeaseLock(() => recoverPendingReleaseMutation(this.paths));
+  }
+
+  /** How long a freshly taken or renewed release lease runs for. */
+  private async releaseLeaseExpiry(now: Date): Promise<string> {
+    const { expiryMinutes } = leaseConfig(await this.getBoard());
+    return new Date(now.getTime() + expiryMinutes * 60_000).toISOString();
+  }
+
+  /** Complete an interrupted write set, or fail closed, before reading ownership. */
+  private async prepareReleaseMutation(channel: string): Promise<void> {
+    await recoverPendingReleaseMutation(this.paths);
+    await recoverReleaseMutation(this.paths, channel);
+  }
+
+  /**
+   * Re-read the policy inside the lock and bind it to the version collected
+   * alongside Git resolution. This prevents a SHA resolved under policy A from
+   * being minted with the release branch/candidate pattern from policy B.
+   */
+  private async releasePolicy(expectedVersion: string): Promise<{ policy: DeliveryPolicy; version: string }> {
+    const policy = resolveDelivery(await this.getBoard());
+    const version = deliveryPolicyVersion(policy);
+    if (expectedVersion !== version) {
+      throw new Error(
+        `RELEASE_POLICY_DRIFT: delivery policy changed after the integration SHA was collected ` +
+          `(${expectedVersion} → ${version}). Re-read the policy and resolve the SHA again.`,
+      );
+    }
+    return { policy, version };
+  }
+
+  /**
+   * Re-read the channel lease and its attempt inside the lock and check the
+   * caller's authority and CAS. `lease_id` is identity (a mismatch means the lease was
+   * reclaimed — `LEASE_EXPIRED`, the same wording `renewTicket` uses) and
+   * `lease_revision` is the compare-and-swap (`Conflict:`, classified as
+   * `REVISION_CONFLICT` at the MCP boundary).
+   */
+  private async readHeldChannel(
+    channel: string,
+    leaseId: string,
+    leaseRevision: number,
+    options: { allowForeignOwner?: boolean } = {},
+  ): Promise<{ lease: ReleaseChannelRecord; head: ReleaseChannelHeadRecord; attempt: ReleaseAttemptRecord }> {
+    const lease = await readChannelRecord(this.paths, channel);
+    if (!lease) {
+      throw new Error(
+        `LEASE_EXPIRED: release channel "${channel}" holds no lease; it was cleared by a successful or superseded ` +
+          `attempt, or never acquired. Acquire it before recording anything against it.`,
+      );
+    }
+    const attempt = await readAttemptRecord(this.paths, lease.attempt_id);
+    const head = await readChannelHeadRecord(this.paths, channel);
+    if (!head || !attempt || !releaseEndpointConsistent(head, lease, attempt)) {
+      throw new Error(
+        `RELEASE_RECORD_UNREADABLE: release channel "${channel}" does not agree with its durable head and ` +
+          `immutable attempt ownership. Inspect and restore the records before mutation.`,
+      );
+    }
+    if (lease.lease_id !== leaseId) {
+      throw new Error(
+        `LEASE_EXPIRED: release channel "${channel}" is now held by lease ${lease.lease_id} (attempt ${lease.attempt_id}), ` +
+          `not ${leaseId}. The channel was reclaimed — stop and re-read it.`,
+      );
+    }
+    if (!options.allowForeignOwner && lease.owner !== this.actor) {
+      throw new Error(
+        `CLAIM_NOT_OWNED: release channel "${channel}" is held by ${lease.owner}; the actual caller is ${this.actor}. ` +
+          `Lease id and revision are concurrency checks, not authority. Only the owner may renew, record, complete or fail; ` +
+          `use supersede for an expired or explicitly operator-authorised takeover.`,
+      );
+    }
+    if (lease.lease_revision !== leaseRevision) {
+      throw new Error(
+        `Conflict: release channel "${channel}" changed since you read it ` +
+          `(lease_revision is now ${lease.lease_revision}, you expected ${leaseRevision}).`,
+      );
+    }
+    return { lease, head, attempt };
+  }
+
+  /** Refuse any write to an attempt that has already reached a terminal outcome. */
+  private static assertAttemptWritable(attempt: ReleaseAttemptRecord): void {
+    if (isTerminalAttempt(attempt)) {
+      throw new Error(
+        `RELEASE_ATTEMPT_TERMINAL: release attempt ${attempt.attempt_id} is ${attempt.outcome} and is frozen. ` +
+          `A terminal attempt keeps its proof forever; mint a successor with supersede instead.`,
+      );
+    }
+  }
+
+  private static assertIntegrationSha(sha: string): string {
+    const value = sha.trim();
+    if (!/^[0-9a-f]{40}$/i.test(value)) {
+      throw new Error(`Invalid integration SHA "${sha}": a release attempt names the exact 40-hex integration SHA.`);
+    }
+    return value.toLowerCase();
+  }
+
+  /** Every identity field is compared, so an immutable candidate stays immutable. */
+  private static assertCandidateImmutable(before: ReleaseAttemptRecord, after: ReleaseAttemptRecord): void {
+    for (const field of RELEASE_FROZEN_FIELDS) {
+      if (before[field] !== after[field]) {
+        throw new Error(
+          `RELEASE_CANDIDATE_IMMUTABLE: release attempt ${before.attempt_id} cannot change "${field}" ` +
+            `("${String(before[field])}" → "${String(after[field])}"). A changed candidate needs a new identity: supersede it.`,
+        );
+      }
+    }
+  }
+
+  private static mintAttempt(input: {
+    channel: string;
+    ordinal: number;
+    integrationSha: string;
+    policy: DeliveryPolicy;
+    policyVersion: string;
+    owner: string;
+    at: string;
+    supersedes: string | null;
+    includedPrs: readonly string[];
+    includedTickets: readonly string[];
+  }): ReleaseAttemptRecord {
+    return {
+      schema: RELEASE_RECORD_SCHEMA,
+      attempt_id: attemptIdFor(input.channel, input.ordinal),
+      channel: input.channel,
+      ordinal: input.ordinal,
+      candidate_id: candidateIdentity(input.channel, input.integrationSha, input.ordinal),
+      candidate_ref: candidateRefFor(input.policy, input.channel, input.ordinal),
+      integration_sha: input.integrationSha,
+      release_branch: input.policy.releaseBranch,
+      delivery_policy_version: input.policyVersion,
+      created_at: input.at,
+      owner: input.owner,
+      supersedes: input.supersedes,
+      // A successor NEVER inherits evidence (FRD-031 AC3): included PRs and
+      // tickets describe intended scope and are supplied afresh, while the
+      // artifact manifest and verification state start empty because they
+      // belong to the candidate SHA that produced them.
+      release_tag: null,
+      included_prs: [...input.includedPrs],
+      included_tickets: [...input.includedTickets],
+      artifact_manifest: [],
+      verification_state: "pending",
+      retry: null,
+      outcome: "active",
+      terminal_at: null,
+      successor: null,
+      failure_reason: null,
+    };
+  }
+
+  /** The durable high-water endpoint committed with a newly minted attempt. */
+  private static releaseHead(attempt: ReleaseAttemptRecord): ReleaseChannelHeadRecord {
+    return {
+      schema: RELEASE_RECORD_SCHEMA,
+      channel: attempt.channel,
+      latest_attempt_id: attempt.attempt_id,
+      next_ordinal: attempt.ordinal + 1,
+    };
+  }
+
+  /**
+   * Take a release channel: mint an immutable candidate identity for the exact
+   * integration SHA and record the lease that serialises the channel.
+   *
+   * A channel that already carries a lease record is refused with
+   * `RELEASE_CHANNEL_HELD` whether that lease is live **or** expired. Expiry
+   * never releases anything here for the same reason `assertWorkspaceFree`
+   * ignores it for workspaces: an abandoned lease still owns its channel until
+   * somebody explicitly takes responsibility for the evidence it left behind.
+   * The reclaim is `supersedeReleaseAttempt`, which archives the incumbent with
+   * a successor rather than pretending it never happened.
+   */
+  async acquireReleaseChannel(input: AcquireReleaseChannelInput): Promise<ReleaseChannelResult> {
+    const sha = KanmerStore.assertIntegrationSha(input.integrationSha);
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const now = input.now ?? new Date();
+      const existing = await readChannelRecord(this.paths, channel);
+      if (existing) {
+        const state = releaseLeaseExpired(existing, now) ? "expired" : "live";
+        throw new Error(
+          `RELEASE_CHANNEL_HELD: release channel "${channel}" is already held by lease ${existing.lease_id} ` +
+            `(attempt ${existing.attempt_id}, held by ${existing.owner}, ${state}` +
+            `${existing.expires_at ? ` until ${existing.expires_at}` : ""}). ` +
+            (state === "expired"
+              ? `An expired release lease is reclaimed with supersede, never re-acquired: that archives the incumbent attempt with a successor and keeps its evidence.`
+              : `One release owns a channel at a time — complete, fail or supersede the current attempt first.`),
+        );
+      }
+      const at = now.toISOString();
+      const owner = this.actor;
+      const { policy, version: policyVersion } = await this.releasePolicy(input.expectedPolicyVersion);
+      const previousHead = await readChannelHeadRecord(this.paths, channel);
+      const ordinal = await nextOrdinal(this.paths, channel);
+      const previousAttempt = previousHead
+        ? await readAttemptRecord(this.paths, previousHead.latest_attempt_id)
+        : null;
+      if (previousHead && (!previousAttempt || previousAttempt.outcome !== "released")) {
+        throw new Error(
+          `RELEASE_RECORD_UNREADABLE: channel "${channel}" has no lease but its durable head is not a ` +
+            `completed release. Restore its ownership evidence before acquiring a successor.`,
+        );
+      }
+      const attempt = KanmerStore.mintAttempt({
+        channel,
+        ordinal,
+        integrationSha: sha,
+        policy,
+        policyVersion,
+        owner,
+        at,
+        supersedes: null,
+        includedPrs: input.includedPrs ?? [],
+        includedTickets: input.includedTickets ?? [],
+      });
+      const lease: ReleaseChannelRecord = {
+        schema: RELEASE_RECORD_SCHEMA,
+        channel,
+        attempt_id: attempt.attempt_id,
+        lease_id: newReleaseLeaseId(),
+        lease_revision: 1,
+        owner,
+        acquired_at: at,
+        expires_at: await this.releaseLeaseExpiry(now),
+        heartbeat_at: at,
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [
+          ...(previousAttempt ? [{ before: previousAttempt, after: previousAttempt }] : []),
+          { before: null, after: attempt },
+        ],
+        head_record: { before: previousHead, after: KanmerStore.releaseHead(attempt) },
+        channel_record: { before: null, after: lease },
+      });
+      return { channel, lease, attempt, leaseState: "current" };
+    });
+  }
+
+  /** Heartbeat and extend a release lease. The renewable half of the renewable expiry. */
+  async renewReleaseChannel(input: ReleaseChannelCasInput): Promise<ReleaseChannelResult> {
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      const now = input.now ?? new Date();
+      const next: ReleaseChannelRecord = {
+        ...lease,
+        lease_revision: lease.lease_revision + 1,
+        heartbeat_at: now.toISOString(),
+        expires_at: await this.releaseLeaseExpiry(now),
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: attempt }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: next },
+      });
+      return { channel, lease: next, attempt, leaseState: "current" };
+    });
+  }
+
+  /**
+   * Record progress against the channel's current attempt: verification state,
+   * the release tag, included PRs and tickets, the artifact manifest, or one
+   * bounded "the release service was unavailable" observation.
+   *
+   * The attempt's identity fields are not accepted here, and
+   * `assertCandidateImmutable` proves that rather than trusting the signature —
+   * a changed integration SHA must mint a new candidate identity through
+   * supersede (FRD-031 AC3), never quietly re-point an existing one.
+   */
+  async recordReleaseProgress(input: RecordReleaseProgressInput): Promise<ReleaseChannelResult> {
+    const serviceUnavailable = input.serviceUnavailable?.trim();
+    if (input.serviceUnavailable !== undefined && !serviceUnavailable) {
+      throw new Error(`RELEASE_INPUT_INVALID: serviceUnavailable must describe the observed release-service failure.`);
+    }
+    if (input.serviceUnavailable !== undefined && input.serviceRecovered === true) {
+      throw new Error(
+        `RELEASE_INPUT_INVALID: one record action cannot report serviceUnavailable and serviceRecovered together.`,
+      );
+    }
+    if (input.serviceRecovered !== undefined && input.serviceRecovered !== true) {
+      throw new Error(`RELEASE_INPUT_INVALID: serviceRecovered is an observation flag and, when supplied, must be true.`);
+    }
+    if (
+      input.verificationState === undefined && input.releaseTag === undefined &&
+      input.includedPrs === undefined && input.includedTickets === undefined &&
+      input.artifactManifest === undefined && serviceUnavailable === undefined &&
+      input.serviceRecovered !== true
+    ) {
+      throw new Error(
+        `RELEASE_INPUT_INVALID: record needs at least one progress field; use renew for a heartbeat with no progress.`,
+      );
+    }
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      KanmerStore.assertAttemptWritable(attempt);
+      const now = input.now ?? new Date();
+      const next: ReleaseAttemptRecord = {
+        ...attempt,
+        ...(input.verificationState !== undefined ? { verification_state: input.verificationState } : {}),
+        ...(input.releaseTag !== undefined ? { release_tag: input.releaseTag.trim() || null } : {}),
+        ...(input.includedPrs !== undefined ? { included_prs: [...input.includedPrs] } : {}),
+        ...(input.includedTickets !== undefined ? { included_tickets: [...input.includedTickets] } : {}),
+        ...(input.artifactManifest !== undefined ? { artifact_manifest: [...input.artifactManifest] } : {}),
+        ...(serviceUnavailable !== undefined
+          ? { retry: nextRetry(attempt.retry, serviceUnavailable, now) }
+          : {}),
+        ...(input.serviceRecovered === true ? { retry: null } : {}),
+      };
+      KanmerStore.assertCandidateImmutable(attempt, next);
+      const nextLease: ReleaseChannelRecord = {
+        ...lease,
+        lease_revision: lease.lease_revision + 1,
+        heartbeat_at: now.toISOString(),
+        expires_at: await this.releaseLeaseExpiry(now),
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: next }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: nextLease },
+      });
+      return { channel, lease: nextLease, attempt: next, leaseState: "current" };
+    });
+  }
+
+  /**
+   * Archive the channel's current attempt with a successor and hand the lease
+   * to a freshly minted candidate (FRD-031 AC3 and AC4).
+   *
+   * This is one verb for two situations that are the same underneath:
+   * remediation at a new SHA, and reclaiming a lease whose owner has gone.
+   * The incumbent record is left intact apart from its terminal fields, so a
+   * failed or abandoned attempt keeps its proof, and the successor starts with
+   * empty evidence so candidate 1's evidence can never be read as candidate 2's.
+   */
+  async supersedeReleaseAttempt(input: SupersedeReleaseAttemptInput): Promise<ReleaseChannelResult> {
+    const sha = KanmerStore.assertIntegrationSha(input.integrationSha);
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(
+        channel,
+        input.leaseId,
+        input.leaseRevision,
+        { allowForeignOwner: true },
+      );
+      const now = input.now ?? new Date();
+      const at = now.toISOString();
+      const owner = this.actor;
+      // The same rule `transferTicket` applies to a live ticket lease: a live
+      // release lease is not taken from its owner without an operator saying so.
+      if (!releaseLeaseExpired(lease, now) && lease.owner !== owner && !isOperatorReason(input.reason)) {
+        throw new Error(
+          `CLAIM_LIVE: release channel "${channel}" is held by ${lease.owner} until ${lease.expires_at} and you are ${owner}. ` +
+            `Wait for expiry, ask the owner to supersede, or pass a reason beginning "operator:".`,
+        );
+      }
+      if (isTerminalAttempt(attempt) && attempt.outcome !== "failed") {
+        throw new Error(
+          `RELEASE_ATTEMPT_TERMINAL: release attempt ${attempt.attempt_id} is ${attempt.outcome} and is frozen; ` +
+            `only a retained failed attempt can mint a successor.`,
+        );
+      }
+      const { policy, version: policyVersion } = await this.releasePolicy(input.expectedPolicyVersion);
+      const successor = KanmerStore.mintAttempt({
+        channel,
+        ordinal: head.next_ordinal,
+        integrationSha: sha,
+        policy,
+        policyVersion,
+        owner,
+        at,
+        supersedes: attempt.attempt_id,
+        includedPrs: input.includedPrs ?? [],
+        includedTickets: input.includedTickets ?? [],
+      });
+      // A failed attempt is already terminal and frozen whole. Its successor
+      // names the predecessor, while status derives the reverse relationship;
+      // failed history is never rewritten into "superseded".
+      const archived: ReleaseAttemptRecord = attempt.outcome === "failed"
+        ? attempt
+        : {
+            ...attempt,
+            outcome: "superseded",
+            terminal_at: at,
+            successor: successor.attempt_id,
+            ...(input.reason !== undefined && attempt.failure_reason === null ? { failure_reason: input.reason } : {}),
+          };
+      const nextLease: ReleaseChannelRecord = {
+        schema: RELEASE_RECORD_SCHEMA,
+        channel,
+        attempt_id: successor.attempt_id,
+        lease_id: newReleaseLeaseId(),
+        lease_revision: 1,
+        owner,
+        acquired_at: at,
+        expires_at: await this.releaseLeaseExpiry(now),
+        heartbeat_at: at,
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [
+          { before: attempt, after: archived },
+          { before: null, after: successor },
+        ],
+        head_record: { before: head, after: KanmerStore.releaseHead(successor) },
+        channel_record: { before: lease, after: nextLease },
+      });
+      return { channel, lease: nextLease, attempt: successor, leaseState: "current" };
+    });
+  }
+
+  /**
+   * Finish a release successfully. The attempt becomes terminal `released` and
+   * the channel lease is **cleared** — FRD-031 AC4's "a successful terminal
+   * attempt clears the lease". The attempt record itself is never removed.
+   */
+  async completeReleaseAttempt(input: CompleteReleaseAttemptInput): Promise<ReleaseChannelResult> {
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      KanmerStore.assertAttemptWritable(attempt);
+      const now = input.now ?? new Date();
+      const next: ReleaseAttemptRecord = {
+        ...attempt,
+        ...(input.releaseTag !== undefined ? { release_tag: input.releaseTag.trim() || null } : {}),
+        ...(input.artifactManifest !== undefined ? { artifact_manifest: [...input.artifactManifest] } : {}),
+        outcome: "released",
+        terminal_at: now.toISOString(),
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: next }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: null },
+      });
+      return { channel, lease: null, attempt: next, leaseState: "cleared" };
+    });
+  }
+
+  /**
+   * Record a failed release. The attempt becomes terminal `failed` and keeps
+   * its proof; the channel lease is deliberately **retained**.
+   *
+   * FRD-031 clears the lease for a successful or superseded attempt and says
+   * nothing about a failed one, and goal.md says failed immutable attempts
+   * retain their proof. Keeping the channel means a second owner cannot start a
+   * release on top of unexamined failure evidence: the way forward is an
+   * explicit supersede, which records the successor. The lease still expires on
+   * the ordinary renewable rule, so nothing is wedged.
+   */
+  async failReleaseAttempt(input: FailReleaseAttemptInput): Promise<ReleaseChannelResult> {
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      KanmerStore.assertAttemptWritable(attempt);
+      const now = input.now ?? new Date();
+      const next: ReleaseAttemptRecord = {
+        ...attempt,
+        outcome: "failed",
+        terminal_at: now.toISOString(),
+        failure_reason: input.reason,
+        verification_state: "failed",
+      };
+      const nextLease: ReleaseChannelRecord = {
+        ...lease,
+        lease_revision: lease.lease_revision + 1,
+        heartbeat_at: now.toISOString(),
+        expires_at: await this.releaseLeaseExpiry(now),
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: next }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: nextLease },
+      });
+      return {
+        channel,
+        lease: nextLease,
+        attempt: next,
+        leaseState: releaseLeaseExpired(nextLease, now) ? "expired" : "current",
+      };
     });
   }
 

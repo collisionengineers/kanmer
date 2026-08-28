@@ -4,6 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import matter from "gray-matter";
 import {
+  classifyReleaseEvidence,
   leaseConfig,
   leaseState,
   reconcileEvidence,
@@ -332,11 +333,14 @@ export async function collectReconciliationEvidence(
     pullRequest,
     proof: proofEvidence(await store.getDoc(id, "proof")),
     workspace: await workspaceEvidence(store, item.worktree, item.branch, run, fs.stat, options.resolveCommonDir),
-    // CORE-132 owns persisted release attempts (the release-channel lease and
-    // candidate identity); CORE-116 delivered only policy and delivery state,
-    // neither of which is a release attempt. This collector must never
-    // manufacture a neutral observation for evidence it cannot inspect.
-    release: { state: "not-applicable" },
+    // Persisted release attempts (CORE-132, FRD-031). Read from
+    // `.kanmer/releases/` with plain fs reads — outside every lock, like every
+    // other evidence read here — and classified by the pure core function that
+    // owns the mapping. `readReleaseSnapshot` never throws: a record it cannot
+    // read sets `unreadable`, which classifies as `unavailable`, so this
+    // collector still never manufactures a neutral observation for evidence it
+    // cannot inspect.
+    release: classifyReleaseEvidence(await store.releaseSnapshot(), id),
   };
 }
 
@@ -403,24 +407,31 @@ export interface ApplyReconciliationResult extends ReconciliationApplyResult {
  * Apply the recommendation a ticket's CURRENT evidence supports, and only
  * while it is still current (FRD-028 acceptance 2). The order is fixed:
  *
- * 1. Re-collect and re-classify through the same `reconcileTicket` the dry run
+ * 1. Finish at most one already-authorised, bounded release transaction under
+ *    the board write lock. This is crash recovery, not new release authority;
+ *    the read-only inspector remains mutation-free.
+ * 2. Re-collect and re-classify through the same `reconcileTicket` the dry run
  *    used, so re-collection cannot drift from what was reported. This spawns
  *    git/gh and therefore runs outside every lock.
- * 2. Refuse RECONCILIATION_INCONCLUSIVE when there is no recommendation. That
+ * 3. Refuse RECONCILIATION_INCONCLUSIVE when there is no recommendation. That
  *    is a normal refusal — `transient` and `inconclusive` verification
  *    failures deliberately recommend nothing.
- * 3. Refuse REVISION_CONFLICT when the freshly-collected revision is not the
+ * 4. Refuse REVISION_CONFLICT when the freshly-collected revision is not the
  *    one the caller is applying, quoting both. A legacy-layout ticket has no
  *    revision and cannot be reconciled safely at all.
- * 4. Refuse RECONCILIATION_DRIFT when the board moved under the collection
+ * 5. Refuse RECONCILIATION_DRIFT when the board moved under the collection
  *    itself — the recorded revision or stage is no longer what was classified,
  *    so the fresh action no longer describes the ticket. Belt and braces: a
  *    revision match should already make this unreachable, and the verb's own
  *    CAS would refuse it regardless.
- * 5. Delegate to `store.applyReconciliation`, which re-checks preconditions and
- *    passes `expectedRevision` into the locked verb.
+ * 6. Delegate to `store.applyReconciliation`, which brackets the lock-free
+ *    release snapshot with its constant-size transaction epoch, rechecks that
+ *    epoch under the board write lock, then re-checks ticket preconditions and
+ *    passes `expectedRevision` into the re-entrant locked verb.
  *
- * Nothing here mutates on any refusal path.
+ * A refusal never changes the ticket or writes a reconciliation audit line.
+ * Step 1 may still finish evidence already authorised by a prior release verb;
+ * that durable crash recovery is intentionally independent of the ticket CAS.
  */
 export async function applyReconciliation(
   store: KanmerStore,
@@ -428,6 +439,11 @@ export async function applyReconciliation(
   run?: ReconciliationRun,
   options?: { now?: Date; resolveCommonDir?: CommonDirResolver },
 ): Promise<ApplyReconciliationResult> {
+  // A prior release writer may have crashed after publishing its recoverable
+  // epoch. Complete that already-authorised write set before the fresh inspector
+  // classifies it; otherwise apply would stop at "no recommendation" and no
+  // release verb might ever arrive to recover the journal.
+  await store.recoverPendingReleaseForWrite();
   const result = await reconcileTicket(store, input.id, run, options);
   const recommendation = result.recommendation;
   if (!recommendation) {

@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path21) {
-      let input = path21;
+    function removeDotSegments(path22) {
+      let input = path22;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3479,8 +3479,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path21, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path21 && path21 !== "/" ? path21 : void 0;
+        const [path22, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path22 && path22 !== "/" ? path22 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6899,12 +6899,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs13, exportName) {
+    function addFormats(ajv, list, fs14, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs13[f]);
+        ajv.addFormat(f, fs14[f]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10289,7 +10289,7 @@ var require_parse = __commonJS({
 var require_gray_matter = __commonJS({
   "../../node_modules/gray-matter/index.js"(exports2, module2) {
     "use strict";
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var sections = require_section_matter();
     var defaults = require_defaults2();
     var stringify = require_stringify();
@@ -10373,7 +10373,7 @@ var require_gray_matter = __commonJS({
       return stringify(file, data, options2);
     };
     matter5.read = function(filepath, options2) {
-      const str2 = fs13.readFileSync(filepath, "utf8");
+      const str2 = fs14.readFileSync(filepath, "utf8");
       const file = matter5(str2, options2);
       file.path = filepath;
       return file;
@@ -10478,17 +10478,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path21) {
-      const ctrl = callVisitor(key, node, visitor, path21);
+    function visit_(key, node, visitor, path22) {
+      const ctrl = callVisitor(key, node, visitor, path22);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path21, ctrl);
-        return visit_(key, ctrl, visitor, path21);
+        replaceNode(key, path22, ctrl);
+        return visit_(key, ctrl, visitor, path22);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path21 = Object.freeze(path21.concat(node));
+          path22 = Object.freeze(path22.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path21);
+            const ci = visit_(i, node.items[i], visitor, path22);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10499,13 +10499,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path21 = Object.freeze(path21.concat(node));
-          const ck = visit_("key", node.key, visitor, path21);
+          path22 = Object.freeze(path22.concat(node));
+          const ck = visit_("key", node.key, visitor, path22);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path21);
+          const cv = visit_("value", node.value, visitor, path22);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10526,17 +10526,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path21) {
-      const ctrl = await callVisitor(key, node, visitor, path21);
+    async function visitAsync_(key, node, visitor, path22) {
+      const ctrl = await callVisitor(key, node, visitor, path22);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path21, ctrl);
-        return visitAsync_(key, ctrl, visitor, path21);
+        replaceNode(key, path22, ctrl);
+        return visitAsync_(key, ctrl, visitor, path22);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path21 = Object.freeze(path21.concat(node));
+          path22 = Object.freeze(path22.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path21);
+            const ci = await visitAsync_(i, node.items[i], visitor, path22);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10547,13 +10547,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path21 = Object.freeze(path21.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path21);
+          path22 = Object.freeze(path22.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path22);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path21);
+          const cv = await visitAsync_("value", node.value, visitor, path22);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10580,23 +10580,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path21) {
+    function callVisitor(key, node, visitor, path22) {
       if (typeof visitor === "function")
-        return visitor(key, node, path21);
+        return visitor(key, node, path22);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path21);
+        return visitor.Map?.(key, node, path22);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path21);
+        return visitor.Seq?.(key, node, path22);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path21);
+        return visitor.Pair?.(key, node, path22);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path21);
+        return visitor.Scalar?.(key, node, path22);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path21);
+        return visitor.Alias?.(key, node, path22);
       return void 0;
     }
-    function replaceNode(key, path21, node) {
-      const parent = path21[path21.length - 1];
+    function replaceNode(key, path22, node) {
+      const parent = path22[path22.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -11206,10 +11206,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path21, value) {
+    function collectionFromPath(schema, path22, value) {
       let v = value;
-      for (let i = path21.length - 1; i >= 0; --i) {
-        const k = path21[i];
+      for (let i = path22.length - 1; i >= 0; --i) {
+        const k = path22[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -11228,7 +11228,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path21) => path21 == null || typeof path21 === "object" && !!path21[Symbol.iterator]().next().done;
+    var isEmptyPath = (path22) => path22 == null || typeof path22 === "object" && !!path22[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -11258,11 +11258,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path21, value) {
-        if (isEmptyPath(path21))
+      addIn(path22, value) {
+        if (isEmptyPath(path22))
           this.add(value);
         else {
-          const [key, ...rest] = path21;
+          const [key, ...rest] = path22;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -11276,8 +11276,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path21) {
-        const [key, ...rest] = path21;
+      deleteIn(path22) {
+        const [key, ...rest] = path22;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -11291,8 +11291,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path21, keepScalar) {
-        const [key, ...rest] = path21;
+      getIn(path22, keepScalar) {
+        const [key, ...rest] = path22;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -11310,8 +11310,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path21) {
-        const [key, ...rest] = path21;
+      hasIn(path22) {
+        const [key, ...rest] = path22;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -11321,8 +11321,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path21, value) {
-        const [key, ...rest] = path21;
+      setIn(path22, value) {
+        const [key, ...rest] = path22;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -13837,9 +13837,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path21, value) {
+      addIn(path22, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path21, value);
+          this.contents.addIn(path22, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -13914,14 +13914,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path21) {
-        if (Collection.isEmptyPath(path21)) {
+      deleteIn(path22) {
+        if (Collection.isEmptyPath(path22)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path21) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path22) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -13936,10 +13936,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path21, keepScalar) {
-        if (Collection.isEmptyPath(path21))
+      getIn(path22, keepScalar) {
+        if (Collection.isEmptyPath(path22))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path21, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path22, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -13950,10 +13950,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path21) {
-        if (Collection.isEmptyPath(path21))
+      hasIn(path22) {
+        if (Collection.isEmptyPath(path22))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path21) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path22) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -13970,13 +13970,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path21, value) {
-        if (Collection.isEmptyPath(path21)) {
+      setIn(path22, value) {
+        if (Collection.isEmptyPath(path22)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path21), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path22), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path21, value);
+          this.contents.setIn(path22, value);
         }
       }
       /**
@@ -15936,9 +15936,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path21) => {
+    visit.itemAtPath = (cst, path22) => {
       let item = cst;
-      for (const [field, index] of path21) {
+      for (const [field, index] of path22) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -15947,23 +15947,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path21) => {
-      const parent = visit.itemAtPath(cst, path21.slice(0, -1));
-      const field = path21[path21.length - 1][0];
+    visit.parentCollection = (cst, path22) => {
+      const parent = visit.itemAtPath(cst, path22.slice(0, -1));
+      const field = path22[path22.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path21, item, visitor) {
-      let ctrl = visitor(item, path21);
+    function _visit(path22, item, visitor) {
+      let ctrl = visitor(item, path22);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path21.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path22.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -15974,10 +15974,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path21);
+            ctrl = ctrl(item, path22);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path21) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path22) : ctrl;
     }
     exports2.visit = visit;
   }
@@ -17279,14 +17279,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs13 = this.flowScalar(this.type);
+              const fs14 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs13, sep: [] });
+                map.items.push({ start, key: fs14, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs13);
+                this.stack.push(fs14);
               } else {
-                Object.assign(it, { key: fs13, sep: [] });
+                Object.assign(it, { key: fs14, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -17414,13 +17414,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs13 = this.flowScalar(this.type);
+              const fs14 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs13, sep: [] });
+                fc.items.push({ start: [], key: fs14, sep: [] });
               else if (it.sep)
-                this.stack.push(fs13);
+                this.stack.push(fs14);
               else
-                Object.assign(it, { key: fs13, sep: [] });
+                Object.assign(it, { key: fs14, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -17732,7 +17732,7 @@ var require_dist2 = __commonJS({
 var require_constants = __commonJS({
   "../../node_modules/picomatch/lib/constants.js"(exports2, module2) {
     "use strict";
-    var path21 = require("path");
+    var path22 = require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -17906,7 +17906,7 @@ var require_constants = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path21.sep,
+      SEP: path22.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -17933,7 +17933,7 @@ var require_constants = __commonJS({
 var require_utils3 = __commonJS({
   "../../node_modules/picomatch/lib/utils.js"(exports2) {
     "use strict";
-    var path21 = require("path");
+    var path22 = require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -17962,7 +17962,7 @@ var require_utils3 = __commonJS({
       if (options2 && typeof options2.windows === "boolean") {
         return options2.windows;
       }
-      return win32 === true || path21.sep === "\\";
+      return win32 === true || path22.sep === "\\";
     };
     exports2.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -19326,7 +19326,7 @@ var require_parse2 = __commonJS({
 var require_picomatch = __commonJS({
   "../../node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
     "use strict";
-    var path21 = require("path");
+    var path22 = require("path");
     var scan = require_scan();
     var parse4 = require_parse2();
     var utils = require_utils3();
@@ -19411,7 +19411,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options2, posix = utils.isWindows(options2)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options2);
-      return regex.test(path21.basename(input));
+      return regex.test(path22.basename(input));
     };
     picomatch.isMatch = (str2, patterns, options2) => picomatch(patterns, options2)(str2);
     picomatch.parse = (pattern, options2) => {
@@ -19475,15 +19475,15 @@ var require_picomatch2 = __commonJS({
 var require_readdirp = __commonJS({
   "../../node_modules/readdirp/index.js"(exports2, module2) {
     "use strict";
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var { Readable: Readable2 } = require("stream");
     var sysPath = require("path");
-    var { promisify: promisify5 } = require("util");
+    var { promisify: promisify6 } = require("util");
     var picomatch = require_picomatch2();
-    var readdir = promisify5(fs13.readdir);
-    var stat = promisify5(fs13.stat);
-    var lstat2 = promisify5(fs13.lstat);
-    var realpath2 = promisify5(fs13.realpath);
+    var readdir = promisify6(fs14.readdir);
+    var stat = promisify6(fs14.stat);
+    var lstat2 = promisify6(fs14.lstat);
+    var realpath2 = promisify6(fs14.realpath);
     var BANG = "!";
     var RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
     var NORMAL_FLOW_ERRORS = /* @__PURE__ */ new Set(["ENOENT", "EPERM", "EACCES", "ELOOP", RECURSIVE_ERROR_CODE]);
@@ -19527,8 +19527,8 @@ var require_readdirp = __commonJS({
         return {
           root: ".",
           /* eslint-disable no-unused-vars */
-          fileFilter: (path21) => true,
-          directoryFilter: (path21) => true,
+          fileFilter: (path22) => true,
+          directoryFilter: (path22) => true,
           /* eslint-enable no-unused-vars */
           type: FILE_TYPE,
           lstat: false,
@@ -19548,7 +19548,7 @@ var require_readdirp = __commonJS({
         this._directoryFilter = normalizeFilter(opts.directoryFilter);
         const statMethod = opts.lstat ? lstat2 : stat;
         if (wantBigintFsStats) {
-          this._stat = (path21) => statMethod(path21, { bigint: true });
+          this._stat = (path22) => statMethod(path22, { bigint: true });
         } else {
           this._stat = statMethod;
         }
@@ -19557,7 +19557,7 @@ var require_readdirp = __commonJS({
         this._wantsFile = [FILE_TYPE, FILE_DIR_TYPE, EVERYTHING_TYPE].includes(type);
         this._wantsEverything = type === EVERYTHING_TYPE;
         this._root = sysPath.resolve(root);
-        this._isDirent = "Dirent" in fs13 && !opts.alwaysStat;
+        this._isDirent = "Dirent" in fs14 && !opts.alwaysStat;
         this._statsProp = this._isDirent ? "dirent" : "stats";
         this._rdOptions = { encoding: "utf8", withFileTypes: this._isDirent };
         this.parents = [this._exploreDir(root, 1)];
@@ -19569,9 +19569,9 @@ var require_readdirp = __commonJS({
         this.reading = true;
         try {
           while (!this.destroyed && batch > 0) {
-            const { path: path21, depth, files = [] } = this.parent || {};
+            const { path: path22, depth, files = [] } = this.parent || {};
             if (files.length > 0) {
-              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path21));
+              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path22));
               for (const entry of await Promise.all(slice)) {
                 if (this.destroyed) return;
                 const entryType = await this._getEntryType(entry);
@@ -19606,20 +19606,20 @@ var require_readdirp = __commonJS({
           this.reading = false;
         }
       }
-      async _exploreDir(path21, depth) {
+      async _exploreDir(path22, depth) {
         let files;
         try {
-          files = await readdir(path21, this._rdOptions);
+          files = await readdir(path22, this._rdOptions);
         } catch (error2) {
           this._onError(error2);
         }
-        return { files, depth, path: path21 };
+        return { files, depth, path: path22 };
       }
-      async _formatEntry(dirent, path21) {
+      async _formatEntry(dirent, path22) {
         let entry;
         try {
           const basename = this._isDirent ? dirent.name : dirent;
-          const fullPath = sysPath.resolve(sysPath.join(path21, basename));
+          const fullPath = sysPath.resolve(sysPath.join(path22, basename));
           entry = { path: sysPath.relative(this._root, fullPath), fullPath, basename };
           entry[this._statsProp] = this._isDirent ? dirent : await this._stat(fullPath);
         } catch (err) {
@@ -19705,22 +19705,22 @@ var require_readdirp = __commonJS({
 var require_normalize_path = __commonJS({
   "../../node_modules/normalize-path/index.js"(exports2, module2) {
     "use strict";
-    module2.exports = function(path21, stripTrailing) {
-      if (typeof path21 !== "string") {
+    module2.exports = function(path22, stripTrailing) {
+      if (typeof path22 !== "string") {
         throw new TypeError("expected path to be a string");
       }
-      if (path21 === "\\" || path21 === "/") return "/";
-      var len = path21.length;
-      if (len <= 1) return path21;
+      if (path22 === "\\" || path22 === "/") return "/";
+      var len = path22.length;
+      if (len <= 1) return path22;
       var prefix = "";
-      if (len > 4 && path21[3] === "\\") {
-        var ch = path21[2];
-        if ((ch === "?" || ch === ".") && path21.slice(0, 2) === "\\\\") {
-          path21 = path21.slice(2);
+      if (len > 4 && path22[3] === "\\") {
+        var ch = path22[2];
+        if ((ch === "?" || ch === ".") && path22.slice(0, 2) === "\\\\") {
+          path22 = path22.slice(2);
           prefix = "//";
         }
       }
-      var segs = path21.split(/[/\\]+/);
+      var segs = path22.split(/[/\\]+/);
       if (stripTrailing !== false && segs[segs.length - 1] === "") {
         segs.pop();
       }
@@ -19758,17 +19758,17 @@ var require_anymatch = __commonJS({
       if (!isList && typeof _path !== "string") {
         throw new TypeError("anymatch: second argument must be a string: got " + Object.prototype.toString.call(_path));
       }
-      const path21 = normalizePath(_path, false);
+      const path22 = normalizePath(_path, false);
       for (let index = 0; index < negPatterns.length; index++) {
         const nglob = negPatterns[index];
-        if (nglob(path21)) {
+        if (nglob(path22)) {
           return returnIndex ? -1 : false;
         }
       }
-      const applied = isList && [path21].concat(args.slice(1));
+      const applied = isList && [path22].concat(args.slice(1));
       for (let index = 0; index < patterns.length; index++) {
         const pattern = patterns[index];
-        if (isList ? pattern(...applied) : pattern(path21)) {
+        if (isList ? pattern(...applied) : pattern(path22)) {
           return returnIndex ? index : true;
         }
       }
@@ -21338,10 +21338,10 @@ var require_binary_extensions2 = __commonJS({
 var require_is_binary_path = __commonJS({
   "../../node_modules/is-binary-path/index.js"(exports2, module2) {
     "use strict";
-    var path21 = require("path");
+    var path22 = require("path");
     var binaryExtensions = require_binary_extensions2();
     var extensions = new Set(binaryExtensions);
-    module2.exports = (filePath) => extensions.has(path21.extname(filePath).slice(1).toLowerCase());
+    module2.exports = (filePath) => extensions.has(path22.extname(filePath).slice(1).toLowerCase());
   }
 });
 
@@ -21413,9 +21413,9 @@ var require_constants3 = __commonJS({
 var require_nodefs_handler = __commonJS({
   "../../node_modules/chokidar/lib/nodefs-handler.js"(exports2, module2) {
     "use strict";
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var sysPath = require("path");
-    var { promisify: promisify5 } = require("util");
+    var { promisify: promisify6 } = require("util");
     var isBinaryPath = require_is_binary_path();
     var {
       isWindows,
@@ -21436,11 +21436,11 @@ var require_nodefs_handler = __commonJS({
       STAR
     } = require_constants3();
     var THROTTLE_MODE_WATCH = "watch";
-    var open = promisify5(fs13.open);
-    var stat = promisify5(fs13.stat);
-    var lstat2 = promisify5(fs13.lstat);
-    var close = promisify5(fs13.close);
-    var fsrealpath = promisify5(fs13.realpath);
+    var open = promisify6(fs14.open);
+    var stat = promisify6(fs14.stat);
+    var lstat2 = promisify6(fs14.lstat);
+    var close = promisify6(fs14.close);
+    var fsrealpath = promisify6(fs14.realpath);
     var statMethods = { lstat: lstat2, stat };
     var foreach = (val, fn) => {
       if (val instanceof Set) {
@@ -21474,20 +21474,20 @@ var require_nodefs_handler = __commonJS({
     };
     var isEmptySet = (val) => val instanceof Set ? val.size === 0 : !val;
     var FsWatchInstances = /* @__PURE__ */ new Map();
-    function createFsWatchInstance(path21, options2, listener, errHandler, emitRaw) {
+    function createFsWatchInstance(path22, options2, listener, errHandler, emitRaw) {
       const handleEvent = (rawEvent, evPath) => {
-        listener(path21);
-        emitRaw(rawEvent, evPath, { watchedPath: path21 });
-        if (evPath && path21 !== evPath) {
+        listener(path22);
+        emitRaw(rawEvent, evPath, { watchedPath: path22 });
+        if (evPath && path22 !== evPath) {
           fsWatchBroadcast(
-            sysPath.resolve(path21, evPath),
+            sysPath.resolve(path22, evPath),
             KEY_LISTENERS,
-            sysPath.join(path21, evPath)
+            sysPath.join(path22, evPath)
           );
         }
       };
       try {
-        return fs13.watch(path21, options2, handleEvent);
+        return fs14.watch(path22, options2, handleEvent);
       } catch (error2) {
         errHandler(error2);
       }
@@ -21499,13 +21499,13 @@ var require_nodefs_handler = __commonJS({
         listener(val1, val2, val3);
       });
     };
-    var setFsWatchListener = (path21, fullPath, options2, handlers) => {
+    var setFsWatchListener = (path22, fullPath, options2, handlers) => {
       const { listener, errHandler, rawEmitter } = handlers;
       let cont = FsWatchInstances.get(fullPath);
       let watcher;
       if (!options2.persistent) {
         watcher = createFsWatchInstance(
-          path21,
+          path22,
           options2,
           listener,
           errHandler,
@@ -21519,7 +21519,7 @@ var require_nodefs_handler = __commonJS({
         addAndConvert(cont, KEY_RAW, rawEmitter);
       } else {
         watcher = createFsWatchInstance(
-          path21,
+          path22,
           options2,
           fsWatchBroadcast.bind(null, fullPath, KEY_LISTENERS),
           errHandler,
@@ -21532,7 +21532,7 @@ var require_nodefs_handler = __commonJS({
           cont.watcherUnusable = true;
           if (isWindows && error2.code === "EPERM") {
             try {
-              const fd = await open(path21, "r");
+              const fd = await open(path22, "r");
               await close(fd);
               broadcastErr(error2);
             } catch (err) {
@@ -21563,7 +21563,7 @@ var require_nodefs_handler = __commonJS({
       };
     };
     var FsWatchFileInstances = /* @__PURE__ */ new Map();
-    var setFsWatchFileListener = (path21, fullPath, options2, handlers) => {
+    var setFsWatchFileListener = (path22, fullPath, options2, handlers) => {
       const { listener, rawEmitter } = handlers;
       let cont = FsWatchFileInstances.get(fullPath);
       let listeners = /* @__PURE__ */ new Set();
@@ -21572,7 +21572,7 @@ var require_nodefs_handler = __commonJS({
       if (copts && (copts.persistent < options2.persistent || copts.interval > options2.interval)) {
         listeners = cont.listeners;
         rawEmitters = cont.rawEmitters;
-        fs13.unwatchFile(fullPath);
+        fs14.unwatchFile(fullPath);
         cont = void 0;
       }
       if (cont) {
@@ -21583,13 +21583,13 @@ var require_nodefs_handler = __commonJS({
           listeners: listener,
           rawEmitters: rawEmitter,
           options: options2,
-          watcher: fs13.watchFile(fullPath, options2, (curr, prev) => {
+          watcher: fs14.watchFile(fullPath, options2, (curr, prev) => {
             foreach(cont.rawEmitters, (rawEmitter2) => {
               rawEmitter2(EV_CHANGE, fullPath, { curr, prev });
             });
             const currmtime = curr.mtimeMs;
             if (curr.size !== prev.size || currmtime > prev.mtimeMs || currmtime === 0) {
-              foreach(cont.listeners, (listener2) => listener2(path21, curr));
+              foreach(cont.listeners, (listener2) => listener2(path22, curr));
             }
           })
         };
@@ -21600,7 +21600,7 @@ var require_nodefs_handler = __commonJS({
         delFromSet(cont, KEY_RAW, rawEmitter);
         if (isEmptySet(cont.listeners)) {
           FsWatchFileInstances.delete(fullPath);
-          fs13.unwatchFile(fullPath);
+          fs14.unwatchFile(fullPath);
           cont.options = cont.watcher = void 0;
           Object.freeze(cont);
         }
@@ -21620,24 +21620,24 @@ var require_nodefs_handler = __commonJS({
        * @param {Function} listener on fs change
        * @returns {Function} closer for the watcher instance
        */
-      _watchWithNodeFs(path21, listener) {
+      _watchWithNodeFs(path22, listener) {
         const opts = this.fsw.options;
-        const directory = sysPath.dirname(path21);
-        const basename = sysPath.basename(path21);
+        const directory = sysPath.dirname(path22);
+        const basename = sysPath.basename(path22);
         const parent = this.fsw._getWatchedDir(directory);
         parent.add(basename);
-        const absolutePath = sysPath.resolve(path21);
+        const absolutePath = sysPath.resolve(path22);
         const options2 = { persistent: opts.persistent };
         if (!listener) listener = EMPTY_FN;
         let closer;
         if (opts.usePolling) {
           options2.interval = opts.enableBinaryInterval && isBinaryPath(basename) ? opts.binaryInterval : opts.interval;
-          closer = setFsWatchFileListener(path21, absolutePath, options2, {
+          closer = setFsWatchFileListener(path22, absolutePath, options2, {
             listener,
             rawEmitter: this.fsw._emitRaw
           });
         } else {
-          closer = setFsWatchListener(path21, absolutePath, options2, {
+          closer = setFsWatchListener(path22, absolutePath, options2, {
             listener,
             errHandler: this._boundHandleError,
             rawEmitter: this.fsw._emitRaw
@@ -21661,7 +21661,7 @@ var require_nodefs_handler = __commonJS({
         const parent = this.fsw._getWatchedDir(dirname);
         let prevStats = stats;
         if (parent.has(basename)) return;
-        const listener = async (path21, newStats) => {
+        const listener = async (path22, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5)) return;
           if (!newStats || newStats.mtimeMs === 0) {
             try {
@@ -21673,9 +21673,9 @@ var require_nodefs_handler = __commonJS({
                 this.fsw._emit(EV_CHANGE, file, newStats2);
               }
               if (isLinux && prevStats.ino !== newStats2.ino) {
-                this.fsw._closeFile(path21);
+                this.fsw._closeFile(path22);
                 prevStats = newStats2;
-                this.fsw._addPathCloser(path21, this._watchWithNodeFs(file, listener));
+                this.fsw._addPathCloser(path22, this._watchWithNodeFs(file, listener));
               } else {
                 prevStats = newStats2;
               }
@@ -21706,7 +21706,7 @@ var require_nodefs_handler = __commonJS({
        * @param {String} item basename of this item
        * @returns {Promise<Boolean>} true if no more processing is needed for this entry.
        */
-      async _handleSymlink(entry, directory, path21, item) {
+      async _handleSymlink(entry, directory, path22, item) {
         if (this.fsw.closed) {
           return;
         }
@@ -21716,7 +21716,7 @@ var require_nodefs_handler = __commonJS({
           this.fsw._incrReadyCount();
           let linkPath;
           try {
-            linkPath = await fsrealpath(path21);
+            linkPath = await fsrealpath(path22);
           } catch (e) {
             this.fsw._emitReady();
             return true;
@@ -21725,12 +21725,12 @@ var require_nodefs_handler = __commonJS({
           if (dir.has(item)) {
             if (this.fsw._symlinkPaths.get(full) !== linkPath) {
               this.fsw._symlinkPaths.set(full, linkPath);
-              this.fsw._emit(EV_CHANGE, path21, entry.stats);
+              this.fsw._emit(EV_CHANGE, path22, entry.stats);
             }
           } else {
             dir.add(item);
             this.fsw._symlinkPaths.set(full, linkPath);
-            this.fsw._emit(EV_ADD, path21, entry.stats);
+            this.fsw._emit(EV_ADD, path22, entry.stats);
           }
           this.fsw._emitReady();
           return true;
@@ -21758,9 +21758,9 @@ var require_nodefs_handler = __commonJS({
             return;
           }
           const item = entry.path;
-          let path21 = sysPath.join(directory, item);
+          let path22 = sysPath.join(directory, item);
           current.add(item);
-          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path21, item)) {
+          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path22, item)) {
             return;
           }
           if (this.fsw.closed) {
@@ -21769,8 +21769,8 @@ var require_nodefs_handler = __commonJS({
           }
           if (item === target || !target && !previous.has(item)) {
             this.fsw._incrReadyCount();
-            path21 = sysPath.join(dir, sysPath.relative(dir, path21));
-            this._addToNodeFs(path21, initialAdd, wh, depth + 1);
+            path22 = sysPath.join(dir, sysPath.relative(dir, path22));
+            this._addToNodeFs(path22, initialAdd, wh, depth + 1);
           }
         }).on(EV_ERROR, this._boundHandleError);
         return new Promise(
@@ -21840,13 +21840,13 @@ var require_nodefs_handler = __commonJS({
        * @param {String=} target Child path actually targeted for watch
        * @returns {Promise}
        */
-      async _addToNodeFs(path21, initialAdd, priorWh, depth, target) {
+      async _addToNodeFs(path22, initialAdd, priorWh, depth, target) {
         const ready = this.fsw._emitReady;
-        if (this.fsw._isIgnored(path21) || this.fsw.closed) {
+        if (this.fsw._isIgnored(path22) || this.fsw.closed) {
           ready();
           return false;
         }
-        const wh = this.fsw._getWatchHelpers(path21, depth);
+        const wh = this.fsw._getWatchHelpers(path22, depth);
         if (!wh.hasGlob && priorWh) {
           wh.hasGlob = priorWh.hasGlob;
           wh.globFilter = priorWh.globFilter;
@@ -21860,11 +21860,11 @@ var require_nodefs_handler = __commonJS({
             ready();
             return false;
           }
-          const follow = this.fsw.options.followSymlinks && !path21.includes(STAR) && !path21.includes(BRACE_START);
+          const follow = this.fsw.options.followSymlinks && !path22.includes(STAR) && !path22.includes(BRACE_START);
           let closer;
           if (stats.isDirectory()) {
-            const absPath = sysPath.resolve(path21);
-            const targetPath = follow ? await fsrealpath(path21) : path21;
+            const absPath = sysPath.resolve(path22);
+            const targetPath = follow ? await fsrealpath(path22) : path22;
             if (this.fsw.closed) return;
             closer = await this._handleDir(wh.watchPath, stats, initialAdd, depth, target, wh, targetPath);
             if (this.fsw.closed) return;
@@ -21872,26 +21872,26 @@ var require_nodefs_handler = __commonJS({
               this.fsw._symlinkPaths.set(absPath, targetPath);
             }
           } else if (stats.isSymbolicLink()) {
-            const targetPath = follow ? await fsrealpath(path21) : path21;
+            const targetPath = follow ? await fsrealpath(path22) : path22;
             if (this.fsw.closed) return;
             const parent = sysPath.dirname(wh.watchPath);
             this.fsw._getWatchedDir(parent).add(wh.watchPath);
             this.fsw._emit(EV_ADD, wh.watchPath, stats);
-            closer = await this._handleDir(parent, stats, initialAdd, depth, path21, wh, targetPath);
+            closer = await this._handleDir(parent, stats, initialAdd, depth, path22, wh, targetPath);
             if (this.fsw.closed) return;
             if (targetPath !== void 0) {
-              this.fsw._symlinkPaths.set(sysPath.resolve(path21), targetPath);
+              this.fsw._symlinkPaths.set(sysPath.resolve(path22), targetPath);
             }
           } else {
             closer = this._handleFile(wh.watchPath, stats, initialAdd);
           }
           ready();
-          this.fsw._addPathCloser(path21, closer);
+          this.fsw._addPathCloser(path22, closer);
           return false;
         } catch (error2) {
           if (this.fsw._handleError(error2)) {
             ready();
-            return path21;
+            return path22;
           }
         }
       }
@@ -21904,9 +21904,9 @@ var require_nodefs_handler = __commonJS({
 var require_fsevents_handler = __commonJS({
   "../../node_modules/chokidar/lib/fsevents-handler.js"(exports2, module2) {
     "use strict";
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var sysPath = require("path");
-    var { promisify: promisify5 } = require("util");
+    var { promisify: promisify6 } = require("util");
     var fsevents;
     try {
       fsevents = require("fsevents");
@@ -21949,9 +21949,9 @@ var require_fsevents_handler = __commonJS({
       IDENTITY_FN
     } = require_constants3();
     var Depth = (value) => isNaN(value) ? {} : { depth: value };
-    var stat = promisify5(fs13.stat);
-    var lstat2 = promisify5(fs13.lstat);
-    var realpath2 = promisify5(fs13.realpath);
+    var stat = promisify6(fs14.stat);
+    var lstat2 = promisify6(fs14.lstat);
+    var realpath2 = promisify6(fs14.realpath);
     var statMethods = { stat, lstat: lstat2 };
     var FSEventsWatchers = /* @__PURE__ */ new Map();
     var consolidateThreshhold = 10;
@@ -21965,18 +21965,18 @@ var require_fsevents_handler = __commonJS({
       131840,
       262912
     ]);
-    var createFSEventsInstance = (path21, callback) => {
-      const stop = fsevents.watch(path21, callback);
+    var createFSEventsInstance = (path22, callback) => {
+      const stop = fsevents.watch(path22, callback);
       return { stop };
     };
-    function setFSEventsListener(path21, realPath, listener, rawEmitter) {
+    function setFSEventsListener(path22, realPath, listener, rawEmitter) {
       let watchPath = sysPath.extname(realPath) ? sysPath.dirname(realPath) : realPath;
       const parentPath = sysPath.dirname(watchPath);
       let cont = FSEventsWatchers.get(watchPath);
       if (couldConsolidate(parentPath)) {
         watchPath = parentPath;
       }
-      const resolvedPath = sysPath.resolve(path21);
+      const resolvedPath = sysPath.resolve(path22);
       const hasSymlink = resolvedPath !== realPath;
       const filteredListener = (fullPath, flags, info) => {
         if (hasSymlink) fullPath = fullPath.replace(realPath, resolvedPath);
@@ -22021,10 +22021,10 @@ var require_fsevents_handler = __commonJS({
         }
       };
     }
-    var couldConsolidate = (path21) => {
+    var couldConsolidate = (path22) => {
       let count = 0;
       for (const watchPath of FSEventsWatchers.keys()) {
-        if (watchPath.indexOf(path21) === 0) {
+        if (watchPath.indexOf(path22) === 0) {
           count++;
           if (count >= consolidateThreshhold) {
             return true;
@@ -22034,9 +22034,9 @@ var require_fsevents_handler = __commonJS({
       return false;
     };
     var canUse = () => fsevents && FSEventsWatchers.size < 128;
-    var calcDepth = (path21, root) => {
+    var calcDepth = (path22, root) => {
       let i = 0;
-      while (!path21.indexOf(root) && (path21 = sysPath.dirname(path21)) !== root) i++;
+      while (!path22.indexOf(root) && (path22 = sysPath.dirname(path22)) !== root) i++;
       return i;
     };
     var sameTypes = (info, stats) => info.type === FSEVENT_TYPE_DIRECTORY && stats.isDirectory() || info.type === FSEVENT_TYPE_SYMLINK && stats.isSymbolicLink() || info.type === FSEVENT_TYPE_FILE && stats.isFile();
@@ -22047,41 +22047,41 @@ var require_fsevents_handler = __commonJS({
       constructor(fsw) {
         this.fsw = fsw;
       }
-      checkIgnored(path21, stats) {
+      checkIgnored(path22, stats) {
         const ipaths = this.fsw._ignoredPaths;
-        if (this.fsw._isIgnored(path21, stats)) {
-          ipaths.add(path21);
+        if (this.fsw._isIgnored(path22, stats)) {
+          ipaths.add(path22);
           if (stats && stats.isDirectory()) {
-            ipaths.add(path21 + ROOT_GLOBSTAR);
+            ipaths.add(path22 + ROOT_GLOBSTAR);
           }
           return true;
         }
-        ipaths.delete(path21);
-        ipaths.delete(path21 + ROOT_GLOBSTAR);
+        ipaths.delete(path22);
+        ipaths.delete(path22 + ROOT_GLOBSTAR);
       }
-      addOrChange(path21, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts) {
         const event = watchedDir.has(item) ? EV_CHANGE : EV_ADD;
-        this.handleEvent(event, path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+        this.handleEvent(event, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
       }
-      async checkExists(path21, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      async checkExists(path22, fullPath, realPath, parent, watchedDir, item, info, opts) {
         try {
-          const stats = await stat(path21);
+          const stats = await stat(path22);
           if (this.fsw.closed) return;
           if (sameTypes(info, stats)) {
-            this.addOrChange(path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         } catch (error2) {
           if (error2.code === "EACCES") {
-            this.addOrChange(path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         }
       }
-      handleEvent(event, path21, fullPath, realPath, parent, watchedDir, item, info, opts) {
-        if (this.fsw.closed || this.checkIgnored(path21)) return;
+      handleEvent(event, path22, fullPath, realPath, parent, watchedDir, item, info, opts) {
+        if (this.fsw.closed || this.checkIgnored(path22)) return;
         if (event === EV_UNLINK) {
           const isDirectory = info.type === FSEVENT_TYPE_DIRECTORY;
           if (isDirectory || watchedDir.has(item)) {
@@ -22089,16 +22089,16 @@ var require_fsevents_handler = __commonJS({
           }
         } else {
           if (event === EV_ADD) {
-            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path21);
+            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path22);
             if (info.type === FSEVENT_TYPE_SYMLINK && opts.followSymlinks) {
               const curDepth = opts.depth === void 0 ? void 0 : calcDepth(fullPath, realPath) + 1;
-              return this._addToFsEvents(path21, false, true, curDepth);
+              return this._addToFsEvents(path22, false, true, curDepth);
             }
             this.fsw._getWatchedDir(parent).add(item);
           }
           const eventName = info.type === FSEVENT_TYPE_DIRECTORY ? event + DIR_SUFFIX : event;
-          this.fsw._emit(eventName, path21);
-          if (eventName === EV_ADD_DIR) this._addToFsEvents(path21, false, true);
+          this.fsw._emit(eventName, path22);
+          if (eventName === EV_ADD_DIR) this._addToFsEvents(path22, false, true);
         }
       }
       /**
@@ -22115,41 +22115,41 @@ var require_fsevents_handler = __commonJS({
         const watchCallback = async (fullPath, flags, info) => {
           if (this.fsw.closed) return;
           if (opts.depth !== void 0 && calcDepth(fullPath, realPath) > opts.depth) return;
-          const path21 = transform2(sysPath.join(
+          const path22 = transform2(sysPath.join(
             watchPath,
             sysPath.relative(watchPath, fullPath)
           ));
-          if (globFilter && !globFilter(path21)) return;
-          const parent = sysPath.dirname(path21);
-          const item = sysPath.basename(path21);
+          if (globFilter && !globFilter(path22)) return;
+          const parent = sysPath.dirname(path22);
+          const item = sysPath.basename(path22);
           const watchedDir = this.fsw._getWatchedDir(
-            info.type === FSEVENT_TYPE_DIRECTORY ? path21 : parent
+            info.type === FSEVENT_TYPE_DIRECTORY ? path22 : parent
           );
           if (wrongEventFlags.has(flags) || info.event === FSEVENT_UNKNOWN) {
             if (typeof opts.ignored === FUNCTION_TYPE) {
               let stats;
               try {
-                stats = await stat(path21);
+                stats = await stat(path22);
               } catch (error2) {
               }
               if (this.fsw.closed) return;
-              if (this.checkIgnored(path21, stats)) return;
+              if (this.checkIgnored(path22, stats)) return;
               if (sameTypes(info, stats)) {
-                this.addOrChange(path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
               } else {
-                this.handleEvent(EV_UNLINK, path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.handleEvent(EV_UNLINK, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
               }
             } else {
-              this.checkExists(path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+              this.checkExists(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           } else {
             switch (info.event) {
               case FSEVENT_CREATED:
               case FSEVENT_MODIFIED:
-                return this.addOrChange(path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
               case FSEVENT_DELETED:
               case FSEVENT_MOVED:
-                return this.checkExists(path21, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.checkExists(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           }
         };
@@ -22181,12 +22181,12 @@ var require_fsevents_handler = __commonJS({
             return this.fsw._emitReady();
           }
           this.fsw._incrReadyCount();
-          this._addToFsEvents(linkTarget || linkPath, (path21) => {
+          this._addToFsEvents(linkTarget || linkPath, (path22) => {
             let aliasedPath = linkPath;
             if (linkTarget && linkTarget !== DOT_SLASH) {
-              aliasedPath = path21.replace(linkTarget, linkPath);
-            } else if (path21 !== DOT_SLASH) {
-              aliasedPath = sysPath.join(linkPath, path21);
+              aliasedPath = path22.replace(linkTarget, linkPath);
+            } else if (path22 !== DOT_SLASH) {
+              aliasedPath = sysPath.join(linkPath, path22);
             }
             return transform2(aliasedPath);
           }, false, curDepth);
@@ -22213,7 +22213,7 @@ var require_fsevents_handler = __commonJS({
           this.fsw._emit(isDir2 ? EV_ADD_DIR : EV_ADD, pp, stats);
         }
       }
-      initWatch(realPath, path21, wh, processPath) {
+      initWatch(realPath, path22, wh, processPath) {
         if (this.fsw.closed) return;
         const closer = this._watchWithFsEvents(
           wh.watchPath,
@@ -22221,7 +22221,7 @@ var require_fsevents_handler = __commonJS({
           processPath,
           wh.globFilter
         );
-        this.fsw._addPathCloser(path21, closer);
+        this.fsw._addPathCloser(path22, closer);
       }
       /**
        * Handle added path with fsevents
@@ -22231,13 +22231,13 @@ var require_fsevents_handler = __commonJS({
        * @param {Number=} priorDepth Level of subdirectories already traversed.
        * @returns {Promise<void>}
        */
-      async _addToFsEvents(path21, transform2, forceAdd, priorDepth) {
+      async _addToFsEvents(path22, transform2, forceAdd, priorDepth) {
         if (this.fsw.closed) {
           return;
         }
         const opts = this.fsw.options;
         const processPath = typeof transform2 === FUNCTION_TYPE ? transform2 : IDENTITY_FN;
-        const wh = this.fsw._getWatchHelpers(path21);
+        const wh = this.fsw._getWatchHelpers(path22);
         try {
           const stats = await statMethods[wh.statMethod](wh.watchPath);
           if (this.fsw.closed) return;
@@ -22245,7 +22245,7 @@ var require_fsevents_handler = __commonJS({
             throw null;
           }
           if (stats.isDirectory()) {
-            if (!wh.globFilter) this.emitAdd(processPath(path21), stats, processPath, opts, forceAdd);
+            if (!wh.globFilter) this.emitAdd(processPath(path22), stats, processPath, opts, forceAdd);
             if (priorDepth && priorDepth > opts.depth) return;
             this.fsw._readdirp(wh.watchPath, {
               fileFilter: (entry) => wh.filterPath(entry),
@@ -22279,14 +22279,14 @@ var require_fsevents_handler = __commonJS({
         }
         if (opts.persistent && forceAdd !== true) {
           if (typeof transform2 === FUNCTION_TYPE) {
-            this.initWatch(void 0, path21, wh, processPath);
+            this.initWatch(void 0, path22, wh, processPath);
           } else {
             let realPath;
             try {
               realPath = await realpath2(wh.watchPath);
             } catch (e) {
             }
-            this.initWatch(realPath, path21, wh, processPath);
+            this.initWatch(realPath, path22, wh, processPath);
           }
         }
       }
@@ -22301,9 +22301,9 @@ var require_chokidar = __commonJS({
   "../../node_modules/chokidar/index.js"(exports2) {
     "use strict";
     var { EventEmitter } = require("events");
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var sysPath = require("path");
-    var { promisify: promisify5 } = require("util");
+    var { promisify: promisify6 } = require("util");
     var readdirp = require_readdirp();
     var anymatch = require_anymatch().default;
     var globParent = require_glob_parent();
@@ -22346,8 +22346,8 @@ var require_chokidar = __commonJS({
       isMacos,
       isIBMi
     } = require_constants3();
-    var stat = promisify5(fs13.stat);
-    var readdir = promisify5(fs13.readdir);
+    var stat = promisify6(fs14.stat);
+    var readdir = promisify6(fs14.readdir);
     var arrify = (value = []) => Array.isArray(value) ? value : [value];
     var flatten = (list, result = []) => {
       list.forEach((item) => {
@@ -22380,19 +22380,19 @@ var require_chokidar = __commonJS({
       }
       return str2;
     };
-    var normalizePathToUnix = (path21) => toUnix(sysPath.normalize(toUnix(path21)));
-    var normalizeIgnored = (cwd = EMPTY_STR) => (path21) => {
-      if (typeof path21 !== STRING_TYPE) return path21;
-      return normalizePathToUnix(sysPath.isAbsolute(path21) ? path21 : sysPath.join(cwd, path21));
+    var normalizePathToUnix = (path22) => toUnix(sysPath.normalize(toUnix(path22)));
+    var normalizeIgnored = (cwd = EMPTY_STR) => (path22) => {
+      if (typeof path22 !== STRING_TYPE) return path22;
+      return normalizePathToUnix(sysPath.isAbsolute(path22) ? path22 : sysPath.join(cwd, path22));
     };
-    var getAbsolutePath = (path21, cwd) => {
-      if (sysPath.isAbsolute(path21)) {
-        return path21;
+    var getAbsolutePath = (path22, cwd) => {
+      if (sysPath.isAbsolute(path22)) {
+        return path22;
       }
-      if (path21.startsWith(BANG)) {
-        return BANG + sysPath.join(cwd, path21.slice(1));
+      if (path22.startsWith(BANG)) {
+        return BANG + sysPath.join(cwd, path22.slice(1));
       }
-      return sysPath.join(cwd, path21);
+      return sysPath.join(cwd, path22);
     };
     var undef = (opts, key) => opts[key] === void 0;
     var DirEntry = class {
@@ -22448,16 +22448,16 @@ var require_chokidar = __commonJS({
     var STAT_METHOD_F = "stat";
     var STAT_METHOD_L = "lstat";
     var WatchHelper = class {
-      constructor(path21, watchPath, follow, fsw) {
+      constructor(path22, watchPath, follow, fsw) {
         this.fsw = fsw;
-        this.path = path21 = path21.replace(REPLACER_RE, EMPTY_STR);
+        this.path = path22 = path22.replace(REPLACER_RE, EMPTY_STR);
         this.watchPath = watchPath;
         this.fullWatchPath = sysPath.resolve(watchPath);
-        this.hasGlob = watchPath !== path21;
-        if (path21 === EMPTY_STR) this.hasGlob = false;
+        this.hasGlob = watchPath !== path22;
+        if (path22 === EMPTY_STR) this.hasGlob = false;
         this.globSymlink = this.hasGlob && follow ? void 0 : false;
-        this.globFilter = this.hasGlob ? anymatch(path21, void 0, ANYMATCH_OPTS) : false;
-        this.dirParts = this.getDirParts(path21);
+        this.globFilter = this.hasGlob ? anymatch(path22, void 0, ANYMATCH_OPTS) : false;
+        this.dirParts = this.getDirParts(path22);
         this.dirParts.forEach((parts) => {
           if (parts.length > 1) parts.pop();
         });
@@ -22486,12 +22486,12 @@ var require_chokidar = __commonJS({
         const matchesGlob = this.hasGlob && typeof this.globFilter === FUNCTION_TYPE ? this.globFilter(resolvedPath) : true;
         return matchesGlob && this.fsw._isntIgnored(resolvedPath, stats) && this.fsw._hasReadPermissions(stats);
       }
-      getDirParts(path21) {
+      getDirParts(path22) {
         if (!this.hasGlob) return [];
         const parts = [];
-        const expandedPath = path21.includes(BRACE_START) ? braces.expand(path21) : [path21];
-        expandedPath.forEach((path22) => {
-          parts.push(sysPath.relative(this.watchPath, path22).split(SLASH_OR_BACK_SLASH_RE));
+        const expandedPath = path22.includes(BRACE_START) ? braces.expand(path22) : [path22];
+        expandedPath.forEach((path23) => {
+          parts.push(sysPath.relative(this.watchPath, path23).split(SLASH_OR_BACK_SLASH_RE));
         });
         return parts;
       }
@@ -22597,34 +22597,34 @@ var require_chokidar = __commonJS({
         this.closed = false;
         let paths = unifyPaths(paths_);
         if (cwd) {
-          paths = paths.map((path21) => {
-            const absPath = getAbsolutePath(path21, cwd);
-            if (disableGlobbing || !isGlob(path21)) {
+          paths = paths.map((path22) => {
+            const absPath = getAbsolutePath(path22, cwd);
+            if (disableGlobbing || !isGlob(path22)) {
               return absPath;
             }
             return normalizePath(absPath);
           });
         }
-        paths = paths.filter((path21) => {
-          if (path21.startsWith(BANG)) {
-            this._ignoredPaths.add(path21.slice(1));
+        paths = paths.filter((path22) => {
+          if (path22.startsWith(BANG)) {
+            this._ignoredPaths.add(path22.slice(1));
             return false;
           }
-          this._ignoredPaths.delete(path21);
-          this._ignoredPaths.delete(path21 + SLASH_GLOBSTAR);
+          this._ignoredPaths.delete(path22);
+          this._ignoredPaths.delete(path22 + SLASH_GLOBSTAR);
           this._userIgnored = void 0;
           return true;
         });
         if (this.options.useFsEvents && this._fsEventsHandler) {
           if (!this._readyCount) this._readyCount = paths.length;
           if (this.options.persistent) this._readyCount += paths.length;
-          paths.forEach((path21) => this._fsEventsHandler._addToFsEvents(path21));
+          paths.forEach((path22) => this._fsEventsHandler._addToFsEvents(path22));
         } else {
           if (!this._readyCount) this._readyCount = 0;
           this._readyCount += paths.length;
           Promise.all(
-            paths.map(async (path21) => {
-              const res = await this._nodeFsHandler._addToNodeFs(path21, !_internal, 0, 0, _origAdd);
+            paths.map(async (path22) => {
+              const res = await this._nodeFsHandler._addToNodeFs(path22, !_internal, 0, 0, _origAdd);
               if (res) this._emitReady();
               return res;
             })
@@ -22646,15 +22646,15 @@ var require_chokidar = __commonJS({
         if (this.closed) return this;
         const paths = unifyPaths(paths_);
         const { cwd } = this.options;
-        paths.forEach((path21) => {
-          if (!sysPath.isAbsolute(path21) && !this._closers.has(path21)) {
-            if (cwd) path21 = sysPath.join(cwd, path21);
-            path21 = sysPath.resolve(path21);
+        paths.forEach((path22) => {
+          if (!sysPath.isAbsolute(path22) && !this._closers.has(path22)) {
+            if (cwd) path22 = sysPath.join(cwd, path22);
+            path22 = sysPath.resolve(path22);
           }
-          this._closePath(path21);
-          this._ignoredPaths.add(path21);
-          if (this._watched.has(path21)) {
-            this._ignoredPaths.add(path21 + SLASH_GLOBSTAR);
+          this._closePath(path22);
+          this._ignoredPaths.add(path22);
+          if (this._watched.has(path22)) {
+            this._ignoredPaths.add(path22 + SLASH_GLOBSTAR);
           }
           this._userIgnored = void 0;
         });
@@ -22712,36 +22712,36 @@ var require_chokidar = __commonJS({
        * @param {*=} val3
        * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
        */
-      async _emit(event, path21, val1, val2, val3) {
+      async _emit(event, path22, val1, val2, val3) {
         if (this.closed) return;
         const opts = this.options;
-        if (isWindows) path21 = sysPath.normalize(path21);
-        if (opts.cwd) path21 = sysPath.relative(opts.cwd, path21);
-        const args = [event, path21];
+        if (isWindows) path22 = sysPath.normalize(path22);
+        if (opts.cwd) path22 = sysPath.relative(opts.cwd, path22);
+        const args = [event, path22];
         if (val3 !== void 0) args.push(val1, val2, val3);
         else if (val2 !== void 0) args.push(val1, val2);
         else if (val1 !== void 0) args.push(val1);
         const awf = opts.awaitWriteFinish;
         let pw;
-        if (awf && (pw = this._pendingWrites.get(path21))) {
+        if (awf && (pw = this._pendingWrites.get(path22))) {
           pw.lastChange = /* @__PURE__ */ new Date();
           return this;
         }
         if (opts.atomic) {
           if (event === EV_UNLINK) {
-            this._pendingUnlinks.set(path21, args);
+            this._pendingUnlinks.set(path22, args);
             setTimeout(() => {
-              this._pendingUnlinks.forEach((entry, path22) => {
+              this._pendingUnlinks.forEach((entry, path23) => {
                 this.emit(...entry);
                 this.emit(EV_ALL, ...entry);
-                this._pendingUnlinks.delete(path22);
+                this._pendingUnlinks.delete(path23);
               });
             }, typeof opts.atomic === "number" ? opts.atomic : 100);
             return this;
           }
-          if (event === EV_ADD && this._pendingUnlinks.has(path21)) {
+          if (event === EV_ADD && this._pendingUnlinks.has(path22)) {
             event = args[0] = EV_CHANGE;
-            this._pendingUnlinks.delete(path21);
+            this._pendingUnlinks.delete(path22);
           }
         }
         if (awf && (event === EV_ADD || event === EV_CHANGE) && this._readyEmitted) {
@@ -22759,15 +22759,15 @@ var require_chokidar = __commonJS({
               this.emitWithAll(event, args);
             }
           };
-          this._awaitWriteFinish(path21, awf.stabilityThreshold, event, awfEmit);
+          this._awaitWriteFinish(path22, awf.stabilityThreshold, event, awfEmit);
           return this;
         }
         if (event === EV_CHANGE) {
-          const isThrottled = !this._throttle(EV_CHANGE, path21, 50);
+          const isThrottled = !this._throttle(EV_CHANGE, path22, 50);
           if (isThrottled) return this;
         }
         if (opts.alwaysStat && val1 === void 0 && (event === EV_ADD || event === EV_ADD_DIR || event === EV_CHANGE)) {
-          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path21) : path21;
+          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path22) : path22;
           let stats;
           try {
             stats = await stat(fullPath);
@@ -22798,28 +22798,28 @@ var require_chokidar = __commonJS({
        * @param {Number} timeout duration of time to suppress duplicate actions
        * @returns {Object|false} tracking object or false if action should be suppressed
        */
-      _throttle(actionType, path21, timeout) {
+      _throttle(actionType, path22, timeout) {
         if (!this._throttled.has(actionType)) {
           this._throttled.set(actionType, /* @__PURE__ */ new Map());
         }
         const action = this._throttled.get(actionType);
-        const actionPath = action.get(path21);
+        const actionPath = action.get(path22);
         if (actionPath) {
           actionPath.count++;
           return false;
         }
         let timeoutObject;
         const clear = () => {
-          const item = action.get(path21);
+          const item = action.get(path22);
           const count = item ? item.count : 0;
-          action.delete(path21);
+          action.delete(path22);
           clearTimeout(timeoutObject);
           if (item) clearTimeout(item.timeoutObject);
           return count;
         };
         timeoutObject = setTimeout(clear, timeout);
         const thr = { timeoutObject, clear, count: 0 };
-        action.set(path21, thr);
+        action.set(path22, thr);
         return thr;
       }
       _incrReadyCount() {
@@ -22833,27 +22833,27 @@ var require_chokidar = __commonJS({
        * @param {EventName} event
        * @param {Function} awfEmit Callback to be called when ready for event to be emitted.
        */
-      _awaitWriteFinish(path21, threshold, event, awfEmit) {
+      _awaitWriteFinish(path22, threshold, event, awfEmit) {
         let timeoutHandler;
-        let fullPath = path21;
-        if (this.options.cwd && !sysPath.isAbsolute(path21)) {
-          fullPath = sysPath.join(this.options.cwd, path21);
+        let fullPath = path22;
+        if (this.options.cwd && !sysPath.isAbsolute(path22)) {
+          fullPath = sysPath.join(this.options.cwd, path22);
         }
         const now = /* @__PURE__ */ new Date();
         const awaitWriteFinish = (prevStat) => {
-          fs13.stat(fullPath, (err, curStat) => {
-            if (err || !this._pendingWrites.has(path21)) {
+          fs14.stat(fullPath, (err, curStat) => {
+            if (err || !this._pendingWrites.has(path22)) {
               if (err && err.code !== "ENOENT") awfEmit(err);
               return;
             }
             const now2 = Number(/* @__PURE__ */ new Date());
             if (prevStat && curStat.size !== prevStat.size) {
-              this._pendingWrites.get(path21).lastChange = now2;
+              this._pendingWrites.get(path22).lastChange = now2;
             }
-            const pw = this._pendingWrites.get(path21);
+            const pw = this._pendingWrites.get(path22);
             const df = now2 - pw.lastChange;
             if (df >= threshold) {
-              this._pendingWrites.delete(path21);
+              this._pendingWrites.delete(path22);
               awfEmit(void 0, curStat);
             } else {
               timeoutHandler = setTimeout(
@@ -22864,11 +22864,11 @@ var require_chokidar = __commonJS({
             }
           });
         };
-        if (!this._pendingWrites.has(path21)) {
-          this._pendingWrites.set(path21, {
+        if (!this._pendingWrites.has(path22)) {
+          this._pendingWrites.set(path22, {
             lastChange: now,
             cancelWait: () => {
-              this._pendingWrites.delete(path21);
+              this._pendingWrites.delete(path22);
               clearTimeout(timeoutHandler);
               return event;
             }
@@ -22888,20 +22888,20 @@ var require_chokidar = __commonJS({
        * @param {fs.Stats=} stats result of fs.stat
        * @returns {Boolean}
        */
-      _isIgnored(path21, stats) {
-        if (this.options.atomic && DOT_RE.test(path21)) return true;
+      _isIgnored(path22, stats) {
+        if (this.options.atomic && DOT_RE.test(path22)) return true;
         if (!this._userIgnored) {
           const { cwd } = this.options;
           const ign = this.options.ignored;
           const ignored = ign && ign.map(normalizeIgnored(cwd));
-          const paths = arrify(ignored).filter((path22) => typeof path22 === STRING_TYPE && !isGlob(path22)).map((path22) => path22 + SLASH_GLOBSTAR);
+          const paths = arrify(ignored).filter((path23) => typeof path23 === STRING_TYPE && !isGlob(path23)).map((path23) => path23 + SLASH_GLOBSTAR);
           const list = this._getGlobIgnored().map(normalizeIgnored(cwd)).concat(ignored, paths);
           this._userIgnored = anymatch(list, void 0, ANYMATCH_OPTS);
         }
-        return this._userIgnored([path21, stats]);
+        return this._userIgnored([path22, stats]);
       }
-      _isntIgnored(path21, stat2) {
-        return !this._isIgnored(path21, stat2);
+      _isntIgnored(path22, stat2) {
+        return !this._isIgnored(path22, stat2);
       }
       /**
        * Provides a set of common helpers and properties relating to symlink and glob handling.
@@ -22909,10 +22909,10 @@ var require_chokidar = __commonJS({
        * @param {Number=} depth at any depth > 0, this isn't a glob
        * @returns {WatchHelper} object containing helpers for this path
        */
-      _getWatchHelpers(path21, depth) {
-        const watchPath = depth || this.options.disableGlobbing || !isGlob(path21) ? path21 : globParent(path21);
+      _getWatchHelpers(path22, depth) {
+        const watchPath = depth || this.options.disableGlobbing || !isGlob(path22) ? path22 : globParent(path22);
         const follow = this.options.followSymlinks;
-        return new WatchHelper(path21, watchPath, follow, this);
+        return new WatchHelper(path22, watchPath, follow, this);
       }
       // Directory helpers
       // -----------------
@@ -22951,66 +22951,66 @@ var require_chokidar = __commonJS({
        * @returns {void}
       */
       _remove(directory, item, isDirectory) {
-        const path21 = sysPath.join(directory, item);
-        const fullPath = sysPath.resolve(path21);
-        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path21) || this._watched.has(fullPath);
-        if (!this._throttle("remove", path21, 100)) return;
+        const path22 = sysPath.join(directory, item);
+        const fullPath = sysPath.resolve(path22);
+        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path22) || this._watched.has(fullPath);
+        if (!this._throttle("remove", path22, 100)) return;
         if (!isDirectory && !this.options.useFsEvents && this._watched.size === 1) {
           this.add(directory, item, true);
         }
-        const wp = this._getWatchedDir(path21);
+        const wp = this._getWatchedDir(path22);
         const nestedDirectoryChildren = wp.getChildren();
-        nestedDirectoryChildren.forEach((nested) => this._remove(path21, nested));
+        nestedDirectoryChildren.forEach((nested) => this._remove(path22, nested));
         const parent = this._getWatchedDir(directory);
         const wasTracked = parent.has(item);
         parent.remove(item);
         if (this._symlinkPaths.has(fullPath)) {
           this._symlinkPaths.delete(fullPath);
         }
-        let relPath = path21;
-        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path21);
+        let relPath = path22;
+        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path22);
         if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
           const event = this._pendingWrites.get(relPath).cancelWait();
           if (event === EV_ADD) return;
         }
-        this._watched.delete(path21);
+        this._watched.delete(path22);
         this._watched.delete(fullPath);
         const eventName = isDirectory ? EV_UNLINK_DIR : EV_UNLINK;
-        if (wasTracked && !this._isIgnored(path21)) this._emit(eventName, path21);
+        if (wasTracked && !this._isIgnored(path22)) this._emit(eventName, path22);
         if (!this.options.useFsEvents) {
-          this._closePath(path21);
+          this._closePath(path22);
         }
       }
       /**
        * Closes all watchers for a path
        * @param {Path} path
        */
-      _closePath(path21) {
-        this._closeFile(path21);
-        const dir = sysPath.dirname(path21);
-        this._getWatchedDir(dir).remove(sysPath.basename(path21));
+      _closePath(path22) {
+        this._closeFile(path22);
+        const dir = sysPath.dirname(path22);
+        this._getWatchedDir(dir).remove(sysPath.basename(path22));
       }
       /**
        * Closes only file-specific watchers
        * @param {Path} path
        */
-      _closeFile(path21) {
-        const closers = this._closers.get(path21);
+      _closeFile(path22) {
+        const closers = this._closers.get(path22);
         if (!closers) return;
         closers.forEach((closer) => closer());
-        this._closers.delete(path21);
+        this._closers.delete(path22);
       }
       /**
        *
        * @param {Path} path
        * @param {Function} closer
        */
-      _addPathCloser(path21, closer) {
+      _addPathCloser(path22, closer) {
         if (!closer) return;
-        let list = this._closers.get(path21);
+        let list = this._closers.get(path22);
         if (!list) {
           list = [];
-          this._closers.set(path21, list);
+          this._closers.set(path22, list);
         }
         list.push(closer);
       }
@@ -23534,8 +23534,8 @@ function getErrorMap() {
 
 // ../../node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path21, errorMaps, issueData } = params;
-  const fullPath = [...path21, ...issueData.path || []];
+  const { data, path: path22, errorMaps, issueData } = params;
+  const fullPath = [...path22, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -23651,11 +23651,11 @@ var errorUtil;
 
 // ../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path21, key) {
+  constructor(parent, value, path22, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path21;
+    this._path = path22;
     this._key = key;
   }
   get path() {
@@ -27292,10 +27292,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path21) {
-  if (!path21)
+function getElementAtPath(obj, path22) {
+  if (!path22)
     return obj;
-  return path21.reduce((acc, key) => acc?.[key], obj);
+  return path22.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -27615,11 +27615,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path21, issues) {
+function prefixIssues(path22, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path21);
+    iss.path.unshift(path22);
     return iss;
   });
 }
@@ -31030,11 +31030,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path21) {
-  if (path21.length === 0) {
+function getDotPath(path22) {
+  if (path22.length === 0) {
     return "object root";
   }
-  return path21.reduce((acc, seg, index) => {
+  return path22.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -37537,10 +37537,10 @@ var StdioServerTransport = class {
 };
 
 // src/index.ts
-var import_node_child_process4 = require("child_process");
+var import_node_child_process5 = require("child_process");
 var import_node_path9 = __toESM(require("path"), 1);
 var import_node_os = require("os");
-var import_node_util4 = require("util");
+var import_node_util5 = require("util");
 
 // ../core/dist/index.js
 var import_path = __toESM(require("path"), 1);
@@ -37567,20 +37567,24 @@ var import_promises5 = require("fs/promises");
 var import_path7 = require("path");
 var import_crypto3 = require("crypto");
 var import_crypto4 = require("crypto");
-var import_fs4 = __toESM(require("fs"), 1);
-var import_path8 = __toESM(require("path"), 1);
 var import_crypto5 = require("crypto");
 var import_promises6 = __toESM(require("fs/promises"), 1);
+var import_path8 = __toESM(require("path"), 1);
+var import_util6 = require("util");
+var import_fs4 = __toESM(require("fs"), 1);
 var import_path9 = __toESM(require("path"), 1);
-var import_async_hooks = require("async_hooks");
-var import_fs5 = require("fs");
+var import_crypto6 = require("crypto");
 var import_promises7 = __toESM(require("fs/promises"), 1);
 var import_path10 = __toESM(require("path"), 1);
-var import_path11 = __toESM(require("path"), 1);
-var import_crypto6 = require("crypto");
-var import_gray_matter3 = __toESM(require_gray_matter(), 1);
+var import_async_hooks = require("async_hooks");
+var import_fs5 = require("fs");
 var import_promises8 = __toESM(require("fs/promises"), 1);
+var import_path11 = __toESM(require("path"), 1);
 var import_path12 = __toESM(require("path"), 1);
+var import_crypto7 = require("crypto");
+var import_gray_matter3 = __toESM(require_gray_matter(), 1);
+var import_promises9 = __toESM(require("fs/promises"), 1);
+var import_path13 = __toESM(require("path"), 1);
 var import_chokidar = __toESM(require_chokidar(), 1);
 var ItemTypeSchema = external_exports.enum(["ticket", "plan", "research"]);
 var BoardColumnSchema = external_exports.object({
@@ -38066,6 +38070,29 @@ function resolvePaths(projectRoot2, repoRoot) {
     projectFile: import_path.default.join(kanmer, "project.json"),
     /** Format 2: area folders live here, one per area id, plus `_none`. */
     areasRoot: import_path.default.join(kanmer, "areas"),
+    /**
+     * Release serialization (FRD-031, CORE-132). A sidecar for the same reason
+     * `project.json` is one: `board.yml` is re-serialised through a
+     * key-stripping schema by every board write, so an older server would
+     * silently drop a lease stored there. The item scan walks `areas/` only,
+     * so a stable v0.3.12 server neither reads, rewrites nor warns about this
+     * folder — it simply does not see it.
+     */
+    releasesRoot: import_path.default.join(kanmer, "releases"),
+    /** Optimistic transaction epoch for lock-free release reads. */
+    releaseStateFile: import_path.default.join(kanmer, "releases", "state.json"),
+    /** One mutable lease record per release channel. */
+    releaseChannelsDir: import_path.default.join(kanmer, "releases", "channels"),
+    /** One durable ordinal high-water head per release channel. */
+    releaseHeadsDir: import_path.default.join(kanmer, "releases", "heads"),
+    /** One record per release attempt, named `<channel>@<ordinal>.json`. */
+    releaseAttemptsDir: import_path.default.join(kanmer, "releases", "attempts"),
+    /**
+     * One recoverable write-ahead journal per release channel. Journals are
+     * short-lived during an ordinary mutation and retained after interruption
+     * so the next locked mutation can finish the exact intended write set.
+     */
+    releaseTransactionsDir: import_path.default.join(kanmer, "releases", "transactions"),
     tickets: import_path.default.join(kanmer, TYPE_DIRS.ticket),
     plans: import_path.default.join(kanmer, TYPE_DIRS.plan),
     research: import_path.default.join(kanmer, TYPE_DIRS.research)
@@ -38096,6 +38123,18 @@ function assertSafeRepoPath(projectRoot2, rel) {
     throw new Error(`Repo doc path "${rel}" escapes the project root`);
   }
   return abs;
+}
+function assertSafeChannel(channel) {
+  if (!SAFE_ID_RE.test(channel) || channel.includes("..")) {
+    throw new Error(
+      `Invalid release channel "${channel}": a channel name starts with a letter or digit and may contain only letters, digits, ".", "_" and "-". A release branch that is not a legal channel name (for example "release/next") is not slugified silently \u2014 name the channel explicitly.`
+    );
+  }
+  if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu.test(channel)) {
+    throw new Error(
+      `Invalid release channel "${channel}": Windows device names cannot be used as release channels.`
+    );
+  }
 }
 function areaFolderName(areaId) {
   if (areaId === "" || areaId === NO_AREA_DIR) return NO_AREA_DIR;
@@ -39082,23 +39121,35 @@ function deliveryTargets(policy, item) {
   const branch = hotfix ? policy.releaseBranch : policy.integrationBranch;
   return { hotfix, baseBranch: branch, prTarget: branch, verificationTarget: branch };
 }
-var DELIVERY_BRANCH_RE = /^(?!\/)(?!.*\.\.)(?!.*\/$)\S+$/u;
+var GIT_REF_FORBIDDEN = /* @__PURE__ */ new Set(["~", "^", ":", "?", "*", "[", "\\"]);
+function isValidGitBranchName(branch) {
+  if (branch.length === 0 || branch === "HEAD" || branch.startsWith("-")) return false;
+  if (branch.startsWith("/") || branch.endsWith("/") || branch.endsWith(".")) return false;
+  if (branch.includes("//") || branch.includes("..") || branch.includes("@{")) return false;
+  for (const character of branch) {
+    const code = character.charCodeAt(0);
+    if (code <= 32 || code === 127 || GIT_REF_FORBIDDEN.has(character)) return false;
+  }
+  return branch.split("/").every((component) => component.length > 0 && !component.startsWith(".") && !component.endsWith(".lock"));
+}
 function assertDeliveryPolicy(board) {
   const delivery = board.delivery;
   if (!delivery) return;
   for (const key of ["integrationBranch", "releaseBranch"]) {
     const value = delivery[key];
-    if (value !== void 0 && !DELIVERY_BRANCH_RE.test(value)) {
-      throw new Error(`Invalid delivery.${key} "${value}": a branch name cannot contain whitespace, "..", or a leading/trailing "/"`);
+    if (value !== void 0 && !isValidGitBranchName(value)) {
+      throw new Error(`Invalid delivery.${key} "${value}": it is not a valid Git branch name`);
     }
   }
   const pattern = delivery.releaseCandidatePattern;
   if (pattern !== void 0 && pattern !== null) {
-    if (!DELIVERY_BRANCH_RE.test(pattern)) {
-      throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": it cannot contain whitespace, "..", or a leading/trailing "/"`);
-    }
     if (!pattern.includes("*")) {
       throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": a candidate pattern must contain "*" (for example "release/*")`);
+    }
+    if (!isValidGitBranchName(pattern.replaceAll("*", "candidate-1"))) {
+      throw new Error(
+        `Invalid delivery.releaseCandidatePattern "${pattern}": it does not produce a valid Git branch name`
+      );
     }
   }
 }
@@ -39430,10 +39481,10 @@ function parseExpectedFiles(content) {
     const cells = trimmed.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
     if (cells.length < 2) continue;
     if (cells.every((cell) => /^:?-{2,}:?$/.test(cell))) continue;
-    const path122 = normalisePlanPath(cells[1]);
-    if (!path122) continue;
-    if (cells[0].toLocaleLowerCase() === "action" || path122.toLocaleLowerCase().includes("repo-root-relative")) continue;
-    rows.push({ action: cells[0], path: path122, responsibility: cells[2] ?? "" });
+    const path132 = normalisePlanPath(cells[1]);
+    if (!path132) continue;
+    if (cells[0].toLocaleLowerCase() === "action" || path132.toLocaleLowerCase().includes("repo-root-relative")) continue;
+    rows.push({ action: cells[0], path: path132, responsibility: cells[2] ?? "" });
   }
   return rows;
 }
@@ -39443,8 +39494,8 @@ function parseDoNotModify(content) {
   for (const item of bulletItems(content)) {
     const spans = codeSpans(item);
     for (const span of spans) {
-      const path122 = normalisePlanPath(span);
-      if (path122 && (path122.includes("/") || path122.includes("."))) paths.push(path122);
+      const path132 = normalisePlanPath(span);
+      if (path132 && (path132.includes("/") || path132.includes("."))) paths.push(path132);
     }
   }
   return [...new Set(paths)];
@@ -40097,7 +40148,7 @@ function dispatchTaskById(id) {
 function dispatchDeliverableProven(taskId, info, item) {
   if (!taskId || !info) return false;
   const has = (type) => (info.counts[type] ?? 0) > 0;
-  const hasPath = (path122) => info.documentPaths.some((candidate) => candidate.replace(/\\/g, "/") === path122);
+  const hasPath = (path132) => info.documentPaths.some((candidate) => candidate.replace(/\\/g, "/") === path132);
   switch (taskId) {
     case "research-quick":
       return has("research");
@@ -40444,6 +40495,829 @@ function computeRevision(ticketText, documents) {
 ${doc.path}\0${doc.version}`, "utf8");
   return `${REVISION_PREFIX}:${hash.digest("hex").slice(0, 16)}`;
 }
+var RELEASE_RECORD_SCHEMA = 1;
+var CANDIDATE_ID_PREFIX = "cand1";
+var ATTEMPT_ID_SEPARATOR = "@";
+var RELEASE_RETRY_MAX_ATTEMPTS = 5;
+var RELEASE_RETRY_BASE_MS = 6e4;
+var RELEASE_FROZEN_FIELDS = [
+  "attempt_id",
+  "channel",
+  "ordinal",
+  "candidate_id",
+  "candidate_ref",
+  "integration_sha",
+  "release_branch",
+  "delivery_policy_version",
+  "created_at",
+  "owner",
+  "supersedes"
+];
+function isTerminalAttempt(attempt) {
+  return attempt.outcome !== "active";
+}
+function releaseEndpointConsistent(head, lease, attempt) {
+  if (head === null) return lease === null && attempt === null;
+  if (!releaseHeadMatchesAttempt(head, attempt)) return false;
+  if (lease === null) return attempt.outcome === "released";
+  return lease.channel === head.channel && lease.attempt_id === head.latest_attempt_id && lease.owner === attempt.owner && attempt.outcome !== "released" && attempt.outcome !== "superseded";
+}
+function releaseHeadMatchesAttempt(head, attempt) {
+  return Boolean(
+    attempt && attempt.channel === head.channel && attempt.attempt_id === head.latest_attempt_id && attempt.ordinal + 1 === head.next_ordinal
+  );
+}
+function attemptIdFor(channel, ordinal) {
+  return `${normalizeReleaseChannel(channel)}${ATTEMPT_ID_SEPARATOR}${ordinal}`;
+}
+function parseAttemptId(attemptId) {
+  const at = attemptId.lastIndexOf(ATTEMPT_ID_SEPARATOR);
+  if (at <= 0) return null;
+  const channel = attemptId.slice(0, at);
+  const ordinalText = attemptId.slice(at + 1);
+  if (!/^[1-9]\d*$/.test(ordinalText)) return null;
+  const ordinal = Number(ordinalText);
+  if (!Number.isSafeInteger(ordinal)) return null;
+  try {
+    if (normalizeReleaseChannel(channel) !== channel) return null;
+  } catch {
+    return null;
+  }
+  if (attemptIdFor(channel, ordinal) !== attemptId) return null;
+  return { channel, ordinal };
+}
+function normalizeReleaseChannel(channel) {
+  const value = channel.trim();
+  assertSafeChannel(value);
+  return value.toLowerCase();
+}
+function deliveryPolicyVersion(policy) {
+  return (0, import_crypto5.createHash)("sha256").update(JSON.stringify({
+    integrationBranch: policy.integrationBranch,
+    releaseBranch: policy.releaseBranch,
+    releaseCandidatePattern: policy.releaseCandidatePattern,
+    hotfixBackport: policy.hotfixBackport
+  }), "utf8").digest("hex");
+}
+function candidateIdentity(channel, integrationSha, ordinal) {
+  const canonicalChannel = normalizeReleaseChannel(channel);
+  const digest2 = (0, import_crypto5.createHash)("sha256").update(`${canonicalChannel}
+${integrationSha}
+${ordinal}`, "utf8").digest("hex").slice(0, 16);
+  return `${CANDIDATE_ID_PREFIX}:${digest2}`;
+}
+function candidateRefFor(policy, channel, ordinal) {
+  const pattern = policy.releaseCandidatePattern;
+  if (!pattern) return null;
+  const token = `${normalizeReleaseChannel(channel)}-${ordinal}`;
+  const candidateRef = pattern.replaceAll("*", token);
+  if (!isValidGitBranchName(candidateRef)) {
+    throw new Error(
+      `Invalid release candidate ref "${candidateRef}": delivery.releaseCandidatePattern produced a name Git cannot use as a branch.`
+    );
+  }
+  return candidateRef;
+}
+function newReleaseLeaseId() {
+  return (0, import_crypto5.randomUUID)();
+}
+function nextRetry(previous, error2, now, maxAttempts = RELEASE_RETRY_MAX_ATTEMPTS) {
+  if (previous?.exhausted) return previous;
+  const at = now.toISOString();
+  const attempts = Math.min((previous?.attempts ?? 0) + 1, maxAttempts);
+  const exhausted = attempts >= maxAttempts;
+  const backoffMs = RELEASE_RETRY_BASE_MS * 2 ** Math.min(attempts - 1, maxAttempts - 1);
+  return {
+    attempts,
+    max_attempts: maxAttempts,
+    backoff_ms: backoffMs,
+    first_at: previous?.first_at ?? at,
+    last_at: at,
+    next_at: new Date(now.getTime() + backoffMs).toISOString(),
+    last_error: error2,
+    exhausted
+  };
+}
+function releaseLeaseExpired(channel, now) {
+  const expires = Date.parse(channel.expires_at);
+  if (Number.isNaN(expires)) return false;
+  return expires < now.getTime();
+}
+function channelFile(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  return import_path8.default.join(paths.releaseChannelsDir, `${canonical}.json`);
+}
+function channelHeadFile(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  return import_path8.default.join(paths.releaseHeadsDir, `${canonical}.json`);
+}
+function attemptFile(paths, attemptId) {
+  const parsed = parseAttemptId(attemptId);
+  if (!parsed) throw new Error(`Invalid release attempt id "${attemptId}"`);
+  assertSafeChannel(parsed.channel);
+  return import_path8.default.join(paths.releaseAttemptsDir, `${attemptId}.json`);
+}
+function releaseTransactionFile(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  return import_path8.default.join(paths.releaseTransactionsDir, `${canonical}.json`);
+}
+var RELEASE_RETRY_FIELDS = [
+  "attempts",
+  "max_attempts",
+  "backoff_ms",
+  "first_at",
+  "last_at",
+  "next_at",
+  "last_error",
+  "exhausted"
+];
+var RELEASE_CHANNEL_FIELDS = [
+  "schema",
+  "channel",
+  "attempt_id",
+  "lease_id",
+  "lease_revision",
+  "owner",
+  "acquired_at",
+  "expires_at",
+  "heartbeat_at"
+];
+var RELEASE_HEAD_FIELDS = [
+  "schema",
+  "channel",
+  "latest_attempt_id",
+  "next_ordinal"
+];
+var RELEASE_STATE_FIELDS = [
+  "schema",
+  "revision",
+  "phase",
+  "transaction_id",
+  "channel"
+];
+var RELEASE_ATTEMPT_FIELDS = [
+  "schema",
+  "attempt_id",
+  "channel",
+  "ordinal",
+  "candidate_id",
+  "candidate_ref",
+  "integration_sha",
+  "release_branch",
+  "delivery_policy_version",
+  "created_at",
+  "owner",
+  "supersedes",
+  "release_tag",
+  "included_prs",
+  "included_tickets",
+  "artifact_manifest",
+  "verification_state",
+  "retry",
+  "outcome",
+  "terminal_at",
+  "successor",
+  "failure_reason"
+];
+var RELEASE_MUTATION_FIELDS = ["before", "after"];
+var RELEASE_JOURNAL_FIELDS = [
+  "schema",
+  "transaction_id",
+  "channel",
+  "created_at",
+  "attempts",
+  "head_record",
+  "channel_record"
+];
+function hasExactKeys(value, expected) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const actual = Object.keys(value);
+  return actual.length === expected.length && actual.every((key) => expected.includes(key));
+}
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function isIsoTimestamp(value) {
+  if (typeof value !== "string") return false;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
+}
+function isStringArray(value) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+function isRetrySchedule(value) {
+  if (!hasExactKeys(value, RELEASE_RETRY_FIELDS)) return false;
+  const retry = value;
+  if (!retry) return false;
+  return Boolean(
+    Number.isSafeInteger(retry.attempts) && retry.attempts >= 1 && Number.isSafeInteger(retry.max_attempts) && retry.max_attempts === RELEASE_RETRY_MAX_ATTEMPTS && retry.attempts <= retry.max_attempts && typeof retry.backoff_ms === "number" && Number.isFinite(retry.backoff_ms) && retry.backoff_ms >= 0 && isIsoTimestamp(retry.first_at) && isIsoTimestamp(retry.last_at) && isIsoTimestamp(retry.next_at) && isNonEmptyString(retry.last_error) && typeof retry.exhausted === "boolean" && retry.exhausted === (retry.attempts === retry.max_attempts)
+  );
+}
+function isChannelRecord(value) {
+  if (!hasExactKeys(value, RELEASE_CHANNEL_FIELDS)) return false;
+  const record2 = value;
+  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  let channel;
+  try {
+    channel = normalizeReleaseChannel(record2.channel);
+  } catch {
+    return false;
+  }
+  const parsed = typeof record2.attempt_id === "string" ? parseAttemptId(record2.attempt_id) : null;
+  return Boolean(
+    channel === record2.channel && parsed?.channel === channel && isNonEmptyString(record2.lease_id) && Number.isInteger(record2.lease_revision) && record2.lease_revision >= 1 && isNonEmptyString(record2.owner) && isIsoTimestamp(record2.acquired_at) && isIsoTimestamp(record2.expires_at) && isIsoTimestamp(record2.heartbeat_at)
+  );
+}
+function isChannelHeadRecord(value) {
+  if (!hasExactKeys(value, RELEASE_HEAD_FIELDS)) return false;
+  const record2 = value;
+  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  let channel;
+  try {
+    channel = normalizeReleaseChannel(record2.channel);
+  } catch {
+    return false;
+  }
+  const latest = typeof record2.latest_attempt_id === "string" ? parseAttemptId(record2.latest_attempt_id) : null;
+  return Boolean(
+    channel === record2.channel && latest?.channel === channel && Number.isSafeInteger(record2.next_ordinal) && record2.next_ordinal === latest.ordinal + 1
+  );
+}
+function isReleaseStateRecord(value) {
+  if (!hasExactKeys(value, RELEASE_STATE_FIELDS)) return false;
+  const record2 = value;
+  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  let channel;
+  try {
+    channel = normalizeReleaseChannel(record2.channel);
+  } catch {
+    return false;
+  }
+  return Boolean(
+    channel === record2.channel && Number.isSafeInteger(record2.revision) && record2.revision >= 1 && (record2.phase === "pending" || record2.phase === "stable") && isNonEmptyString(record2.transaction_id)
+  );
+}
+function isAttemptRecord(value) {
+  if (!hasExactKeys(value, RELEASE_ATTEMPT_FIELDS)) return false;
+  const record2 = value;
+  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  let channel;
+  try {
+    channel = normalizeReleaseChannel(record2.channel);
+  } catch {
+    return false;
+  }
+  const parsed = typeof record2.attempt_id === "string" ? parseAttemptId(record2.attempt_id) : null;
+  const outcome = record2.outcome;
+  const terminal = outcome === "released" || outcome === "failed" || outcome === "superseded";
+  const predecessor = record2.supersedes === null ? null : typeof record2.supersedes === "string" ? parseAttemptId(record2.supersedes) : void 0;
+  const successor = record2.successor === null ? null : typeof record2.successor === "string" ? parseAttemptId(record2.successor) : void 0;
+  return Boolean(
+    channel === record2.channel && parsed?.channel === channel && parsed.ordinal === record2.ordinal && Number.isInteger(record2.ordinal) && record2.ordinal >= 1 && typeof record2.integration_sha === "string" && /^[0-9a-f]{40}$/.test(record2.integration_sha) && record2.candidate_id === candidateIdentity(channel, record2.integration_sha, record2.ordinal) && (record2.candidate_ref === null || typeof record2.candidate_ref === "string" && isValidGitBranchName(record2.candidate_ref)) && isNonEmptyString(record2.release_branch) && isValidGitBranchName(record2.release_branch) && typeof record2.delivery_policy_version === "string" && /^[0-9a-f]{64}$/.test(record2.delivery_policy_version) && isIsoTimestamp(record2.created_at) && isNonEmptyString(record2.owner) && predecessor !== void 0 && (predecessor === null || predecessor.channel === channel && predecessor.ordinal < record2.ordinal) && (record2.release_tag === null || typeof record2.release_tag === "string") && isStringArray(record2.included_prs) && isStringArray(record2.included_tickets) && isStringArray(record2.artifact_manifest) && (record2.verification_state === "pending" || record2.verification_state === "passed" || record2.verification_state === "failed") && (record2.retry === null || isRetrySchedule(record2.retry)) && (outcome === "active" || terminal) && (terminal ? isIsoTimestamp(record2.terminal_at) : record2.terminal_at === null) && successor !== void 0 && (successor === null || successor.channel === channel && successor.ordinal > record2.ordinal) && (record2.failure_reason === null || typeof record2.failure_reason === "string") && (outcome !== "failed" || isNonEmptyString(record2.failure_reason)) && (outcome !== "superseded" || successor !== null) && (outcome !== "active" || successor === null)
+  );
+}
+function attemptEqualExcept(before, after, mutable) {
+  return RELEASE_ATTEMPT_FIELDS.every((field) => mutable.has(field) || (0, import_util6.isDeepStrictEqual)(before[field], after[field]));
+}
+function frozenAttemptFieldsMatch(before, after) {
+  return RELEASE_FROZEN_FIELDS.every((field) => (0, import_util6.isDeepStrictEqual)(before[field], after[field]));
+}
+function retryTransitionIsLegal(before, after, createdAt) {
+  if ((0, import_util6.isDeepStrictEqual)(before, after) || after === null) return true;
+  return (0, import_util6.isDeepStrictEqual)(nextRetry(before, after.last_error, new Date(createdAt)), after);
+}
+function freshAttemptIsLegal(attempt, createdAt, supersedes) {
+  return attempt.created_at === createdAt && attempt.supersedes === supersedes && attempt.release_tag === null && attempt.artifact_manifest.length === 0 && attempt.verification_state === "pending" && attempt.retry === null && attempt.outcome === "active" && attempt.terminal_at === null && attempt.successor === null && attempt.failure_reason === null;
+}
+function freshLeaseIsLegal(lease, attempt, createdAt) {
+  return lease.channel === attempt.channel && lease.attempt_id === attempt.attempt_id && lease.owner === attempt.owner && lease.lease_revision === 1 && lease.acquired_at === createdAt && lease.heartbeat_at === createdAt && Date.parse(lease.expires_at) > Date.parse(createdAt);
+}
+function renewedLeaseIsLegal(before, after, createdAt) {
+  return before.schema === after.schema && before.channel === after.channel && before.attempt_id === after.attempt_id && before.lease_id === after.lease_id && before.owner === after.owner && before.acquired_at === after.acquired_at && after.lease_revision === before.lease_revision + 1 && after.heartbeat_at === createdAt && Date.parse(after.heartbeat_at) >= Date.parse(before.heartbeat_at) && Date.parse(after.expires_at) > Date.parse(createdAt);
+}
+function activeProgressTransitionIsLegal(before, after, createdAt) {
+  const progress = /* @__PURE__ */ new Set([
+    "release_tag",
+    "included_prs",
+    "included_tickets",
+    "artifact_manifest",
+    "verification_state",
+    "retry"
+  ]);
+  return before.outcome === "active" && after.outcome === "active" && attemptEqualExcept(before, after, progress) && retryTransitionIsLegal(before.retry, after.retry, createdAt);
+}
+function failedTransitionIsLegal(before, after, createdAt) {
+  const failure = /* @__PURE__ */ new Set(["verification_state", "outcome", "terminal_at", "failure_reason"]);
+  return before.outcome === "active" && after.outcome === "failed" && after.verification_state === "failed" && after.terminal_at === createdAt && isNonEmptyString(after.failure_reason) && attemptEqualExcept(before, after, failure);
+}
+function completedTransitionIsLegal(before, after, createdAt) {
+  const completion = /* @__PURE__ */ new Set(["release_tag", "artifact_manifest", "outcome", "terminal_at"]);
+  return before.outcome === "active" && after.outcome === "released" && after.terminal_at === createdAt && attemptEqualExcept(before, after, completion);
+}
+function supersededTransitionIsLegal(before, after, successor, createdAt) {
+  const supersession = /* @__PURE__ */ new Set(["outcome", "terminal_at", "successor", "failure_reason"]);
+  const reasonPreservedOrAdded = after.failure_reason === before.failure_reason || before.failure_reason === null && typeof after.failure_reason === "string";
+  return before.outcome === "active" && after.outcome === "superseded" && after.terminal_at === createdAt && after.successor === successor.attempt_id && reasonPreservedOrAdded && attemptEqualExcept(before, after, supersession);
+}
+function isReleaseMutationSemanticallyValid(journal) {
+  const attempts = journal.attempts;
+  const beforeHead = journal.head_record.before;
+  const afterHead = journal.head_record.after;
+  const beforeLease = journal.channel_record.before;
+  const afterLease = journal.channel_record.after;
+  if (afterHead === null) return false;
+  const afterIds = attempts.map((mutation) => mutation.after.attempt_id);
+  if (new Set(afterIds).size !== afterIds.length) return false;
+  const existing = attempts.filter((mutation) => mutation.before !== null);
+  const minted = attempts.filter((mutation) => mutation.before === null);
+  if (beforeHead === null) {
+    if (existing.length !== 0) return false;
+  } else if (existing.length !== 1 || existing[0].before.attempt_id !== beforeHead.latest_attempt_id) {
+    return false;
+  }
+  for (const mutation of existing) {
+    const before = mutation.before;
+    const after = mutation.after;
+    if (!frozenAttemptFieldsMatch(before, after)) return false;
+    if (isTerminalAttempt(before) && !(0, import_util6.isDeepStrictEqual)(before, after)) return false;
+  }
+  const beforeAttempt = existing[0]?.before ?? null;
+  const afterExisting = existing[0]?.after ?? null;
+  if (!releaseEndpointConsistent(beforeHead, beforeLease, beforeAttempt)) return false;
+  const headUnchanged = beforeHead !== null && (0, import_util6.isDeepStrictEqual)(beforeHead, afterHead);
+  if (headUnchanged) {
+    if (attempts.length !== 1 || minted.length !== 0 || beforeAttempt === null || afterExisting === null) return false;
+    if (afterExisting.attempt_id !== afterHead.latest_attempt_id) return false;
+    if (!releaseEndpointConsistent(afterHead, afterLease, afterExisting) || beforeLease === null) return false;
+    if (afterLease === null) {
+      return completedTransitionIsLegal(beforeAttempt, afterExisting, journal.created_at);
+    }
+    if (!renewedLeaseIsLegal(beforeLease, afterLease, journal.created_at)) return false;
+    return (0, import_util6.isDeepStrictEqual)(beforeAttempt, afterExisting) || activeProgressTransitionIsLegal(beforeAttempt, afterExisting, journal.created_at) || failedTransitionIsLegal(beforeAttempt, afterExisting, journal.created_at);
+  }
+  if (minted.length !== 1 || attempts.length !== (beforeHead === null ? 1 : 2) || afterLease === null) return false;
+  const successor = minted[0].after;
+  const expectedOrdinal = beforeHead?.next_ordinal ?? 1;
+  if (successor.ordinal !== expectedOrdinal || afterHead.latest_attempt_id !== successor.attempt_id || afterHead.next_ordinal !== expectedOrdinal + 1 || afterHead.channel !== successor.channel || beforeHead !== null && afterHead.channel !== beforeHead.channel || !freshLeaseIsLegal(afterLease, successor, journal.created_at) || !releaseEndpointConsistent(afterHead, afterLease, successor)) {
+    return false;
+  }
+  if (beforeHead === null) {
+    return beforeLease === null && successor.supersedes === null && freshAttemptIsLegal(successor, journal.created_at, null);
+  }
+  if (beforeAttempt === null || afterExisting === null) return false;
+  if (beforeLease === null) {
+    return beforeAttempt.outcome === "released" && (0, import_util6.isDeepStrictEqual)(beforeAttempt, afterExisting) && freshAttemptIsLegal(successor, journal.created_at, null);
+  }
+  if (afterLease.lease_id === beforeLease.lease_id) return false;
+  const predecessorValid = beforeAttempt.outcome === "failed" ? (0, import_util6.isDeepStrictEqual)(beforeAttempt, afterExisting) : supersededTransitionIsLegal(beforeAttempt, afterExisting, successor, journal.created_at);
+  return predecessorValid && freshAttemptIsLegal(successor, journal.created_at, beforeAttempt.attempt_id);
+}
+function isReleaseMutationValue(value, accept) {
+  if (!hasExactKeys(value, RELEASE_MUTATION_FIELDS)) return false;
+  const mutation = value;
+  return Boolean(
+    mutation && Object.prototype.hasOwnProperty.call(mutation, "before") && Object.prototype.hasOwnProperty.call(mutation, "after") && (mutation.before === null || accept(mutation.before)) && (mutation.after === null || accept(mutation.after))
+  );
+}
+function isReleaseMutationJournal(value) {
+  if (!hasExactKeys(value, RELEASE_JOURNAL_FIELDS)) return false;
+  const journal = value;
+  if (!journal || journal.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(journal.channel)) return false;
+  let channel;
+  try {
+    channel = normalizeReleaseChannel(journal.channel);
+  } catch {
+    return false;
+  }
+  const structurallyValid = Boolean(
+    channel === journal.channel && isNonEmptyString(journal.transaction_id) && isIsoTimestamp(journal.created_at) && Array.isArray(journal.attempts) && journal.attempts.length >= 1 && journal.attempts.every((mutation) => isReleaseMutationValue(mutation, isAttemptRecord) && mutation.after !== null && mutation.after.channel === channel && (mutation.before === null || mutation.before.attempt_id === mutation.after.attempt_id)) && isReleaseMutationValue(journal.head_record, isChannelHeadRecord) && journal.head_record.after !== null && (journal.head_record.before === null || journal.head_record.before.channel === channel) && journal.head_record.after.channel === channel && (journal.head_record.before === null || journal.head_record.after.next_ordinal >= journal.head_record.before.next_ordinal) && isReleaseMutationValue(journal.channel_record, isChannelRecord) && (journal.channel_record.before === null || journal.channel_record.before.channel === channel) && (journal.channel_record.after === null || journal.channel_record.after.channel === channel)
+  );
+  if (!structurallyValid) return false;
+  return isReleaseMutationSemanticallyValid(journal);
+}
+function errorCode(error2) {
+  return typeof error2 === "object" && error2 !== null && "code" in error2 ? String(error2.code) : void 0;
+}
+async function readOptionalRecord(file, accept, kind) {
+  let text;
+  try {
+    text = await readText(file);
+  } catch (error2) {
+    if (errorCode(error2) === "ENOENT") return null;
+    throw new Error(`RELEASE_RECORD_UNREADABLE: ${kind} at ${file} cannot be read (${error2 instanceof Error ? error2.message : String(error2)}).`);
+  }
+  try {
+    const parsed = JSON.parse(text);
+    if (!accept(parsed)) throw new Error("record does not satisfy the complete schema");
+    return parsed;
+  } catch (error2) {
+    throw new Error(
+      `RELEASE_RECORD_UNREADABLE: ${kind} at ${file} is malformed (${error2 instanceof Error ? error2.message : String(error2)}). Ownership evidence fails closed and will not be overwritten.`
+    );
+  }
+}
+async function readJsonDir(dir, accept, expectedName) {
+  let names;
+  try {
+    names = await import_promises6.default.readdir(dir);
+  } catch (error2) {
+    if (errorCode(error2) === "ENOENT") return { values: [], unreadable: false };
+    return { values: [], unreadable: true };
+  }
+  const values = [];
+  let unreadable = false;
+  for (const name of names.sort()) {
+    if (!name.toLowerCase().endsWith(".json")) continue;
+    if (!name.endsWith(".json")) {
+      unreadable = true;
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(await readText(import_path8.default.join(dir, name)));
+      if (accept(parsed) && expectedName(parsed) === name) values.push(parsed);
+      else unreadable = true;
+    } catch {
+      unreadable = true;
+    }
+  }
+  return { values, unreadable };
+}
+async function collectReleaseSnapshot(paths) {
+  const [channels, heads, attempts, transactions, state] = await Promise.all([
+    readJsonDir(paths.releaseChannelsDir, isChannelRecord, (entry) => `${entry.channel}.json`),
+    readJsonDir(paths.releaseHeadsDir, isChannelHeadRecord, (entry) => `${entry.channel}.json`),
+    readJsonDir(paths.releaseAttemptsDir, isAttemptRecord, (entry) => `${entry.attempt_id}.json`),
+    readJsonDir(paths.releaseTransactionsDir, isReleaseMutationJournal, (entry) => `${entry.channel}.json`),
+    readOptionalRecord(paths.releaseStateFile, isReleaseStateRecord, "release transaction state").then((value) => ({ value, unreadable: false })).catch(() => ({ value: null, unreadable: true }))
+  ]);
+  const stateJournal = state.value === null ? null : transactions.values.find((entry) => entry.channel === state.value.channel && entry.transaction_id === state.value.transaction_id) ?? null;
+  const transactionStateInvalid = transactions.values.length > 1 || state.value?.phase === "pending" && stateJournal === null || transactions.values.length === 1 && state.value !== null && stateJournal === null;
+  return {
+    channels: channels.values.sort((a, b) => a.channel.localeCompare(b.channel)),
+    heads: heads.values.sort((a, b) => a.channel.localeCompare(b.channel)),
+    attempts: attempts.values.sort(compareReleaseAttempts),
+    pending: transactions.values.sort((a, b) => a.channel.localeCompare(b.channel)),
+    unreadable: channels.unreadable || heads.unreadable || attempts.unreadable || transactions.unreadable || state.unreadable || transactionStateInvalid
+  };
+}
+function releaseSnapshotSignature(snapshot) {
+  return JSON.stringify(snapshot);
+}
+function validateReleaseSnapshot(snapshot) {
+  const attempts = new Map(snapshot.attempts.map((attempt) => [attempt.attempt_id, attempt]));
+  const heads = new Map(snapshot.heads.map((head) => [head.channel, head]));
+  const channels = new Map(snapshot.channels.map((channel) => [channel.channel, channel]));
+  const danglingChannel = snapshot.channels.some((channel) => !heads.has(channel.channel));
+  const invalidHead = snapshot.heads.some((head) => {
+    const latest = attempts.get(head.latest_attempt_id) ?? null;
+    const lease = channels.get(head.channel) ?? null;
+    if (lease) return !releaseEndpointConsistent(head, lease, latest);
+    return !releaseHeadMatchesAttempt(head, latest) || latest.outcome !== "active" && latest.outcome !== "released";
+  });
+  const missingHead = snapshot.attempts.some((attempt) => !heads.has(attempt.channel));
+  const attemptBeyondHead = snapshot.attempts.some((attempt) => {
+    const head = heads.get(attempt.channel);
+    return head !== void 0 && attempt.ordinal >= head.next_ordinal;
+  });
+  const ordinalsByChannel = /* @__PURE__ */ new Map();
+  for (const attempt of snapshot.attempts) {
+    const ordinals = ordinalsByChannel.get(attempt.channel) ?? [];
+    ordinals.push(attempt.ordinal);
+    ordinalsByChannel.set(attempt.channel, ordinals);
+  }
+  const incompleteHistory = snapshot.heads.some((head) => {
+    const ordinals = (ordinalsByChannel.get(head.channel) ?? []).sort((a, b) => a - b);
+    return ordinals.length !== head.next_ordinal - 1 || ordinals.some((ordinal, index) => ordinal !== index + 1);
+  });
+  const nonHeadActiveAttempt = snapshot.attempts.some((attempt) => attempt.outcome === "active" && heads.get(attempt.channel)?.latest_attempt_id !== attempt.attempt_id);
+  let invalidAttemptGraph = false;
+  const childrenPerPredecessor = /* @__PURE__ */ new Map();
+  for (const attempt of snapshot.attempts) {
+    if (attempt.successor !== null) {
+      const successor = attempts.get(attempt.successor);
+      if (!successor || attempt.outcome !== "superseded" || successor.supersedes !== attempt.attempt_id) {
+        invalidAttemptGraph = true;
+      }
+    }
+    if (attempt.supersedes !== null) {
+      childrenPerPredecessor.set(attempt.supersedes, (childrenPerPredecessor.get(attempt.supersedes) ?? 0) + 1);
+      const predecessor = attempts.get(attempt.supersedes);
+      if (!predecessor) {
+        invalidAttemptGraph = true;
+      } else if (predecessor.outcome === "superseded") {
+        if (predecessor.successor !== attempt.attempt_id) invalidAttemptGraph = true;
+      } else if (predecessor.outcome === "failed") {
+        if (predecessor.successor !== null) invalidAttemptGraph = true;
+      } else {
+        invalidAttemptGraph = true;
+      }
+    }
+  }
+  if ([...childrenPerPredecessor.values()].some((count) => count > 1)) invalidAttemptGraph = true;
+  const unreadable = snapshot.unreadable || danglingChannel || invalidHead || missingHead || attemptBeyondHead || incompleteHistory || nonHeadActiveAttempt || invalidAttemptGraph;
+  return unreadable === snapshot.unreadable ? snapshot : { ...snapshot, unreadable };
+}
+async function readReleaseSnapshot(paths) {
+  let previous = await collectReleaseSnapshot(paths);
+  for (let sample = 1; sample < 3; sample += 1) {
+    const current = await collectReleaseSnapshot(paths);
+    if (releaseSnapshotSignature(previous) === releaseSnapshotSignature(current)) {
+      return validateReleaseSnapshot(current);
+    }
+    previous = current;
+  }
+  const latest = validateReleaseSnapshot(previous);
+  return latest.unreadable ? latest : { ...latest, unreadable: true };
+}
+async function readChannelRecord(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  const record2 = await readOptionalRecord(channelFile(paths, canonical), isChannelRecord, `release channel "${canonical}"`);
+  if (record2 && record2.channel !== canonical) {
+    throw new Error(`RELEASE_RECORD_UNREADABLE: channel file "${canonical}" contains ownership for "${record2.channel}".`);
+  }
+  return record2;
+}
+async function readChannelHeadRecord(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  const record2 = await readOptionalRecord(
+    channelHeadFile(paths, canonical),
+    isChannelHeadRecord,
+    `release channel head "${canonical}"`
+  );
+  if (record2 && record2.channel !== canonical) {
+    throw new Error(`RELEASE_RECORD_UNREADABLE: channel head "${canonical}" contains history for "${record2.channel}".`);
+  }
+  return record2;
+}
+async function readReleaseStateRecord(paths) {
+  return readOptionalRecord(paths.releaseStateFile, isReleaseStateRecord, "release transaction state");
+}
+async function readAttemptRecord(paths, attemptId) {
+  const record2 = await readOptionalRecord(attemptFile(paths, attemptId), isAttemptRecord, `release attempt "${attemptId}"`);
+  if (record2 && record2.attempt_id !== attemptId) {
+    throw new Error(`RELEASE_RECORD_UNREADABLE: attempt file "${attemptId}" contains evidence for "${record2.attempt_id}".`);
+  }
+  return record2;
+}
+function serialise(record2) {
+  return `${JSON.stringify(record2, null, 2)}
+`;
+}
+async function writeAttemptRecord(paths, record2) {
+  await ensureDir(paths.releaseAttemptsDir);
+  await writeFileAtomic(attemptFile(paths, record2.attempt_id), serialise(record2));
+}
+async function writeChannelRecord(paths, record2) {
+  await ensureDir(paths.releaseChannelsDir);
+  await writeFileAtomic(channelFile(paths, record2.channel), serialise(record2));
+}
+async function writeChannelHeadRecord(paths, record2) {
+  await ensureDir(paths.releaseHeadsDir);
+  await writeFileAtomic(channelHeadFile(paths, record2.channel), serialise(record2));
+}
+async function writeReleaseStateRecord(paths, record2) {
+  await ensureDir(paths.releasesRoot);
+  await writeFileAtomic(paths.releaseStateFile, serialise(record2));
+}
+async function removeChannelRecord(paths, channel) {
+  await removeFile(channelFile(paths, channel));
+}
+function inspectAttemptFilename(name, channel) {
+  if (!name.toLowerCase().endsWith(".json")) return null;
+  const base = name.slice(0, -".json".length);
+  const prefix = `${channel}${ATTEMPT_ID_SEPARATOR}`;
+  if (!base.toLowerCase().startsWith(prefix)) return null;
+  const at = base.lastIndexOf(ATTEMPT_ID_SEPARATOR);
+  const rawChannel = at > 0 ? base.slice(0, at) : "";
+  if (!name.endsWith(".json") || rawChannel.toLowerCase() === channel && rawChannel !== channel) {
+    throw new Error(
+      `RELEASE_CHANNEL_CASE_COLLISION: attempt file "${name}" collides with channel "${channel}" on Windows.`
+    );
+  }
+  const parsed = parseAttemptId(base);
+  if (!parsed || parsed.channel !== channel) {
+    throw new Error(
+      `RELEASE_RECORD_UNREADABLE: immutable attempt filename "${name}" is attributable to channel "${channel}" but is not the canonical <channel>@<positive-safe-integer>.json form.`
+    );
+  }
+  return parsed.ordinal;
+}
+async function assertNoReleaseChannelCollision(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  for (const dir of [paths.releaseChannelsDir, paths.releaseHeadsDir, paths.releaseAttemptsDir, paths.releaseTransactionsDir]) {
+    let names;
+    try {
+      names = await import_promises6.default.readdir(dir);
+    } catch (error2) {
+      if (errorCode(error2) === "ENOENT") continue;
+      throw new Error(`RELEASE_RECORD_UNREADABLE: cannot inspect ${dir} for release-channel collisions.`);
+    }
+    for (const name of names) {
+      if (dir === paths.releaseAttemptsDir) {
+        inspectAttemptFilename(name, canonical);
+        continue;
+      }
+      if (!name.toLowerCase().endsWith(".json")) continue;
+      const identity = name.slice(0, -".json".length);
+      if (identity.toLowerCase() === canonical && (identity !== canonical || !name.endsWith(".json"))) {
+        throw new Error(
+          `RELEASE_CHANNEL_CASE_COLLISION: "${identity}" and "${canonical}" identify the same release channel on Windows. Inspect and reconcile the existing record before mutation.`
+        );
+      }
+    }
+  }
+}
+function assertMutationState(label, current, mutation) {
+  if ((0, import_util6.isDeepStrictEqual)(current, mutation.after)) return "after";
+  if ((0, import_util6.isDeepStrictEqual)(current, mutation.before)) return "before";
+  throw new Error(
+    `RELEASE_TRANSACTION_CONFLICT: ${label} differs from both the journal's observed and intended state. The journal is retained and ownership evidence will not be overwritten.`
+  );
+}
+async function recoverReleaseMutation(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  const file = releaseTransactionFile(paths, canonical);
+  const initialState = await readReleaseStateRecord(paths);
+  const journal = await readOptionalRecord(file, isReleaseMutationJournal, `release transaction "${canonical}"`);
+  if (!journal) {
+    if (initialState?.phase === "pending" && initialState.channel === canonical) {
+      await writeReleaseStateRecord(paths, { ...initialState, phase: "stable" });
+      return true;
+    }
+    return false;
+  }
+  if (journal.channel !== canonical) {
+    throw new Error(`RELEASE_TRANSACTION_CONFLICT: transaction ${journal.transaction_id} belongs to ${journal.channel}, not ${canonical}.`);
+  }
+  if (initialState !== null && (initialState.channel !== canonical || initialState.transaction_id !== journal.transaction_id)) {
+    throw new Error(
+      `RELEASE_TRANSACTION_CONFLICT: transaction epoch ${initialState.transaction_id} for ${initialState.channel} does not authorise journal ${journal.transaction_id} for ${canonical}.`
+    );
+  }
+  const attemptStates = [];
+  for (const mutation of journal.attempts) {
+    const id = mutation.after.attempt_id;
+    const current = await readAttemptRecord(paths, id);
+    attemptStates.push({ mutation, state: assertMutationState(`attempt ${id}`, current, mutation) });
+  }
+  const currentHead = await readChannelHeadRecord(paths, canonical);
+  const headState = assertMutationState(`channel head ${canonical}`, currentHead, journal.head_record);
+  const currentChannel = await readChannelRecord(paths, canonical);
+  const channelState = assertMutationState(`channel ${canonical}`, currentChannel, journal.channel_record);
+  if (initialState?.phase === "stable" && (attemptStates.some((entry) => entry.state !== "after") || headState !== "after" || channelState !== "after")) {
+    throw new Error(
+      `RELEASE_TRANSACTION_CONFLICT: stable transaction epoch ${initialState.transaction_id} does not match the journal's fully applied state. The journal is retained for inspection.`
+    );
+  }
+  const state = initialState ?? {
+    schema: RELEASE_RECORD_SCHEMA,
+    revision: 1,
+    phase: "pending",
+    transaction_id: journal.transaction_id,
+    channel: canonical
+  };
+  if (initialState === null) await writeReleaseStateRecord(paths, state);
+  for (const entry of attemptStates) {
+    if (entry.state === "before") await writeAttemptRecord(paths, entry.mutation.after);
+  }
+  if (headState === "before") await writeChannelHeadRecord(paths, journal.head_record.after);
+  if (channelState === "before") {
+    if (journal.channel_record.after === null) await removeChannelRecord(paths, canonical);
+    else await writeChannelRecord(paths, journal.channel_record.after);
+  }
+  if (state.phase !== "stable") await writeReleaseStateRecord(paths, { ...state, phase: "stable" });
+  await removeFile(file);
+  return true;
+}
+async function recoverPendingReleaseMutation(paths) {
+  const state = await readReleaseStateRecord(paths);
+  if (!state) return false;
+  const journalExists = await pathExists(releaseTransactionFile(paths, state.channel));
+  if (state.phase === "pending" || journalExists) {
+    return recoverReleaseMutation(paths, state.channel);
+  }
+  return false;
+}
+async function commitReleaseMutation(paths, input) {
+  const channel = normalizeReleaseChannel(input.channel);
+  await recoverPendingReleaseMutation(paths);
+  const file = releaseTransactionFile(paths, channel);
+  if (await pathExists(file)) {
+    throw new Error(`RELEASE_TRANSACTION_PENDING: channel "${channel}" already has a recoverable transaction; recover it before starting another.`);
+  }
+  const journal = {
+    schema: RELEASE_RECORD_SCHEMA,
+    transaction_id: (0, import_crypto5.randomUUID)(),
+    channel,
+    created_at: input.now.toISOString(),
+    attempts: input.attempts,
+    head_record: input.head_record,
+    channel_record: input.channel_record
+  };
+  if (!isReleaseMutationJournal(journal)) {
+    throw new Error("RELEASE_TRANSACTION_INVALID: the intended release mutation does not satisfy the complete record schema.");
+  }
+  const previousState = await readReleaseStateRecord(paths);
+  if (previousState?.phase === "pending") {
+    throw new Error(
+      `RELEASE_TRANSACTION_PENDING: transaction ${previousState.transaction_id} for ${previousState.channel} must be recovered before another mutation starts.`
+    );
+  }
+  const pendingState = {
+    schema: RELEASE_RECORD_SCHEMA,
+    revision: (previousState?.revision ?? 0) + 1,
+    phase: "pending",
+    transaction_id: journal.transaction_id,
+    channel
+  };
+  await writeReleaseStateRecord(paths, pendingState);
+  await ensureDir(paths.releaseTransactionsDir);
+  await writeFileAtomic(file, serialise(journal));
+  await recoverReleaseMutation(paths, channel);
+}
+async function nextOrdinal(paths, channel) {
+  const canonical = normalizeReleaseChannel(channel);
+  const head = await readChannelHeadRecord(paths, canonical);
+  if (head) {
+    const latest = await readAttemptRecord(paths, head.latest_attempt_id);
+    if (!latest || latest.channel !== canonical || latest.ordinal + 1 !== head.next_ordinal) {
+      throw new Error(
+        `RELEASE_RECORD_UNREADABLE: channel head "${canonical}" references missing or inconsistent attempt ${head.latest_attempt_id}; its immutable identity will not be reused.`
+      );
+    }
+    return head.next_ordinal;
+  }
+  let names;
+  try {
+    names = await import_promises6.default.readdir(paths.releaseAttemptsDir);
+  } catch (error2) {
+    if (errorCode(error2) === "ENOENT") return 1;
+    throw new Error(`RELEASE_RECORD_UNREADABLE: cannot enumerate immutable attempts for channel "${canonical}".`);
+  }
+  for (const name of names) {
+    const ordinal = inspectAttemptFilename(name, canonical);
+    if (ordinal === null) continue;
+    throw new Error(
+      `RELEASE_RECORD_UNREADABLE: immutable attempt "${attemptIdFor(canonical, ordinal)}" exists without the channel's durable high-water head; inspect and restore the head before mutation.`
+    );
+  }
+  return 1;
+}
+function compareReleaseAttempts(a, b) {
+  const byChannel = a.channel.localeCompare(b.channel);
+  return byChannel !== 0 ? byChannel : a.ordinal - b.ordinal;
+}
+function classifyReleaseEvidence(snapshot, ticketId) {
+  if (snapshot.unreadable) return { state: "unavailable" };
+  if (snapshot.pending.some((journal) => journal.attempts.some((mutation) => mutation.before?.included_tickets.includes(ticketId) || mutation.after?.included_tickets.includes(ticketId)))) {
+    return { state: "unavailable" };
+  }
+  const matching = snapshot.attempts.filter((attempt) => attempt.included_tickets.includes(ticketId));
+  if (matching.length === 0) return { state: "not-applicable" };
+  const holders = new Map(snapshot.channels.map((channel) => [channel.channel, channel.attempt_id]));
+  const active = matching.filter((attempt) => !isTerminalAttempt(attempt));
+  if (active.some((attempt) => attempt.retry !== null && !attempt.retry.exhausted)) {
+    return { state: "unavailable" };
+  }
+  if (active.length > 1 || active.some((attempt) => holders.get(attempt.channel) !== attempt.attempt_id)) {
+    return { state: "contended" };
+  }
+  if (active.length === 1) return { state: "not-applicable" };
+  const terminalByChannel = /* @__PURE__ */ new Map();
+  for (const attempt of matching) {
+    const current = terminalByChannel.get(attempt.channel);
+    if (!current || attempt.ordinal > current.ordinal) terminalByChannel.set(attempt.channel, attempt);
+  }
+  const attemptsById = new Map(snapshot.attempts.map((attempt) => [attempt.attempt_id, attempt]));
+  const successorByPredecessor = /* @__PURE__ */ new Map();
+  for (const attempt of snapshot.attempts) {
+    if (attempt.supersedes !== null) successorByPredecessor.set(attempt.supersedes, attempt.attempt_id);
+  }
+  const causalTail = (start) => {
+    let current = start;
+    const seen = /* @__PURE__ */ new Set();
+    while (true) {
+      if (seen.has(current.attempt_id)) return null;
+      seen.add(current.attempt_id);
+      const successorId = current.successor ?? successorByPredecessor.get(current.attempt_id);
+      if (!successorId) return current;
+      const successor = attemptsById.get(successorId);
+      if (!successor || successor.channel !== current.channel || successor.ordinal <= current.ordinal) return null;
+      current = successor;
+    }
+  };
+  const terminalStates = new Set(
+    [...terminalByChannel.values()].map((attempt) => {
+      const tail = causalTail(attempt);
+      if (!tail) return "unavailable";
+      if (tail.attempt_id !== attempt.attempt_id && !tail.included_tickets.includes(ticketId)) return "not-applicable";
+      return tail.outcome === "superseded" ? "superseded" : "not-applicable";
+    })
+  );
+  if (terminalStates.has("unavailable")) return { state: "unavailable" };
+  if (terminalStates.size > 1) return { state: "contended" };
+  return { state: terminalStates.has("superseded") ? "superseded" : "not-applicable" };
+}
 var CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
 var CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND];
 var BLOCK_START = "<!-- kanmer:instructions:start \u2014 managed by kanmer-setup; edits inside will be overwritten -->";
@@ -40495,7 +41369,7 @@ function exists(p) {
   }
 }
 function digest(text) {
-  return (0, import_crypto5.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
+  return (0, import_crypto6.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
 }
 function walkFiles(dir, base = dir, out = []) {
   let entries;
@@ -40505,9 +41379,9 @@ function walkFiles(dir, base = dir, out = []) {
     return out;
   }
   for (const entry of entries) {
-    const full = import_path8.default.join(dir, entry.name);
+    const full = import_path9.default.join(dir, entry.name);
     if (entry.isDirectory()) walkFiles(full, base, out);
-    else if (entry.isFile()) out.push(import_path8.default.relative(base, full).split(import_path8.default.sep).join("/"));
+    else if (entry.isFile()) out.push(import_path9.default.relative(base, full).split(import_path9.default.sep).join("/"));
   }
   return out;
 }
@@ -40521,7 +41395,7 @@ function nameList(names, max = 4) {
 }
 function referenceBlockBody(bundledSkillsDir2) {
   if (!bundledSkillsDir2) return null;
-  const skill = readOrNull(import_path8.default.join(bundledSkillsDir2, "kanmer-setup", "SKILL.md"));
+  const skill = readOrNull(import_path9.default.join(bundledSkillsDir2, "kanmer-setup", "SKILL.md"));
   if (skill === null) return null;
   return blockBodyOf(skill);
 }
@@ -40536,7 +41410,7 @@ function hasEitherMarker(text) {
 }
 var SETUP_FIX = "run kanmer-setup (it reconciles; FRD-013)";
 function agentsBlockRow(repoRoot, reference) {
-  const file = import_path8.default.join(repoRoot, "AGENTS.md");
+  const file = import_path9.default.join(repoRoot, "AGENTS.md");
   const text = readOrNull(file);
   if (text === null) {
     if (exists(file)) {
@@ -40589,7 +41463,7 @@ function agentsBlockRow(repoRoot, reference) {
 }
 function skillRows(repoRoot, bundledSkillsDir2) {
   const rows = [];
-  const present = SKILL_DESTINATIONS.map((rel) => ({ rel, abs: import_path8.default.join(repoRoot, rel) })).filter(
+  const present = SKILL_DESTINATIONS.map((rel) => ({ rel, abs: import_path9.default.join(repoRoot, rel) })).filter(
     (d) => isDir(d.abs)
   );
   if (present.length === 0) return rows;
@@ -40614,20 +41488,20 @@ function skillRows(repoRoot, bundledSkillsDir2) {
   }
   const reference = /* @__PURE__ */ new Map();
   for (const rel of bundled) {
-    const text = readOrNull(import_path8.default.join(bundledSkillsDir2, rel));
+    const text = readOrNull(import_path9.default.join(bundledSkillsDir2, rel));
     if (text !== null) reference.set(rel, digest(text));
   }
   const bundledFolders = [...new Set(bundled.map(skillFolderOf))];
   for (const dest of present) {
     const installedFolders = new Set(
-      bundledFolders.filter((folder) => isDir(import_path8.default.join(dest.abs, folder)))
+      bundledFolders.filter((folder) => isDir(import_path9.default.join(dest.abs, folder)))
     );
     if (installedFolders.size === 0) continue;
     const missing = [];
     const differing = [];
     for (const [rel, sha] of reference) {
       if (!installedFolders.has(skillFolderOf(rel))) continue;
-      const text = readOrNull(import_path8.default.join(dest.abs, rel));
+      const text = readOrNull(import_path9.default.join(dest.abs, rel));
       if (text === null) {
         missing.push(rel);
         continue;
@@ -40646,7 +41520,7 @@ function skillRows(repoRoot, bundledSkillsDir2) {
         fix: `${SETUP_FIX}, or reconnect this project in the Kanmer app`
       });
     }
-    const retired = RETIRED_SKILL_PATHS.filter((rel) => exists(import_path8.default.join(dest.abs, rel)));
+    const retired = RETIRED_SKILL_PATHS.filter((rel) => exists(import_path9.default.join(dest.abs, rel)));
     if (retired.length) {
       rows.push({
         artefact: "skills",
@@ -40655,7 +41529,7 @@ function skillRows(repoRoot, bundledSkillsDir2) {
         fix: "delete them, or reconnect in the Kanmer app (tracked as GUI-080)"
       });
     }
-    if (!exists(import_path8.default.join(dest.abs, SKILLS_STAMP_FILE))) {
+    if (!exists(import_path9.default.join(dest.abs, SKILLS_STAMP_FILE))) {
       rows.push({
         artefact: "skills-stamp",
         state: "unstamped",
@@ -40712,7 +41586,7 @@ function rootFromArgs(args) {
   return typeof next === "string" && next.trim() !== "" ? next : null;
 }
 function tomlTablePath(header) {
-  const path122 = [];
+  const path132 = [];
   let index = 0;
   while (index < header.length) {
     while (/[ \t]/.test(header[index] ?? "")) index++;
@@ -40747,9 +41621,9 @@ function tomlTablePath(header) {
       component = match[0];
       index += component.length;
     }
-    path122.push(component);
+    path132.push(component);
     while (/[ \t]/.test(header[index] ?? "")) index++;
-    if (index === header.length) return path122;
+    if (index === header.length) return path132;
     if (header[index++] !== ".") return null;
   }
   return null;
@@ -40757,8 +41631,8 @@ function tomlTablePath(header) {
 function kanmerTomlSection(text) {
   const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
   const header = headers.find((candidate) => {
-    const path122 = tomlTablePath(candidate[1]);
-    return path122?.length === 2 && path122[0] === "mcp_servers" && path122[1] === "kanmer";
+    const path132 = tomlTablePath(candidate[1]);
+    return path132?.length === 2 && path132[0] === "mcp_servers" && path132[1] === "kanmer";
   });
   if (!header || header.index === void 0) return null;
   const from = header.index + header[0].length;
@@ -40769,11 +41643,11 @@ function tomlTableSections(text) {
   const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
   return headers.flatMap((header, index) => {
     if (header.index === void 0) return [];
-    const path122 = tomlTablePath(header[1]);
-    if (path122 === null) return [];
+    const path132 = tomlTablePath(header[1]);
+    if (path132 === null) return [];
     const from = header.index + header[0].length;
     const to = headers[index + 1]?.index ?? text.length;
-    return [{ path: path122, content: text.slice(from, to) }];
+    return [{ path: path132, content: text.slice(from, to) }];
   });
 }
 function isTomlTrivia(text) {
@@ -40819,9 +41693,9 @@ function kanmerRootIn(text, format) {
 }
 function isCurrentCodexRegistration(text) {
   const kanmerTables = tomlTableSections(text).filter(
-    ({ path: path122 }) => path122[0] === "mcp_servers" && path122[1] === "kanmer"
+    ({ path: path132 }) => path132[0] === "mcp_servers" && path132[1] === "kanmer"
   );
-  const mainTables = kanmerTables.filter(({ path: path122 }) => path122.length === 2);
+  const mainTables = kanmerTables.filter(({ path: path132 }) => path132.length === 2);
   if (mainTables.length === 0) return null;
   if (mainTables.length !== 1) return false;
   const section = mainTables[0].content;
@@ -40836,7 +41710,7 @@ function isCurrentCodexRegistration(text) {
     mainRemainder = mainRemainder.slice(0, match.index) + mainRemainder.slice(match.index + match[0].length);
   }
   if (!isTomlTrivia(mainRemainder)) return false;
-  const children = kanmerTables.filter(({ path: path122 }) => path122.length !== 2);
+  const children = kanmerTables.filter(({ path: path132 }) => path132.length !== 2);
   if (children.length === 0) return true;
   if (children.length !== 1 || children[0].path.length !== 3 || children[0].path[2] !== "env") {
     return false;
@@ -40899,13 +41773,13 @@ function parseTomlStringArray(source) {
   }
 }
 function sameRoot(a, b) {
-  const norm = (p) => import_path8.default.resolve(p).replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
+  const norm = (p) => import_path9.default.resolve(p).replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
   return norm(a) === norm(b);
 }
 function registrationRows(repoRoot, projectRoot2) {
   const rows = [];
   for (const rel of REGISTRATION_FILES) {
-    const file = import_path8.default.join(repoRoot, rel);
+    const file = import_path9.default.join(repoRoot, rel);
     if (!exists(file)) continue;
     const text = readOrNull(file);
     if (text === null) {
@@ -40986,16 +41860,16 @@ function detectStaleness(input) {
 var MAX_LINES = 5e3;
 var SIZE_CHECK_BYTES = 512e3;
 function activityFile(paths) {
-  return import_path9.default.join(paths.data, "activity.jsonl");
+  return import_path10.default.join(paths.data, "activity.jsonl");
 }
 async function appendActivity(paths, entries) {
   if (entries.length === 0) return;
   const file = activityFile(paths);
   try {
-    await import_promises6.default.mkdir(paths.data, { recursive: true });
-    await import_promises6.default.appendFile(file, entries.map((e) => `${JSON.stringify(e)}
+    await import_promises7.default.mkdir(paths.data, { recursive: true });
+    await import_promises7.default.appendFile(file, entries.map((e) => `${JSON.stringify(e)}
 `).join(""), "utf8");
-    const stat = await import_promises6.default.stat(file);
+    const stat = await import_promises7.default.stat(file);
     if (stat.size > SIZE_CHECK_BYTES) {
       const lines = (await readText(file)).split("\n").filter(Boolean);
       if (lines.length > MAX_LINES) {
@@ -41024,7 +41898,7 @@ async function readActivity(paths, opts = {}) {
   return opts.limit !== void 0 && entries.length > opts.limit ? entries.slice(-opts.limit) : entries;
 }
 function pathApi(platform) {
-  return platform === "win32" ? import_path11.default.win32 : import_path11.default;
+  return platform === "win32" ? import_path12.default.win32 : import_path12.default;
 }
 function normalizeWorktreePath(input, base, platform = process.platform) {
   const api = pathApi(platform);
@@ -41191,12 +42065,12 @@ var heldWriteLocks = new import_async_hooks.AsyncLocalStorage();
 function referencePath(dir, name) {
   const candidate = name.trim();
   if (!candidate || candidate === "." || candidate === "..") throw new Error(`Invalid reference name "${candidate}"`);
-  if (import_path10.default.basename(candidate) !== candidate) {
+  if (import_path11.default.basename(candidate) !== candidate) {
     throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
   }
-  const resolved = import_path10.default.resolve(dir, candidate);
-  const root = import_path10.default.resolve(dir);
-  if (resolved !== import_path10.default.join(root, import_path10.default.basename(resolved)) || !resolved.startsWith(root + import_path10.default.sep)) {
+  const resolved = import_path11.default.resolve(dir, candidate);
+  const root = import_path11.default.resolve(dir);
+  if (resolved !== import_path11.default.join(root, import_path11.default.basename(resolved)) || !resolved.startsWith(root + import_path11.default.sep)) {
     throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
   }
   return resolved;
@@ -41372,21 +42246,25 @@ var KanmerStore = class _KanmerStore {
    * proofless tickets in it.
    */
   async setBoard(board) {
-    await withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
-      const previous = await this.getBoard();
-      await this.assertNoStrandedColumns(previous, board);
-      await writeBoard(this.paths, board);
-    });
+    await this.withLeaseLock(
+      () => withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+        const previous = await this.getBoard();
+        await this.assertNoStrandedColumns(previous, board);
+        await writeBoard(this.paths, board);
+      })
+    );
   }
   /** Read, mutate, and write the board while holding the cross-process board lock. */
   async updateBoard(mutator) {
-    return withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
-      const previous = await this.getBoard();
-      const next = await mutator(structuredClone(previous));
-      await this.assertNoStrandedColumns(previous, next);
-      await writeBoard(this.paths, next);
-      return next;
-    });
+    return this.withLeaseLock(
+      () => withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+        const previous = await this.getBoard();
+        const next = await mutator(structuredClone(previous));
+        await this.assertNoStrandedColumns(previous, next);
+        await writeBoard(this.paths, next);
+        return next;
+      })
+    );
   }
   /** Reject a board write that removes a column still referenced by an item. */
   async assertNoStrandedColumns(previous, next) {
@@ -41480,7 +42358,7 @@ var KanmerStore = class _KanmerStore {
     await this.setBoard(board);
     if (kind === "area") {
       try {
-        await import_promises7.default.rmdir(areaDir(this.paths, id));
+        await import_promises8.default.rmdir(areaDir(this.paths, id));
       } catch {
       }
     }
@@ -41516,21 +42394,21 @@ var KanmerStore = class _KanmerStore {
     const warnings = [];
     let areaFolders = [];
     try {
-      areaFolders = await import_promises7.default.readdir(this.paths.areasRoot);
+      areaFolders = await import_promises8.default.readdir(this.paths.areasRoot);
     } catch {
     }
     for (const areaFolder of areaFolders) {
-      const areaPath = import_path10.default.join(this.paths.areasRoot, areaFolder);
+      const areaPath = import_path11.default.join(this.paths.areasRoot, areaFolder);
       let entries;
       try {
-        entries = await import_promises7.default.readdir(areaPath, { withFileTypes: true }).then(
+        entries = await import_promises8.default.readdir(areaPath, { withFileTypes: true }).then(
           (d) => d.filter((e) => e.isDirectory()).map((e) => e.name)
         );
       } catch {
         continue;
       }
       for (const ticketFolder of entries) {
-        const file = import_path10.default.join(areaPath, ticketFolder, `${ticketFolder}.md`);
+        const file = import_path11.default.join(areaPath, ticketFolder, `${ticketFolder}.md`);
         if (!await pathExists(file)) continue;
         try {
           const item = parseItem(await readText(file));
@@ -41561,16 +42439,16 @@ var KanmerStore = class _KanmerStore {
       const dir = typeDir(this.paths, type);
       let names;
       try {
-        names = await import_promises7.default.readdir(dir);
+        names = await import_promises8.default.readdir(dir);
       } catch {
         continue;
       }
       for (const name of names) {
         if (!name.endsWith(".md")) continue;
-        const file = import_path10.default.join(dir, name);
+        const file = import_path11.default.join(dir, name);
         try {
           const item = parseItem(await readText(file));
-          const fromName = import_path10.default.basename(name, ".md");
+          const fromName = import_path11.default.basename(name, ".md");
           if (item.id !== fromName) {
             warnings.push({
               file,
@@ -41594,12 +42472,12 @@ var KanmerStore = class _KanmerStore {
     itemFile(this.paths, "ticket", id);
     let areaFolders = [];
     try {
-      areaFolders = await import_promises7.default.readdir(this.paths.areasRoot);
+      areaFolders = await import_promises8.default.readdir(this.paths.areasRoot);
     } catch {
     }
     for (const areaFolder of areaFolders) {
-      const dir = import_path10.default.join(this.paths.areasRoot, areaFolder, id);
-      const file = import_path10.default.join(dir, `${id}.md`);
+      const dir = import_path11.default.join(this.paths.areasRoot, areaFolder, id);
+      const file = import_path11.default.join(dir, `${id}.md`);
       if (await pathExists(file)) return { kind: "v2", file, dir, areaFolder };
     }
     for (const type of ITEM_TYPES) {
@@ -41777,9 +42655,9 @@ var KanmerStore = class _KanmerStore {
         const targetFolder = safeAreaFolder(next.area ?? "");
         if (targetFolder !== null && targetFolder !== loc.areaFolder) {
           const newDir = ticketDirIn(this.paths, next.area ?? "", id);
-          await ensureDir(import_path10.default.dirname(newDir));
-          await import_promises7.default.rename(loc.dir, newDir);
-          file = import_path10.default.join(newDir, `${id}.md`);
+          await ensureDir(import_path11.default.dirname(newDir));
+          await import_promises8.default.rename(loc.dir, newDir);
+          file = import_path11.default.join(newDir, `${id}.md`);
         }
       }
       await writeFileAtomic(file, serialiseItem(next));
@@ -41963,11 +42841,14 @@ ${entry}`;
   // ---------------------------------------------------------------------------
   /** The lease lock file; gitignored on the board branch like every `.kanmer/**\/*.lock`. */
   leaseLockFile() {
-    return import_path10.default.join(this.paths.kanmer, "leases.lock");
+    return import_path11.default.join(this.paths.kanmer, "leases.lock");
   }
   /**
    * Run `work` inside this board's write lock (CORE-115, widened to every
-   * ticket-file writer by CORE-125).
+   * ticket-file writer by CORE-125 and to board-policy/release/reconciliation
+   * writers by CORE-132). A write that needs both locks always takes this lease
+   * lock before `board.yml.lock`, so policy updates cannot interleave between a
+   * release candidate's policy compare and its durable journal commit.
    *
    * `withExclusiveFileLock` is a cross-process exclusive-create lock and is
    * **not** re-entrant: a second acquire from the same process gets `EEXIST`,
@@ -42198,7 +43079,7 @@ ${entry}`;
       const controller = input.controller ?? input.assignee ?? next.assignee;
       if (controller) next.claim_controller = controller;
       else delete next.claim_controller;
-      next.lease_id = (0, import_crypto6.randomUUID)();
+      next.lease_id = (0, import_crypto7.randomUUID)();
       next.lease_revision = 1;
       const workspace = this.workspaceKey(input.worktree, input.branch);
       if (workspace) next.lease_workspace = workspace;
@@ -42315,7 +43196,7 @@ ${entry}`;
         assignee: input.assignee,
         claim_controller: input.controller ?? input.assignee,
         claim_expires_at: new Date(now.getTime() + timing.expiryMinutes * 6e4).toISOString(),
-        lease_id: (0, import_crypto6.randomUUID)(),
+        lease_id: (0, import_crypto7.randomUUID)(),
         lease_revision: (current.lease_revision ?? 0) + 1,
         lease_phase: current.lease_phase ?? "implementing",
         lease_heartbeat_at: nowText,
@@ -42345,16 +43226,17 @@ ${entry}`;
    * Apply ONE reconciliation action proposed by the FRD-028 inspector
    * (CORE-131). This is a dispatcher, not a mutation path: every branch reaches
    * an existing verb — `moveItem`, `releaseTicket` or `transferTicket` — and
-   * hands it the caller's `expectedRevision`, so the verb's own locked
-   * compare-and-set inside `withLeaseLock` is the atomicity boundary. There is
-   * no new lock section, no second ownership model and no new stage.
+   * hands it the caller's `expectedRevision`. The dispatcher holds the same
+   * re-entrant `withLeaseLock` section as release and ticket writes. The full
+   * release snapshot is read outside that lock and bracketed by the constant-size
+   * transaction epoch; the exact epoch is rechecked inside before the existing
+   * verb runs. This makes release observation, ticket CAS and mutation one
+   * consistency boundary without an unbounded history scan in the critical section.
    *
-   * The precondition re-check below reads the item OUTSIDE the lock, and that
-   * is deliberately not PR #286's defect: #286 took its CAS token from its own
-   * read, so the check validated nothing. Here `expectedRevision` comes from
-   * the caller — bound to the evidence the recommendation was computed from —
-   * and the verb re-reads and re-checks it under the lock. This read only fails
-   * fast and names the responsible controller for the audit line.
+   * `expectedRevision` still comes from the caller — bound to the evidence the
+   * recommendation was computed from — and the existing verb re-reads and
+   * re-checks it while re-entering this lock. No Git/GitHub work is moved into
+   * the critical section; only local release and ticket evidence is read here.
    *
    * Authority is unchanged: `review → implementing` is still judged by
    * `backwardMoveEffects`, so it needs a `needs-changes` attestation bound to
@@ -42363,6 +43245,51 @@ ${entry}`;
    * worktree and never cleans a workspace.
    */
   async applyReconciliation(id, input) {
+    const stateToken = (state) => JSON.stringify(state);
+    for (let sample = 0; sample < 3; sample += 1) {
+      let beforeState;
+      let snapshot;
+      let afterState;
+      try {
+        beforeState = await readReleaseStateRecord(this.paths);
+        snapshot = await this.releaseSnapshot();
+        afterState = await readReleaseStateRecord(this.paths);
+      } catch (error2) {
+        throw new Error(
+          `RECONCILIATION_DRIFT: "${id}" release transaction state is unreadable; re-run reconcile_ticket after the release records are repaired (${error2 instanceof Error ? error2.message : String(error2)}).`
+        );
+      }
+      if (stateToken(beforeState) !== stateToken(afterState)) continue;
+      let release = classifyReleaseEvidence(snapshot, id);
+      if (afterState === null && snapshot.pending.length === 0 && (snapshot.channels.length > 0 || snapshot.heads.length > 0 || snapshot.attempts.length > 0)) {
+        release = { state: "unavailable" };
+      }
+      let changed = false;
+      const result = await this.withLeaseLock(async () => {
+        if (await recoverPendingReleaseMutation(this.paths)) {
+          changed = true;
+          return null;
+        }
+        const currentState = await readReleaseStateRecord(this.paths);
+        if (stateToken(currentState) !== stateToken(afterState)) {
+          changed = true;
+          return null;
+        }
+        return this.applyReconciliationLocked(id, input, release.state);
+      });
+      if (!changed) return result;
+    }
+    throw new Error(
+      `RECONCILIATION_DRIFT: "${id}" release evidence changed while the recommendation was being applied; re-run reconcile_ticket against the current release state.`
+    );
+  }
+  /** The local-only reconciliation body; callers hold the re-entrant board write lock. */
+  async applyReconciliationLocked(id, input, releaseState) {
+    if (releaseState !== "not-applicable") {
+      throw new Error(
+        `RECONCILIATION_DRIFT: "${id}" release evidence is now ${releaseState}; the previously collected recommendation is no longer safe. Re-run reconcile_ticket.`
+      );
+    }
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
@@ -42543,7 +43470,7 @@ ${entry}`;
       const next = {
         ...current,
         claim_expires_at: this.claimExpiry(minutes),
-        lease_id: current.lease_id ?? (0, import_crypto6.randomUUID)(),
+        lease_id: current.lease_id ?? (0, import_crypto7.randomUUID)(),
         lease_revision: (current.lease_revision ?? 0) + 1,
         lease_phase: phase,
         lease_heartbeat_at: now,
@@ -42565,6 +43492,484 @@ ${entry}`;
         );
       }
       return next;
+    });
+  }
+  // ---------------------------------------------------------------------------
+  // Release-channel leases and immutable candidate identity (CORE-132, FRD-031)
+  //
+  // The same mechanism the ticket lease uses — one board-wide `withLeaseLock`
+  // critical section, records re-read inside it, a `lease_revision` CAS and a
+  // renewable expiry — applied to a different record, because a release channel
+  // is owned by a release *attempt* and has no ticket to hang off.
+  //
+  // Every verb below is pure filesystem work inside the lock. Nothing here
+  // spawns a subprocess or contacts a release service: the integration SHA and
+  // the "release service was unavailable" observation are both collected at the
+  // MCP boundary and passed in, exactly as CORE-131 collects Git/GitHub
+  // evidence before delegating to a locked store verb.
+  //
+  // These verbs append no activity op and write no ticket file. The records are
+  // themselves the durable audit — each carries its owner, its timestamps and
+  // its successor chain, and an attempt record is never deleted.
+  // ---------------------------------------------------------------------------
+  /** The channel a request names, defaulting to the board's resolved release branch. */
+  async resolveReleaseChannel(channel) {
+    const named = channel?.trim();
+    const resolved = named || resolveDelivery(await this.getBoard()).releaseBranch;
+    return normalizeReleaseChannel(resolved);
+  }
+  /** Every release record on this board, read without a lock and never throwing. */
+  async releaseSnapshot() {
+    return readReleaseSnapshot(this.paths);
+  }
+  /**
+   * Finish the one already-authorised release transaction before an explicit
+   * reconciliation apply performs its fresh read. The read-only inspector never
+   * calls this; the write tool does, under the same board lock as release verbs.
+   */
+  async recoverPendingReleaseForWrite() {
+    return this.withLeaseLock(() => recoverPendingReleaseMutation(this.paths));
+  }
+  /** How long a freshly taken or renewed release lease runs for. */
+  async releaseLeaseExpiry(now) {
+    const { expiryMinutes } = leaseConfig(await this.getBoard());
+    return new Date(now.getTime() + expiryMinutes * 6e4).toISOString();
+  }
+  /** Complete an interrupted write set, or fail closed, before reading ownership. */
+  async prepareReleaseMutation(channel) {
+    await recoverPendingReleaseMutation(this.paths);
+    await recoverReleaseMutation(this.paths, channel);
+  }
+  /**
+   * Re-read the policy inside the lock and bind it to the version collected
+   * alongside Git resolution. This prevents a SHA resolved under policy A from
+   * being minted with the release branch/candidate pattern from policy B.
+   */
+  async releasePolicy(expectedVersion) {
+    const policy = resolveDelivery(await this.getBoard());
+    const version2 = deliveryPolicyVersion(policy);
+    if (expectedVersion !== version2) {
+      throw new Error(
+        `RELEASE_POLICY_DRIFT: delivery policy changed after the integration SHA was collected (${expectedVersion} \u2192 ${version2}). Re-read the policy and resolve the SHA again.`
+      );
+    }
+    return { policy, version: version2 };
+  }
+  /**
+   * Re-read the channel lease and its attempt inside the lock and check the
+   * caller's authority and CAS. `lease_id` is identity (a mismatch means the lease was
+   * reclaimed — `LEASE_EXPIRED`, the same wording `renewTicket` uses) and
+   * `lease_revision` is the compare-and-swap (`Conflict:`, classified as
+   * `REVISION_CONFLICT` at the MCP boundary).
+   */
+  async readHeldChannel(channel, leaseId, leaseRevision, options2 = {}) {
+    const lease = await readChannelRecord(this.paths, channel);
+    if (!lease) {
+      throw new Error(
+        `LEASE_EXPIRED: release channel "${channel}" holds no lease; it was cleared by a successful or superseded attempt, or never acquired. Acquire it before recording anything against it.`
+      );
+    }
+    const attempt = await readAttemptRecord(this.paths, lease.attempt_id);
+    const head = await readChannelHeadRecord(this.paths, channel);
+    if (!head || !attempt || !releaseEndpointConsistent(head, lease, attempt)) {
+      throw new Error(
+        `RELEASE_RECORD_UNREADABLE: release channel "${channel}" does not agree with its durable head and immutable attempt ownership. Inspect and restore the records before mutation.`
+      );
+    }
+    if (lease.lease_id !== leaseId) {
+      throw new Error(
+        `LEASE_EXPIRED: release channel "${channel}" is now held by lease ${lease.lease_id} (attempt ${lease.attempt_id}), not ${leaseId}. The channel was reclaimed \u2014 stop and re-read it.`
+      );
+    }
+    if (!options2.allowForeignOwner && lease.owner !== this.actor) {
+      throw new Error(
+        `CLAIM_NOT_OWNED: release channel "${channel}" is held by ${lease.owner}; the actual caller is ${this.actor}. Lease id and revision are concurrency checks, not authority. Only the owner may renew, record, complete or fail; use supersede for an expired or explicitly operator-authorised takeover.`
+      );
+    }
+    if (lease.lease_revision !== leaseRevision) {
+      throw new Error(
+        `Conflict: release channel "${channel}" changed since you read it (lease_revision is now ${lease.lease_revision}, you expected ${leaseRevision}).`
+      );
+    }
+    return { lease, head, attempt };
+  }
+  /** Refuse any write to an attempt that has already reached a terminal outcome. */
+  static assertAttemptWritable(attempt) {
+    if (isTerminalAttempt(attempt)) {
+      throw new Error(
+        `RELEASE_ATTEMPT_TERMINAL: release attempt ${attempt.attempt_id} is ${attempt.outcome} and is frozen. A terminal attempt keeps its proof forever; mint a successor with supersede instead.`
+      );
+    }
+  }
+  static assertIntegrationSha(sha) {
+    const value = sha.trim();
+    if (!/^[0-9a-f]{40}$/i.test(value)) {
+      throw new Error(`Invalid integration SHA "${sha}": a release attempt names the exact 40-hex integration SHA.`);
+    }
+    return value.toLowerCase();
+  }
+  /** Every identity field is compared, so an immutable candidate stays immutable. */
+  static assertCandidateImmutable(before, after) {
+    for (const field of RELEASE_FROZEN_FIELDS) {
+      if (before[field] !== after[field]) {
+        throw new Error(
+          `RELEASE_CANDIDATE_IMMUTABLE: release attempt ${before.attempt_id} cannot change "${field}" ("${String(before[field])}" \u2192 "${String(after[field])}"). A changed candidate needs a new identity: supersede it.`
+        );
+      }
+    }
+  }
+  static mintAttempt(input) {
+    return {
+      schema: RELEASE_RECORD_SCHEMA,
+      attempt_id: attemptIdFor(input.channel, input.ordinal),
+      channel: input.channel,
+      ordinal: input.ordinal,
+      candidate_id: candidateIdentity(input.channel, input.integrationSha, input.ordinal),
+      candidate_ref: candidateRefFor(input.policy, input.channel, input.ordinal),
+      integration_sha: input.integrationSha,
+      release_branch: input.policy.releaseBranch,
+      delivery_policy_version: input.policyVersion,
+      created_at: input.at,
+      owner: input.owner,
+      supersedes: input.supersedes,
+      // A successor NEVER inherits evidence (FRD-031 AC3): included PRs and
+      // tickets describe intended scope and are supplied afresh, while the
+      // artifact manifest and verification state start empty because they
+      // belong to the candidate SHA that produced them.
+      release_tag: null,
+      included_prs: [...input.includedPrs],
+      included_tickets: [...input.includedTickets],
+      artifact_manifest: [],
+      verification_state: "pending",
+      retry: null,
+      outcome: "active",
+      terminal_at: null,
+      successor: null,
+      failure_reason: null
+    };
+  }
+  /** The durable high-water endpoint committed with a newly minted attempt. */
+  static releaseHead(attempt) {
+    return {
+      schema: RELEASE_RECORD_SCHEMA,
+      channel: attempt.channel,
+      latest_attempt_id: attempt.attempt_id,
+      next_ordinal: attempt.ordinal + 1
+    };
+  }
+  /**
+   * Take a release channel: mint an immutable candidate identity for the exact
+   * integration SHA and record the lease that serialises the channel.
+   *
+   * A channel that already carries a lease record is refused with
+   * `RELEASE_CHANNEL_HELD` whether that lease is live **or** expired. Expiry
+   * never releases anything here for the same reason `assertWorkspaceFree`
+   * ignores it for workspaces: an abandoned lease still owns its channel until
+   * somebody explicitly takes responsibility for the evidence it left behind.
+   * The reclaim is `supersedeReleaseAttempt`, which archives the incumbent with
+   * a successor rather than pretending it never happened.
+   */
+  async acquireReleaseChannel(input) {
+    const sha = _KanmerStore.assertIntegrationSha(input.integrationSha);
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const now = input.now ?? /* @__PURE__ */ new Date();
+      const existing = await readChannelRecord(this.paths, channel);
+      if (existing) {
+        const state = releaseLeaseExpired(existing, now) ? "expired" : "live";
+        throw new Error(
+          `RELEASE_CHANNEL_HELD: release channel "${channel}" is already held by lease ${existing.lease_id} (attempt ${existing.attempt_id}, held by ${existing.owner}, ${state}${existing.expires_at ? ` until ${existing.expires_at}` : ""}). ` + (state === "expired" ? `An expired release lease is reclaimed with supersede, never re-acquired: that archives the incumbent attempt with a successor and keeps its evidence.` : `One release owns a channel at a time \u2014 complete, fail or supersede the current attempt first.`)
+        );
+      }
+      const at = now.toISOString();
+      const owner = this.actor;
+      const { policy, version: policyVersion } = await this.releasePolicy(input.expectedPolicyVersion);
+      const previousHead = await readChannelHeadRecord(this.paths, channel);
+      const ordinal = await nextOrdinal(this.paths, channel);
+      const previousAttempt = previousHead ? await readAttemptRecord(this.paths, previousHead.latest_attempt_id) : null;
+      if (previousHead && (!previousAttempt || previousAttempt.outcome !== "released")) {
+        throw new Error(
+          `RELEASE_RECORD_UNREADABLE: channel "${channel}" has no lease but its durable head is not a completed release. Restore its ownership evidence before acquiring a successor.`
+        );
+      }
+      const attempt = _KanmerStore.mintAttempt({
+        channel,
+        ordinal,
+        integrationSha: sha,
+        policy,
+        policyVersion,
+        owner,
+        at,
+        supersedes: null,
+        includedPrs: input.includedPrs ?? [],
+        includedTickets: input.includedTickets ?? []
+      });
+      const lease = {
+        schema: RELEASE_RECORD_SCHEMA,
+        channel,
+        attempt_id: attempt.attempt_id,
+        lease_id: newReleaseLeaseId(),
+        lease_revision: 1,
+        owner,
+        acquired_at: at,
+        expires_at: await this.releaseLeaseExpiry(now),
+        heartbeat_at: at
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [
+          ...previousAttempt ? [{ before: previousAttempt, after: previousAttempt }] : [],
+          { before: null, after: attempt }
+        ],
+        head_record: { before: previousHead, after: _KanmerStore.releaseHead(attempt) },
+        channel_record: { before: null, after: lease }
+      });
+      return { channel, lease, attempt, leaseState: "current" };
+    });
+  }
+  /** Heartbeat and extend a release lease. The renewable half of the renewable expiry. */
+  async renewReleaseChannel(input) {
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      const now = input.now ?? /* @__PURE__ */ new Date();
+      const next = {
+        ...lease,
+        lease_revision: lease.lease_revision + 1,
+        heartbeat_at: now.toISOString(),
+        expires_at: await this.releaseLeaseExpiry(now)
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: attempt }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: next }
+      });
+      return { channel, lease: next, attempt, leaseState: "current" };
+    });
+  }
+  /**
+   * Record progress against the channel's current attempt: verification state,
+   * the release tag, included PRs and tickets, the artifact manifest, or one
+   * bounded "the release service was unavailable" observation.
+   *
+   * The attempt's identity fields are not accepted here, and
+   * `assertCandidateImmutable` proves that rather than trusting the signature —
+   * a changed integration SHA must mint a new candidate identity through
+   * supersede (FRD-031 AC3), never quietly re-point an existing one.
+   */
+  async recordReleaseProgress(input) {
+    const serviceUnavailable = input.serviceUnavailable?.trim();
+    if (input.serviceUnavailable !== void 0 && !serviceUnavailable) {
+      throw new Error(`RELEASE_INPUT_INVALID: serviceUnavailable must describe the observed release-service failure.`);
+    }
+    if (input.serviceUnavailable !== void 0 && input.serviceRecovered === true) {
+      throw new Error(
+        `RELEASE_INPUT_INVALID: one record action cannot report serviceUnavailable and serviceRecovered together.`
+      );
+    }
+    if (input.serviceRecovered !== void 0 && input.serviceRecovered !== true) {
+      throw new Error(`RELEASE_INPUT_INVALID: serviceRecovered is an observation flag and, when supplied, must be true.`);
+    }
+    if (input.verificationState === void 0 && input.releaseTag === void 0 && input.includedPrs === void 0 && input.includedTickets === void 0 && input.artifactManifest === void 0 && serviceUnavailable === void 0 && input.serviceRecovered !== true) {
+      throw new Error(
+        `RELEASE_INPUT_INVALID: record needs at least one progress field; use renew for a heartbeat with no progress.`
+      );
+    }
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      _KanmerStore.assertAttemptWritable(attempt);
+      const now = input.now ?? /* @__PURE__ */ new Date();
+      const next = {
+        ...attempt,
+        ...input.verificationState !== void 0 ? { verification_state: input.verificationState } : {},
+        ...input.releaseTag !== void 0 ? { release_tag: input.releaseTag.trim() || null } : {},
+        ...input.includedPrs !== void 0 ? { included_prs: [...input.includedPrs] } : {},
+        ...input.includedTickets !== void 0 ? { included_tickets: [...input.includedTickets] } : {},
+        ...input.artifactManifest !== void 0 ? { artifact_manifest: [...input.artifactManifest] } : {},
+        ...serviceUnavailable !== void 0 ? { retry: nextRetry(attempt.retry, serviceUnavailable, now) } : {},
+        ...input.serviceRecovered === true ? { retry: null } : {}
+      };
+      _KanmerStore.assertCandidateImmutable(attempt, next);
+      const nextLease = {
+        ...lease,
+        lease_revision: lease.lease_revision + 1,
+        heartbeat_at: now.toISOString(),
+        expires_at: await this.releaseLeaseExpiry(now)
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: next }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: nextLease }
+      });
+      return { channel, lease: nextLease, attempt: next, leaseState: "current" };
+    });
+  }
+  /**
+   * Archive the channel's current attempt with a successor and hand the lease
+   * to a freshly minted candidate (FRD-031 AC3 and AC4).
+   *
+   * This is one verb for two situations that are the same underneath:
+   * remediation at a new SHA, and reclaiming a lease whose owner has gone.
+   * The incumbent record is left intact apart from its terminal fields, so a
+   * failed or abandoned attempt keeps its proof, and the successor starts with
+   * empty evidence so candidate 1's evidence can never be read as candidate 2's.
+   */
+  async supersedeReleaseAttempt(input) {
+    const sha = _KanmerStore.assertIntegrationSha(input.integrationSha);
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(
+        channel,
+        input.leaseId,
+        input.leaseRevision,
+        { allowForeignOwner: true }
+      );
+      const now = input.now ?? /* @__PURE__ */ new Date();
+      const at = now.toISOString();
+      const owner = this.actor;
+      if (!releaseLeaseExpired(lease, now) && lease.owner !== owner && !isOperatorReason(input.reason)) {
+        throw new Error(
+          `CLAIM_LIVE: release channel "${channel}" is held by ${lease.owner} until ${lease.expires_at} and you are ${owner}. Wait for expiry, ask the owner to supersede, or pass a reason beginning "operator:".`
+        );
+      }
+      if (isTerminalAttempt(attempt) && attempt.outcome !== "failed") {
+        throw new Error(
+          `RELEASE_ATTEMPT_TERMINAL: release attempt ${attempt.attempt_id} is ${attempt.outcome} and is frozen; only a retained failed attempt can mint a successor.`
+        );
+      }
+      const { policy, version: policyVersion } = await this.releasePolicy(input.expectedPolicyVersion);
+      const successor = _KanmerStore.mintAttempt({
+        channel,
+        ordinal: head.next_ordinal,
+        integrationSha: sha,
+        policy,
+        policyVersion,
+        owner,
+        at,
+        supersedes: attempt.attempt_id,
+        includedPrs: input.includedPrs ?? [],
+        includedTickets: input.includedTickets ?? []
+      });
+      const archived = attempt.outcome === "failed" ? attempt : {
+        ...attempt,
+        outcome: "superseded",
+        terminal_at: at,
+        successor: successor.attempt_id,
+        ...input.reason !== void 0 && attempt.failure_reason === null ? { failure_reason: input.reason } : {}
+      };
+      const nextLease = {
+        schema: RELEASE_RECORD_SCHEMA,
+        channel,
+        attempt_id: successor.attempt_id,
+        lease_id: newReleaseLeaseId(),
+        lease_revision: 1,
+        owner,
+        acquired_at: at,
+        expires_at: await this.releaseLeaseExpiry(now),
+        heartbeat_at: at
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [
+          { before: attempt, after: archived },
+          { before: null, after: successor }
+        ],
+        head_record: { before: head, after: _KanmerStore.releaseHead(successor) },
+        channel_record: { before: lease, after: nextLease }
+      });
+      return { channel, lease: nextLease, attempt: successor, leaseState: "current" };
+    });
+  }
+  /**
+   * Finish a release successfully. The attempt becomes terminal `released` and
+   * the channel lease is **cleared** — FRD-031 AC4's "a successful terminal
+   * attempt clears the lease". The attempt record itself is never removed.
+   */
+  async completeReleaseAttempt(input) {
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      _KanmerStore.assertAttemptWritable(attempt);
+      const now = input.now ?? /* @__PURE__ */ new Date();
+      const next = {
+        ...attempt,
+        ...input.releaseTag !== void 0 ? { release_tag: input.releaseTag.trim() || null } : {},
+        ...input.artifactManifest !== void 0 ? { artifact_manifest: [...input.artifactManifest] } : {},
+        outcome: "released",
+        terminal_at: now.toISOString()
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: next }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: null }
+      });
+      return { channel, lease: null, attempt: next, leaseState: "cleared" };
+    });
+  }
+  /**
+   * Record a failed release. The attempt becomes terminal `failed` and keeps
+   * its proof; the channel lease is deliberately **retained**.
+   *
+   * FRD-031 clears the lease for a successful or superseded attempt and says
+   * nothing about a failed one, and goal.md says failed immutable attempts
+   * retain their proof. Keeping the channel means a second owner cannot start a
+   * release on top of unexamined failure evidence: the way forward is an
+   * explicit supersede, which records the successor. The lease still expires on
+   * the ordinary renewable rule, so nothing is wedged.
+   */
+  async failReleaseAttempt(input) {
+    const channel = await this.resolveReleaseChannel(input.channel);
+    await assertNoReleaseChannelCollision(this.paths, channel);
+    return this.withLeaseLock(async () => {
+      await this.prepareReleaseMutation(channel);
+      const { lease, head, attempt } = await this.readHeldChannel(channel, input.leaseId, input.leaseRevision);
+      _KanmerStore.assertAttemptWritable(attempt);
+      const now = input.now ?? /* @__PURE__ */ new Date();
+      const next = {
+        ...attempt,
+        outcome: "failed",
+        terminal_at: now.toISOString(),
+        failure_reason: input.reason,
+        verification_state: "failed"
+      };
+      const nextLease = {
+        ...lease,
+        lease_revision: lease.lease_revision + 1,
+        heartbeat_at: now.toISOString(),
+        expires_at: await this.releaseLeaseExpiry(now)
+      };
+      await commitReleaseMutation(this.paths, {
+        channel,
+        now,
+        attempts: [{ before: attempt, after: next }],
+        head_record: { before: head, after: head },
+        channel_record: { before: lease, after: nextLease }
+      });
+      return {
+        channel,
+        lease: nextLease,
+        attempt: next,
+        leaseState: releaseLeaseExpired(nextLease, now) ? "expired" : "current"
+      };
     });
   }
   /**
@@ -42667,7 +44072,7 @@ ${entry}`;
       }
       const file = docPathIn(loc.dir, doc);
       await this.assertRevision(loc, id, opts.expectedRevision);
-      await ensureDir(import_path10.default.dirname(file));
+      await ensureDir(import_path11.default.dirname(file));
       const existing = await pathExists(file) ? await readText(file) : null;
       if (opts.expectedVersion !== void 0) {
         const actual = existing === null ? null : contentVersion(existing);
@@ -42721,16 +44126,16 @@ ${content.trim()}
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
     const dir = docDirIn(loc.dir, "reference");
-    const base = (name ?? import_path10.default.basename(sourcePath)).trim();
+    const base = (name ?? import_path11.default.basename(sourcePath)).trim();
     referencePath(dir, base);
     await ensureDir(dir);
-    const ext = import_path10.default.extname(base);
+    const ext = import_path11.default.extname(base);
     const stem = base.slice(0, base.length - ext.length);
     for (let n = 1; ; n++) {
       const final = n === 1 ? base : `${stem}-${n}${ext}`;
       const destination = referencePath(dir, final);
       try {
-        await import_promises7.default.copyFile(sourcePath, destination, import_fs5.constants.COPYFILE_EXCL);
+        await import_promises8.default.copyFile(sourcePath, destination, import_fs5.constants.COPYFILE_EXCL);
         await this.appendActivityFor(id, "reference", final);
         return { name: final };
       } catch (err) {
@@ -42804,7 +44209,7 @@ ${content.trim()}
     const loc = await this.locateItem(id);
     if (!loc) return { deleted: false, cleanedLinks: [], bodyReferencesRemain: [] };
     if (loc.kind === "v2") {
-      await import_promises7.default.rm(loc.dir, { recursive: true, force: true });
+      await import_promises8.default.rm(loc.dir, { recursive: true, force: true });
     } else {
       await removeFile(loc.file);
     }
@@ -43113,7 +44518,7 @@ ${content.trim()}
   async setGroupDoc(id, rel, content) {
     if (!await readGroup(this.paths, id)) throw new Error(`No group with id "${id}"`);
     const file = groupDocPath(this.paths, id, rel);
-    await ensureDir(import_path10.default.dirname(file));
+    await ensureDir(import_path11.default.dirname(file));
     await writeFileAtomic(file, `${content.trim()}
 `);
     await appendActivity(this.paths, [this.activity(id, "doc", { field: `group:${rel}` })]);
@@ -43155,10 +44560,10 @@ ${content.trim()}
       await this.assertRevision(loc, id, opts.expectedRevision);
       const file = docPathIn(loc.dir, `scratch/${slug}`);
       const had = await pathExists(file);
-      await ensureDir(import_path10.default.dirname(file));
+      await ensureDir(import_path11.default.dirname(file));
       const block = `${content.trim()}
 `;
-      await import_promises7.default.appendFile(file, had ? `
+      await import_promises8.default.appendFile(file, had ? `
 ${block}` : block, "utf8");
       await appendActivity(this.paths, [
         this.activity(id, "doc", { field: `scratch/${slug}`, to: "append" })
@@ -43567,7 +44972,7 @@ async function migrateToV2(store2, opts = {}) {
   const ticketDest = /* @__PURE__ */ new Map();
   for (const t of tickets) {
     const folder = destAreaFolder(t, report.notes);
-    const dest = import_path12.default.join("areas", folder, t.id);
+    const dest = import_path13.default.join("areas", folder, t.id);
     ticketDest.set(t.id, folder);
     report.ticketMoves.push({ id: t.id, to: dest });
   }
@@ -43599,7 +45004,7 @@ async function migrateToV2(store2, opts = {}) {
   const ticketDestFile = /* @__PURE__ */ new Map();
   for (const t of tickets) {
     const dir = ticketDirIn(paths, ticketDest.get(t.id) === NO_AREA_DIR ? "" : t.area ?? "", t.id);
-    const dest = import_path12.default.join(dir, `${t.id}.md`);
+    const dest = import_path13.default.join(dir, `${t.id}.md`);
     ticketDestFile.set(t.id, dest);
     claim(dest, sourceKey2(t));
   }
@@ -43607,7 +45012,7 @@ async function migrateToV2(store2, opts = {}) {
   for (const c of conversions) {
     const folder = destAreaFolder(c, report.notes);
     const dir = ticketDirIn(paths, folder === NO_AREA_DIR ? "" : c.area ?? "", c.id);
-    const dest = import_path12.default.join(dir, `${c.id}.md`);
+    const dest = import_path13.default.join(dir, `${c.id}.md`);
     conversionDest.set(c.id, dest);
     claim(dest, sourceKey2(c));
   }
@@ -43617,22 +45022,22 @@ async function migrateToV2(store2, opts = {}) {
 - ${report.blockers.join("\n- ")}`);
   }
   if (dryRun) return report;
-  await import_promises8.default.mkdir(paths.areasRoot, { recursive: true });
+  await import_promises9.default.mkdir(paths.areasRoot, { recursive: true });
   await store2.setBoard(board);
   const legacyFile = (item) => {
     const dir = item.type === "ticket" ? paths.tickets : item.type === "plan" ? paths.plans : paths.research;
-    return import_path12.default.join(dir, `${item.id}.md`);
+    return import_path13.default.join(dir, `${item.id}.md`);
   };
   let resumed = false;
   for (const t of tickets) {
     const dest = ticketDestFile.get(t.id);
-    const dir = import_path12.default.dirname(dest);
+    const dir = import_path13.default.dirname(dest);
     const src = legacyFile(t);
     const destExists = await pathExists(dest);
     const srcExists = await pathExists(src);
     if (destExists && srcExists) {
       report.notes.push(
-        `${t.id} already exists at its v2 location; the legacy copy at ${import_path12.default.relative(paths.kanmer, src)} was left in place \u2014 compare and delete it by hand.`
+        `${t.id} already exists at its v2 location; the legacy copy at ${import_path13.default.relative(paths.kanmer, src)} was left in place \u2014 compare and delete it by hand.`
       );
       resumed = true;
       continue;
@@ -43645,13 +45050,13 @@ async function migrateToV2(store2, opts = {}) {
       report.notes.push(`${t.id} has no file at either its legacy or its v2 location \u2014 skipped.`);
       continue;
     }
-    await import_promises8.default.mkdir(dir, { recursive: true });
-    await import_promises8.default.rename(src, dest);
+    await import_promises9.default.mkdir(dir, { recursive: true });
+    await import_promises9.default.rename(src, dest);
   }
   for (const f of folds) {
     const folder = ticketDest.get(f.ticket.id) ?? NO_AREA_DIR;
     const dir = ticketDirIn(paths, folder === NO_AREA_DIR ? "" : f.ticket.area ?? "", f.ticket.id);
-    const target = import_path12.default.join(dir, `${f.as}.md`);
+    const target = import_path13.default.join(dir, `${f.as}.md`);
     const content = `# ${f.doc.title}
 
 ${f.doc.body.trim()}
@@ -43663,7 +45068,7 @@ ${f.doc.body.trim()}
           `${f.ticket.id}'s ${f.as}.md already holds "${f.doc.id}" \u2014 left as it was.`
         );
         resumed = true;
-        await import_promises8.default.rm(legacyFile(f.doc), { force: true });
+        await import_promises9.default.rm(legacyFile(f.doc), { force: true });
         continue;
       }
       await writeFileAtomic(target, `${existing.trimEnd()}
@@ -43677,7 +45082,7 @@ ${content}`);
     } else {
       await writeFileAtomic(target, content);
     }
-    await import_promises8.default.rm(legacyFile(f.doc), { force: true });
+    await import_promises9.default.rm(legacyFile(f.doc), { force: true });
   }
   for (const c of conversions) {
     const label = c.type === "plan" ? "legacy-plan" : "legacy-research";
@@ -43692,7 +45097,7 @@ ${content}`);
       if (already) {
         report.notes.push(`${c.id} was already converted to a ticket \u2014 left as it was.`);
         resumed = true;
-        await import_promises8.default.rm(legacyFile(c), { force: true });
+        await import_promises9.default.rm(legacyFile(c), { force: true });
         continue;
       }
     }
@@ -43707,9 +45112,9 @@ ${content}`);
       type: "ticket",
       labels: [.../* @__PURE__ */ new Set([...c.labels ?? [], label])]
     };
-    await import_promises8.default.mkdir(import_path12.default.dirname(destFile), { recursive: true });
+    await import_promises9.default.mkdir(import_path13.default.dirname(destFile), { recursive: true });
     await writeFileAtomic(destFile, serialiseItem(converted));
-    await import_promises8.default.rm(legacyFile(c), { force: true });
+    await import_promises9.default.rm(legacyFile(c), { force: true });
   }
   const foldedIds = new Set(folds.map((f) => f.doc.id));
   if (foldedIds.size > 0) {
@@ -43743,11 +45148,11 @@ ${content}`);
   }
   for (const dir of [paths.tickets, paths.plans, paths.research]) {
     try {
-      await import_promises8.default.rmdir(dir);
+      await import_promises9.default.rmdir(dir);
     } catch {
       if (await pathExists(dir)) {
         report.notes.push(
-          `${import_path12.default.basename(dir)}/ still has non-item files \u2014 left in place, remove it by hand.`
+          `${import_path13.default.basename(dir)}/ still has non-item files \u2014 left in place, remove it by hand.`
         );
       }
     }
@@ -43921,7 +45326,7 @@ async function migrateToV3(store2, opts = {}) {
     mapping.set(key, entry);
     if (!mapped) report.needsRestage.push({ id: item.id, from: item.status });
     for (const [from, dest] of Object.entries(DOC_MOVES)) {
-      if (await pathExists(import_path12.default.join(loc.dir, from))) {
+      if (await pathExists(import_path13.default.join(loc.dir, from))) {
         report.docMoves.push({ id: item.id, from, to: dest });
       }
     }
@@ -43953,18 +45358,18 @@ async function migrateToV3(store2, opts = {}) {
     const loc = await store2.locateItem(item.id);
     if (!loc || loc.kind !== "v2" || !loc.dir) continue;
     for (const [from, dest] of Object.entries(DOC_MOVES)) {
-      const src = import_path12.default.join(loc.dir, from);
+      const src = import_path13.default.join(loc.dir, from);
       if (!await pathExists(src)) continue;
-      const target = import_path12.default.join(loc.dir, ...dest.split("/"));
-      await ensureDir(import_path12.default.dirname(target));
-      if (!await pathExists(target)) await import_promises8.default.rename(src, target);
+      const target = import_path13.default.join(loc.dir, ...dest.split("/"));
+      await ensureDir(import_path13.default.dirname(target));
+      if (!await pathExists(target)) await import_promises9.default.rename(src, target);
     }
     for (const name of await listDirSafe(loc.dir)) {
       if (!name.startsWith(SCRATCH_PREFIX) || !name.endsWith(".md")) continue;
-      const src = import_path12.default.join(loc.dir, name);
-      const target = import_path12.default.join(loc.dir, "scratch", name.slice(SCRATCH_PREFIX.length));
-      await ensureDir(import_path12.default.dirname(target));
-      if (!await pathExists(target)) await import_promises8.default.rename(src, target);
+      const src = import_path13.default.join(loc.dir, name);
+      const target = import_path13.default.join(loc.dir, "scratch", name.slice(SCRATCH_PREFIX.length));
+      await ensureDir(import_path13.default.dirname(target));
+      if (!await pathExists(target)) await import_promises9.default.rename(src, target);
     }
     if (item.profile !== void 0 && item.priority === void 0) {
       resumed = true;
@@ -44006,7 +45411,7 @@ async function migrateToV3(store2, opts = {}) {
   next.defaultProfile ??= DEFAULT_PROFILE_ID;
   next.groupKinds ??= structuredClone(DEFAULT_GROUP_KINDS);
   next.proofTypes ??= [...DEFAULT_PROOF_TYPES];
-  await writeBoard(store2.paths, next);
+  await store2.setBoard(next);
   await writeVersion(store2.paths, {
     format: 3,
     migratedFrom: 2,
@@ -44022,19 +45427,19 @@ async function sweepStaleTemps(kanmerDir) {
   async function walk(dir) {
     let entries;
     try {
-      entries = await import_promises8.default.readdir(dir, { withFileTypes: true });
+      entries = await import_promises9.default.readdir(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const e of entries) {
-      const full = import_path12.default.join(dir, e.name);
+      const full = import_path13.default.join(dir, e.name);
       if (e.isDirectory()) {
         await walk(full);
       } else if (TMP_FILE_RE.test(e.name)) {
         try {
-          const st = await import_promises8.default.stat(full);
+          const st = await import_promises9.default.stat(full);
           if (st.mtimeMs < cutoff) {
-            await import_promises8.default.rm(full, { force: true });
+            await import_promises9.default.rm(full, { force: true });
             swept++;
           }
         } catch {
@@ -44047,7 +45452,7 @@ async function sweepStaleTemps(kanmerDir) {
 }
 async function listDirSafe(dir) {
   try {
-    return await import_promises8.default.readdir(dir);
+    return await import_promises9.default.readdir(dir);
   } catch {
     return [];
   }
@@ -44245,7 +45650,7 @@ async function readTicketDocuments(store2, id, docs) {
 
 // src/execution-packet.ts
 var import_node_child_process = require("child_process");
-var import_promises9 = require("fs/promises");
+var import_promises10 = require("fs/promises");
 var import_node_path5 = __toESM(require("path"), 1);
 var import_node_util = require("util");
 
@@ -44376,7 +45781,7 @@ function sameWorktreePath(left, right) {
 }
 async function physicalExistingPath(input) {
   try {
-    return { ok: true, path: canonicalProjectPath(await (0, import_promises9.realpath)(input)) };
+    return { ok: true, path: canonicalProjectPath(await (0, import_promises10.realpath)(input)) };
   } catch (error2) {
     return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
   }
@@ -44754,12 +46159,23 @@ async function getExecutionPacket(input) {
 
 // src/reconciliation.ts
 var import_node_child_process3 = require("child_process");
-var import_promises10 = __toESM(require("fs/promises"), 1);
+var import_promises11 = __toESM(require("fs/promises"), 1);
 var import_node_path6 = __toESM(require("path"), 1);
 var import_node_util3 = require("util");
 var import_gray_matter4 = __toESM(require_gray_matter(), 1);
 
 // src/errors.ts
+var RELEASE_HELD_PREFIX = "RELEASE_CHANNEL_HELD:";
+var RELEASE_CONFLICT_PREFIXES = [
+  "RELEASE_ATTEMPT_TERMINAL:",
+  "RELEASE_CANDIDATE_IMMUTABLE:",
+  "RELEASE_ATTEMPT_MISSING:",
+  "RELEASE_RECORD_UNREADABLE:",
+  "RELEASE_TRANSACTION_CONFLICT:",
+  "RELEASE_TRANSACTION_PENDING:",
+  "RELEASE_TRANSACTION_INVALID:",
+  "RELEASE_CHANNEL_CASE_COLLISION:"
+];
 var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
 var KanmerError = class extends Error {
   constructor(code, message) {
@@ -44771,7 +46187,12 @@ var KanmerError = class extends Error {
 };
 function classifiedCode(message) {
   if (message.startsWith("Conflict:")) return "REVISION_CONFLICT";
+  if (message.startsWith(RELEASE_HELD_PREFIX)) return "RELEASE_CHANNEL_HELD";
+  if (message.startsWith("RELEASE_POLICY_DRIFT:")) return "REVISION_CONFLICT";
+  if (message.startsWith("RELEASE_INPUT_INVALID:")) return "RECONCILIATION_INCONCLUSIVE";
+  if (message.startsWith("RECONCILIATION_DRIFT:")) return "RECONCILIATION_DRIFT";
   if (message.startsWith("LEASE_EXPIRED:")) return "LEASE_EXPIRED";
+  if (RELEASE_CONFLICT_PREFIXES.some((prefix) => message.startsWith(prefix))) return "LEASE_CONFLICT";
   if (LEASE_CONFLICT_PREFIXES.some((prefix) => message.startsWith(prefix))) return "LEASE_CONFLICT";
   if (/\b(?:entering|leaving)\b[^:\n]*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";
   return void 0;
@@ -44960,7 +46381,7 @@ async function collectPullRequestEvidence(store2, refs, run) {
   if (!selected) return { state: "unavailable", requiredChecks: "unavailable" };
   return pullRequestEvidence(selected.raw, await requiredChecksFor(store2, selected.selector, run));
 }
-async function workspaceEvidence(store2, worktree, branch, run, stat = import_promises10.default.stat, resolveCommonDir = gitCommonDirectory) {
+async function workspaceEvidence(store2, worktree, branch, run, stat = import_promises11.default.stat, resolveCommonDir = gitCommonDirectory) {
   if (!worktree) return { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" };
   const candidate = import_node_path6.default.resolve(store2.paths.repoRoot, worktree);
   if (normalPath(candidate) === normalPath(store2.paths.projectRoot)) return { state: "unavailable", recordedWorktree: worktree, boardWorktree: true, claimIdentity: "unavailable" };
@@ -45042,12 +46463,15 @@ async function collectReconciliationEvidence(store2, id, run = execFile4, option
     commits: await commitEvidence(item.commits ?? [], pullRequest, store2, run),
     pullRequest,
     proof: proofEvidence(await store2.getDoc(id, "proof")),
-    workspace: await workspaceEvidence(store2, item.worktree, item.branch, run, import_promises10.default.stat, options2.resolveCommonDir),
-    // CORE-132 owns persisted release attempts (the release-channel lease and
-    // candidate identity); CORE-116 delivered only policy and delivery state,
-    // neither of which is a release attempt. This collector must never
-    // manufacture a neutral observation for evidence it cannot inspect.
-    release: { state: "not-applicable" }
+    workspace: await workspaceEvidence(store2, item.worktree, item.branch, run, import_promises11.default.stat, options2.resolveCommonDir),
+    // Persisted release attempts (CORE-132, FRD-031). Read from
+    // `.kanmer/releases/` with plain fs reads — outside every lock, like every
+    // other evidence read here — and classified by the pure core function that
+    // owns the mapping. `readReleaseSnapshot` never throws: a record it cannot
+    // read sets `unreadable`, which classifies as `unavailable`, so this
+    // collector still never manufactures a neutral observation for evidence it
+    // cannot inspect.
+    release: classifyReleaseEvidence(await store2.releaseSnapshot(), id)
   };
 }
 function leaseRecoverySummary(evidence) {
@@ -45070,6 +46494,7 @@ async function reconcileTicket(store2, id, run, options2) {
   };
 }
 async function applyReconciliation(store2, input, run, options2) {
+  await store2.recoverPendingReleaseForWrite();
   const result = await reconcileTicket(store2, input.id, run, options2);
   const recommendation = result.recommendation;
   if (!recommendation) {
@@ -45108,6 +46533,272 @@ async function applyReconciliation(store2, input, run, options2) {
     recovery: leaseRecoverySummary(result.evidence)
   });
   return { ...applied, result };
+}
+
+// src/release.ts
+var import_node_child_process4 = require("child_process");
+var import_node_util4 = require("util");
+var execFile5 = (0, import_node_util4.promisify)(import_node_child_process4.execFile);
+var RELEASE_ACTIONS = ["acquire", "renew", "record", "supersede", "complete", "fail"];
+var RELEASE_REQUEST_FIELDS = [
+  "integrationSha",
+  "integrationRef",
+  "leaseId",
+  "leaseRevision",
+  "reason",
+  "releaseTag",
+  "verificationState",
+  "includedPrs",
+  "includedTickets",
+  "artifactManifest",
+  "serviceUnavailable",
+  "serviceRecovered"
+];
+var RELEASE_ACTION_FIELDS = {
+  acquire: ["integrationSha", "integrationRef", "includedPrs", "includedTickets"],
+  renew: ["leaseId", "leaseRevision"],
+  record: [
+    "leaseId",
+    "leaseRevision",
+    "releaseTag",
+    "verificationState",
+    "includedPrs",
+    "includedTickets",
+    "artifactManifest",
+    "serviceUnavailable",
+    "serviceRecovered"
+  ],
+  supersede: ["integrationSha", "integrationRef", "leaseId", "leaseRevision", "reason", "includedPrs", "includedTickets"],
+  complete: ["leaseId", "leaseRevision", "releaseTag", "artifactManifest"],
+  fail: ["leaseId", "leaseRevision", "reason"]
+};
+var RELEASE_FIELD_NAMES = {
+  integrationSha: "integration_sha",
+  integrationRef: "integration_ref",
+  leaseId: "lease_id",
+  leaseRevision: "lease_revision",
+  reason: "reason",
+  releaseTag: "release_tag",
+  verificationState: "verification_state",
+  includedPrs: "included_prs",
+  includedTickets: "included_tickets",
+  artifactManifest: "artifact_manifest",
+  serviceUnavailable: "service_unavailable",
+  serviceRecovered: "service_recovered"
+};
+function validateReleaseChannelRequest(input) {
+  if (input.channel !== void 0 && !input.channel.trim()) {
+    throw new KanmerError("RECONCILIATION_INCONCLUSIVE", `RELEASE_INPUT_INVALID: channel cannot be blank when supplied.`);
+  }
+  const allowed = new Set(RELEASE_ACTION_FIELDS[input.action]);
+  const rejected = RELEASE_REQUEST_FIELDS.filter((field) => input[field] !== void 0 && !allowed.has(field));
+  if (rejected.length > 0) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RELEASE_INPUT_INVALID: action "${input.action}" does not accept ${rejected.map((field) => RELEASE_FIELD_NAMES[field]).join(", ")}; nothing was written.`
+    );
+  }
+  if (input.integrationSha !== void 0 && input.integrationRef !== void 0) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RELEASE_INPUT_INVALID: pass integration_sha or integration_ref, not both.`
+    );
+  }
+  if (input.integrationRef !== void 0 && !input.integrationRef.trim()) {
+    throw new KanmerError("RECONCILIATION_INCONCLUSIVE", `RELEASE_INPUT_INVALID: integration_ref cannot be blank when supplied.`);
+  }
+  if (input.action !== "fail" && input.reason !== void 0 && !input.reason.trim()) {
+    throw new KanmerError("RECONCILIATION_INCONCLUSIVE", `RELEASE_INPUT_INVALID: reason cannot be blank when supplied.`);
+  }
+  if (input.serviceUnavailable !== void 0 && !input.serviceUnavailable.trim()) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RELEASE_INPUT_INVALID: service_unavailable must describe the observed failure.`
+    );
+  }
+  if (input.serviceUnavailable !== void 0 && input.serviceRecovered === true) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RELEASE_INPUT_INVALID: one record action cannot report service_unavailable and service_recovered together.`
+    );
+  }
+  if (input.serviceRecovered !== void 0 && input.serviceRecovered !== true) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RELEASE_INPUT_INVALID: service_recovered, when supplied, must be true.`
+    );
+  }
+  if (input.action === "record" && ![
+    input.releaseTag,
+    input.verificationState,
+    input.includedPrs,
+    input.includedTickets,
+    input.artifactManifest,
+    input.serviceUnavailable,
+    input.serviceRecovered
+  ].some((value) => value !== void 0)) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RELEASE_INPUT_INVALID: record needs at least one progress field; use renew for a heartbeat with no progress.`
+    );
+  }
+}
+function requireLease(input) {
+  const leaseRevision = input.leaseRevision;
+  if (!input.leaseId?.trim() || typeof leaseRevision !== "number" || !Number.isSafeInteger(leaseRevision) || leaseRevision < 1) {
+    throw new KanmerError(
+      "LEASE_CONFLICT",
+      `LEASE_ID_REQUIRED: release action "${input.action}" writes through the channel's current lease, so it needs both lease_id and lease_revision (read them from get_status.release or the result of your last release_channel call).`
+    );
+  }
+  return { leaseId: input.leaseId, leaseRevision };
+}
+async function resolveIntegrationCandidate(store2, input, run = execFile5) {
+  const policy = resolveDelivery(await store2.getBoard());
+  const policyVersion = deliveryPolicyVersion(policy);
+  if (input.integrationSha !== void 0) return { integrationSha: input.integrationSha, policyVersion };
+  const explicitRef = input.integrationRef?.trim();
+  const ref = explicitRef || `refs/heads/${policy.integrationBranch}`;
+  try {
+    const { stdout } = await run("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
+      cwd: store2.paths.repoRoot,
+      windowsHide: true,
+      timeout: GIT_TIMEOUT_MS,
+      maxBuffer: GIT_MAX_BUFFER
+    });
+    const sha = stdout.trim();
+    if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error(`git rev-parse returned "${sha}"`);
+    return { integrationSha: sha, policyVersion };
+  } catch (error2) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RELEASE_SHA_UNAVAILABLE: could not resolve "${ref}" to an exact commit in ${store2.paths.repoRoot} (${error2 instanceof Error ? error2.message : String(error2)}). A candidate identity is never minted from a guessed SHA \u2014 fetch the ref, or pass integration_sha explicitly.`
+    );
+  }
+}
+async function releaseChannelAction(store2, input, run = execFile5) {
+  validateReleaseChannelRequest(input);
+  const channel = input.channel?.trim() || void 0;
+  switch (input.action) {
+    case "acquire": {
+      const candidate = await resolveIntegrationCandidate(store2, input, run);
+      return store2.acquireReleaseChannel({
+        ...channel ? { channel } : {},
+        integrationSha: candidate.integrationSha,
+        expectedPolicyVersion: candidate.policyVersion,
+        ...input.includedPrs ? { includedPrs: input.includedPrs } : {},
+        ...input.includedTickets ? { includedTickets: input.includedTickets } : {}
+      });
+    }
+    case "renew":
+      return store2.renewReleaseChannel({
+        ...channel ? { channel } : {},
+        ...requireLease(input)
+      });
+    case "record":
+      return store2.recordReleaseProgress({
+        ...channel ? { channel } : {},
+        ...requireLease(input),
+        ...input.verificationState !== void 0 ? { verificationState: input.verificationState } : {},
+        ...input.releaseTag !== void 0 ? { releaseTag: input.releaseTag } : {},
+        ...input.includedPrs !== void 0 ? { includedPrs: input.includedPrs } : {},
+        ...input.includedTickets !== void 0 ? { includedTickets: input.includedTickets } : {},
+        ...input.artifactManifest !== void 0 ? { artifactManifest: input.artifactManifest } : {},
+        ...input.serviceUnavailable !== void 0 ? { serviceUnavailable: input.serviceUnavailable } : {},
+        ...input.serviceRecovered !== void 0 ? { serviceRecovered: input.serviceRecovered } : {}
+      });
+    case "supersede": {
+      const lease = requireLease(input);
+      const candidate = await resolveIntegrationCandidate(store2, input, run);
+      return store2.supersedeReleaseAttempt({
+        ...channel ? { channel } : {},
+        ...lease,
+        integrationSha: candidate.integrationSha,
+        expectedPolicyVersion: candidate.policyVersion,
+        ...input.reason !== void 0 ? { reason: input.reason.trim() } : {},
+        ...input.includedPrs ? { includedPrs: input.includedPrs } : {},
+        ...input.includedTickets ? { includedTickets: input.includedTickets } : {}
+      });
+    }
+    case "complete":
+      return store2.completeReleaseAttempt({
+        ...channel ? { channel } : {},
+        ...requireLease(input),
+        ...input.releaseTag !== void 0 ? { releaseTag: input.releaseTag } : {},
+        ...input.artifactManifest !== void 0 ? { artifactManifest: input.artifactManifest } : {}
+      });
+    case "fail":
+      if (!input.reason?.trim()) {
+        throw new KanmerError(
+          "RECONCILIATION_INCONCLUSIVE",
+          `RELEASE_REASON_REQUIRED: a failed release attempt keeps its proof forever, so it records why it failed. Pass reason.`
+        );
+      }
+      return store2.failReleaseAttempt({
+        ...channel ? { channel } : {},
+        ...requireLease(input),
+        reason: input.reason.trim()
+      });
+    default: {
+      const exhaustive = input.action;
+      throw new Error(`Unknown release action "${String(exhaustive)}"`);
+    }
+  }
+}
+async function releaseStatus(store2, now = /* @__PURE__ */ new Date()) {
+  const snapshot = await store2.releaseSnapshot();
+  const byId = new Map(snapshot.attempts.map((attempt) => [attempt.attempt_id, attempt]));
+  const successorByPredecessor = /* @__PURE__ */ new Map();
+  for (const attempt of snapshot.attempts) {
+    if (attempt.supersedes !== null && !successorByPredecessor.has(attempt.supersedes)) {
+      successorByPredecessor.set(attempt.supersedes, attempt.attempt_id);
+    }
+  }
+  return {
+    channels: snapshot.channels.map((lease) => {
+      const attempt = byId.get(lease.attempt_id) ?? null;
+      const expires = Date.parse(lease.expires_at);
+      return {
+        channel: lease.channel,
+        attemptId: lease.attempt_id,
+        candidateId: attempt?.candidate_id ?? null,
+        candidateRef: attempt?.candidate_ref ?? null,
+        integrationSha: attempt?.integration_sha ?? null,
+        owner: lease.owner,
+        leaseId: lease.lease_id,
+        leaseRevision: lease.lease_revision,
+        state: !Number.isNaN(expires) && expires < now.getTime() ? "expired" : "current",
+        expiresAt: lease.expires_at,
+        outcome: attempt?.outcome ?? null
+      };
+    }),
+    attempts: snapshot.attempts.map((attempt) => ({
+      attemptId: attempt.attempt_id,
+      channel: attempt.channel,
+      ordinal: attempt.ordinal,
+      candidateId: attempt.candidate_id,
+      candidateRef: attempt.candidate_ref,
+      integrationSha: attempt.integration_sha,
+      releaseBranch: attempt.release_branch,
+      deliveryPolicyVersion: attempt.delivery_policy_version,
+      owner: attempt.owner,
+      createdAt: attempt.created_at,
+      outcome: attempt.outcome,
+      terminalAt: attempt.terminal_at,
+      failureReason: attempt.failure_reason,
+      verificationState: attempt.verification_state,
+      retry: attempt.retry,
+      includedPrs: attempt.included_prs,
+      includedTickets: attempt.included_tickets,
+      releaseTag: attempt.release_tag,
+      artifactManifest: attempt.artifact_manifest,
+      predecessor: attempt.supersedes,
+      successor: attempt.successor ?? successorByPredecessor.get(attempt.attempt_id) ?? null
+    })),
+    attemptCount: snapshot.attempts.length,
+    pendingTransactions: snapshot.pending.map((transaction) => transaction.channel),
+    unreadable: snapshot.unreadable
+  };
 }
 
 // src/dispatch-policy.ts
@@ -45155,7 +46846,7 @@ function dispatchPolicyView(policy) {
 }
 
 // src/project-registry.ts
-var import_promises11 = require("fs/promises");
+var import_promises12 = require("fs/promises");
 var import_node_path7 = __toESM(require("path"), 1);
 var ENDPOINT_REGISTRY_ENV = "KANMER_ENDPOINT_REGISTRY";
 var ENDPOINT_REGISTRY_SCHEMA = 1;
@@ -45211,7 +46902,7 @@ function parseRegistry(text) {
 async function readRegistry(file) {
   let text;
   try {
-    text = await (0, import_promises11.readFile)(file, "utf8");
+    text = await (0, import_promises12.readFile)(file, "utf8");
   } catch (error2) {
     if (error2.code === "ENOENT") return { exists: false, parsed: null };
     return { exists: true, parsed: { ok: false, error: `registry could not be read: ${error2.message}` } };
@@ -45339,11 +47030,11 @@ async function observeRegistry(env, home, deps, bound, filter) {
 
 // src/sources.ts
 var import_node_crypto3 = require("crypto");
-var import_promises12 = require("dns/promises");
+var import_promises13 = require("dns/promises");
 var import_node_https = require("https");
 var import_node_net = require("net");
 var import_node_stream = require("stream");
-var import_promises13 = require("fs/promises");
+var import_promises14 = require("fs/promises");
 var import_node_path8 = __toESM(require("path"), 1);
 var LLMS_TXT_POLICY = Object.freeze({
   maxLinkedPages: 32,
@@ -45542,7 +47233,7 @@ async function assertSafeCacheDirectory(cacheDir) {
   for (const segment of relative ? relative.split(import_node_path8.default.sep) : []) {
     current = import_node_path8.default.join(current, segment);
     try {
-      const entry = await (0, import_promises13.lstat)(current);
+      const entry = await (0, import_promises14.lstat)(current);
       if (entry.isSymbolicLink()) throw new Error(`Refusing symlinked source cache path: ${current}`);
       if (!entry.isDirectory()) throw new Error(`Source cache path is not a directory: ${current}`);
     } catch (error2) {
@@ -45553,9 +47244,9 @@ async function assertSafeCacheDirectory(cacheDir) {
 }
 async function readCache(file) {
   try {
-    const metadata = await (0, import_promises13.lstat)(file);
+    const metadata = await (0, import_promises14.lstat)(file);
     if (metadata.isSymbolicLink() || !metadata.isFile() || metadata.size > MAX_CACHE_FILE_BYTES) return null;
-    const parsed = JSON.parse(await (0, import_promises13.readFile)(file, "utf8"));
+    const parsed = JSON.parse(await (0, import_promises14.readFile)(file, "utf8"));
     if (!parsed || typeof parsed !== "object") return null;
     const cache = parsed;
     if (typeof cache.url !== "string" || typeof cache.fetchedAt !== "string" || typeof cache.expiresAt !== "string" || !Array.isArray(cache.documents) || !cache.documents.every(
@@ -45808,7 +47499,7 @@ async function fetchLlmsTxt(options2) {
   const fetchImpl = options2.fetchImpl ?? fetch;
   const timeoutMs = options2.timeoutMs ?? LLMS_TXT_POLICY.timeoutMs;
   const boundFetch = options2.requestImpl ?? (options2.fetchImpl ? void 0 : pinnedFetch);
-  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname3) => (await (0, import_promises12.lookup)(hostname3, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
+  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname3) => (await (0, import_promises13.lookup)(hostname3, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   await assertSafeCacheDirectory(options2.cacheDir);
   const cacheFile = cachePath(options2.cacheDir, root.toString());
@@ -45879,7 +47570,7 @@ async function fetchLlmsTxt(options2) {
         lastModified: rootResponse.lastModified ?? cached3.lastModified
       };
       await assertSafeCacheDirectory(options2.cacheDir);
-      await (0, import_promises13.mkdir)(options2.cacheDir, { recursive: true });
+      await (0, import_promises14.mkdir)(options2.cacheDir, { recursive: true });
       await writeCache(cacheFile, refreshed);
       return {
         sourceUrl: cached3.url,
@@ -45930,7 +47621,7 @@ async function fetchLlmsTxt(options2) {
       failures
     };
     await assertSafeCacheDirectory(options2.cacheDir);
-    await (0, import_promises13.mkdir)(options2.cacheDir, { recursive: true });
+    await (0, import_promises14.mkdir)(options2.cacheDir, { recursive: true });
     await writeCache(cacheFile, cache);
     return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
   });
@@ -45954,10 +47645,10 @@ function validateLlmsSource(source) {
 }
 
 // src/index.ts
-var execFile5 = (0, import_node_util4.promisify)(import_node_child_process4.execFile);
+var execFile6 = (0, import_node_util5.promisify)(import_node_child_process5.execFile);
 async function inspectBoardBranch(root) {
   try {
-    const { stdout } = await execFile5("git", ["symbolic-ref", "--short", "HEAD"], {
+    const { stdout } = await execFile6("git", ["symbolic-ref", "--short", "HEAD"], {
       cwd: root,
       windowsHide: true
     });
@@ -45969,7 +47660,7 @@ async function inspectBoardBranch(root) {
 async function inspectBoardSync(root, branch) {
   const run = async (args) => {
     try {
-      const { stdout } = await execFile5("git", args, { cwd: root, windowsHide: true, timeout: 15e3 });
+      const { stdout } = await execFile6("git", args, { cwd: root, windowsHide: true, timeout: 15e3 });
       return stdout.trim() || null;
     } catch {
       return null;
@@ -45990,15 +47681,15 @@ async function inspectBoardSync(root, branch) {
     behind: Number.isFinite(behind) ? behind : 0
   };
 }
-function boardWorktreeRepair(boardSource, actualBranch, expectedBranch, path21) {
+function boardWorktreeRepair(boardSource, actualBranch, expectedBranch, path22) {
   if (boardSource === "default") {
-    return `This path is serving a synthesized default board; check ${path21} when tickets are expected.`;
+    return `This path is serving a synthesized default board; check ${path22} when tickets are expected.`;
   }
   if (actualBranch === expectedBranch) return "No repair is required.";
   if (actualBranch) {
     return `Board worktree is on "${actualBranch}", expected "${expectedBranch}". Restore the board worktree through Kanmer setup or board Git repair.`;
   }
-  return `Board branch inspection failed or HEAD is detached. Restore ${path21} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
+  return `Board branch inspection failed or HEAD is detached. Restore ${path22} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
 }
 var projectRoot;
 var rootSource;
@@ -46063,7 +47754,7 @@ async function resolveLocation() {
 async function resolveLocationFor(input) {
   let remoteOrigin = null;
   try {
-    const { stdout } = await execFile5("git", ["config", "--get", "remote.origin.url"], {
+    const { stdout } = await execFile6("git", ["config", "--get", "remote.origin.url"], {
       cwd: input.boardPath,
       windowsHide: true,
       timeout: 15e3
@@ -46367,6 +48058,11 @@ function createKanmerMcpServer(policy = "local-stdio") {
          * not know the key, round-tripped the file.
          */
         delivery: { ...resolveDelivery(board), source: deliveryPolicySource(board) },
+        // FRD-031 release serialization (CORE-132). The read side of
+        // `release_channel`, reported here rather than as its own tool: it
+        // answers "is the release channel clear?" in the orientation call every
+        // session already makes.
+        release: await releaseStatus(store),
         deploymentTracking: board.deployment !== void 0,
         boardWorktree: {
           path: projectRoot,
@@ -46550,7 +48246,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "reconcile_ticket",
     {
       title: "Inspect a ticket's reconciliation state (read-only)",
-      description: "Read one ticket's board, claim, proof, recorded-workspace, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. This is a dry-run inspector only: it never mutates the board, Git, workspace, checks or release state, and there is no apply surface \u2014 an operator or controller acts on the recommendation through the ordinary tools. Claim state is current | expired | unclaimed with review_round/remediation_budget. Unavailable GitHub/CI/workspace facts are reported as inconclusive, never invented. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
+      description: "Read one ticket's board, claim, proof, recorded-workspace, local release-sidecar, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. This inspector is read-only: it never mutates the board, Git, workspace, checks or release state. Apply one still-current recommendation only through apply_reconciliation, which re-collects external evidence and rechecks the release epoch plus ticket revision before delegating to the existing mutation verbs. Claim state is current | expired | unclaimed with review_round/remediation_budget. Unavailable GitHub/CI/workspace/release facts are reported as inconclusive, never invented. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
       inputSchema: { id: external_exports.string().describe("Existing ticket id") },
       annotations: { readOnlyHint: true, openWorldHint: true }
     },
@@ -46560,11 +48256,11 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "apply_reconciliation",
     {
       title: "Apply a reconciliation recommendation",
-      description: "Apply the ONE recovery action reconcile_ticket currently recommends for a ticket, and only while it is still current (FRD-028). The action is never supplied by the caller: this re-collects and re-classifies through the same read-only inspector, then applies what the fresh evidence supports. `expected_revision` is the `revision` from the recommendation you are applying \u2014 the document-inclusive revision, so a proof, plan or review record rewritten since is a structured REVISION_CONFLICT and nothing is written. No recommendation at all (a `transient` or `inconclusive` verification failure, inconclusive evidence, or the protected board worktree) is a normal RECONCILIATION_INCONCLUSIVE refusal, not an error. The action set is exhaustive and composed only of existing verbs: MOVE_TO_VERIFYING (merged Review), MOVE_TO_DONE (PASS proof in Verifying), MOVE_TO_IMPLEMENTING (closed-unmerged or worker-less Review), ROUTE_VERIFICATION_FAILURE (a FAIL proof's `failure_class`: implementation \u2192 Implementing, plan \u2192 Preparing), RELEASE_CLEAN_TERMINAL_CLAIM (a Done ticket's clean, identity-matched claim) and RECOVER_EXPIRED_CLAIM (transfer an expired lease, preserving branch, worktree and any dirty work). Authority is not widened: a backward move is judged by the existing contract, so Review \u2192 Implementing still needs a needs-changes attestation bound to this ticket's PR or a `reason` beginning `operator:` (REVIEW_RETURN_NEEDS_ATTESTATION otherwise), and a live lease still refuses with CLAIM_LIVE. Every applied action appends one durable line to `## Transitions` in scratch/execution.md naming the action, stage or controller change and the revision. It never deletes a worktree or branch, cleans or force-pushes a workspace, bypasses a required check, adds a stage, or mutates the Kanmer board worktree \u2014 which is refused as a target in every path.",
+      description: "Apply the ONE recovery action reconcile_ticket currently recommends for a ticket, and only while it is still current (FRD-028). The action is never supplied by the caller: this first finishes at most one already-authorised bounded release transaction left by an interrupted writer, then re-collects and re-classifies through the same read-only inspector. reconcile_ticket itself remains mutation-free. `expected_revision` is the `revision` from the recommendation you are applying \u2014 the document-inclusive revision, so a proof, plan or review record rewritten since is a structured REVISION_CONFLICT and no ticket or reconciliation audit record is written. Prior release crash recovery may still complete before that refusal. No recommendation at all (a `transient` or `inconclusive` verification failure, inconclusive evidence, or the protected board worktree) is a normal RECONCILIATION_INCONCLUSIVE refusal, not an error. Git/GitHub and full release-history collection stay outside the write lock; the store samples the constant-size release transaction epoch around that snapshot, then validates the exact epoch inside the lock. If release evidence changes, it retries the bounded collection and proceeds only when freshly classified evidence is still safe; otherwise RECONCILIATION_DRIFT refuses it. This binds release observation, ticket CAS and mutation without scanning retained history in the critical section. The action set is exhaustive and composed only of existing verbs: MOVE_TO_VERIFYING (merged Review), MOVE_TO_DONE (PASS proof in Verifying), MOVE_TO_IMPLEMENTING (closed-unmerged or worker-less Review), ROUTE_VERIFICATION_FAILURE (a FAIL proof's `failure_class`: implementation \u2192 Implementing, plan \u2192 Preparing), RELEASE_CLEAN_TERMINAL_CLAIM (a Done ticket's clean, identity-matched claim) and RECOVER_EXPIRED_CLAIM (transfer an expired lease, preserving branch, worktree and any dirty work). Authority is not widened: a backward move is judged by the existing contract, so Review \u2192 Implementing still needs a needs-changes attestation bound to this ticket's PR or a `reason` beginning `operator:` (REVIEW_RETURN_NEEDS_ATTESTATION otherwise), and a live lease still refuses with CLAIM_LIVE. Every applied action appends one durable line to `## Transitions` in scratch/execution.md naming the action, stage or controller change and the revision. It never deletes a worktree or branch, cleans or force-pushes a workspace, bypasses a required check, adds a stage, or mutates the Kanmer board worktree \u2014 which is refused as a target in every path.",
       inputSchema: {
         id: external_exports.string().describe("Existing ticket id"),
         expected_revision: external_exports.string().describe(
-          "Required. The `revision` carried by the recommendation you are applying (from reconcile_ticket). Refused with REVISION_CONFLICT if the ticket or ANY of its pipeline documents changed since; nothing is written."
+          "Required. The `revision` carried by the recommendation you are applying (from reconcile_ticket). Refused with REVISION_CONFLICT if the ticket or ANY of its pipeline documents changed since; no ticket or reconciliation audit record is written. A recoverable release transaction already authorised by a prior release verb may still be completed first."
         ),
         reason: external_exports.string().optional().describe(
           "Reason for a backward move, judged by the ordinary backward-move contract. Required for Review \u2192 Implementing unless a needs-changes attestation is bound to this ticket's PR, and only a reason beginning `operator:` overrides that. A verification-failure route defaults to `proof FAIL <class>: \u2026` when omitted."
@@ -46581,6 +48277,52 @@ function createKanmerMcpServer(policy = "local-stdio") {
         ...controller !== void 0 ? { controller } : {}
       }))
     )
+  );
+  server.registerTool(
+    "release_channel",
+    {
+      title: "Own and record one release channel",
+      description: "Serialize releases on one normalized channel (FRD-031). ONE renewable lease owns it at a time. Immutable identity includes the exact integration SHA and the delivery-policy version collected with it; policy drift is refused before mint. A durable per-channel high-water head survives lease clearing, supplies the only next ordinal without scanning retained history under the write lock, and makes missing immutable evidence fail closed. Lock-free snapshots require every canonical ordinal below the head, and schema-1 objects reject unknown keys. Every record, relation and enum is validated, malformed ownership fails closed, and a per-channel write-ahead journal commits attempt, head and lease endpoints recoverably after interruption. `acquire` resolves or accepts the SHA and takes an absent channel; live OR expired ownership is RELEASE_CHANNEL_HELD. `renew` heartbeats; `record` writes progress and also renews expiry. `service_unavailable` advances a numeric retry schedule that freezes whole at exhaustion. `supersede` authorises against the actual calling actor, archives an active attempt, and mints a successor with EMPTY evidence. An already failed terminal attempt remains exactly failed and is linked only from its successor. `complete` clears the lease; `fail` retains the lease and exact proof. Every ordinary write after acquire names the current `lease_id` and `lease_revision` AND must come from the actual lease owner; public CAS values are not authority. Fields that do not belong to the selected action and a supersede missing its lease CAS are refused before Git or board mutation, and one record cannot report both service unavailable and recovered. Read complete current/terminal evidence, predecessor/successor links and pending recovery state from `get_status.release`. Records live in `.kanmer/releases/`, never board.yml, and are never a stage gate.",
+      inputSchema: {
+        action: external_exports.enum(RELEASE_ACTIONS).describe("acquire | renew | record | supersede | complete | fail"),
+        channel: external_exports.string().optional().describe("Release channel id; defaults to the board's resolved release branch (get_status.delivery.releaseBranch)"),
+        integration_sha: external_exports.string().optional().describe("Exact 40-hex integration SHA for acquire/supersede. Omit to resolve `integration_ref` with a bounded git rev-parse."),
+        integration_ref: external_exports.string().optional().describe("Explicit Git ref to resolve for acquire/supersede; when omitted, the configured integration branch is resolved through refs/heads. A ref that cannot be resolved is refused, never guessed."),
+        lease_id: external_exports.string().min(1).optional().describe("The channel's current lease id; required for every action but acquire"),
+        lease_revision: external_exports.number().int().positive().optional().describe("The channel's current lease revision; required for every action but acquire"),
+        reason: external_exports.string().optional().describe("Required by `fail`. On `supersede`, required to take a LIVE lease you do not own, and only when it begins `operator:`."),
+        release_tag: external_exports.string().optional().describe('Recorded release tag; "" clears it'),
+        verification_state: external_exports.enum(["pending", "passed", "failed"]).optional().describe("The attempt's recorded verification state \u2014 advisory, never a stage gate"),
+        included_prs: external_exports.array(external_exports.string()).optional().describe("PRs this attempt includes (replaces the recorded list)"),
+        included_tickets: external_exports.array(external_exports.string()).optional().describe("Tickets this attempt includes (replaces the recorded list); this is what reconcile_ticket's release evidence is keyed on"),
+        artifact_manifest: external_exports.array(external_exports.string()).optional().describe("Artifacts this attempt produced (replaces the recorded list)"),
+        service_unavailable: external_exports.string().optional().describe("Your own bounded observation that the release service could not be reached; appends one entry to the attempt's retry schedule. Kanmer never contacts a release service itself."),
+        service_recovered: external_exports.literal(true).optional().describe("Clear the retry schedule after observing the release service again")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
+    },
+    write(async (input, extra) => {
+      const releaseStore = new KanmerStore(store.paths.projectRoot, {
+        actor: actorName(server, extra),
+        repoRoot: store.paths.repoRoot
+      });
+      return ok(await releaseChannelAction(releaseStore, {
+        action: input.action,
+        ...input.channel !== void 0 ? { channel: input.channel } : {},
+        ...input.integration_sha !== void 0 ? { integrationSha: input.integration_sha } : {},
+        ...input.integration_ref !== void 0 ? { integrationRef: input.integration_ref } : {},
+        ...input.lease_id !== void 0 ? { leaseId: input.lease_id } : {},
+        ...input.lease_revision !== void 0 ? { leaseRevision: input.lease_revision } : {},
+        ...input.reason !== void 0 ? { reason: input.reason } : {},
+        ...input.release_tag !== void 0 ? { releaseTag: input.release_tag } : {},
+        ...input.verification_state !== void 0 ? { verificationState: input.verification_state } : {},
+        ...input.included_prs !== void 0 ? { includedPrs: input.included_prs } : {},
+        ...input.included_tickets !== void 0 ? { includedTickets: input.included_tickets } : {},
+        ...input.artifact_manifest !== void 0 ? { artifactManifest: input.artifact_manifest } : {},
+        ...input.service_unavailable !== void 0 ? { serviceUnavailable: input.service_unavailable } : {},
+        ...input.service_recovered !== void 0 ? { serviceRecovered: input.service_recovered } : {}
+      }));
+    })
   );
   server.registerTool(
     "get_execution_packet",
@@ -46615,7 +48357,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "dispatch_task",
     {
       title: "Dispatch one named task",
-      description: "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
+      description: "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. After elicited approval, mutable ticket feasibility and delivery-target facts are re-read immediately before start. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
       inputSchema: {
         ticket_id: external_exports.string().describe("Existing non-archived ticket id"),
         provider: external_exports.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok | antigravity"),
@@ -46631,16 +48373,25 @@ function createKanmerMcpServer(policy = "local-stdio") {
       if (!dispatchPolicy.providers.includes(provider)) return dispatchRefusal("DISPATCH_PROVIDER_NOT_ALLOWED", `provider "${provider}" is not allowlisted`, policy2);
       if (!dispatchPolicy.tasks.includes(taskId)) return dispatchRefusal("DISPATCH_TASK_NOT_ALLOWED", `task "${taskId}" is not allowlisted`, policy2);
       const identity = await assertExpectedProject(expected_project);
-      const item = await store.getItem(ticket_id);
-      if (!item || item.type !== "ticket") return dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy2);
-      if (item.archived) return dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy2);
-      if (item.taken_at) return dispatchRefusal("DISPATCH_TICKET_TAKEN", `${ticket_id} is already taken; dispatch does not steal tickets.`, policy2);
-      const info = await store.getTicketDocsInfo(ticket_id);
       const task = dispatchTaskById(taskId);
       if (!task) return dispatchRefusal("DISPATCH_TASK_UNKNOWN", `Unknown task "${taskId}".`, policy2);
-      const feasibility = taskFeasibility(taskId, { stage: item.status, docCounts: info?.counts ?? {} });
-      if (!feasibility.ok) return dispatchRefusal("DISPATCH_TASK_INFEASIBLE", feasibility.reason ?? "task is not feasible for this ticket", policy2);
-      if (dispatchSupervisor.list({ projectId: projectRoot, ticketId: ticket_id, includeRecent: false }).length > 0) return dispatchRefusal("DISPATCH_DUPLICATE", `${ticket_id} already has a dispatch in flight for this project.`, policy2);
+      const inspectCandidate = async () => {
+        const item = await store.getItem(ticket_id);
+        if (!item || item.type !== "ticket") return { ready: false, refusal: dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy2) };
+        if (item.archived) return { ready: false, refusal: dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy2) };
+        if (item.taken_at) return { ready: false, refusal: dispatchRefusal("DISPATCH_TICKET_TAKEN", `${ticket_id} is already taken; dispatch does not steal tickets.`, policy2) };
+        const info = await store.getTicketDocsInfo(ticket_id);
+        const feasibility = taskFeasibility(taskId, { stage: item.status, docCounts: info?.counts ?? {} });
+        if (!feasibility.ok) {
+          return { ready: false, refusal: dispatchRefusal("DISPATCH_TASK_INFEASIBLE", feasibility.reason ?? "task is not feasible for this ticket", policy2) };
+        }
+        if (dispatchSupervisor.list({ projectId: projectRoot, ticketId: ticket_id, includeRecent: false }).length > 0) {
+          return { ready: false, refusal: dispatchRefusal("DISPATCH_DUPLICATE", `${ticket_id} already has a dispatch in flight for this project.`, policy2) };
+        }
+        return { ready: true, item, feasibility };
+      };
+      let candidate = await inspectCandidate();
+      if (!candidate.ready) return candidate.refusal;
       if (dispatchPolicy.approval === "elicit") {
         if (!server.server.getClientCapabilities()?.elicitation) return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval requires an MCP host with elicitation capability", policy2);
         try {
@@ -46652,8 +48403,10 @@ function createKanmerMcpServer(policy = "local-stdio") {
         } catch {
           return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval round trip failed; dispatch remains refused", policy2);
         }
+        candidate = await inspectCandidate();
+        if (!candidate.ready) return candidate.refusal;
       }
-      const verificationTarget = resolveDelivery(await store.getBoard()).integrationBranch;
+      const verificationTarget = deliveryTargets(resolveDelivery(await store.getBoard()), candidate.item).verificationTarget;
       try {
         const status = await dispatchSupervisor.start({
           projectId: projectRoot,
@@ -46665,7 +48418,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
           task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id, verificationTarget) },
           ...timeout_ms === void 0 ? {} : { timeoutMs: timeout_ms }
         });
-        return ok({ ok: true, status, deliverable: task.deliverable, warning: feasibility.warning ?? null, policy: policy2 });
+        return ok({ ok: true, status, deliverable: task.deliverable, warning: candidate.feasibility.warning ?? null, policy: policy2 });
       } catch (error2) {
         return dispatchRefusal("DISPATCH_START_REFUSED", error2 instanceof Error ? error2.message : String(error2), policy2);
       }

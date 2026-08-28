@@ -60,7 +60,13 @@ test("readiness accepts only a bounded successful loopback /ready response", asy
   let attempts = 0;
   await waitForTunnelReadiness({
     endpoint: "http://127.0.0.1:43123/ready",
-    timeoutMs: 100,
+    // A hang guard for two stubbed polls, not a latency claim. 100 ms of wall
+    // clock is not survivable on a contended Windows host: the two `pollMs: 1`
+    // iterations are scheduled through the event loop, and the case failed with
+    // the very error it exists to disprove, TUNNEL_READINESS_TIMEOUT
+    // (CORE-128). `attempts === 2` below is what the test actually asserts, and
+    // it is unchanged — a longer budget cannot make a third poll pass it.
+    timeoutMs: 30_000,
     pollMs: 1,
     fetchImpl: async () => {
       attempts++;

@@ -309,7 +309,12 @@ test("provider error without an exit event settles and cleans the attempt", asyn
       return child;
     };
     const adapter = createCloudflaredAdapter({ executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials, hostname: "kanmer.example.test", validateExecutable: async () => {}, waitForReady: () => new Promise(() => {}) }, fakeSpawn);
-    await assert.rejects(() => Promise.race([adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), new Promise((_, reject) => setTimeout(() => reject(new Error("hung")), 1_000))]), /TUNNEL_CHILD_EXITED_BEFORE_READY/);
+    // The race is a hang guard: `waitForReady` never settles, so without it a
+    // regression would block the suite rather than fail it. It must stay well
+    // clear of the real path's latency — at 1 s a contended Windows host could
+    // win the race and report "hung" instead of the assertion this test makes
+    // (CORE-128). The rejection pattern below is unchanged.
+    await assert.rejects(() => Promise.race([adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), new Promise((_, reject) => setTimeout(() => reject(new Error("hung")), 30_000))]), /TUNNEL_CHILD_EXITED_BEFORE_READY/);
   } finally { await removeTreeWithRetry(directory); }
 });
 

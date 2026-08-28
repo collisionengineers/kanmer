@@ -260,10 +260,17 @@ test("limits, principal-bound sessions, deterministic expiry, and restart invali
 
   let releaseAuthorization;
   const authorizationGate = new Promise((resolve) => { releaseAuthorization = resolve; });
+  // Resolves the moment the first request is actually inside the authorizer.
+  // Waiting on that rather than on a fixed sleep is what makes "the cap is
+  // occupied" an observation instead of a guess: a 5 ms sleep was a race the
+  // moment a second verification rail shared the host (CORE-128).
+  let signalAuthorizationEntered;
+  const authorizationEntered = new Promise((resolve) => { signalAuthorizationEntered = resolve; });
   const cappedHost = createKanmerHttpHost({
     authorizer: {
       async authorize(request) {
         if (request.headers.authorization !== `Bearer ${first.token}`) throw new Error("UNAUTHORIZED");
+        signalAuthorizationEntered();
         await authorizationGate;
         return { principal: "first" };
       },
@@ -274,7 +281,7 @@ test("limits, principal-bound sessions, deterministic expiry, and restart invali
   const cappedReady = await cappedHost.start();
   try {
     const held = fetch(cappedReady.endpoint, { method: "GET", headers: authHeaders(first.token) });
-    await wait(5);
+    await authorizationEntered;
     const rejected = await fetch(cappedReady.endpoint, { method: "GET", headers: authHeaders(first.token) });
     assert.equal(rejected.status, 429, "global in-flight cap rejects before dispatch");
     releaseAuthorization();

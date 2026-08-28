@@ -4,12 +4,15 @@ type: ticket
 title: >-
   Add apply_reconciliation: mutating recovery on revisions and leases (FRD-028
   acceptance 2-4)
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-28T04:35:34.440Z'
+taken_at: '2026-08-28T04:50:02.357Z'
+branch: core-131-apply-reconciliation
+worktree: .worktrees/core-131
 labels:
   - reliable-autonomy
 groups:
@@ -19,7 +22,7 @@ refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-08-28T03:03:07.312Z'
-updated: '2026-08-28T04:35:34.440Z'
+updated: '2026-08-28T04:50:02.357Z'
 ---
 
 ## What

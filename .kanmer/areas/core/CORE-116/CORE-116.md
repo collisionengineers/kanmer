@@ -2,7 +2,7 @@
 id: CORE-116
 type: ticket
 title: Add configurable Git delivery policy and delivery state
-status: verifying
+status: done
 area: core
 assignee: claude-code-core116
 profile: feature
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-28T03:03:39.374Z'
   review: '2026-08-28T04:07:47.728Z'
   verifying: '2026-08-28T04:46:33.477Z'
+  done: '2026-08-28T05:09:41.382Z'
 taken_at: '2026-08-28T03:15:53.988Z'
 branch: core-116-delivery-policy
 worktree: .worktrees/core-116
@@ -33,7 +34,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/299'
 archived: false
 created: '2026-08-26T21:02:41.969Z'
-updated: '2026-08-28T04:46:33.477Z'
+updated: '2026-08-28T05:09:41.382Z'
 ---
 
 ## What

@@ -35,3 +35,27 @@
   `t.skip()` in the two antigravity tests, which did not fire.
 - Full `npm test` (core 465, gui 520, mcp-server http, scripts) exits 0; `npm run typecheck`
   exits 0.
+
+- [x] Step 10 — [pre-review] Ten consecutive `npm run verify` runs, at least three under concurrent load; every exit code recorded, and the honest count reported if ten are not reached.
+
+**Achieved in full: 10/10 exit 0, runs 1-3 under three load generators each**, at
+`7061045b` (rebased onto `origin/main` `bf0eaed4`). Seconds: 955, 840, 786, 441, 439, 501,
+511, 455, 490, 563. Every run completed the whole rail (last step `plugin-sync OK`), and
+`node:test` reported `skipped 0`, so the conditional antigravity skip never fired.
+
+Two earlier sweeps were abandoned rather than counted, and are reported as such:
+
+- **Sweep A** — run 1 (loaded) failed on `readiness.test.mjs > readiness accepts only a
+  bounded successful loopback /ready response` with `TUNNEL_READINESS_TIMEOUT`: a 100 ms
+  wall-clock budget for two event-loop-scheduled polls. A new member of the family, in a file
+  the ticket names. Fixed, then the whole mcp-server suite was hammered 5× under 6 generators
+  (5/5 exit 0) rather than waiting for the next sweep to find the next one.
+- **Sweep B** — run 3 (loaded) failed on `kanmerGit.test.ts > serializes concurrent orphan
+  cleanup and leaves no quarantine residue`, `expected false to be true`. Not a test budget: a
+  real defect (cause 4 in the report). Fixed and proven 3/3 under load.
+- **Operator error, recorded:** an early attempt ran two sweeps concurrently in the same
+  worktree after a `pkill` failed to take. Those results were discarded as uninterpretable and
+  the sweep was restarted single-instance under a lock directory. The `kanmerGit` failure it
+  had surfaced was not an artefact — it reproduced in the guarded sweep.
+
+- [x] Step 12 — [pre-review] Write the post-implementation report, open the PR with a `Kanmer: CORE-128` footer, move the ticket to Review — and stop there: no review, merge, verify, closeout or release.

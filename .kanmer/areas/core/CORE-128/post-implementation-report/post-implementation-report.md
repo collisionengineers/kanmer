@@ -263,3 +263,53 @@ board and clears once this ticket is in Review and the board branch tip is pushe
 `origin/kanmer-board`; the gate reads the **remote** board tip and does not re-run on a board
 push, so the `regate` job needs triggering after that. This lane never touches
 `.worktrees/kanmer`. `NO_REVIEW_RECORD` is expected — the author does not write the attestation.
+
+
+---
+
+## Red-main remediation — exact current-base repair
+
+PR #300 merged as `d523a29365a20133fc5f0e16a29df40b1a80bd8e`. Its retained
+`proof/proof.md` is a truthful **FAIL**: both the clean local Windows rail and hosted CI fail
+with exactly 15 `ReferenceError: rmSync is not defined` results in
+`scripts/verify-skill-prose.test.mjs`. SKILL-036 had added 15 teardown cases after the
+CORE-128 branch converted the earlier cases and removed the `rmSync` import, so the clean Git
+merge produced a semantic conflict rather than a textual conflict.
+
+### Correction
+
+The existing branch and worktree were resumed without retaking or recreating them. Prior reviewed
+head `1d1f09b42587f82d1acd9d013d3a9ad6b18161f8` was preserved as the first parent of an
+ordinary merge with current main `d523a29365a20133fc5f0e16a29df40b1a80bd8e`. The only
+textual conflict was the appended test block. It was resolved by converting all 15 remaining
+bare teardown calls to the already imported `removeTreeWithRetrySync`.
+
+Candidate `662938dbef8bf65ad9762a30bba4b396ca249634` has parents `1d1f09b…` and
+`d523a293…`. Its complete diff against current main is one file, 15 insertions and 15
+deletions, all mechanical teardown-helper substitutions. No assertion, test body, timeout,
+production source, workflow, or SKILL-038 behaviour changed, and no bare `rmSync(` remains.
+
+### Pre-review evidence at the exact candidate
+
+| Command | Checkout | Result |
+| --- | --- | --- |
+| `node --test scripts/verify-skill-prose.test.mjs` | recorded ticket worktree | exit 0; 28/28 pass; 0 skipped |
+| `npm run test:scripts` | recorded ticket worktree | exit 0; 136/136 pass; 0 skipped |
+| `npm run verify:skills` | recorded ticket worktree | exit 0; all checks pass |
+| `npm ci` | clean standalone GitHub clone | exit 0 |
+| `npm run verify` | clean standalone GitHub clone at exact `662938db…` | exit 0; core 562/562, GUI 524/524, MCP server 144/144, scripts 136/136, smoke 338/338, protocol 50/50, discovery 13/13, agents-block 31/31; plugin bundle bytes match |
+
+Only one complete verification rail ran on this host. The original ticket's ten-run streak was
+already satisfied and retained above. This remediation fixes a deterministic missing binding:
+the same 15 failures occurred locally, in the focused scripts rail, and in hosted CI at
+`d523a293…`; after all 15 surviving call sites were converted, the focused suites and one
+complete clean rail passed at the exact candidate. Repeating unchanged full rails to manufacture
+another numeric streak would add no evidence. The independent exact-head review, hosted
+`verify`, and post-merge exact-SHA verification remain the binding next stages.
+
+### Review hand-off
+
+PR #305 carries the one-file remediation with `Kanmer: CORE-128`. Review must replace the stale
+PR #300 attestation with a fresh independent attestation bound to exact head
+`662938dbef8bf65ad9762a30bba4b396ca249634`, wait for required checks, and preserve the
+existing failed proof until a verifier rewrites it only after the new merge.

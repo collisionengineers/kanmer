@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Quarantine or fix the recurring Windows core-test timing failures that block
   verification
-status: implementing
+status: review
 area: core
 assignee: claude-code
 profile: fix
@@ -25,11 +25,13 @@ refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
 commits:
   - a717c4f0013358fd321bcf873eeba99277d78f44
+  - 662938dbef8bf65ad9762a30bba4b396ca249634
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/300'
+  - 'https://github.com/collisionengineers/kanmer/pull/305'
 archived: false
 created: '2026-08-27T23:52:07.305Z'
-updated: '2026-08-28T07:48:43.878Z'
+updated: '2026-08-28T11:03:23.459Z'
 ---
 
 ## What

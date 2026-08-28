@@ -11,9 +11,9 @@
 - [x] Step 7 — Route `apps/gui` test teardowns through the helper via `@kanmer/core`; `npm run typecheck` passes.
 - [x] Step 8 — Add the AGENTS.md §8 gotcha covering all three causes and the rule that new tests use `removeTreeWithRetry`.
 - [x] Step 9 — `npm run plugin:build` then `npm run plugin:check` succeed in the worktree (committed generated artifact refreshed).
-- [ ] Step 10 — [pre-review] Ten consecutive `npm run verify` runs, at least three under concurrent load; every exit code recorded, and the honest count reported if ten are not reached.
+- [x] Step 10 — [pre-review] Ten consecutive `npm run verify` runs, at least three under concurrent load; every exit code recorded, and the honest count reported if ten are not reached.
 - [x] Step 11 — [pre-review] `git diff` shows no removed or loosened `expect`/`assert` and no unauthorised `.skip`/`.only`/`.todo`; every raised timeout carries its comment.
-- [ ] Step 12 — [pre-review] Write the post-implementation report, open the PR with a `Kanmer: CORE-128` footer, move the ticket to Review — and stop there: no review, merge, verify, closeout or release.
+- [x] Step 12 — [pre-review] Write the post-implementation report, open the PR with a `Kanmer: CORE-128` footer, move the ticket to Review — and stop there: no review, merge, verify, closeout or release.
 
 ## Progress notes
 
@@ -59,3 +59,14 @@ Two earlier sweeps were abandoned rather than counted, and are reported as such:
   had surfaced was not an artefact — it reproduced in the guarded sweep.
 
 - [x] Step 12 — [pre-review] Write the post-implementation report, open the PR with a `Kanmer: CORE-128` footer, move the ticket to Review — and stop there: no review, merge, verify, closeout or release.
+
+
+## Red-main remediation — `d523a293`
+
+- [x] Preserve the exact merged-SHA FAIL proof and deterministic 15-call mechanism.
+- [x] Resume the recorded branch/worktree and preserve reviewed head `1d1f09b…` through an ordinary current-main merge.
+- [x] Convert exactly the 15 remaining bare teardown calls; preserve every assertion and keep the diff to one file.
+- [x] Pass the three focused checks at candidate `662938db…`.
+- [x] Pass one complete authoritative rail from a clean standalone Windows checkout at exact `662938db…`.
+- [x] Push ordinarily and open remediation PR #305 with a `Kanmer: CORE-128` footer.
+- [x] Hand the unchanged exact head to a fresh independent reviewer; no self-review, merge, verification, closeout, or release in this execution lane.

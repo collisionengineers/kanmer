@@ -70,3 +70,23 @@ Two earlier sweeps were abandoned rather than counted, and are reported as such:
 - [x] Pass one complete authoritative rail from a clean standalone Windows checkout at exact `662938db…`.
 - [x] Push ordinarily and open remediation PR #305 with a `Kanmer: CORE-128` footer.
 - [x] Hand the unchanged exact head to a fresh independent reviewer; no self-review, merge, verification, closeout, or release in this execution lane.
+
+---
+
+## Closeout — CORE-128
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-128`
+- [x] `git branch -d core-128-windows-test-timing` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+### Cleanup record
+
+- `git worktree remove` exited 0 for the clean implementation worktree and the clean detached `d523a293…` evidence worktree. Each left only an unregistered ignored `node_modules` directory; an exact `git clean -ndx` preview named only those two targets, then `git clean -fdx` removed them.
+- Local branch deletion succeeded with normal `-d`; forced deletion was not used. The exact remote branch was deleted; fetch/prune and worktree prune exited 0.
+- The successful `add0da7f…` verification worktree was already absent. `.worktrees/kanmer` and every other ticket worktree were untouched.
+- Legacy claim released last at `2026-08-28T11:55:12.673Z` via non-forced `take_ticket action: "release"`; no Git cleanup followed it.

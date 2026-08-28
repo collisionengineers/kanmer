@@ -14,9 +14,6 @@ stageEntered:
   verifying: '2026-08-28T07:22:08.635Z'
   implementing: '2026-08-28T07:48:43.878Z'
   done: '2026-08-28T11:47:11.775Z'
-taken_at: '2026-08-28T00:39:15.920Z'
-branch: core-128-windows-test-timing
-worktree: .worktrees/core-128
 labels:
   - reliable-autonomy
 groups:
@@ -27,12 +24,13 @@ refs:
 commits:
   - a717c4f0013358fd321bcf873eeba99277d78f44
   - 662938dbef8bf65ad9762a30bba4b396ca249634
+  - add0da7fc17968796f43b3035065de400a4db2d4
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/300'
   - 'https://github.com/collisionengineers/kanmer/pull/305'
 archived: false
 created: '2026-08-27T23:52:07.305Z'
-updated: '2026-08-28T11:47:11.775Z'
+updated: '2026-08-28T11:55:12.673Z'
 ---
 
 ## What
@@ -66,3 +64,9 @@ This is the single highest-leverage housekeeping item on the board. It has: bloc
 - [ ] `npm run verify` passes ten consecutive times on this Windows host, including at least three runs with a second rail running concurrently.
 - [ ] No assertion weakened; any timeout increase carries a comment naming the Windows behaviour it accommodates.
 - [ ] A verifier running the rail no longer needs to retain a FAIL attempt for any of the listed tests.
+
+## Outcome
+
+Remediation shipped in [PR #305](https://github.com/collisionengineers/kanmer/pull/305) at merge SHA `add0da7fc17968796f43b3035065de400a4db2d4`.
+
+Exact-SHA verification passed both the clean local Windows `npm run verify` rail and the hosted main-push `verify` rail at that merge SHA. No successor or follow-up ticket is required for this remediation. The proof retains all 19 historical attempts, including earlier deterministic and environmental failures; the final authoritative result is PASS.

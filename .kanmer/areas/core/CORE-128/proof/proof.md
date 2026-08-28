@@ -239,3 +239,10 @@ is signature-limited and did not fire; one retry-budget comment understates Node
 delay; one test-only timer can add cost; duplicate AGENTS numbering is cosmetic; and the
 contended GUI-open latency path was not directly exercised. None invalidates the named acceptance
 evidence or the exact-SHA PASS.
+
+## Merge record
+
+- PR: https://github.com/collisionengineers/kanmer/pull/305
+- Reviewed head: `662938dbef8bf65ad9762a30bba4b396ca249634`
+- Merge SHA: `add0da7fc17968796f43b3035065de400a4db2d4`
+- Merged at: `2026-08-28T11:23:20Z`

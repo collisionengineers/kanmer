@@ -36,7 +36,19 @@ function readPrEvent(value) {
   if (typeof head.sha !== "string" || !head.sha || typeof head.ref !== "string" || !head.ref) throw new Error("event is missing pull_request.head.sha or head.ref");
   if (typeof base.sha !== "string" || !base.sha) throw new Error("event is missing pull_request.base.sha");
   if (pr.body !== null && pr.body !== undefined && typeof pr.body !== "string") throw new Error("pull_request.body must be a string or null");
-  return { number: pr.number, headSha: head.sha, baseSha: base.sha, branch: head.ref, body: pr.body ?? null };
+  // CORE-116/FRD-031: the *base ref* is what the gate compares against the
+  // project's configured integration branch. It is deliberately not required —
+  // an event without one skips the target check rather than being rejected or
+  // silently assumed to mean `main`.
+  const baseRef = typeof base.ref === "string" && base.ref ? base.ref : undefined;
+  return {
+    number: pr.number,
+    headSha: head.sha,
+    baseSha: base.sha,
+    branch: head.ref,
+    body: pr.body ?? null,
+    ...(baseRef ? { baseRef } : {}),
+  };
 }
 
 function escapeCommandData(value) {

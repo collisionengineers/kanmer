@@ -197,12 +197,24 @@ so in the report and stop; do not iterate privately with the reviewer.
 ### Fresh packet
 
 Only when `packet.ticket.taken` is absent, create the worktree from the
-repository root after the packet is ready:
+repository root after the packet is ready. **Branch from the packet's
+`delivery.baseBranch`, not from `main`** — the project declares which branch its
+work integrates into, and assuming `main` is how a `dev`-integrating project
+silently builds on the wrong base:
 
 ```sh
 git fetch origin
-git worktree add .worktrees/<id-lowercase> -b <id>-<slug> origin/main
+git worktree add .worktrees/<id-lowercase> -b <id>-<slug> origin/<delivery.baseBranch>
 ```
+
+`packet.delivery` also names `baseSha` — the exact commit the base branch stood
+at when the packet was built — plus `prTarget` and `verificationTarget`. Record
+`baseSha` in the post-implementation report when `baseShaState` is `resolved`;
+when it is `unavailable` Git could not answer, so say so rather than inventing
+one. For an ordinary ticket all three branches are the integration branch; for a
+ticket whose delivery record already names the release branch they are that
+release branch, and `delivery.backportRequired` names the integration branch the
+hotfix still owes a backport to.
 
 Validate that the target is exactly `.worktrees/<id-lowercase>`, is not the
 board worktree `.worktrees/kanmer`, and is not another ticket's worktree. Do
@@ -274,8 +286,13 @@ sibling — the shared workspace is still theirs.
 
    ```sh
    git push -u origin <id>-<slug>
-   gh pr create --title "<ticket title> (<ID>)" --body-file <assembled-body>
+   gh pr create --base <delivery.prTarget> --title "<ticket title> (<ID>)" --body-file <assembled-body>
    ```
+
+   `--base` is not optional: without it `gh` falls back to the repository's
+   default branch, which is the integration branch only by coincidence. The
+   merge gate reports `WRONG_TARGET` when a pull request misses the configured
+   target.
 
 4. Read `get_doc_gates <id>` immediately before `move_item`. Move one gated
    boundary only, from `implementing` to `review`, and record the PR URL in

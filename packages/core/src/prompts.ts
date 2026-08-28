@@ -55,8 +55,18 @@ export interface DispatchTask {
   label: string;
   /** What must exist for this task to be finished. */
   deliverable: string;
-  prompt: (ticketId: string) => string;
+  /**
+   * `verificationTarget` is the branch whose exact merge SHA verification must
+   * prove — the project's configured integration branch (FRD-031), which is
+   * `main` only because that is most projects' default. Callers that have a
+   * board pass it; those that do not (a settings preview) get the neutral
+   * phrase rather than a wrong branch name.
+   */
+  prompt: (ticketId: string, verificationTarget?: string) => string;
 }
+
+/** What a prompt says when the caller has no board to resolve a target from. */
+export const NEUTRAL_VERIFICATION_TARGET = "the merged integration branch";
 
 export type DispatchTaskId =
   | "research-quick"
@@ -146,8 +156,8 @@ export const DISPATCH_TASKS: readonly DispatchTask[] = Object.freeze([
     id: "verify",
     label: "Verify + write proof",
     deliverable: "at least one document under proof/",
-    prompt: (id) =>
-      `Verify Kanmer ticket ${id} on merged main. ${COMMON} Run the checks for ` +
+    prompt: (id, verificationTarget) =>
+      `Verify Kanmer ticket ${id} on merged ${verificationTarget ?? NEUTRAL_VERIFICATION_TARGET}. ${COMMON} Run the checks for ` +
       `real — do not reason about what would happen — and record the evidence ` +
       `under proof/. Check what get_doc_gates says the required proof type is: a ` +
       `visual proof wants a screenshot under proof/assets/, test-output wants the ` +
@@ -231,9 +241,10 @@ export function taskFeasibility(
         : { ok: true, warning: "no checklist — the agent will work from the plan alone" };
 
     case "verify":
-      // Its prompt says "on merged main". Before review, nothing is merged.
+      // Its prompt says "on merged <integration branch>". Before review,
+      // nothing is merged, whatever that branch is called.
       if (ctx.stage === "backlog" || ctx.stage === "preparing" || ctx.stage === "implementing") {
-        return { ok: false, reason: "nothing is merged yet — verify runs on merged main" };
+        return { ok: false, reason: `nothing is merged yet — verify runs on ${NEUTRAL_VERIFICATION_TARGET}` };
       }
       return { ok: true };
 

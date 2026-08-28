@@ -2341,6 +2341,75 @@ Second proof attempt passed; the first failure is retained.
     check("take_ticket renew returns the lease to the board window when the command phase ends", backToWork.lease_revision === 3 && Date.parse(backToWork.claim_expires_at) - Date.now() <= 31 * 60_000, backToWork.claim_expires_at);
     claimed.lease_revision = 3;
   }
+  // CORE-116 (FRD-031): the delivery policy is resolved and reported, execution
+  // material names its exact targets, and delivery state is recorded on the
+  // ticket without ever becoming a gate input.
+  {
+    const status = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+    check(
+      "get_status reports the resolved main-only delivery policy and that it came from the default",
+      status.delivery?.integrationBranch === "main" && status.delivery?.releaseBranch === "main" &&
+        status.delivery?.releaseCandidatePattern === null && status.delivery?.hotfixBackport === true &&
+        status.delivery?.source === "default",
+      JSON.stringify(status.delivery),
+    );
+    const deliveryPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: claimId, resume: { branch: "claim-branch", worktree: ".worktrees/claim" } } })));
+    check(
+      "get_execution_packet names the base branch, PR target and verification target from the delivery policy",
+      deliveryPacket.ready === true && deliveryPacket.delivery?.baseBranch === "main" &&
+        deliveryPacket.delivery?.prTarget === "main" && deliveryPacket.delivery?.verificationTarget === "main" &&
+        deliveryPacket.delivery?.state === "not-integrated" && deliveryPacket.delivery?.policySource === "default" &&
+        ["resolved", "unavailable"].includes(deliveryPacket.delivery?.baseShaState) &&
+        (deliveryPacket.delivery?.baseSha === null || /^[0-9a-f]{40}$/i.test(deliveryPacket.delivery.baseSha)),
+      JSON.stringify(deliveryPacket.delivery ?? deliveryPacket),
+    );
+    const deliveryId = JSON.parse(
+      textOf(await client.callTool({ name: "create_item", arguments: { title: "delivery state", status: "implementing", profile: "feature", docs_todo: true } })),
+    ).id;
+    const badState = await client.callTool({ name: "update_item", arguments: { id: deliveryId, delivery_state: "shipped" } });
+    const noEvidence = await client.callTool({ name: "update_item", arguments: { id: deliveryId, delivery_state: "integrated" } });
+    const abbreviated = await client.callTool({ name: "update_item", arguments: { id: deliveryId, delivery_state: "integrated", delivery_branch: "main", delivery_sha: "abc1234" } });
+    const wrongBranch = await client.callTool({ name: "update_item", arguments: { id: deliveryId, delivery_state: "integrated", delivery_branch: "staging", delivery_sha: "a".repeat(40) } });
+    const noCandidatePolicy = await client.callTool({ name: "update_item", arguments: { id: deliveryId, delivery_candidate: "release/v1" } });
+    check(
+      "update_item refuses an unknown delivery state, missing or abbreviated integration evidence, a wrong branch and a candidate with no policy",
+      badState.isError === true && textOf(badState).includes("DELIVERY_STATE_INVALID") &&
+        noEvidence.isError === true && textOf(noEvidence).includes("DELIVERY_EVIDENCE_MISSING") &&
+        abbreviated.isError === true && textOf(abbreviated).includes("DELIVERY_SHA_INVALID") &&
+        wrongBranch.isError === true && textOf(wrongBranch).includes("DELIVERY_TARGET_INVALID") &&
+        noCandidatePolicy.isError === true && textOf(noCandidatePolicy).includes("DELIVERY_NO_CANDIDATE_POLICY"),
+      JSON.stringify([textOf(badState), textOf(noEvidence), textOf(abbreviated), textOf(wrongBranch), textOf(noCandidatePolicy)]),
+    );
+    const integrated = JSON.parse(textOf(await client.callTool({ name: "update_item", arguments: { id: deliveryId, delivery_state: "integrated", delivery_branch: "main", delivery_sha: "a".repeat(40) } })));
+    const listed = JSON.parse(textOf(await client.callTool({ name: "list_items", arguments: {} })));
+    const summary = (Array.isArray(listed) ? listed : listed.items).find((entry) => entry.id === deliveryId);
+    check(
+      "update_item records integration at an exact merged SHA, with no backport obligation on a main-only project",
+      integrated.delivery_state === "integrated" && integrated.delivery_sha === "a".repeat(40) &&
+        integrated.delivery_branch === "main" && integrated.delivery_backport_required === undefined &&
+        typeof integrated.delivery_recorded_at === "string",
+      JSON.stringify({ state: integrated.delivery_state, sha: integrated.delivery_sha, backport: integrated.delivery_backport_required ?? null }),
+    );
+    check(
+      "the list_items summary carries the delivery block, and only for a ticket that recorded one",
+      summary?.delivery?.state === "integrated" && summary.delivery.branch === "main" &&
+        summary.delivery.sha === "a".repeat(40) && summary.delivery.backportRequired === null &&
+        (Array.isArray(listed) ? listed : listed.items).some((entry) => entry.id !== deliveryId && entry.delivery === undefined),
+      JSON.stringify(summary?.delivery ?? null),
+    );
+    const stillGated = await client.callTool({ name: "move_item", arguments: { id: deliveryId, status: "review" } });
+    check(
+      "recorded delivery evidence never satisfies a stage gate (ADR-0005)",
+      stillGated.isError === true && textOf(stillGated).includes("post-implementation-report"),
+      textOf(stillGated),
+    );
+    const cleared = JSON.parse(textOf(await client.callTool({ name: "update_item", arguments: { id: deliveryId, delivery_state: "not-integrated", delivery_sha: "", delivery_branch: "" } })));
+    check(
+      "update_item clears a delivery field with an empty string",
+      cleared.delivery_sha === undefined && cleared.delivery_branch === undefined && cleared.delivery_state === "not-integrated",
+      JSON.stringify(cleared.delivery_state),
+    );
+  }
   // CORE-124 (FRD-030 batch mode): the first member's take declares and freezes the batch; members share one
   // workspace, non-members are refused both ways, the packet reports the batch, and release waits for all members.
   {

@@ -1,5 +1,8 @@
 import type {
   ClaimState,
+  DeliveryPolicy,
+  DeliveryPolicySource,
+  DeliveryState,
   GateReport,
   Item,
   KanmerStore,
@@ -12,11 +15,14 @@ import {
   CAPTURE_PROFILE_ID,
   compileStepPacket,
   contentVersion,
+  deliveryPolicySource,
+  deliveryTargets,
   extractAtxSection,
   isCaptureItem,
   leaseConfig,
   leaseState,
   parsePlan,
+  resolveDelivery,
   validatePlan,
 } from "@kanmer/core";
 import { execFile } from "node:child_process";
@@ -120,11 +126,109 @@ export interface ExecutionPacketClaim {
   batch: { id: string; frozenAt: string | null; workspace: string | null; members: string[]; pending: string[] } | null;
 }
 
+/**
+ * Where this ticket's work comes from and goes to (CORE-116, FRD-031).
+ *
+ * FRD-031 requires execution material to name the exact base SHA, base branch,
+ * PR target and verification target rather than leaving a worker to assume
+ * `origin/main`. All four are derived from the project's declared delivery
+ * policy, so a main-only project sees exactly what it saw before and a
+ * dev-to-main project sees `dev` without the worker needing special
+ * instructions.
+ */
+export interface ExecutionPacketDelivery {
+  integrationBranch: string;
+  releaseBranch: string;
+  releaseCandidatePattern: string | null;
+  hotfixBackport: boolean;
+  /** `board` when the project declared a policy; `default` when it is the shipped main-only one. */
+  policySource: DeliveryPolicySource;
+  /** Branch this ticket's work is based on. */
+  baseBranch: string;
+  /** Exact SHA of `baseBranch` at packet time; null when Git could not answer. */
+  baseSha: string | null;
+  baseShaState: "resolved" | "unavailable";
+  /** The branch the pull request targets. */
+  prTarget: string;
+  /** The branch whose exact merge SHA verification must prove. */
+  verificationTarget: string;
+  /** The ticket's recorded delivery state — never a gate input (ADR-0005). */
+  state: DeliveryState;
+  /** Recorded integration branch and exact merged SHA, when there is one. */
+  branch: string | null;
+  sha: string | null;
+  /** Integration branch a release-branch hotfix still owes a backport to. */
+  backportRequired: string | null;
+}
+
+/**
+ * Resolve the base SHA of a branch, bounded so a stalled host cannot hang the
+ * packet.
+ *
+ * Tries the remote-tracking ref first, because that — not the local branch — is
+ * what a fresh worktree is actually cut from. A failure is reported as
+ * `unavailable`, never guessed: a wrong base SHA in execution material is worse
+ * than an absent one.
+ */
+async function resolveBaseSha(cwd: string, branch: string): Promise<string | null> {
+  for (const ref of [`origin/${branch}`, branch]) {
+    try {
+      const { stdout } = await execFileAsync("git", ["-C", cwd, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`], {
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: DELIVERY_GIT_TIMEOUT_MS,
+        maxBuffer: DELIVERY_GIT_MAX_BUFFER,
+      });
+      const sha = stdout.trim();
+      if (/^[0-9a-f]{40}$/iu.test(sha)) return sha;
+    } catch {
+      // Try the next ref; an unresolvable branch is `unavailable`, not an error.
+    }
+  }
+  return null;
+}
+
+/** Bounds for the one extra Git call the delivery block makes. */
+const DELIVERY_GIT_TIMEOUT_MS = 15_000;
+const DELIVERY_GIT_MAX_BUFFER = 32 * 1024;
+
+/**
+ * Build the packet's delivery block.
+ *
+ * A ticket whose delivery record already names the release branch is a hotfix,
+ * and its base, PR target and verification target are that release branch — the
+ * one case where an ordinary ticket does not aim at the integration branch.
+ */
+export async function deliveryPacket(
+  policy: DeliveryPolicy,
+  policySource: DeliveryPolicySource,
+  item: Item,
+  repoRoot: string,
+): Promise<ExecutionPacketDelivery> {
+  const { baseBranch, prTarget, verificationTarget } = deliveryTargets(policy, item);
+  const baseSha = await resolveBaseSha(repoRoot, baseBranch);
+  return {
+    ...policy,
+    policySource,
+    baseBranch,
+    baseSha,
+    baseShaState: baseSha ? "resolved" : "unavailable",
+    prTarget,
+    verificationTarget,
+    state: (item.delivery_state as DeliveryState | undefined) ?? "not-integrated",
+    branch: item.delivery_branch ?? null,
+    sha: item.delivery_sha ?? null,
+    backportRequired: item.delivery_backport_required ?? null,
+  };
+}
+
 export interface ExecutionPacketReady {
   ready: true;
   project: ProjectIdentity;
   ticket: ExecutionPacketTicket;
   claim: ExecutionPacketClaim;
+  /** Base SHA, base branch, PR target and verification target (FRD-031). */
+  delivery: ExecutionPacketDelivery;
   groupContexts: ExecutionPacketGroupContext[];
   documents: {
     plan: ExecutionPacketDocument;
@@ -658,11 +762,16 @@ export async function getExecutionPacket(input: {
     compiled = result.packet;
   }
 
+  // FRD-031: resolved from the board the packet was built from, and from the
+  // repo checkout the refs live in — never from a constant.
+  const delivery = await deliveryPacket(resolveDelivery(board), deliveryPolicySource(board), item, store.paths.repoRoot);
+
   return {
     ready: true,
     project,
     ticket: fullTicket(item, gates.profile, revision),
     claim,
+    delivery,
     groupContexts: contexts,
     documents: indexDocuments(fixed),
     extraDocs,

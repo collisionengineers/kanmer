@@ -9,19 +9,19 @@
 
 ## Current-base protection
 
-- [ ] Capture PR #304 old head, recorded base, required check ids/conclusions, and main SHA.
-- [ ] Confirm current main is not an ancestor of PR #304's old head.
-- [ ] PATCH only `required_status_checks.strict` to `true`, preserving `verify` and `kanmer-gate` app id `15368`.
-- [ ] Re-read full branch protection and prove every unrelated field is unchanged.
-- [ ] Retain a strict-only rollback payload; do not use it after acceptance unless the comparison fails.
+- [x] Capture PR #304 old head, recorded base, required check ids/conclusions, and main SHA.
+- [x] Confirm current main is not an ancestor of PR #304's old head.
+- [x] PATCH only `required_status_checks.strict` to `true`, preserving `verify` and `kanmer-gate` app id `15368`.
+- [x] Re-read full branch protection and prove every unrelated field is unchanged.
+- [x] Retain a strict-only rollback payload; do not use it after acceptance unless the comparison fails.
 
 ## Board re-gate installation
 
-- [ ] Reconfirm `board-regate.yml` is absent from remote `kanmer-board`.
-- [ ] Add the canonical workflow to the board worktree without editing its bytes.
-- [ ] Verify local blob `e93ec28a220d9bf41358408890f8ba38e49469a7` and SHA-256 `4b8ad8322d7cf30553988d8ef3924729d22f5ee6fed2d84dec3e5b22c16edeee`.
-- [ ] Commit and push normally; verify the exact blob on remote `kanmer-board`.
-- [ ] Run `node --test scripts/pr-workflow.test.mjs` successfully from current source.
+- [x] Reconfirm `board-regate.yml` is absent from remote `kanmer-board`.
+- [x] Add the canonical workflow to the board worktree without editing its bytes.
+- [x] Verify local blob `e93ec28a220d9bf41358408890f8ba38e49469a7` and SHA-256 `4b8ad8322d7cf30553988d8ef3924729d22f5ee6fed2d84dec3e5b22c16edeee`.
+- [x] Commit and push normally; verify the exact blob on remote `kanmer-board`.
+- [x] Run `node --test scripts/pr-workflow.test.mjs` successfully from current source.
 
 ## Board-only dispatch proof
 

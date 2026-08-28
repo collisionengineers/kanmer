@@ -882,24 +882,33 @@ server.registerTool(
   {
     title: "Get an execution packet",
     description:
-      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, then occupancy by another actor. An occupied ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A ready packet contains the ticket, ordered group contexts, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, and command hint. It never takes, moves, writes, dispatches, or creates a worktree.",
+      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, occupancy by another actor, then — only when `step` is supplied — a plan that cannot be compiled into a bounded step. An occupied ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or \"next\") additionally compiles one versioned step packet limiting the worker to that step's allowed files and symbols, with its exact tests, commands, expected output and stop condition — and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       resume: z.object({ branch: z.string(), worktree: z.string() }).optional()
         .describe("Exact recorded branch/worktree required to resume an occupied ticket from a different MCP client identity"),
+      step: z.union([z.number().int().positive(), z.literal("next")]).optional()
+        .describe("Compile one bounded step packet: a 1-based ordered-step index, or \"next\" for the first unfinished step"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ id, resume }, extra) => {
+  guard(async ({ id, resume, step }, extra) => {
     const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
-    const packet = await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume });
-    // FRD-029: the packet names the logical project and the ticket's
-    // document-inclusive revision so a worker's first write can be CAS-bound.
-    const revision = packet.ready ? await store.getRevision(id) : null;
+    // FRD-029: the packet names the logical project, and reads the ticket's
+    // document-inclusive revision itself so a worker's first write can be
+    // CAS-bound and a compiled step packet can record the same anchor.
+    const packet = await getExecutionPacket({
+      store,
+      id,
+      actor: actorName(server, extra),
+      project,
+      resume,
+      logical,
+      step,
+    });
     return ok({
       ...packet,
       project: { ...packet.project, project_id: logical.project_id, board_id: logical.board_id, identity: logical.identity },
-      ...(packet.ready ? { ticket: { ...packet.ticket, revision: revision?.revision ?? null } } : {}),
     });
   }),
 );

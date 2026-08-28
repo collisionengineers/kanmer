@@ -53,6 +53,14 @@ resolve time, so its `profiles:` block is not the effective set.
    written. Design decisions become **ADRs** via `kanmer-docs`, linked into
    `refs`. (Gates check a doc exists; this content rule is enforced here and
    checked by `kanmer-review`.)
+   When the work will be executed one bounded step at a time by a constrained
+   worker, write each ordered step as its own `### Step N — <title>`
+   sub-section with the template's labelled bullets, and pin the evidence
+   versions in Starting state. That is what `get_execution_packet id: <ID>,
+   step: <n>` compiles into a packet limited to that step's files and symbols;
+   a plan without it still executes normally, it simply cannot be compiled.
+   `get_execution_packet` also returns an advisory `validation` report for any
+   plan — read its findings, but they remain advisory, not a gate.
 5. **Resolve planner decisions before dispatch.** In Required changes, words
    such as `investigate`, `decide`, `choose`, or `determine` are an advisory
    warning that planning remains: resolve it or use a spike. This is not a hard

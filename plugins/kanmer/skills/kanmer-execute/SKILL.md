@@ -84,6 +84,21 @@ resume the exact already-recorded branch and worktree. It is not permission to
 create another worktree, retake the ticket, clear its ownership, or replace its
 uncommitted work.
 
+### One bounded step at a time
+
+A controller driving a constrained worker adds `step` to the same call —
+`get_execution_packet id: <ID>, step: <n>` for a 1-based ordered step, or
+`step: "next"` for the first step the checklist has not ticked. The response
+gains a `step` block: a versioned packet naming the only files and symbols that
+step may touch, the files it must not, its exact tests, commands, expected
+output, done condition, deviation stop, and a stop condition that ends the work
+after that one step. Execute exactly that step, then stop and report so the
+controller can reconcile the actual changes before another packet is issued.
+A plan that cannot be compiled into a bounded step is a normal
+`ready:false, code:"GATE_BLOCKED"` refusal carrying a `validation` report; hand
+it back to `kanmer-plan` rather than guessing the missing fields. Without
+`step` the packet is unchanged and its `validation` report is advisory only.
+
 ## Project capability and worktree
 
 Before the first mutating call, retain the project identity from
@@ -223,8 +238,9 @@ sibling — the shared workspace is still theirs.
 
 ## Work only the packet
 
-- Work only the packet's `files` scope. Do not absorb another ticket, repair
-  unrelated failures, or redesign the workflow.
+- Work only the packet's `files` scope — and, when a `step` block is present,
+  only that step's `allowedFiles` and `allowedSymbols`. Do not absorb another
+  ticket, repair unrelated failures, or redesign the workflow.
 - Tick checklist boxes with `set_ticket_doc` using the version returned by the
   packet/read. Use `append_scratch` for running notes only; preserve failed
   attempts and exact exits.

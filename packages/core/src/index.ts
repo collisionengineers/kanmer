@@ -10,6 +10,8 @@ export * from "./stages.js";
 export * from "./profiles.js";
 export * from "./docpaths.js";
 export * from "./gates.js";
+export * from "./plan.js";
+export * from "./step-packet.js";
 export * from "./groups.js";
 export * from "./docs.js";
 export * from "./prompts.js";

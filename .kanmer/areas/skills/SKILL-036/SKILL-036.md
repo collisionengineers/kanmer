@@ -4,13 +4,14 @@ type: ticket
 title: >-
   Implement durable /goal orchestration with bounded independent review and
   verification
-status: review
+status: implementing
 area: skills
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-28T05:20:16.077Z'
   review: '2026-08-28T05:39:17.064Z'
+  implementing: '2026-08-28T06:00:13.996Z'
 taken_at: '2026-08-28T05:26:30.075Z'
 branch: skill-036-durable-goal-orchestration
 worktree: .worktrees/skill-036
@@ -29,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/302'
 archived: false
 created: '2026-08-26T21:02:42.025Z'
-updated: '2026-08-28T05:39:17.064Z'
+updated: '2026-08-28T06:00:13.996Z'
 ---
 
 ## What

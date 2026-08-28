@@ -4,12 +4,13 @@ type: ticket
 title: >-
   Keep in-roster blocked dependents selectable so a goal run can order its own
   dependency chain
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-08-28T07:14:56.353Z'
+  review: '2026-08-28T07:45:24.771Z'
 taken_at: '2026-08-28T07:20:16.060Z'
 branch: skill-038-blocked-dependents
 worktree: .worktrees/skill-038
@@ -23,9 +24,14 @@ blocks:
   - CORE-119
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
+commits:
+  - 1e128d7
+  - 8a909ee
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/304'
 archived: false
 created: '2026-08-28T06:35:43.709Z'
-updated: '2026-08-28T07:20:16.060Z'
+updated: '2026-08-28T07:45:24.771Z'
 ---
 
 ## What

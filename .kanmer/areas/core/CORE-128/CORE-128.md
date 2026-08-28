@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Quarantine or fix the recurring Windows core-test timing failures that block
   verification
-status: verifying
+status: implementing
 area: core
 assignee: claude-code
 profile: fix
@@ -12,6 +12,7 @@ stageEntered:
   preparing: '2026-08-28T00:04:05.223Z'
   review: '2026-08-28T07:11:19.317Z'
   verifying: '2026-08-28T07:22:08.635Z'
+  implementing: '2026-08-28T07:48:43.878Z'
 taken_at: '2026-08-28T00:39:15.920Z'
 branch: core-128-windows-test-timing
 worktree: .worktrees/core-128
@@ -28,7 +29,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/300'
 archived: false
 created: '2026-08-27T23:52:07.305Z'
-updated: '2026-08-28T07:22:08.635Z'
+updated: '2026-08-28T07:48:43.878Z'
 ---
 
 ## What

@@ -8,3 +8,5 @@
 - Installation-triggered Board push re-gate run `33169603702` completed SUCCESS.
 - `node --test scripts/pr-workflow.test.mjs` exited 0: 1 test passed, 0 failed.
 - No Kanmer source file, group membership, repository variable, stage model, `KANMER_GATE_STRICT`, Infisical state, or secret rotation was changed.
+
+2026-08-28 fixture completion: workflow_dispatch run `33169669232` completed SUCCESS at `add0da7fc17968796f43b3035065de400a4db2d4`; regate job `98843436089` succeeded and hosted verify job `98843436337` succeeded in 5m34s. PR #304 gate job `98843275615` and PR #303 gate job `98843281301` both succeeded with top-level `boardSha=09d2a74d1c3532ea719cfd3428ce71b7875aca6e`. Fixture regate logs explicitly recorded that the attempt-4 jobs were already in progress; those active jobs fetched the fixture tip and judged it. Older installation-dispatch run `33169609976` was cancelled after regate success to prevent overlapping full rails.

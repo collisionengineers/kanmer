@@ -25,18 +25,18 @@
 
 ## Board-only dispatch proof
 
-- [ ] Append one bounded CORE-135 progress note through stable v0.3.12.
-- [ ] Sync the resulting `.kanmer`-only board commit and record its exact SHA.
-- [ ] Record the successful `Board push re-gate` run for that SHA.
-- [ ] Record the dispatched `pr.yml` run and successful `regate`.
-- [ ] Record refreshed `kanmer-gate` attempts for every open PR with matching top-level `boardSha`.
-- [ ] Record, without redesigning, any hosted verify rail scheduled by the existing dispatch condition.
+- [x] Append one bounded CORE-135 progress note through stable v0.3.12.
+- [x] Sync the resulting `.kanmer`-only board commit and record its exact SHA.
+- [x] Record the successful `Board push re-gate` run for that SHA.
+- [x] Record the dispatched `pr.yml` run and successful `regate`.
+- [x] Record refreshed `kanmer-gate` attempts for every open PR with matching top-level `boardSha`.
+- [x] Record, without redesigning, any hosted verify rail scheduled by the existing dispatch condition.
 
 ## Review and staged verification
 
-- [ ] Write the post-implementation report with exact before/after settings, commits, run ids and rollback state.
-- [ ] Obtain a fresh independent administrative review of settings, workflow bytes, Action evidence, scope and safety.
-- [ ] Disposition every review finding and move CORE-135 one stage at a time to Verifying.
+- [x] Write the post-implementation report with exact before/after settings, commits, run ids and rollback state.
+- [x] Obtain a fresh independent administrative review of settings, workflow bytes, Action evidence, scope and safety.
+- [x] Disposition every review finding and move CORE-135 one stage at a time to Verifying.
 - [ ] During Phase 3, rebase PR #304 onto current main and record its new exact head.
 - [ ] Prove old-head successes cannot satisfy the new head: fresh `verify` and `kanmer-gate` attempts are required and pass.
 - [ ] Write machine-readable PASS proof only after the fresh-head evidence exists.

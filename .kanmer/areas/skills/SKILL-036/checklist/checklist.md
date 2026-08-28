@@ -47,11 +47,11 @@ Current gates ignore these labels; use `get_doc_gates` for live gate behaviour.
 
 ## Closeout — SKILL-036
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/<id>`
-- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — state MERGED, mergeCommit 70d23efda85b3d347e36ad7f1e55fa0d4d32c754, mergedAt 2026-08-28T06:42:57Z
+- [x] proof.md finalised — already contains PR 302 identity and merge date in verified prose (version 147fd0a95938ae05, result PASS); left unmodified per operator instruction
+- [x] Moved to final stage — status `done`, not archived
+- [x] Outcome recorded in ticket body (PR link, follow-ups, deployment n/a)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-036` — exit 0
+- [x] `git branch -d skill-036-durable-goal-orchestration` — exit 0 (safe delete succeeded, no `-D` needed)
+- [x] `git fetch --prune` + `git worktree prune` — both exit 0; remote branch also deleted (`git push origin --delete`)
+- [x] `take_ticket action: "release"`

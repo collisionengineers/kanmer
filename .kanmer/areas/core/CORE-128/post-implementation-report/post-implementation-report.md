@@ -211,3 +211,55 @@ Supporting runs: the pre-fix parallel+load reproduction now exits 0 (465/465); m
 before); `antigravity-plugin-config.test.mjs` 4/4 with 0 skipped (2 failures before);
 `serializes concurrent orphan cleanup` ×3 under 5 generators, 3/3 exit 0 at 17.1 / 18.1 / 19.4 s.
 `npm run typecheck`, `npm run build`, `npm run plugin:build`, `npm run plugin:check` all exit 0.
+
+---
+
+## Addendum — evidence at the final head `1d1f09b4`
+
+The ten-run sweep above was measured at `7061045b`. `main` then advanced twice under this branch
+(CORE-117 `bf0eaed4`, CORE-116 `28a12643`), each landing new test files carrying the same bare
+teardown, so the branch was rebased and those seven conversions added. Two further findings
+followed, both recorded here rather than folded silently into the earlier claim.
+
+**Finding 5 — the real-Git budget was marginal, not generous.** A confirmation run under a
+concurrent rail failed `ensureBoardWorktree reconciliation > preserves the root when first-time
+remote attachment ignore fails` with `Test timed out in 30000ms` at **35.2 s**. These cases each
+drive a dozen or more real `git` subprocesses, so their budget tracks Windows process latency,
+not the code under test. `REAL_GIT_TEST_TIMEOUT_MS` and `REAL_GIT_FIXTURE_TIMEOUT_MS` move from
+30 s to **120 s** — ~3.4× the worst measured case, still bounded, still scoped to those two files
+rather than raised into the GUI global.
+
+**Finding 6 — a watcher outliving its fixture, found by the hosted runner.** CI failed the rail
+while the GUI suite itself reported **524/524 green**: an *unhandled rejection* after the run,
+`EPERM: operation not permitted, watch '…\kanmer-core084-sync-*\repo\.worktrees\kanmer\.kanmer\areas'`.
+`index.sync.test.ts`'s teardown dropped the project's context entry by hand, but `closeProject`
+is what closes the filesystem watcher — so the watcher kept running over a fixture the same hook
+then deleted. **This race is pre-existing: `main`'s teardown is byte-identical**, and it is
+intermittent, which is why it had not yet failed a push-to-main run. It is the same species as
+everything else here, so it is fixed rather than left for someone else's verification.
+
+### Final-head evidence
+
+| Check | Result |
+| --- | --- |
+| GitHub Actions `verify` on `1d1f09b4` (hosted Windows runner) | **pass**, 6 m 11 s |
+| `npm run verify` local, loaded (3 generators) | exit 0, 1632 s |
+| `npm run verify` local, loaded (3 generators) | exit 0, 1862 s |
+| `npm run verify` local, unloaded | exit 0, 665 s |
+| `npm run typecheck` | exit 0 |
+| `npx vitest run src/main/index.sync.test.ts` after finding 6 | 11/11 pass, no unhandled rejection |
+
+So: **10/10 clean `npm run verify` at `7061045b`** (three loaded) — the ticket's stated
+acceptance criterion, met in full — plus **3/3 clean at the final head `1d1f09b4`** (two loaded)
+and an independent green hosted-runner `verify`. The ten-run streak was not re-measured at the
+final head; the delta between the two SHAs is seven mechanical teardown conversions, two raised
+constants, and the `closeProject` teardown fix. A verifier should treat the merge SHA as the
+thing to prove and follow the hand-off above.
+
+### Outstanding at hand-off
+
+`kanmer-gate` reports `WRONG_STAGE` (`implementing`, expected `review`) — it is read from the
+board and clears once this ticket is in Review and the board branch tip is pushed to
+`origin/kanmer-board`; the gate reads the **remote** board tip and does not re-run on a board
+push, so the `regate` job needs triggering after that. This lane never touches
+`.worktrees/kanmer`. `NO_REVIEW_RECORD` is expected — the author does not write the attestation.

@@ -4,13 +4,14 @@ type: ticket
 title: >-
   Add apply_reconciliation: mutating recovery on revisions and leases (FRD-028
   acceptance 2-4)
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-28T04:35:34.440Z'
   review: '2026-08-28T05:37:16.430Z'
+  verifying: '2026-08-28T06:09:19.286Z'
 taken_at: '2026-08-28T04:50:02.357Z'
 branch: core-131-apply-reconciliation
 worktree: .worktrees/core-131
@@ -27,7 +28,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/301'
 archived: false
 created: '2026-08-28T03:03:07.312Z'
-updated: '2026-08-28T05:37:16.430Z'
+updated: '2026-08-28T06:09:19.286Z'
 ---
 
 ## What

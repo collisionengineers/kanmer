@@ -1,4 +1,5 @@
 import { UI_STAGE_IDS as STAGE_IDS, uiStageName as stageName } from "../../../shared/stages.js";
+import { isCaptureItem } from "@kanmer/core";
 import type { ActivityEntry, BoardConfig, Item, ItemWarning } from "@kanmer/core";
 import { blockedIds } from "./board.js";
 
@@ -86,6 +87,13 @@ function flat(lines: StandupLine[]): StandupGroup[] {
 export function buildStandup(input: StandupInput): StandupReport {
   const { boardName, items, warnings, activity, now, checklists } = input;
   const active = items.filter((i) => !i.archived && i.type === "ticket");
+  // FRD-032: a quick capture is an observation waiting on a decision, not
+  // planned work that has stalled. It stays in `active` — it is still on the
+  // board, still blockable, still countable — but the two sections that read
+  // "somebody should be doing something about this" exclude it: Flags, which
+  // would nag that an untouched capture has not changed in a week, and Up next,
+  // whose whole content is the Backlog captures live in.
+  const deliverable = active.filter((i) => !isCaptureItem(i));
   const stages: string[] = [...STAGE_IDS];
   const onBoard = new Set(stages);
   const first = stages[0];
@@ -162,7 +170,7 @@ export function buildStandup(input: StandupInput): StandupReport {
   for (const w of warnings) flags.push({ id: null, text: `${w.file}: ${w.message}` });
   const lastActivityBy = new Map<string, string>();
   for (const e of activity) lastActivityBy.set(e.id, e.ts);
-  for (const i of active) {
+  for (const i of deliverable) {
     if (!onBoard.has(i.status)) {
       flags.push({ id: i.id, text: `${i.id} is in "${i.status}", which is not a stage on this board` });
     }
@@ -187,7 +195,7 @@ export function buildStandup(input: StandupInput): StandupReport {
     {
       title: "Up next",
       groups: flat(
-        active
+        deliverable
           .filter((i) => i.status === first)
           .slice(0, 5)
           .map((i) => line(i)),

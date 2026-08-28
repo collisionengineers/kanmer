@@ -118,14 +118,15 @@ export function parseRequirement(raw: string): Requirement {
 export type ProfileMap = Partial<Record<Boundary, string[]>>;
 
 /**
- * The four shipped profiles (FRD-002 P2). Editable per board; `custom` is
- * always available and carries its requirements inline on the ticket.
+ * The five shipped profiles (FRD-002 P2, FRD-032). Editable per board; `custom`
+ * is always available and carries its requirements inline on the ticket.
  *
  * Read the table as "what evidence does this kind of work owe?":
  *   feature — the full pipeline, because a feature changes what the product is
  *   fix     — where it lands and what the change is, a report, then proof
  *   chore   — a plan and a proof; no research ceremony for a rename
  *   spike   — research *is* the deliverable; nothing else is owed
+ *   capture — an observation, not yet work; nothing is owed until it is promoted
  *
  * `fix` carries an `enter-review` (ADR-0014): a fix that opened a PR should not
  * merge unreviewed. `chore` and `spike` deliberately do not — a rename going
@@ -156,12 +157,65 @@ export const DEFAULT_PROFILES: Readonly<Record<string, ProfileMap>> = Object.fre
   spike: {
     "enter-done": ["research", QUESTIONS_RESOLVED],
   },
+  /**
+   * Empty by design, for a different reason than `custom` (FRD-032). A capture
+   * is an *observation*, not work that has been sized: it owes nothing because
+   * nobody has yet decided it should be delivered. Its emptiness is therefore
+   * load-bearing rather than historical, and the rules that keep a capture out
+   * of delivery are enforced in the store — not here, because a gate engine can
+   * only ask for evidence, and what a capture needs is a decision.
+   */
+  capture: {},
   /** Empty by design: historical backfill must nag about nothing. */
   custom: {},
 });
 
 /** The board default when a ticket and its area say nothing (FRD-002 P6). */
 export const DEFAULT_PROFILE_ID = "fix";
+
+/**
+ * The quick-capture profile (FRD-032). A ticket carrying it is an observation
+ * recorded in Backlog: searchable and visible, owing no delivery document, and
+ * barred from goal selection until an explicit promotion decision.
+ */
+export const CAPTURE_PROFILE_ID = "capture";
+
+/**
+ * The recorded promotion outcomes (FRD-032). One deliberate disposition per
+ * capture; `retained` is the only one that may later be superseded, because
+ * "keep it as a capture" must not be a trap.
+ */
+export const CAPTURE_DISPOSITIONS = [
+  "duplicate",
+  "already-fixed",
+  "batch",
+  "promoted",
+  "retained",
+  "not-required",
+] as const;
+
+export type CaptureDisposition = (typeof CAPTURE_DISPOSITIONS)[number];
+
+const CAPTURE_DISPOSITION_SET: ReadonlySet<string> = new Set(CAPTURE_DISPOSITIONS);
+
+export function isCaptureDisposition(v: string): v is CaptureDisposition {
+  return CAPTURE_DISPOSITION_SET.has(v);
+}
+
+/**
+ * Is this item a capture?
+ *
+ * Deliberately the **explicit** `profile` field rather than the resolved id
+ * from `resolveProfileId`. Every behavioural exclusion (roster, group counts,
+ * standup) keys on this one rule, so there is exactly one answer to "is this a
+ * capture" and it does not depend on a board or an area's `defaultProfile` —
+ * which is why an area-level `defaultProfile: capture` is unsupported and
+ * documented as such. The store's delivery refusal is the one place that also
+ * honours the resolved id, because refusing more there is always safe.
+ */
+export function isCaptureItem(item: { profile?: string } | null | undefined): boolean {
+  return item?.profile === CAPTURE_PROFILE_ID;
+}
 
 /**
  * Resolve which profile applies (FRD-002 P6): the ticket's explicit `profile`,

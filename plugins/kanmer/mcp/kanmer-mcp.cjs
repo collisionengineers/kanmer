@@ -37867,6 +37867,26 @@ var ItemFrontmatterSchema = external_exports.object({
   commits: external_exports.array(external_exports.string()).optional(),
   /** PR references — number or URL — associated with this ticket (emitted only when non-empty). */
   prs: external_exports.array(external_exports.string()).optional(),
+  /**
+   * Quick capture (CORE-117, FRD-032). Every field is optional and additive,
+   * so a board written by an older Kanmer parses unchanged and re-emits these
+   * untouched (`.passthrough()` below, plus `orderKeys` in frontmatter.ts).
+   *
+   * The observation itself is deliberately **not** here: it is the ticket
+   * body, which is already searched by `searchItems` and already rendered by
+   * every board GUI. What lives in frontmatter is only what a machine has to
+   * reason about — the evidence list, who recorded it, and the one promotion
+   * decision that took it out of capture state.
+   */
+  capture_evidence: external_exports.array(external_exports.string()).optional(),
+  /** Who recorded the observation; stamped from the activity actor on create. */
+  capture_actor: external_exports.string().optional(),
+  /** The recorded promotion outcome — one of `CAPTURE_DISPOSITIONS`. */
+  capture_disposition: external_exports.string().optional(),
+  /** What the disposition resolved to: a ticket id, a batch id or a link. */
+  capture_result: external_exports.string().optional(),
+  capture_decided_at: TimestampSchema.optional(),
+  capture_decided_by: external_exports.string().optional(),
   /** Deployment status; only meaningful when the board declares environments. */
   deployment: external_exports.string().optional(),
   archived: external_exports.boolean().default(false),
@@ -38579,6 +38599,12 @@ var KEY_ORDER = [
   "docs_todo",
   "commits",
   "prs",
+  "capture_evidence",
+  "capture_actor",
+  "capture_disposition",
+  "capture_result",
+  "capture_decided_at",
+  "capture_decided_by",
   "deployment",
   "archived",
   "created",
@@ -38846,10 +38872,35 @@ var DEFAULT_PROFILES = Object.freeze({
   spike: {
     "enter-done": ["research", QUESTIONS_RESOLVED]
   },
+  /**
+   * Empty by design, for a different reason than `custom` (FRD-032). A capture
+   * is an *observation*, not work that has been sized: it owes nothing because
+   * nobody has yet decided it should be delivered. Its emptiness is therefore
+   * load-bearing rather than historical, and the rules that keep a capture out
+   * of delivery are enforced in the store — not here, because a gate engine can
+   * only ask for evidence, and what a capture needs is a decision.
+   */
+  capture: {},
   /** Empty by design: historical backfill must nag about nothing. */
   custom: {}
 });
 var DEFAULT_PROFILE_ID = "fix";
+var CAPTURE_PROFILE_ID = "capture";
+var CAPTURE_DISPOSITIONS = [
+  "duplicate",
+  "already-fixed",
+  "batch",
+  "promoted",
+  "retained",
+  "not-required"
+];
+var CAPTURE_DISPOSITION_SET = new Set(CAPTURE_DISPOSITIONS);
+function isCaptureDisposition(v) {
+  return CAPTURE_DISPOSITION_SET.has(v);
+}
+function isCaptureItem(item) {
+  return item?.profile === CAPTURE_PROFILE_ID;
+}
 function resolveProfileId(itemProfile, areaDefault, boardDefault) {
   return itemProfile || areaDefault || boardDefault || DEFAULT_PROFILE_ID;
 }
@@ -38903,6 +38954,10 @@ function defaultBoardConfig() {
 var FIX_REVIEW_PROFILE = "fix";
 var FIX_REVIEW_BOUNDARY = "enter-review";
 var FIX_REVIEW_REQUIREMENTS = ["post-implementation-report"];
+function injectCaptureProfile(base) {
+  if (CAPTURE_PROFILE_ID in base) return base;
+  return { ...base, [CAPTURE_PROFILE_ID]: {} };
+}
 function injectFixEnterReview(base) {
   const profile = base[FIX_REVIEW_PROFILE];
   if (!profile) return base;
@@ -38914,8 +38969,8 @@ function injectFixEnterReview(base) {
 }
 var QUESTIONS_BOUNDARIES = ["leave-preparing", "enter-review", "enter-done"];
 function resolveProfiles(board) {
-  const base = injectFixEnterReview(
-    board.profiles ?? DEFAULT_PROFILES
+  const base = injectCaptureProfile(
+    injectFixEnterReview(board.profiles ?? DEFAULT_PROFILES)
   );
   const out = {};
   for (const [id, profile] of Object.entries(base)) {
@@ -39730,12 +39785,12 @@ ${STEP_RETURN_STOP}`,
   };
 }
 function deriveMembers(group, items, lastStage) {
-  const members = items.filter((i) => (i.groups ?? []).includes(group.id)).map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived })).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true }));
+  const members = items.filter((i) => (i.groups ?? []).includes(group.id)).map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived, profile: i.profile })).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true }));
   const progress = {};
   for (const stage of STAGE_IDS) progress[stage] = 0;
-  const live = members.filter((member) => !member.archived);
-  for (const member of live) if (member.status in progress) progress[member.status]++;
-  return { ...group, members, progress, total: live.length, complete: progress[lastStage] ?? 0 };
+  const counted = members.filter((member) => !member.archived && !isCaptureItem(member));
+  for (const member of counted) if (member.status in progress) progress[member.status]++;
+  return { ...group, members, progress, total: counted.length, complete: progress[lastStage] ?? 0 };
 }
 var GROUPS_DIR = "groups";
 var GroupFrontmatterSchema = external_exports.object({
@@ -41452,6 +41507,9 @@ var KanmerStore = class _KanmerStore {
     if (input.status !== void 0) assertStage(input.status);
     if (input.area !== void 0) assertFieldAgainstBoard(board, "area", input.area);
     if (input.profile !== void 0) assertProfileAgainstBoard(board, input.profile, input.requires);
+    if (input.profile === CAPTURE_PROFILE_ID) {
+      assertCaptureObservation(input.title, input.body);
+    }
     if (input.groups !== void 0) await this.assertGroups(input.groups);
     if (input.refs !== void 0) await this.assertRefs(input.refs);
     if (input.deployment !== void 0) assertDeploymentAgainstBoard(board, input.deployment);
@@ -41498,6 +41556,14 @@ var KanmerStore = class _KanmerStore {
       if (input.blocks !== void 0 && input.blocks.length > 0) item.blocks = input.blocks;
       if (input.refs !== void 0 && input.refs.length > 0) item.refs = input.refs;
       if (input.docs_todo === true) item.docs_todo = true;
+      if (input.capture_evidence !== void 0 && input.capture_evidence.length > 0) {
+        item.capture_evidence = input.capture_evidence;
+      }
+      if (input.profile === CAPTURE_PROFILE_ID) {
+        item.capture_actor = input.capture_actor?.trim() || this.actor;
+      } else if (input.capture_actor !== void 0 && input.capture_actor.trim() !== "") {
+        item.capture_actor = input.capture_actor.trim();
+      }
       if (input.commits !== void 0 && input.commits.length > 0) item.commits = input.commits;
       if (input.prs !== void 0 && input.prs.length > 0) item.prs = input.prs;
       if (input.deployment !== void 0 && input.deployment !== "") item.deployment = input.deployment;
@@ -41542,7 +41608,9 @@ var KanmerStore = class _KanmerStore {
       await this.assertRevision(loc, id, expectedRevision);
       const backward = fields.status !== void 0 && fields.status !== current.status ? await this.backwardMoveEffects(loc, current, fields.status, reason) : null;
       const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: void 0 };
-      const pruned = pruneUndefined({ ...fields, ...backwardEffects });
+      assertCaptureObservationRetained(current, fields);
+      const captureEffects = await this.captureDecisionEffects(current, fields);
+      const pruned = pruneUndefined({ ...fields, ...backwardEffects, ...captureEffects });
       const changed = changedFields(current, pruned);
       if (changed.length === 0) {
         return current;
@@ -41557,6 +41625,7 @@ var KanmerStore = class _KanmerStore {
       if (next.refs && next.refs.length === 0) delete next.refs;
       if (next.commits && next.commits.length === 0) delete next.commits;
       if (next.prs && next.prs.length === 0) delete next.prs;
+      if (next.capture_evidence && next.capture_evidence.length === 0) delete next.capture_evidence;
       if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
         board ??= await this.getBoard();
         await this.assertDocGate(loc.dir, board, next, current.status, next.status);
@@ -41936,6 +42005,11 @@ ${entry}`;
       const current = parseItem(await readText(loc.file));
       if (current.type !== "ticket") {
         throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
+      }
+      if (isCaptureItem(current)) {
+        throw new Error(
+          `CAPTURE_NOT_PROMOTED: "${id}" is a quick capture and cannot be taken. Promote it first with update_item capture_disposition ("promoted" or "batch", together with the profile it should carry); until then it holds no claim, no workspace and no lease.`
+        );
       }
       await this.assertRevision(loc, id, input.expectedRevision);
       const board = await this.getBoard();
@@ -42532,6 +42606,102 @@ ${content.trim()}
     }
   }
   /**
+   * The promotion decision (FRD-032), resolved into the frontmatter it implies.
+   *
+   * Promotion is deliberately a *recorded decision on the ticket* rather than a
+   * new tool: a capture is already an ordinary ticket, `update_item` already
+   * carries derived effects (an `area` change moves the ticket's folder), and
+   * CORE-124 set the house precedent that additive frontmatter needs no new
+   * verb. Returning effects rather than writing means the whole promotion —
+   * disposition, link, archive and profile change — lands in the single atomic
+   * write `updateItem` was already going to make, under the board write lock.
+   *
+   * Every refusal is a stable code, because a controller routes on them.
+   */
+  async captureDecisionEffects(current, fields) {
+    const raw = fields.capture_disposition;
+    if (raw === void 0) {
+      if (fields.capture_result !== void 0) {
+        throw new Error(
+          `CAPTURE_DISPOSITION_INVALID: "${current.id}" was given capture_result without capture_disposition. A result only means something as part of a recorded decision.`
+        );
+      }
+      return {};
+    }
+    const disposition = raw.trim();
+    if (!isCaptureDisposition(disposition)) {
+      throw new Error(
+        `CAPTURE_DISPOSITION_INVALID: "${disposition}" is not a promotion outcome. Valid: ${CAPTURE_DISPOSITIONS.join(", ")}.`
+      );
+    }
+    if (!isCaptureItem(current)) {
+      throw new Error(
+        `CAPTURE_DISPOSITION_INVALID: "${current.id}" is not a capture (profile "${current.profile ?? "unset"}"), so there is no capture to promote.`
+      );
+    }
+    if (current.capture_disposition && current.capture_disposition !== "retained") {
+      throw new Error(
+        `CAPTURE_ALREADY_DISPOSED: "${current.id}" was already promoted as "${current.capture_disposition}"` + (current.capture_decided_at ? ` on ${current.capture_decided_at}` : "") + `. A promotion is recorded once; only "retained" may be superseded.`
+      );
+    }
+    const result = fields.capture_result?.trim();
+    const promotesProfile = fields.profile !== void 0 && fields.profile !== CAPTURE_PROFILE_ID;
+    const requireResult = (what) => {
+      if (!result) {
+        throw new Error(
+          `CAPTURE_RESULT_REQUIRED: disposition "${disposition}" must name ${what} in capture_result \u2014 the outcome is what makes the decision auditable.`
+        );
+      }
+      return result;
+    };
+    const requireProfile = () => {
+      if (!promotesProfile) {
+        throw new Error(
+          `CAPTURE_PROMOTION_NEEDS_PROFILE: disposition "${disposition}" turns "${current.id}" into deliverable work, so the same update must set a non-capture profile. Its gate requirements then apply from this decision onward, never retroactively.`
+        );
+      }
+    };
+    const effects = {
+      capture_disposition: disposition,
+      capture_decided_at: nowIso(),
+      capture_decided_by: this.actor
+    };
+    if (result) effects.capture_result = result;
+    switch (disposition) {
+      case "duplicate": {
+        const target = requireResult("the ticket this duplicates");
+        if (!await this.getItem(target)) {
+          throw new Error(
+            `CAPTURE_RESULT_REQUIRED: no item with id "${target}" to merge "${current.id}" into.`
+          );
+        }
+        const links = fields.links ?? current.links ?? [];
+        if (!links.includes(target)) effects.links = [...links, target];
+        effects.archived = true;
+        break;
+      }
+      case "already-fixed":
+      case "not-required":
+        effects.archived = true;
+        break;
+      case "batch":
+        requireResult("the small-fix batch it joins");
+        requireProfile();
+        break;
+      case "promoted":
+        requireProfile();
+        break;
+      case "retained":
+        if (promotesProfile) {
+          throw new Error(
+            `CAPTURE_DISPOSITION_INVALID: "retained" keeps "${current.id}" a capture, so it cannot also set profile "${fields.profile}". Use "promoted" instead.`
+          );
+        }
+        break;
+    }
+    return effects;
+  }
+  /**
    * Hard document gates on a transition — the generalisation of the old proof
    * gate. Resolve the ticket area's gates, evaluate them against the from→to
    * move (threshold semantics in {@link evaluateGates}), and throw once listing
@@ -42541,6 +42711,11 @@ ${content.trim()}
    */
   async assertDocGate(ticketDir, board, item, fromStatus, toStatus) {
     const report = await this.gateReport(ticketDir, board, item);
+    if (toStatus !== FIRST_STAGE && (isCaptureItem(item) || report.profile === CAPTURE_PROFILE_ID)) {
+      throw new Error(
+        `CAPTURE_NOT_PROMOTED: "${item.id}" is a quick capture, so it cannot move to "${toStatus}". A capture stays in "${FIRST_STAGE}" until it is promoted by an explicit recorded decision \u2014 update_item with capture_disposition ("promoted" or "batch", together with the profile it should carry) turns it into deliverable work; "duplicate", "already-fixed", "not-required" close it; "retained" keeps it as it is.`
+      );
+    }
     const collapsed = collapsesPipeline(
       report.boundaries,
       stageIndex(fromStatus),
@@ -42775,6 +42950,21 @@ function assertProfileAgainstBoard(board, profile, requires) {
     throw new Error(`Invalid requirements for profile "${profile}": ${errors.join("; ")}`);
   }
 }
+function assertCaptureObservation(title, body) {
+  const missing = [];
+  if (!(title ?? "").trim()) missing.push("a title");
+  if (!(body ?? "").trim()) missing.push("an observation (the ticket body)");
+  if (missing.length) {
+    throw new Error(
+      `CAPTURE_OBSERVATION_REQUIRED: a capture needs ${missing.join(" and ")}. Optional evidence may be empty; these two may not.`
+    );
+  }
+}
+function assertCaptureObservationRetained(current, fields) {
+  const staysCapture = fields.profile === CAPTURE_PROFILE_ID || fields.profile === void 0 && isCaptureItem(current);
+  if (!staysCapture) return;
+  assertCaptureObservation(fields.title ?? current.title, fields.body ?? current.body);
+}
 function assertDeploymentAgainstBoard(board, value) {
   if (value === "") return;
   if (!board.deployment) {
@@ -42810,6 +43000,7 @@ function matchesFilter(item, filter) {
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
   if (filter.group && !(item.groups ?? []).includes(filter.group)) return false;
+  if (filter.profile && item.profile !== filter.profile) return false;
   return true;
 }
 function columnList(board, kind) {
@@ -44010,6 +44201,9 @@ async function getExecutionPacket(input) {
   }
   if (gates.profile === "spike") {
     return refuse(project, `Profile "spike" is research-first; execution packets are not available for spikes.`, [], item, gates);
+  }
+  if (isCaptureItem(item) || gates.profile === CAPTURE_PROFILE_ID) {
+    return refuse(project, `"${id}" is a quick capture, not planned work. Promote it first with update_item capture_disposition ("promoted" or "batch") and the profile it should carry; a capture is never selected for autonomous delivery.`, [], item, gates);
   }
   const missing = missingRequirements(gates);
   if (missing.length) {
@@ -45493,6 +45687,10 @@ async function summarise(item, blockedIds) {
     order: item.order ?? null,
     blocked: blockedIds.has(item.id),
     refs: item.refs ?? null,
+    // FRD-032: a roster needs to see, in the listing it already makes, that a
+    // ticket is an unpromoted observation rather than selectable work.
+    capture: isCaptureItem(item),
+    capture_disposition: item.capture_disposition ?? null,
     deployment: item.deployment ?? null,
     created: item.created,
     updated: item.updated,
@@ -45517,7 +45715,7 @@ var createFields = {
   area: external_exports.string().optional().describe("Area id (see list_board \u2192 areas)"),
   assignee: external_exports.string().optional(),
   profile: external_exports.string().optional().describe(
-    "Requirement profile \u2014 which documents each stage boundary needs of this ticket. feature | fix | chore | spike | custom (see list_board \u2192 profiles). Omit to inherit the area default, then the board default."
+    "Requirement profile \u2014 which documents each stage boundary needs of this ticket. feature | fix | chore | spike | capture | custom (see list_board \u2192 profiles). Omit to inherit the area default, then the board default. `capture` files a quick observation: it needs a title and a body and owes no document, but it stays in Backlog and cannot be taken until an explicit promotion decision."
   ),
   requires: external_exports.record(external_exports.array(external_exports.string())).optional().describe(
     'Inline requirements, honoured only when profile is "custom": { "leave-preparing": ["plan"], "enter-done": ["proof:visual"] }. An empty map means no requirements.'
@@ -45531,7 +45729,13 @@ var createFields = {
   commits: external_exports.array(external_exports.string()).optional().describe("Commit SHAs associated with this ticket"),
   prs: external_exports.array(external_exports.string()).optional().describe("PR references (number or URL)"),
   deployment: external_exports.string().optional().describe("Deployment status (only when the board declares environments): n/a | not-deployed | <env-id>"),
-  body: external_exports.string().optional().describe("Markdown body; may contain [[id]] wiki-links")
+  capture_evidence: external_exports.array(external_exports.string()).optional().describe(
+    "Quick-capture evidence: screenshot/file paths or links. Optional \u2014 an empty or absent list is valid."
+  ),
+  capture_actor: external_exports.string().optional().describe("Who observed this; defaults to the calling client on a capture"),
+  body: external_exports.string().optional().describe(
+    "Markdown body; may contain [[id]] wiki-links. On a `capture` this is the observation itself and is required \u2014 that is what makes it searchable."
+  )
 };
 var expectedProjectField = external_exports.string().optional().describe("Optional project fingerprint from get_status.project.fingerprint; send only when get_status.compat.expectedProject is optional");
 var expectedRevisionField = external_exports.string().optional().describe(
@@ -45784,6 +45988,9 @@ function createKanmerMcpServer(policy = "local-stdio") {
         status: external_exports.string().optional().describe("Filter by status id (workflow stage)"),
         area: external_exports.string().optional().describe("Filter by area id"),
         label: external_exports.string().optional().describe("Filter by a label"),
+        profile: external_exports.string().optional().describe(
+          "Filter by the ticket's explicit requirement profile. `capture` lists only quick captures; every other value excludes them. Matches the field as written, so a ticket inheriting its area/board default matches nothing here."
+        ),
         group: external_exports.string().optional().describe(
           "Filter by group membership, e.g. EPIC-001 or HZN-003. An unknown group id returns no items rather than erroring \u2014 a filter asks a question, it does not assert one."
         ),
@@ -45795,12 +46002,13 @@ function createKanmerMcpServer(policy = "local-stdio") {
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
     guard(
-      async ({ type, status, area, label, group, include_archived, updated_since, sort, limit }) => {
+      async ({ type, status, area, label, profile, group, include_archived, updated_since, sort, limit }) => {
         const { items, warnings } = await store.listItemsWithWarnings({
           type,
           status,
           area,
           label,
+          profile,
           group,
           includeArchived: include_archived
         });
@@ -46006,18 +46214,19 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "search_items",
     {
       title: "Search items",
-      description: "Full-text search over item id, title, body, labels and assignee. Returns matching summaries.",
+      description: "Full-text search over item id, title, body, labels and assignee \u2014 so a quick capture is found by the words of its observation, which is stored as the body. Returns matching summaries. Narrow with profile the same way list_items does.",
       inputSchema: {
         query: external_exports.string().describe("Text to search for"),
-        type: itemTypeEnum.optional().describe("Restrict to one item type")
+        type: itemTypeEnum.optional().describe("Restrict to one item type"),
+        profile: external_exports.string().optional().describe('Restrict to one explicit requirement profile, e.g. "capture"')
       },
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
-    guard(async ({ query, type }) => {
+    guard(async ({ query, type, profile }) => {
       const blocked = await blockedSet();
       return ok(
         await Promise.all(
-          (await store.searchItems(query, { type })).map((i) => summarise(i, blocked))
+          (await store.searchItems(query, { type, profile })).map((i) => summarise(i, blocked))
         )
       );
     })
@@ -46244,7 +46453,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "create_item",
     {
       title: "Create an item",
-      description: "Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. Creation is ungated: a ticket may be created directly in any stage (imports/backfills of finished work) \u2014 the document gates apply on move_item, not creation. Link governing docs with refs (each must exist) or set docs_todo. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+      description: `Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. Creation is ungated: a ticket may be created directly in any stage (imports/backfills of finished work) \u2014 the document gates apply on move_item, not creation. Link governing docs with refs (each must exist) or set docs_todo. To record an observation you are not ready to size, use profile "capture": it needs only a title and a body (the observation) plus optional capture_evidence, never acquires docs_todo, and stays out of goal selection until it is promoted. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.`,
       inputSchema: createFields,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
@@ -46280,7 +46489,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "update_item",
     {
       title: "Update an item",
-      description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder \u2014 the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
+      description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder \u2014 the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten. This is also where a quick capture is promoted: capture_disposition records one deliberate outcome and applies the link, archive or profile change it implies, in the same atomic write.",
       inputSchema: {
         id: external_exports.string().describe("Item id to update"),
         title: external_exports.string().optional(),
@@ -46288,7 +46497,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
         area: external_exports.string().optional(),
         assignee: external_exports.string().optional(),
         profile: external_exports.string().optional().describe(
-          "Requirement profile: feature | fix | chore | spike | custom. Gates re-evaluate immediately \u2014 changing it can unblock a move that was blocked a moment ago."
+          "Requirement profile: feature | fix | chore | spike | capture | custom. Gates re-evaluate immediately \u2014 changing it can unblock a move that was blocked a moment ago, and promoting a capture applies its new profile's requirements only from that decision onward."
         ),
         requires: external_exports.record(external_exports.array(external_exports.string())).optional().describe('Inline requirements, honoured only when profile is "custom"'),
         groups: external_exports.array(external_exports.string()).optional().describe("Group ids this ticket belongs to"),
@@ -46301,6 +46510,11 @@ function createKanmerMcpServer(policy = "local-stdio") {
         commits: external_exports.array(external_exports.string()).optional().describe("Commit SHAs; [] clears them"),
         prs: external_exports.array(external_exports.string()).optional().describe("PR references; [] clears them"),
         deployment: external_exports.string().optional().describe('Deployment status; pass "" to clear (only when the board declares environments)'),
+        capture_evidence: external_exports.array(external_exports.string()).optional().describe("Quick-capture evidence (paths or links); [] clears it"),
+        capture_disposition: external_exports.string().optional().describe(
+          "Promote a capture with one recorded decision: duplicate | already-fixed | batch | promoted | retained | not-required. `duplicate` needs capture_result naming the ticket it merges into (it is linked and archived); `already-fixed` and `not-required` archive it; `batch` needs capture_result naming the batch AND a non-capture profile in the same call; `promoted` needs that profile; `retained` keeps it a capture and is the only decision that may later be superseded."
+        ),
+        capture_result: external_exports.string().optional().describe("What the disposition resolved to: a ticket id, a batch id or a link"),
         body: external_exports.string().optional(),
         archived: external_exports.boolean().optional(),
         expected_revision: expectedRevisionField,

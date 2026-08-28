@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { UI_FIRST_STAGE as FIRST_STAGE, UI_STAGES as STAGES } from "../../../shared/stages.js";
 
-/** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3). */
-const PROFILE_IDS = ["feature", "fix", "chore", "spike", "custom"] as const;
+/** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3, FRD-032). */
+const PROFILE_IDS = ["feature", "fix", "chore", "spike", "capture", "custom"] as const;
 import type { BoardConfig, CreateItemInput, Item } from "@kanmer/core";
 import { ChipInput } from "./ChipInput.js";
 import { useClient } from "../lib/client.js";

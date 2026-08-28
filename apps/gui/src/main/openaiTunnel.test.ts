@@ -1,9 +1,10 @@
 import { EventEmitter } from "node:events";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ChildProcess } from "node:child_process";
+import { removeTreeWithRetry } from "@kanmer/core";
 import {
   OpenAITunnelManager,
   buildOpenAITunnelMcpCommand,
@@ -42,7 +43,7 @@ const spawnUnknownAlias = ((...args: Parameters<NonNullable<ConstructorParameter
   return child;
 }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
 
-afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
+afterEach(async () => { await Promise.all(roots.splice(0).map((root) => removeTreeWithRetry(root))); });
 
 describe("OpenAITunnelManager", () => {
   it("preserves filesystem roots and surfaces malformed settings", async () => {

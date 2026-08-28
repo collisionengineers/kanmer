@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const script = join(root, "scripts", "verify-skill-prose.mjs");
@@ -27,7 +28,7 @@ test("rejects a v2 stage sequence in AGENTS.md", () => {
     assert.match(result.stdout, /AGENTS\.md:1/);
     assert.match(result.stdout, /no v2 stage names/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -48,7 +49,7 @@ test("rejects a groom skill without the board-vs-reality sweep contract", () => 
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /kanmer-groom keeps the bounded, evidence-first, proposal-only sweep/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -131,7 +132,7 @@ test("auto prose validator rejects the legacy unbounded serial fallback", () => 
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /no unbounded serial fallback/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -152,7 +153,7 @@ test("auto prose validator rejects partial-roster success language", () => {
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /no partial completion presented as success/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -176,7 +177,7 @@ test("review prose validator rejects the deleted legacy review-asset claim", () 
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /no stale legacy review-asset prose/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -203,7 +204,7 @@ test("skill prose validator rejects a resumed execution flow that recreates its 
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /kanmer-execute separates resumed and fresh worktree flows/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -229,7 +230,7 @@ test("skill prose validator rejects a resumed flow without repository and retain
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /kanmer-execute validates resumed repository, location, and pause handoff/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -265,7 +266,7 @@ test("skill prose validator rejects document writes on refusal and closeout rele
     assert.match(result.stdout, /ready:false refusal externally handed off and read-only/);
     assert.match(result.stdout, /closeout preserves a paused ticket's resume metadata/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -295,7 +296,7 @@ test("skill prose validator rejects a review flow that parks needs-changes in Re
     assert.match(result.stdout, /FAIL {2}kanmer-review takes the sanctioned same-PR return/);
     assert.match(result.stdout, /FAIL {2}kanmer-execute re-enters on the existing PR/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -321,6 +322,6 @@ test("skill prose validator rejects a resumed flow without reference inputs or a
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /retains reference inputs and limits resumption to implementation/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });

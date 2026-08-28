@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { removeTreeWithRetry } from "./io.js";
 import { KanmerStore } from "./store.js";
 import { migrateBoard, migrateToV2, migrateToV3 } from "./migrate.js";
 import { repoDocKindOf } from "./docs.js";
@@ -16,7 +17,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(root, { recursive: true, force: true });
+  await removeTreeWithRetry(root);
 });
 
 /** Write a board.yml by hand — hand-edited boards are exactly what migration must survive. */

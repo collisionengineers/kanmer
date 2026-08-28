@@ -1,12 +1,13 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("electron", () => ({ safeStorage: { isEncryptionAvailable: () => true, encryptString: (value: string) => Buffer.from(value), decryptString: (value: Buffer) => value.toString("utf8") } }));
 import { getSecret, putSecret, secureBackend } from "./secrets.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 const roots: string[] = [];
-afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
+afterEach(async () => { await Promise.all(roots.splice(0).map((root) => removeTreeWithRetry(root))); });
 
 const token = "A".repeat(43);
 function backend(selected = "dpapi") {

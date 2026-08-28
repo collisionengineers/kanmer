@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { classifySyncFailure, ensureBoardWorktree, guardGitBranchPreference, ignoreEntriesToAppend, inspectBoardSync, inspectBoardWorktree, preflightBoardSync, refreshBoardBranch, refreshBoardBranchForPreference, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync, syncBoard } from "./kanmerGit.js";
+import { removeTreeWithRetrySync } from "@kanmer/core";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -737,7 +738,7 @@ describe("ensureBoardWorktree reconciliation", () => {
 
     // Repair the same canonical path; retry must not create or select another
     // worktree and a repeated retry must remain idempotent.
-    rmSync(ignorePath, { recursive: true, force: true });
+    removeTreeWithRetrySync(ignorePath);
     const retried = await ensureBoardWorktree(repo, "kanmer-board");
     expect(retried).toMatchObject({ available: true, boardRoot: resolve(boardRoot), branch: "kanmer-board", error: null, paused: false });
     const repeated = await ensureBoardWorktree(repo, "kanmer-board");

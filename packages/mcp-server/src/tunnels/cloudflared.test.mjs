@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { spawn as nodeSpawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { PassThrough } from "node:stream";
 import os from "node:os";
@@ -9,6 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS, CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS, createCloudflaredAdapter, validateTunnelStartInput } from "../../dist/tunnels/cloudflared.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 test("startup and established-tunnel readiness use separate bounded policies", () => {
   assert.equal(CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS, 60_000);
@@ -46,7 +47,7 @@ test("adapter exposes a redacted doctor surface for executable and credential ch
     const result = await broken.doctor();
     assert.equal(result.ok, false);
     assert.equal(result.checks[1].code, "TUNNEL_CREDENTIALS_FILE_UNSAFE");
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("adapter validates an owned credentials file before starting a direct child", async () => {
@@ -69,7 +70,7 @@ test("adapter validates an owned credentials file before starting a direct child
     await child.exited;
     await assert.rejects(() => createCloudflaredAdapter({ ...options, credentialsFile: path.join(directory, "missing") }).start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CREDENTIALS_FILE_UNSAFE/);
     await assert.rejects(() => createCloudflaredAdapter({ ...options, executable: `${process.execPath}\nunsafe` }).start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_EXECUTABLE_INVALID/);
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("adapter refuses a symlinked credentials reference when the platform permits one", async (t) => {
@@ -85,7 +86,7 @@ test("adapter refuses a symlinked credentials reference when the platform permit
       hostname: "kanmer.example.test", validateExecutable: async () => {},
     });
     await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CREDENTIALS_FILE_UNSAFE/);
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("fake provider receives one direct no-autoupdate metrics invocation and must pass readiness", async () => {
@@ -126,7 +127,7 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
     if (process.platform !== "win32") assert.equal((await stat(configPath)).mode & 0o077, 0);
     await Promise.all([handle.stop(), handle.stop()]);
     await assert.rejects(() => access(configPath));
-  } finally { if (server && !closed) await new Promise((resolve) => server.close(resolve)); await rm(directory, { recursive: true, force: true }); }
+  } finally { if (server && !closed) await new Promise((resolve) => server.close(resolve)); await removeTreeWithRetry(directory); }
 });
 
 test("standalone fake provider reaches local readiness and leaves no credential content in diagnostics", async () => {
@@ -158,7 +159,7 @@ test("standalone fake provider reaches local readiness and leaves no credential 
     assert.equal(adapter.getStatus().publicEndpoint, "https://kanmer.example.test/mcp");
     assert.ok(diagnostics.some((event) => event.message === "provider output received"));
     assert.equal(JSON.stringify(diagnostics).includes(canary), false);
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("adapter status follows provider readiness degradation and recovery", async () => {
@@ -191,7 +192,7 @@ test("adapter status follows provider readiness degradation and recovery", async
     assert.equal(adapter.getStatus().state, "connected");
     assert.deepEqual(readinessTimeouts, [CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS, CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS, CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS]);
     await handle.stop();
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("stop cancels an owned child while startup readiness is still pending", async () => {
@@ -221,7 +222,7 @@ test("stop cancels an owned child while startup readiness is still pending", asy
     await assert.rejects(() => starting, /TUNNEL_CHILD_EXITED_BEFORE_READY/);
     assert.equal(child.killed, true);
     assert.equal(adapter.getStatus().state, "failed");
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("stop latched during validation prevents a provider child from spawning", async () => {
@@ -245,7 +246,7 @@ test("stop latched during validation prevents a provider child from spawning", a
     releaseValidation();
     await assert.rejects(() => starting, /TUNNEL_START_CANCELLED/);
     assert.equal(spawnCount, 0);
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("readiness failure waits for the owned child to exit before cleanup", async () => {
@@ -268,7 +269,7 @@ test("readiness failure waits for the owned child to exit before cleanup", async
     }, fakeSpawn);
     await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /not ready/);
     assert.equal(stopped, true);
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("an owned child exit fails the attempt without waiting for readiness timeout", async () => {
@@ -291,7 +292,7 @@ test("an owned child exit fails the attempt without waiting for readiness timeou
     }, fakeSpawn);
     await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CHILD_EXITED_BEFORE_READY/);
     assert.equal(adapter.getStatus().code, "TUNNEL_CHILD_EXITED_BEFORE_READY");
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("provider error without an exit event settles and cleans the attempt", async () => {
@@ -309,7 +310,7 @@ test("provider error without an exit event settles and cleans the attempt", asyn
     };
     const adapter = createCloudflaredAdapter({ executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials, hostname: "kanmer.example.test", validateExecutable: async () => {}, waitForReady: () => new Promise(() => {}) }, fakeSpawn);
     await assert.rejects(() => Promise.race([adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), new Promise((_, reject) => setTimeout(() => reject(new Error("hung")), 1_000))]), /TUNNEL_CHILD_EXITED_BEFORE_READY/);
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("unexpected startup text never escapes through adapter status", async () => {
@@ -323,5 +324,5 @@ test("unexpected startup text never escapes through adapter status", async () =>
     });
     await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /Bearer-canary/);
     assert.equal(adapter.getStatus().code, "TUNNEL_START_FAILED");
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });

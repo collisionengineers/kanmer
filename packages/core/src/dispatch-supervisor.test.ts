@@ -1,7 +1,8 @@
 import { EventEmitter } from "node:events";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { removeTreeWithRetry } from "./io.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { DispatchSupervisor } from "./dispatch-supervisor.js";
 
@@ -16,7 +17,7 @@ function fakeChild(pid = 1234) {
 
 let dirs: string[] = [];
 afterEach(async () => {
-  await Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  await Promise.all(dirs.splice(0).map((dir) => removeTreeWithRetry(dir)));
 });
 
 async function setup(options: Partial<ConstructorParameters<typeof DispatchSupervisor>[0]> = {}) {

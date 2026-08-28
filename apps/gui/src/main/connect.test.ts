@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 import { codexPortableInvocation, q } from "./providers.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => process.cwd() } }));
 
@@ -43,7 +44,7 @@ type AgentProvider = import("./providers.js").AgentProvider;
 type ProviderId = import("./providers.js").ProviderId;
 const roots: string[] = [];
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(roots.splice(0).map((root) => removeTreeWithRetry(root)));
 });
 
 async function tempRoot(): Promise<string> {

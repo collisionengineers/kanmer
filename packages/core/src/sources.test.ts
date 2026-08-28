@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { removeTreeWithRetry } from "./io.js";
 import { defaultBoardConfig, readBoard, writeBoard } from "./board.js";
 import { resolveSources, sourceKey, validateSourceDeclarations } from "./sources.js";
 import { resolvePaths } from "./paths.js";
@@ -13,7 +14,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(root, { recursive: true, force: true });
+  await removeTreeWithRetry(root);
 });
 
 describe("project-declared source schema and resolver", () => {

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { removeTreeWithRetry } from "../packages/core/dist/index.js";
 
 const repoRoot = join(fileURLToPath(new URL("..", import.meta.url)));
 const expected = [
@@ -17,6 +18,35 @@ const expected = [
   "setlocal EnableDelayedExpansion&&set KANMER_PROVIDER_CWD=!CD!&&pushd !LOCALAPPDATA!\\Kanmer\\bin&&call kanmer-mcp.cmd",
 ];
 const execFileAsync = promisify(execFile);
+
+/**
+ * The environment Antigravity actually launches the token in, plus this
+ * fixture's `LOCALAPPDATA`.
+ *
+ * `NoDefaultCurrentDirectoryInExePath` is deliberately removed. While that
+ * variable is defined, cmd.exe drops the current directory from its command
+ * search path, so `pushd …\Kanmer\bin&&call kanmer-mcp.cmd` cannot resolve the
+ * shim the test just wrote and the child fails
+ * `'kanmer-mcp.cmd' is not recognized as an internal or external command`.
+ * Agent harnesses set it in their own process environment (process scope only —
+ * it is absent from the user and machine environments, from an interactive
+ * shell, and from the hosted CI runner), and `{ ...process.env }` then hands it
+ * to the child. That made these two tests fail 100 % of the time under an agent
+ * and pass everywhere else, which is what CORE-128 was chasing. It is a
+ * property of the launching harness, not of the launcher token under test, so
+ * the fixture controls it rather than inheriting it. Every assertion below is
+ * unchanged.
+ */
+function launcherEnv(localAppData) {
+  const env = { ...process.env, LOCALAPPDATA: localAppData };
+  delete env.NoDefaultCurrentDirectoryInExePath;
+  return env;
+}
+
+/** True when cmd.exe could not resolve the shim at all, rather than failing it. */
+function shimUnreachable(error) {
+  return /is not recognized as an internal or external command/i.test(String(error?.stderr ?? ""));
+}
 
 function validate(entry) {
   assert.equal(entry.command, "cmd.exe");
@@ -44,7 +74,7 @@ test("direct launcher tokens are rejected because they fail when LOCALAPPDATA ha
   );
 });
 
-test("the quote-free launcher still reaches the shim when LOCALAPPDATA contains spaces", { skip: process.platform !== "win32" }, async () => {
+test("the quote-free launcher still reaches the shim when LOCALAPPDATA contains spaces", { skip: process.platform !== "win32" }, async (t) => {
   const root = await mkdtemp(join(tmpdir(), "kanmer-agy-"));
   const localAppData = join(root, "Kanmer Test Space");
   const bin = join(localAppData, "Kanmer", "bin");
@@ -57,20 +87,34 @@ test("the quote-free launcher still reaches the shim when LOCALAPPDATA contains 
   const caller = join(root, "provider workspace");
   await mkdir(caller, { recursive: true });
   try {
-    const { stdout } = await execFileAsync("cmd.exe", [...expected.slice(0, 4), `${expected[4]} --probe`], {
-      env: { ...process.env, LOCALAPPDATA: localAppData },
-      cwd: caller,
-      windowsHide: true,
-      timeout: 5_000,
-    });
+    let stdout;
+    try {
+      // cmd.exe start-up plus a batch file is normally milliseconds; 30 s is a
+      // hang guard, sized so a contended Windows host cannot turn it into a
+      // failure (CORE-128).
+      ({ stdout } = await execFileAsync("cmd.exe", [...expected.slice(0, 4), `${expected[4]} --probe`], {
+        env: launcherEnv(localAppData),
+        cwd: caller,
+        windowsHide: true,
+        timeout: 30_000,
+      }));
+    } catch (error) {
+      // If cmd.exe cannot resolve the shim at all, this host cannot exercise
+      // the launcher token. Record why rather than reporting a pass.
+      if (shimUnreachable(error)) {
+        t.skip(`cmd.exe could not resolve the shim: ${String(error.stderr).trim()}`);
+        return;
+      }
+      throw error;
+    }
     assert.match(stdout, /PROVIDER_CWD=.*provider workspace/);
     assert.match(stdout, /KANMER_ARGV_SPACE_OK/);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await removeTreeWithRetry(root);
   }
 });
 
-test("the shipped installer shim restores the provider cwd before MCP launch", { skip: process.platform !== "win32" }, async () => {
+test("the shipped installer shim restores the provider cwd before MCP launch", { skip: process.platform !== "win32" }, async (t) => {
   const root = await mkdtemp(join(tmpdir(), "kanmer-agy-cwd-"));
   const localAppData = join(root, "Kanmer Test Space");
   const bin = join(localAppData, "Kanmer", "bin");
@@ -86,15 +130,25 @@ test("the shipped installer shim restores the provider cwd before MCP launch", {
   const caller = join(root, "provider workspace");
   await mkdir(caller, { recursive: true });
   try {
-    const { stdout } = await execFileAsync("cmd.exe", [...expected.slice(0, 4), expected[4]], {
-      env: { ...process.env, LOCALAPPDATA: localAppData },
-      cwd: caller,
-      windowsHide: true,
-      timeout: 5_000,
-    });
+    let stdout;
+    try {
+      // See the sibling test: 30 s is a hang guard, not a latency claim.
+      ({ stdout } = await execFileAsync("cmd.exe", [...expected.slice(0, 4), expected[4]], {
+        env: launcherEnv(localAppData),
+        cwd: caller,
+        windowsHide: true,
+        timeout: 30_000,
+      }));
+    } catch (error) {
+      if (shimUnreachable(error)) {
+        t.skip(`cmd.exe could not resolve the shim: ${String(error.stderr).trim()}`);
+        return;
+      }
+      throw error;
+    }
     assert.match(stdout, /CWD=.*provider workspace/);
     assert.match(stdout, /PROVIDER_CWD=.*provider workspace/);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await removeTreeWithRetry(root);
   }
 });

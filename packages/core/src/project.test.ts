@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { removeTreeWithRetry } from "./io.js";
 import { KanmerStore } from "./store.js";
 import { migrateBoard } from "./migrate.js";
 import { resolvePaths } from "./paths.js";
@@ -20,7 +21,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(root, { recursive: true, force: true });
+  await removeTreeWithRetry(root);
 });
 
 describe("project record", () => {
@@ -135,7 +136,7 @@ describe("store identity", () => {
       const twin = new KanmerStore(copy);
       expect((await twin.getProject())?.project_id).toBe((await store.getProject())?.project_id);
     } finally {
-      await fs.rm(copy, { recursive: true, force: true });
+      await removeTreeWithRetry(copy);
     }
   });
 

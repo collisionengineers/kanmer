@@ -1,12 +1,13 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { emptyRemoteAccess, readRemoteAccess, remoteAccessPath, writeRemoteAccess } from "./configStore.js";
 import { canonicalProjectPath } from "./identity.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 const roots: string[] = [];
-afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
+afterEach(async () => { await Promise.all(roots.splice(0).map((root) => removeTreeWithRetry(root))); });
 
 describe("remote access persistence", () => {
   it("writes atomically and round-trips only the versioned registry", async () => {

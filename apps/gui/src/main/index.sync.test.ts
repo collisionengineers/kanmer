@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -71,6 +71,7 @@ vi.mock("./kanmerGit.js", async () => {
 import { __kanmerTest } from "./index.js";
 import { ensureBoardWorktree } from "./kanmerGit.js";
 import { readSettings, setKanmerGitHandoff } from "./settings.js";
+import { removeTreeWithRetrySync } from "@kanmer/core";
 
 const execFile = promisify(execFileCallback);
 const REAL_GIT_FIXTURE_TIMEOUT_MS = 30_000;
@@ -88,7 +89,7 @@ let repo: string;
 let origin: string;
 
 beforeEach(async () => {
-  rmSync(join(tmpdir(), "kanmer-core084-electron"), { recursive: true, force: true });
+  removeTreeWithRetrySync(join(tmpdir(), "kanmer-core084-electron"));
   dir = mkdtempSync(join(tmpdir(), "kanmer-core084-sync-"));
   origin = join(dir, "origin.git");
   repo = join(dir, "repo");

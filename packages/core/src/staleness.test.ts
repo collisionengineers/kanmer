@@ -10,6 +10,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { removeTreeWithRetrySync } from "./io.js";
 import { detectStaleness, isCurrentCodexRegistration, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
 import { resolvePaths } from "./paths.js";
 import { defaultBoardConfig } from "./board.js";
@@ -47,7 +48,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  fs.rmSync(root, { recursive: true, force: true });
+  removeTreeWithRetrySync(root);
 });
 
 /** Run the detector over the fixture repo. */

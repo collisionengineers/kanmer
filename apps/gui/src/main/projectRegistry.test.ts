@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { KanmerStore } from "@kanmer/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { RegistryProjectIdentity } from "../shared/ipc.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 import {
   ENDPOINT_REGISTRY_ENV,
   ProjectRegistryWriter,
@@ -90,7 +91,7 @@ beforeAll(async () => {
   await rm(path.join(boardB, ".kanmer", "project.json"), { force: true });
 });
 
-afterAll(async () => { await rm(home, { recursive: true, force: true }); });
+afterAll(async () => { await removeTreeWithRetry(home); });
 
 describe("registry location and contract", () => {
   it("is decided by the environment, never a request", () => {

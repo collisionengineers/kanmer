@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createTokenFile, loadTokenFile } from "../dist/http.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 test("token files are exclusive, readable once, and cleaned after failed writes", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-token-test-"));
@@ -16,7 +17,7 @@ test("token files are exclusive, readable once, and cleaned after failed writes"
     const canary = "A".repeat(43);
     await assert.rejects(() => createTokenFile(partial, { write: async (_handle) => { throw new Error(canary); } }), /REMOTE_AUTH_SECRET_FILE_WRITE_FAILED/);
     await assert.rejects(() => readFile(partial), /ENOENT/);
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });
 
 test("token loading rejects non-regular, oversized, malformed, symlinked, and weak files", async () => {
@@ -46,5 +47,5 @@ test("token loading rejects non-regular, oversized, malformed, symlinked, and we
       await symlink(target, link);
       await assert.rejects(() => loadTokenFile(link), /REMOTE_AUTH_SECRET_FILE_UNSAFE/);
     }
-  } finally { await rm(directory, { recursive: true, force: true }); }
+  } finally { await removeTreeWithRetry(directory); }
 });

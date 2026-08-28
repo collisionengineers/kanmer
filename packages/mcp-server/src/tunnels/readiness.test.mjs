@@ -89,7 +89,14 @@ test("readiness accepts a delayed local success without coupling its request dea
   try {
     await waitForTunnelReadiness({
       endpoint: `http://127.0.0.1:${address.port}/ready`,
-      timeoutMs: 1_000,
+      // A wall-clock budget, not a claim about latency: it has to cover a real
+      // loopback server, one deliberate 503, and the deliberate 150 ms delay
+      // before the 200. Under a concurrent verification rail on Windows those
+      // three regularly overran 1 s and the case failed with the very error it
+      // is meant to prove does *not* happen, TUNNEL_READINESS_TIMEOUT
+      // (CORE-128). The assertions below — two attempts, and a request
+      // deadline that is not coupled to the poll interval — are unchanged.
+      timeoutMs: 30_000,
       pollMs: 10,
     });
     assert.equal(attempts, 2);

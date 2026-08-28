@@ -14,7 +14,14 @@ import { removeTreeWithRetrySync } from "@kanmer/core";
 // filesystem latency routinely exceeds Vitest's five-second unit-test budget;
 // keep that larger, bounded budget scoped to this file rather than weakening
 // the GUI suite's global default for pure tests.
-const REAL_GIT_TEST_TIMEOUT_MS = 30_000;
+//
+// Raised from 30 s (CORE-128): with a second verification rail sharing the
+// host, the slowest case here measured 35.2 s and failed
+// `Test timed out in 30000ms` while asserting nothing unusual. Each of these
+// tests drives a dozen or more real `git` subprocesses, so the budget tracks
+// process latency, not the code under test — 120 s is ~3.4x the worst measured
+// case and still bounded, so a genuine hang is still reported.
+const REAL_GIT_TEST_TIMEOUT_MS = 120_000;
 const REAL_GIT_CLEANUP_RETRIES = 20;
 const REAL_GIT_CLEANUP_RETRY_DELAY_MS = 100;
 

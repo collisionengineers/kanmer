@@ -74,7 +74,11 @@ import { readSettings, setKanmerGitHandoff } from "./settings.js";
 import { removeTreeWithRetrySync } from "@kanmer/core";
 
 const execFile = promisify(execFileCallback);
-const REAL_GIT_FIXTURE_TIMEOUT_MS = 30_000;
+// Real-Git fixtures: the budget tracks Windows process latency, not the code
+// under test. Raised from 30 s alongside kanmerGit.test.ts (CORE-128), where a
+// sibling case measured 35.2 s under a concurrent verification rail. Bounded,
+// so a genuine hang is still reported.
+const REAL_GIT_FIXTURE_TIMEOUT_MS = 120_000;
 const REAL_GIT_CLEANUP_RETRIES = 20;
 const REAL_GIT_CLEANUP_RETRY_DELAY_MS = 100;
 const git = async (cwd: string, ...args: string[]): Promise<string> =>

@@ -2,7 +2,7 @@
 id: CORE-118
 type: ticket
 title: Compile evidence-backed constrained plans into step packets
-status: verifying
+status: done
 area: core
 assignee: claude-code-core118
 profile: feature
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-27T23:05:50.724Z'
   review: '2026-08-27T23:43:41.998Z'
   verifying: '2026-08-28T00:01:23.407Z'
+  done: '2026-08-28T00:47:10.322Z'
 taken_at: '2026-08-27T23:13:55.287Z'
 branch: core-118-step-packets
 worktree: .worktrees/core-118
@@ -29,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/297'
 archived: false
 created: '2026-08-26T21:02:42.005Z'
-updated: '2026-08-28T00:01:23.407Z'
+updated: '2026-08-28T00:47:10.322Z'
 ---
 
 ## What

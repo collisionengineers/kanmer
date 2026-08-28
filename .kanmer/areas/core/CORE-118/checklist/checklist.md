@@ -64,3 +64,14 @@ than rewriting.*
   the sandbox also holds the linked Git worktrees earlier checks create, and
   `treeSnapshot` cannot read them. The board is what must not move, and it is
   what is compared. The two pre-existing whole-sandbox snapshots are untouched.
+
+## Closeout — CORE-118
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — MERGED, mergeCommit 0f4a21fefc3788a4b8c19c7c550e52e0ab8d5ab2, mergedAt 2026-08-28T00:01:09Z
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (already Done, proof PASS)
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-118`
+- [ ] `git branch -d core-118-step-packets` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

@@ -49,7 +49,7 @@ import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
 import { getExecutionPacket } from "./execution-packet.js";
-import { collectReconciliationEvidence, leaseRecoverySummary, reconcileTicket } from "./reconciliation.js";
+import { applyReconciliation, collectReconciliationEvidence, leaseRecoverySummary, reconcileTicket } from "./reconciliation.js";
 import { failCoded, KanmerError, type ResponseProject } from "./errors.js";
 import {
   expectedProjectMatches,
@@ -959,6 +959,44 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
   guard(async ({ id }) => ok(await reconcileTicket(store, id))),
+);
+
+server.registerTool(
+  "apply_reconciliation",
+  {
+    title: "Apply a reconciliation recommendation",
+    description:
+      "Apply the ONE recovery action reconcile_ticket currently recommends for a ticket, and only while it is still current (FRD-028). The action is never supplied by the caller: this re-collects and re-classifies through the same read-only inspector, then applies what the fresh evidence supports. `expected_revision` is the `revision` from the recommendation you are applying — the document-inclusive revision, so a proof, plan or review record rewritten since is a structured REVISION_CONFLICT and nothing is written. No recommendation at all (a `transient` or `inconclusive` verification failure, inconclusive evidence, or the protected board worktree) is a normal RECONCILIATION_INCONCLUSIVE refusal, not an error. " +
+      "The action set is exhaustive and composed only of existing verbs: MOVE_TO_VERIFYING (merged Review), MOVE_TO_DONE (PASS proof in Verifying), MOVE_TO_IMPLEMENTING (closed-unmerged or worker-less Review), ROUTE_VERIFICATION_FAILURE (a FAIL proof's `failure_class`: implementation → Implementing, plan → Preparing), RELEASE_CLEAN_TERMINAL_CLAIM (a Done ticket's clean, identity-matched claim) and RECOVER_EXPIRED_CLAIM (transfer an expired lease, preserving branch, worktree and any dirty work). " +
+      "Authority is not widened: a backward move is judged by the existing contract, so Review → Implementing still needs a needs-changes attestation bound to this ticket's PR or a `reason` beginning `operator:` (REVIEW_RETURN_NEEDS_ATTESTATION otherwise), and a live lease still refuses with CLAIM_LIVE. Every applied action appends one durable line to `## Transitions` in scratch/execution.md naming the action, stage or controller change and the revision. It never deletes a worktree or branch, cleans or force-pushes a workspace, bypasses a required check, adds a stage, or mutates the Kanmer board worktree — which is refused as a target in every path.",
+    inputSchema: {
+      id: z.string().describe("Existing ticket id"),
+      expected_revision: z
+        .string()
+        .describe(
+          "Required. The `revision` carried by the recommendation you are applying (from reconcile_ticket). Refused with REVISION_CONFLICT if the ticket or ANY of its pipeline documents changed since; nothing is written.",
+        ),
+      reason: z
+        .string()
+        .optional()
+        .describe(
+          "Reason for a backward move, judged by the ordinary backward-move contract. Required for Review → Implementing unless a needs-changes attestation is bound to this ticket's PR, and only a reason beginning `operator:` overrides that. A verification-failure route defaults to `proof FAIL <class>: …` when omitted.",
+        ),
+      controller: z
+        .string()
+        .optional()
+        .describe("Durable controller identity to record when recovering an expired claim; defaults to the calling client."),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  write(async ({ id, expected_revision, reason, controller }: { id: string; expected_revision: string; reason?: string; controller?: string }) =>
+    ok(await applyReconciliation(store, {
+      id,
+      expectedRevision: expected_revision,
+      ...(reason !== undefined ? { reason } : {}),
+      ...(controller !== undefined ? { controller } : {}),
+    })),
+  ),
 );
 
 server.registerTool(

@@ -9,9 +9,12 @@ import {
   reconcileEvidence,
   type KanmerStore,
   type LeaseRecoveryEvidence,
+  type ReconciliationApplyResult,
   type ReconciliationEvidence,
+  type ReconciliationFailureClass,
   type ReconciliationResult,
 } from "@kanmer/core";
+import { KanmerError } from "./errors.js";
 import { gitCommonDirectory, sameWorktreePath, type ResolvedPath } from "./execution-packet.js";
 // This helper also serves the direct check-pr CLI tests. tsup bundles the
 // fixed-argv implementation into this production collector.
@@ -19,8 +22,13 @@ import { gitCommonDirectory, sameWorktreePath, type ResolvedPath } from "./execu
 import { collectCommitReachabilityFromTarget } from "./git-reachability.mjs";
 
 // Salvaged from PR #286 (CORE-113) and reduced to the read-only inspector
-// (CORE-122): no apply surface, bounded subprocesses, common-dir identity,
-// and the CORE-121 bootstrap claim contract.
+// (CORE-122): bounded subprocesses, common-dir identity, and the CORE-121
+// bootstrap claim contract. CORE-131 added the apply half at the bottom of
+// this file — it re-collects through the SAME reconcileTicket the dry run
+// used, so re-collection cannot drift from what was reported, and it runs
+// entirely OUTSIDE the board write lock because it spawns git/gh
+// (AGENTS.md §8 item 17). The only mutation is store.applyReconciliation,
+// whose verbs take the lock themselves.
 
 const execFile = promisify(execFileCallback);
 
@@ -75,6 +83,21 @@ function validTimestamp(value: unknown): boolean {
   return typeof text === "string" && text.trim().length > 0 && !Number.isNaN(Date.parse(text));
 }
 
+const FAILURE_CLASSES: readonly ReconciliationFailureClass[] = ["implementation", "plan", "transient", "inconclusive"];
+
+/**
+ * Decode a non-PASS proof record's `failure_class` (SKILL-037). A record that
+ * names no class, or one this build does not recognise, is `inconclusive` —
+ * `kanmer-verify/SKILL.md` makes that the explicit default and states that a
+ * proof naming no class is never treated as retryable.
+ */
+function failureClassOf(raw: unknown): ReconciliationFailureClass {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return (FAILURE_CLASSES as readonly string[]).includes(value)
+    ? (value as ReconciliationFailureClass)
+    : "inconclusive";
+}
+
 /** Decode a complete proof record; an existence-only proof gate is not PASS evidence. */
 export function proofEvidence(raw: string | null): ReconciliationEvidence["proof"] {
   if (!raw) return { state: "absent" };
@@ -90,8 +113,9 @@ export function proofEvidence(raw: string | null): ReconciliationEvidence["proof
     ) return { state: "invalid" };
     const result = parsed.result.trim().toUpperCase();
     const mergedSha = parsed.merged_sha.trim();
+    // A PASS record carries no class; only a failure is routed by one.
     if (result === "PASS") return { state: "pass", mergedSha };
-    if (result === "FAIL") return { state: "fail", mergedSha };
+    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class) };
     return { state: "invalid" };
   } catch {
     return { state: "invalid" };
@@ -332,12 +356,123 @@ export function leaseRecoverySummary(evidence: ReconciliationEvidence): LeaseRec
   };
 }
 
-/** Read-only: collects evidence and classifies it. Never writes to the store. */
+/**
+ * Read-only: collects evidence, classifies it, and stamps the recommendation
+ * with the ticket's document-inclusive revision. Never writes to the store.
+ *
+ * The stamp is what makes an apply bindable. Core's classifier cannot compute
+ * a revision (it never touches a store), so the collector — the only place
+ * that holds one — supplies it here. Because the revision covers every
+ * pipeline document, a proof rewritten between this call and an apply changes
+ * it, which is the direct fix for CORE-113's F-015.
+ */
 export async function reconcileTicket(
   store: KanmerStore,
   id: string,
   run?: ReconciliationRun,
   options?: { now?: Date; resolveCommonDir?: CommonDirResolver },
 ): Promise<ReconciliationResult> {
-  return reconcileEvidence(await collectReconciliationEvidence(store, id, run, options));
+  const result = reconcileEvidence(await collectReconciliationEvidence(store, id, run, options));
+  if (!result.recommendation) return result;
+  const revision = await store.getRevision(id);
+  return {
+    ...result,
+    recommendation: { ...result.recommendation, ticketId: id, revision: revision?.revision ?? null },
+  };
+}
+
+/** Everything an explicit apply needs beyond the freshly re-collected recommendation. */
+export interface ApplyReconciliationInput {
+  id: string;
+  /** The `revision` from the recommendation being applied. Required. */
+  expectedRevision: string;
+  /** Passed through to the existing backward-move contract, which judges it. */
+  reason?: string;
+  /** Durable controller identity recorded by a claim recovery. */
+  controller?: string;
+  /** Who the audit line names; defaults to the store's activity actor. */
+  actor?: string;
+}
+
+export interface ApplyReconciliationResult extends ReconciliationApplyResult {
+  /** The re-collected dry run the apply acted on, returned in full. */
+  result: ReconciliationResult;
+}
+
+/**
+ * Apply the recommendation a ticket's CURRENT evidence supports, and only
+ * while it is still current (FRD-028 acceptance 2). The order is fixed:
+ *
+ * 1. Re-collect and re-classify through the same `reconcileTicket` the dry run
+ *    used, so re-collection cannot drift from what was reported. This spawns
+ *    git/gh and therefore runs outside every lock.
+ * 2. Refuse RECONCILIATION_INCONCLUSIVE when there is no recommendation. That
+ *    is a normal refusal — `transient` and `inconclusive` verification
+ *    failures deliberately recommend nothing.
+ * 3. Refuse REVISION_CONFLICT when the freshly-collected revision is not the
+ *    one the caller is applying, quoting both. A legacy-layout ticket has no
+ *    revision and cannot be reconciled safely at all.
+ * 4. Refuse RECONCILIATION_DRIFT when the board moved under the collection
+ *    itself — the recorded revision or stage is no longer what was classified,
+ *    so the fresh action no longer describes the ticket. Belt and braces: a
+ *    revision match should already make this unreachable, and the verb's own
+ *    CAS would refuse it regardless.
+ * 5. Delegate to `store.applyReconciliation`, which re-checks preconditions and
+ *    passes `expectedRevision` into the locked verb.
+ *
+ * Nothing here mutates on any refusal path.
+ */
+export async function applyReconciliation(
+  store: KanmerStore,
+  input: ApplyReconciliationInput,
+  run?: ReconciliationRun,
+  options?: { now?: Date; resolveCommonDir?: CommonDirResolver },
+): Promise<ApplyReconciliationResult> {
+  const result = await reconcileTicket(store, input.id, run, options);
+  const recommendation = result.recommendation;
+  if (!recommendation) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RECONCILIATION_INCONCLUSIVE: "${input.id}" has no current reconciliation recommendation ` +
+        `(${result.findings.map((entry) => entry.code).join(", ") || "no findings"}); there is nothing to apply.`,
+    );
+  }
+  if (recommendation.revision === null) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RECONCILIATION_INCONCLUSIVE: "${input.id}" is a legacy-layout ticket with no document-inclusive revision; ` +
+        `it cannot be reconciled safely. Migrate the board first.`,
+    );
+  }
+  if (recommendation.revision !== input.expectedRevision) {
+    // The `Conflict:` prefix is the classified REVISION_CONFLICT wording every
+    // other CAS refusal in this server uses.
+    throw new KanmerError(
+      "REVISION_CONFLICT",
+      `Conflict: "${input.id}" revision changed since the recommendation was read ` +
+        `(revision is now ${recommendation.revision}, you expected ${input.expectedRevision}). ` +
+        `Re-run reconcile_ticket and apply the recommendation it returns.`,
+    );
+  }
+  const current = await store.getRevision(input.id);
+  const item = await store.getItem(input.id);
+  if (current?.revision !== recommendation.revision || item?.status !== result.evidence.ticket.status) {
+    throw new KanmerError(
+      "RECONCILIATION_DRIFT",
+      `RECONCILIATION_DRIFT: "${input.id}" changed while its evidence was being collected ` +
+        `(revision ${recommendation.revision} → ${current?.revision ?? "(none)"}, ` +
+        `stage ${result.evidence.ticket.status} → ${item?.status ?? "(none)"}); ` +
+        `the ${recommendation.action} recommendation no longer describes it. Re-run reconcile_ticket.`,
+    );
+  }
+  const applied = await store.applyReconciliation(input.id, {
+    action: recommendation.action,
+    ...(recommendation.targetStatus !== undefined ? { targetStatus: recommendation.targetStatus } : {}),
+    expectedRevision: input.expectedRevision,
+    ...(input.reason !== undefined ? { reason: input.reason } : {}),
+    ...(input.controller !== undefined ? { controller: input.controller } : {}),
+    ...(input.actor !== undefined ? { actor: input.actor } : {}),
+    recovery: leaseRecoverySummary(result.evidence),
+  });
+  return { ...applied, result };
 }

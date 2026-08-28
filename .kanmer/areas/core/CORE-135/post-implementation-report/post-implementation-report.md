@@ -66,3 +66,28 @@ Rollback was prepared but not applied:
 Residual risk: the existing `workflow_dispatch` condition also schedules a full main `verify` job for every board push. This ticket records and resource-controls that shipped behavior; it does not redesign it because board re-gating itself is reliable and the release brief permits only the smallest setup needed.
 
 No Infisical or secret-rotation work was performed.
+
+## Final Verifying result — 2026-08-28
+
+This section supersedes the earlier statement that fresh-head evidence remained
+deferred.
+
+PR #304 was updated with force-with-lease from exact old head
+`8a909ee97d95a0c50e5102c3c7f88d4c575614ba` to exact new head
+`8010881c4e48ffabe97aba674361980f8ab3b279`. GitHub now reports base
+`add0da7fc17968796f43b3035065de400a4db2d4`; it no longer reports the PR
+`BEHIND`. The synchronize event created fresh required jobs on the new head:
+
+- workflow run `33172190036`;
+- `kanmer-gate` job `98851790978`: SUCCESS in 1m11s;
+- hosted `verify` job `98851791247`: SUCCESS in 5m57s.
+
+The old-head successful jobs remain historical and did not supply these
+new-head identities. The local full Windows rail also passed once at the same
+new PR head. A final protection read still reports `strict:true`, exactly
+`verify` and `kanmer-gate` with app id `15368`, admin enforcement and
+conversation resolution enabled, restrictions null, and force-push/deletion
+disabled.
+
+CORE-135 therefore satisfies its final acceptance condition and can move from
+Verifying to Done.

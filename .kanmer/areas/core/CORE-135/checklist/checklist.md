@@ -37,7 +37,7 @@
 - [x] Write the post-implementation report with exact before/after settings, commits, run ids and rollback state.
 - [x] Obtain a fresh independent administrative review of settings, workflow bytes, Action evidence, scope and safety.
 - [x] Disposition every review finding and move CORE-135 one stage at a time to Verifying.
-- [ ] During Phase 3, rebase PR #304 onto current main and record its new exact head.
-- [ ] Prove old-head successes cannot satisfy the new head: fresh `verify` and `kanmer-gate` attempts are required and pass.
-- [ ] Write machine-readable PASS proof only after the fresh-head evidence exists.
-- [ ] Move CORE-135 to Done, release its claim, and remove its clean control worktree/branch after terminal proof.
+- [x] During Phase 3, rebase PR #304 onto current main and record its new exact head.
+- [x] Prove old-head successes cannot satisfy the new head: fresh `verify` and `kanmer-gate` attempts are required and pass.
+- [x] Write machine-readable PASS proof only after the fresh-head evidence exists.
+- [x] Move CORE-135 to Done, release its claim, and remove its clean control worktree/branch after terminal proof.

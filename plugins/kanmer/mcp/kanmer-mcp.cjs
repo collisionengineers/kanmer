@@ -37748,6 +37748,16 @@ var DeploymentConfigSchema = external_exports.object({
   /** Ordered environments; the last one is "live". */
   environments: external_exports.array(external_exports.string().min(1)).min(1)
 });
+var DeliveryConfigSchema = external_exports.object({
+  /** Branch normal implementation PRs target. Absent ⇒ `main`. */
+  integrationBranch: external_exports.string().min(1).optional(),
+  /** Branch releases are cut from. Absent ⇒ the integration branch (main-only). */
+  releaseBranch: external_exports.string().min(1).optional(),
+  /** Glob for immutable release candidates, e.g. `release/*`. Absent/null ⇒ candidates are not enabled. */
+  releaseCandidatePattern: external_exports.string().min(1).nullable().optional(),
+  /** Whether a release-branch hotfix owes a backport to the integration branch. Absent ⇒ true. */
+  hotfixBackport: external_exports.boolean().optional()
+});
 var ProfileMapSchema = external_exports.record(external_exports.array(external_exports.string()));
 var GroupKindSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -37770,6 +37780,8 @@ var BoardConfigSchema = external_exports.object({
   repoDocs: external_exports.record(external_exports.string()).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
+  /** Git delivery policy (FRD-031). Absent ⇒ main-only; see `resolveDelivery`. */
+  delivery: DeliveryConfigSchema.optional(),
   /** Project-declared research sources (FRD-027 / ADR-0020). */
   sources: SourceDeclarationArraySchema.optional(),
   /** Minutes before a ticket claim is considered expired (FRD-030). Absent ⇒ 30. */
@@ -37889,6 +37901,34 @@ var ItemFrontmatterSchema = external_exports.object({
   capture_decided_by: external_exports.string().optional(),
   /** Deployment status; only meaningful when the board declares environments. */
   deployment: external_exports.string().optional(),
+  /**
+   * Delivery state (CORE-116, FRD-031). Every field is optional and additive,
+   * so a board written by an older Kanmer parses unchanged and re-emits these
+   * untouched (`.passthrough()` below, plus `orderKeys` in frontmatter.ts).
+   *
+   * This is deliberately **not** the workflow stage. The stage says whether
+   * the ticket was accepted against its integration target; this says how far
+   * the change has actually travelled. Nothing here is ever a gate input
+   * (ADR-0005), so recording a release can never stand in for proof.
+   */
+  delivery_state: external_exports.string().optional(),
+  /** Branch the work was integrated into — the integration branch, or the release branch for a hotfix. */
+  delivery_branch: external_exports.string().optional(),
+  /** Exact merged SHA on `delivery_branch` (full 40-hex). */
+  delivery_sha: external_exports.string().optional(),
+  /** Release-candidate identity this change was frozen into; minted by CORE-132. */
+  delivery_candidate: external_exports.string().optional(),
+  delivery_release_branch: external_exports.string().optional(),
+  delivery_release_tag: external_exports.string().optional(),
+  /**
+   * Derived, never a caller input: the integration branch a release-branch
+   * hotfix owes a backport to. Cleared only by `delivery_backport_sha`.
+   */
+  delivery_backport_required: external_exports.string().optional(),
+  /** Exact merged SHA of the backport that discharged `delivery_backport_required`. */
+  delivery_backport_sha: external_exports.string().optional(),
+  /** When any delivery field last changed; stamped by the store. */
+  delivery_recorded_at: TimestampSchema.optional(),
   archived: external_exports.boolean().default(false),
   created: TimestampSchema.default(""),
   updated: TimestampSchema.default("")
@@ -37897,6 +37937,30 @@ var LEASE_PHASES = ["implementing", "running-command", "review", "verifying", "c
 function isTerminalTicket(item) {
   return item.status === "done" || item.archived === true;
 }
+var DELIVERY_STATES = [
+  "not-integrated",
+  "integrated",
+  "release-candidate",
+  "released",
+  "deployed",
+  "production-verified"
+];
+function isDeliveryState(value) {
+  return DELIVERY_STATES.includes(value);
+}
+function deliveryStateRank(state) {
+  return DELIVERY_STATES.indexOf(state);
+}
+var DEFAULT_INTEGRATION_BRANCH = "main";
+var DELIVERY_PATCH_KEYS = [
+  "delivery_state",
+  "delivery_branch",
+  "delivery_sha",
+  "delivery_candidate",
+  "delivery_release_branch",
+  "delivery_release_tag",
+  "delivery_backport_sha"
+];
 var DEFAULT_CLAIM_EXPIRY_MINUTES = 30;
 var DEFAULT_LEASE_HEARTBEAT_MINUTES = 5;
 var DEFAULT_LEASE_COMMAND_MAX_MINUTES = 120;
@@ -38606,6 +38670,15 @@ var KEY_ORDER = [
   "capture_decided_at",
   "capture_decided_by",
   "deployment",
+  "delivery_state",
+  "delivery_branch",
+  "delivery_sha",
+  "delivery_candidate",
+  "delivery_release_branch",
+  "delivery_release_tag",
+  "delivery_backport_required",
+  "delivery_backport_sha",
+  "delivery_recorded_at",
   "archived",
   "created",
   "updated"
@@ -38992,6 +39065,43 @@ function resolveGroupKinds(board) {
 function resolveEnvironments(board) {
   return board.deployment?.environments ?? [];
 }
+function resolveDelivery(board) {
+  const integrationBranch = board.delivery?.integrationBranch ?? DEFAULT_INTEGRATION_BRANCH;
+  return {
+    integrationBranch,
+    releaseBranch: board.delivery?.releaseBranch ?? integrationBranch,
+    releaseCandidatePattern: board.delivery?.releaseCandidatePattern ?? null,
+    hotfixBackport: board.delivery?.hotfixBackport ?? true
+  };
+}
+function deliveryPolicySource(board) {
+  return board.delivery ? "board" : "default";
+}
+function deliveryTargets(policy, item) {
+  const hotfix = policy.releaseBranch !== policy.integrationBranch && item.delivery_branch === policy.releaseBranch;
+  const branch = hotfix ? policy.releaseBranch : policy.integrationBranch;
+  return { hotfix, baseBranch: branch, prTarget: branch, verificationTarget: branch };
+}
+var DELIVERY_BRANCH_RE = /^(?!\/)(?!.*\.\.)(?!.*\/$)\S+$/u;
+function assertDeliveryPolicy(board) {
+  const delivery = board.delivery;
+  if (!delivery) return;
+  for (const key of ["integrationBranch", "releaseBranch"]) {
+    const value = delivery[key];
+    if (value !== void 0 && !DELIVERY_BRANCH_RE.test(value)) {
+      throw new Error(`Invalid delivery.${key} "${value}": a branch name cannot contain whitespace, "..", or a leading/trailing "/"`);
+    }
+  }
+  const pattern = delivery.releaseCandidatePattern;
+  if (pattern !== void 0 && pattern !== null) {
+    if (!DELIVERY_BRANCH_RE.test(pattern)) {
+      throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": it cannot contain whitespace, "..", or a leading/trailing "/"`);
+    }
+    if (!pattern.includes("*")) {
+      throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": a candidate pattern must contain "*" (for example "release/*")`);
+    }
+  }
+}
 function lastStageId(_board) {
   return LAST_STAGE;
 }
@@ -39037,6 +39147,7 @@ async function readBoardWithSource(paths) {
 async function writeBoard(paths, board) {
   const validated = BoardConfigSchema.parse(board);
   assertUniquePrefixes(validated);
+  assertDeliveryPolicy(validated);
   await writeFileAtomic(paths.boardFile, import_yaml.default.stringify(validated));
 }
 var SAFE_SEGMENT_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -39941,6 +40052,7 @@ var EXECUTION_COMMON = [
 function takeTicketPromptText(id) {
   return `Execute Kanmer ticket ${id}. ${EXECUTION_COMMON} Follow the packet's resolved gates at each boundary \u2014 requirements vary by profile \u2014 and stop at Review for independent review; proof is written only after the merge.`;
 }
+var NEUTRAL_VERIFICATION_TARGET = "the merged integration branch";
 var DISPATCH_TASKS = Object.freeze([
   {
     id: "research-quick",
@@ -39976,7 +40088,7 @@ var DISPATCH_TASKS = Object.freeze([
     id: "verify",
     label: "Verify + write proof",
     deliverable: "at least one document under proof/",
-    prompt: (id) => `Verify Kanmer ticket ${id} on merged main. ${COMMON} Run the checks for real \u2014 do not reason about what would happen \u2014 and record the evidence under proof/. Check what get_doc_gates says the required proof type is: a visual proof wants a screenshot under proof/assets/, test-output wants the actual output, command-log wants the commands and what they printed. Compiling is not evidence.`
+    prompt: (id, verificationTarget) => `Verify Kanmer ticket ${id} on merged ${verificationTarget ?? NEUTRAL_VERIFICATION_TARGET}. ${COMMON} Run the checks for real \u2014 do not reason about what would happen \u2014 and record the evidence under proof/. Check what get_doc_gates says the required proof type is: a visual proof wants a screenshot under proof/assets/, test-output wants the actual output, command-log wants the commands and what they printed. Compiling is not evidence.`
   }
 ]);
 function dispatchTaskById(id) {
@@ -40013,7 +40125,7 @@ function taskFeasibility(taskId, ctx) {
       return has("checklist") ? { ok: true } : { ok: true, warning: "no checklist \u2014 the agent will work from the plan alone" };
     case "verify":
       if (ctx.stage === "backlog" || ctx.stage === "preparing" || ctx.stage === "implementing") {
-        return { ok: false, reason: "nothing is merged yet \u2014 verify runs on merged main" };
+        return { ok: false, reason: `nothing is merged yet \u2014 verify runs on ${NEUTRAL_VERIFICATION_TARGET}` };
       }
       return { ok: true };
     case "plan":
@@ -41513,6 +41625,11 @@ var KanmerStore = class _KanmerStore {
     if (input.groups !== void 0) await this.assertGroups(input.groups);
     if (input.refs !== void 0) await this.assertRefs(input.refs);
     if (input.deployment !== void 0) assertDeploymentAgainstBoard(board, input.deployment);
+    if (input.delivery_state !== void 0 && !isDeliveryState(input.delivery_state)) {
+      throw new Error(
+        `DELIVERY_STATE_INVALID: unknown delivery_state "${input.delivery_state}". Valid: ${DELIVERY_STATES.join(", ")}.`
+      );
+    }
     for (const target of [...input.links ?? [], ...input.blocks ?? []]) {
       if (!await this.getItem(target)) {
         throw new Error(`No item with id "${target}" to link to`);
@@ -41567,6 +41684,15 @@ var KanmerStore = class _KanmerStore {
       if (input.commits !== void 0 && input.commits.length > 0) item.commits = input.commits;
       if (input.prs !== void 0 && input.prs.length > 0) item.prs = input.prs;
       if (input.deployment !== void 0 && input.deployment !== "") item.deployment = input.deployment;
+      if (touchesDelivery(input)) {
+        for (const key of DELIVERY_PATCH_KEYS) {
+          const value = input[key];
+          if (value !== void 0 && value !== "") item[key] = value;
+        }
+        const policy = resolveDelivery(board);
+        applyDeliveryEffects(policy, item, item.updated);
+        assertDeliveryAgainstBoard(policy, item);
+      }
       const file = format >= 2 ? ticketFileIn(this.paths, area, id) : itemFile(this.paths, type, id);
       try {
         await writeFileExclusive(file, serialiseItem(item));
@@ -41587,7 +41713,7 @@ var KanmerStore = class _KanmerStore {
   async updateItem(id, patch) {
     const { expectedUpdated, expectedRevision, reason, ...fields } = patch;
     let board = null;
-    if (fields.status !== void 0 || fields.area !== void 0 || fields.profile !== void 0 || fields.groups !== void 0 || fields.deployment !== void 0) {
+    if (fields.status !== void 0 || fields.area !== void 0 || fields.profile !== void 0 || fields.groups !== void 0 || fields.deployment !== void 0 || touchesDelivery(fields)) {
       board = await this.getBoard();
       if (fields.status !== void 0) assertStage(fields.status);
       if (fields.area !== void 0) assertFieldAgainstBoard(board, "area", fields.area);
@@ -41621,6 +41747,15 @@ var KanmerStore = class _KanmerStore {
         updated: nowIso()
       };
       if (pruned.deployment === "") delete next.deployment;
+      if (touchesDelivery(pruned)) {
+        for (const key of DELIVERY_PATCH_KEYS) {
+          if (pruned[key] === "") delete next[key];
+        }
+        board ??= await this.getBoard();
+        const policy = resolveDelivery(board);
+        applyDeliveryEffects(policy, next, next.updated);
+        assertDeliveryAgainstBoard(policy, next);
+      }
       if (next.docs_todo === false) delete next.docs_todo;
       if (next.refs && next.refs.length === 0) delete next.refs;
       if (next.commits && next.commits.length === 0) delete next.commits;
@@ -42979,13 +43114,88 @@ function assertDeploymentAgainstBoard(board, value) {
     );
   }
 }
+var DELIVERY_SHA_RE = /^[0-9a-f]{40}$/iu;
+function touchesDelivery(patch) {
+  return DELIVERY_PATCH_KEYS.some((key) => patch[key] !== void 0);
+}
+function candidatePatternMatches(pattern, value) {
+  const source = pattern.split("*").map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")).join(".+");
+  return new RegExp(`^${source}$`, "u").test(value);
+}
+function applyDeliveryEffects(policy, next, stamp) {
+  const owesBackport = policy.hotfixBackport && deliveryTargets(policy, next).hotfix && next.delivery_backport_sha === void 0;
+  if (owesBackport) next.delivery_backport_required = policy.integrationBranch;
+  else delete next.delivery_backport_required;
+  next.delivery_recorded_at = stamp;
+}
+function assertDeliveryAgainstBoard(policy, item) {
+  const state = item.delivery_state;
+  if (state !== void 0 && !isDeliveryState(state)) {
+    throw new Error(
+      `DELIVERY_STATE_INVALID: unknown delivery_state "${state}". Valid: ${DELIVERY_STATES.join(", ")}.`
+    );
+  }
+  const rank = state ? deliveryStateRank(state) : 0;
+  for (const key of ["delivery_sha", "delivery_backport_sha"]) {
+    const value = item[key];
+    if (value !== void 0 && !DELIVERY_SHA_RE.test(value)) {
+      throw new Error(`DELIVERY_SHA_INVALID: ${key} "${value}" is not a full 40-character commit SHA.`);
+    }
+  }
+  if (item.delivery_branch !== void 0 && item.delivery_branch !== policy.integrationBranch && item.delivery_branch !== policy.releaseBranch) {
+    throw new Error(
+      `DELIVERY_TARGET_INVALID: delivery_branch "${item.delivery_branch}" is neither the integration branch "${policy.integrationBranch}" nor the release branch "${policy.releaseBranch}".`
+    );
+  }
+  if (item.delivery_release_branch !== void 0 && item.delivery_release_branch !== policy.releaseBranch) {
+    throw new Error(
+      `DELIVERY_TARGET_INVALID: delivery_release_branch "${item.delivery_release_branch}" is not this project's release branch "${policy.releaseBranch}".`
+    );
+  }
+  if (item.delivery_candidate !== void 0) {
+    if (!policy.releaseCandidatePattern) {
+      throw new Error(
+        `DELIVERY_NO_CANDIDATE_POLICY: this project declares no delivery.releaseCandidatePattern, so it has no release candidates and delivery_candidate cannot be set.`
+      );
+    }
+    if (!candidatePatternMatches(policy.releaseCandidatePattern, item.delivery_candidate)) {
+      throw new Error(
+        `DELIVERY_NO_CANDIDATE_POLICY: delivery_candidate "${item.delivery_candidate}" does not match this project's delivery.releaseCandidatePattern "${policy.releaseCandidatePattern}".`
+      );
+    }
+  }
+  if (rank >= deliveryStateRank("integrated")) {
+    if (item.delivery_branch === void 0 || item.delivery_sha === void 0) {
+      throw new Error(
+        `DELIVERY_EVIDENCE_MISSING: delivery_state "${state}" claims the change is integrated, so it needs both delivery_branch and an exact 40-character delivery_sha.`
+      );
+    }
+  }
+  if (state === "release-candidate" && item.delivery_candidate === void 0) {
+    throw new Error(
+      `DELIVERY_EVIDENCE_MISSING: delivery_state "release-candidate" needs delivery_candidate naming the immutable candidate this change was frozen into.`
+    );
+  }
+  if (rank >= deliveryStateRank("released")) {
+    if (item.delivery_release_branch === void 0 || item.delivery_release_tag === void 0) {
+      throw new Error(
+        `DELIVERY_EVIDENCE_MISSING: delivery_state "${state}" claims the change is released, so it needs both delivery_release_branch and delivery_release_tag.`
+      );
+    }
+  }
+  if (item.delivery_backport_sha !== void 0 && !deliveryTargets(policy, item).hotfix) {
+    throw new Error(
+      `DELIVERY_NO_BACKPORT_REQUIRED: delivery_backport_sha is only meaningful for a hotfix delivered on a release branch that differs from the integration branch. This project integrates into "${policy.integrationBranch}" and releases from "${policy.releaseBranch}"; this record names "${item.delivery_branch ?? "(none)"}".`
+    );
+  }
+}
 function changedFields(current, pruned) {
   const changed = [];
   for (const [key, value] of Object.entries(pruned)) {
     const existing = current[key];
     if (key === "body") {
       if (String(value).trim() !== String(existing ?? "").trim()) changed.push(key);
-    } else if (key === "deployment" && value === "") {
+    } else if ((key === "deployment" || DELIVERY_PATCH_KEYS.includes(key)) && value === "") {
       if (existing !== void 0) changed.push(key);
     } else if (JSON.stringify(value) !== JSON.stringify(existing)) {
       changed.push(key);
@@ -43935,6 +44145,41 @@ function expectedProjectMatches(sent, project) {
 var execFileAsync = (0, import_node_util.promisify)(import_node_child_process.execFile);
 var EXECUTION_STOP_FALLBACK = "Stop at the checklist; do not merge; do not start another ticket.";
 var EXECUTION_COMMANDS_FALLBACK = "Use only the commands named in the plan/checklist, record exact exit codes, and stop on a failure.";
+async function resolveBaseSha(cwd, branch) {
+  for (const ref of [`origin/${branch}`, branch]) {
+    try {
+      const { stdout } = await execFileAsync("git", ["-C", cwd, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`], {
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: DELIVERY_GIT_TIMEOUT_MS,
+        maxBuffer: DELIVERY_GIT_MAX_BUFFER
+      });
+      const sha = stdout.trim();
+      if (/^[0-9a-f]{40}$/iu.test(sha)) return sha;
+    } catch {
+    }
+  }
+  return null;
+}
+var DELIVERY_GIT_TIMEOUT_MS = 15e3;
+var DELIVERY_GIT_MAX_BUFFER = 32 * 1024;
+async function deliveryPacket(policy, policySource, item, repoRoot) {
+  const { baseBranch, prTarget, verificationTarget } = deliveryTargets(policy, item);
+  const baseSha = await resolveBaseSha(repoRoot, baseBranch);
+  return {
+    ...policy,
+    policySource,
+    baseBranch,
+    baseSha,
+    baseShaState: baseSha ? "resolved" : "unavailable",
+    prTarget,
+    verificationTarget,
+    state: item.delivery_state ?? "not-integrated",
+    branch: item.delivery_branch ?? null,
+    sha: item.delivery_sha ?? null,
+    backportRequired: item.delivery_backport_required ?? null
+  };
+}
 function compactTicket(item, profile) {
   return {
     id: item.id,
@@ -44330,11 +44575,13 @@ async function getExecutionPacket(input) {
     if (!result.ok) return { ...refuse(project, result.reason, [], item, gates), validation };
     compiled = result.packet;
   }
+  const delivery = await deliveryPacket(resolveDelivery(board), deliveryPolicySource(board), item, store2.paths.repoRoot);
   return {
     ready: true,
     project,
     ticket: fullTicket(item, gates.profile, revision),
     claim,
+    delivery,
     groupContexts: contexts,
     documents: indexDocuments(fixed),
     extraDocs,
@@ -44601,7 +44848,9 @@ async function collectReconciliationEvidence(store2, id, run = execFile4, option
     pullRequest,
     proof: proofEvidence(await store2.getDoc(id, "proof")),
     workspace: await workspaceEvidence(store2, item.worktree, item.branch, run, import_promises10.default.stat, options2.resolveCommonDir),
-    // CORE-116 owns persisted release attempts. This collector must never
+    // CORE-132 owns persisted release attempts (the release-channel lease and
+    // candidate identity); CORE-116 delivered only policy and delivery state,
+    // neither of which is a release attempt. This collector must never
     // manufacture a neutral observation for evidence it cannot inspect.
     release: { state: "not-applicable" }
   };
@@ -45692,6 +45941,22 @@ async function summarise(item, blockedIds) {
     capture: isCaptureItem(item),
     capture_disposition: item.capture_disposition ?? null,
     deployment: item.deployment ?? null,
+    // FRD-031: how far the change has travelled, independent of the stage.
+    // Only emitted when something was actually recorded, so an untouched
+    // ticket's view is byte-for-byte what it was before.
+    ...item.delivery_state !== void 0 || item.delivery_branch !== void 0 ? {
+      delivery: {
+        state: item.delivery_state ?? "not-integrated",
+        branch: item.delivery_branch ?? null,
+        sha: item.delivery_sha ?? null,
+        candidate: item.delivery_candidate ?? null,
+        releaseBranch: item.delivery_release_branch ?? null,
+        releaseTag: item.delivery_release_tag ?? null,
+        backportRequired: item.delivery_backport_required ?? null,
+        backportSha: item.delivery_backport_sha ?? null,
+        recordedAt: item.delivery_recorded_at ?? null
+      }
+    } : {},
     created: item.created,
     updated: item.updated,
     archived: item.archived,
@@ -45729,6 +45994,19 @@ var createFields = {
   commits: external_exports.array(external_exports.string()).optional().describe("Commit SHAs associated with this ticket"),
   prs: external_exports.array(external_exports.string()).optional().describe("PR references (number or URL)"),
   deployment: external_exports.string().optional().describe("Deployment status (only when the board declares environments): n/a | not-deployed | <env-id>"),
+  delivery_state: external_exports.string().optional().describe(
+    "Delivery state (FRD-031): not-integrated | integrated | release-candidate | released | deployed | production-verified. Independent of the workflow stage and never a gate input \u2014 recording a release can never stand in for proof. `integrated` and beyond need delivery_branch plus a full 40-character delivery_sha; `released` and beyond also need delivery_release_branch and delivery_release_tag."
+  ),
+  delivery_branch: external_exports.string().optional().describe(
+    "Branch the change was integrated into. Must be the project's integration branch, or its release branch for a hotfix \u2014 see get_status.delivery. Naming the release branch on a project that has one is what records the required backport."
+  ),
+  delivery_sha: external_exports.string().optional().describe("Exact merged SHA on delivery_branch (full 40 characters, never abbreviated)"),
+  delivery_candidate: external_exports.string().optional().describe("Release-candidate identity; accepted only when the project declares delivery.releaseCandidatePattern and this matches it"),
+  delivery_release_branch: external_exports.string().optional().describe("Release branch the change shipped from; must be the project's declared release branch"),
+  delivery_release_tag: external_exports.string().optional().describe("Release tag the change shipped under"),
+  delivery_backport_sha: external_exports.string().optional().describe(
+    "Exact merged SHA of the integration backport that discharges delivery_backport_required. That obligation is derived by Kanmer, not set by you: a real backport SHA is the only thing that clears it."
+  ),
   capture_evidence: external_exports.array(external_exports.string()).optional().describe(
     "Quick-capture evidence: screenshot/file paths or links. Optional \u2014 an empty or absent list is valid."
   ),
@@ -45873,6 +46151,13 @@ function createKanmerMcpServer(policy = "local-stdio") {
         dispatch: dispatchPolicyView(dispatchPolicy),
         /** FRD-030 lease timing: explicit so workers know their heartbeat cadence and the expiry window. */
         leases: leaseConfig(board),
+        /**
+         * FRD-031 Git delivery policy, fully resolved. `source` is worth reading:
+         * `default` on a project that believes it declared one means the block is
+         * missing from board.yml — for example because an older server, which does
+         * not know the key, round-tripped the file.
+         */
+        delivery: { ...resolveDelivery(board), source: deliveryPolicySource(board) },
         deploymentTracking: board.deployment !== void 0,
         boardWorktree: {
           path: projectRoot,
@@ -46133,6 +46418,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
           return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval round trip failed; dispatch remains refused", policy2);
         }
       }
+      const verificationTarget = resolveDelivery(await store.getBoard()).integrationBranch;
       try {
         const status = await dispatchSupervisor.start({
           projectId: projectRoot,
@@ -46141,7 +46427,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
           ticketId: ticket_id,
           provider,
           requestedBy: actorName(server, extra),
-          task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id) },
+          task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id, verificationTarget) },
           ...timeout_ms === void 0 ? {} : { timeoutMs: timeout_ms }
         });
         return ok({ ok: true, status, deliverable: task.deliverable, warning: feasibility.warning ?? null, policy: policy2 });
@@ -46510,6 +46796,21 @@ function createKanmerMcpServer(policy = "local-stdio") {
         commits: external_exports.array(external_exports.string()).optional().describe("Commit SHAs; [] clears them"),
         prs: external_exports.array(external_exports.string()).optional().describe("PR references; [] clears them"),
         deployment: external_exports.string().optional().describe('Deployment status; pass "" to clear (only when the board declares environments)'),
+        delivery_state: external_exports.string().optional().describe(
+          'Delivery state (FRD-031): not-integrated | integrated | release-candidate | released | deployed | production-verified. Independent of the workflow stage and never a gate input \u2014 recording a release can never stand in for proof. `integrated` and beyond need delivery_branch plus a full 40-character delivery_sha; `released` and beyond also need delivery_release_branch and delivery_release_tag. Pass "" to clear.'
+        ),
+        delivery_branch: external_exports.string().optional().describe(
+          `Branch the change was integrated into. Must be this project's integration branch, or its release branch for a hotfix \u2014 see get_status.delivery. Naming the release branch is what records the required integration backport. Pass "" to clear.`
+        ),
+        delivery_sha: external_exports.string().optional().describe('Exact merged SHA on delivery_branch (full 40 characters, never abbreviated); pass "" to clear'),
+        delivery_candidate: external_exports.string().optional().describe(
+          'Release-candidate identity; accepted only when the project declares delivery.releaseCandidatePattern and this matches it. Pass "" to clear.'
+        ),
+        delivery_release_branch: external_exports.string().optional().describe(`Release branch the change shipped from; must be this project's declared release branch. Pass "" to clear.`),
+        delivery_release_tag: external_exports.string().optional().describe('Release tag the change shipped under; pass "" to clear'),
+        delivery_backport_sha: external_exports.string().optional().describe(
+          'Exact merged SHA of the integration backport that discharges delivery_backport_required. That obligation is derived by Kanmer, not set by you: a real backport SHA is the only thing that clears it. Pass "" to clear.'
+        ),
         capture_evidence: external_exports.array(external_exports.string()).optional().describe("Quick-capture evidence (paths or links); [] clears it"),
         capture_disposition: external_exports.string().optional().describe(
           "Promote a capture with one recorded decision: duplicate | already-fixed | batch | promoted | retained | not-required. `duplicate` needs capture_result naming the ticket it merges into (it is linked and archived); `already-fixed` and `not-required` archive it; `batch` needs capture_result naming the batch AND a non-capture profile in the same call; `promoted` needs that profile; `retained` keeps it a capture and is the only decision that may later be superseded."

@@ -216,7 +216,7 @@ describe("phase-2 merge-gate evidence", () => {
     const ticket = await store.createItem({ type: "ticket", title: "evidence", status: "review" });
     const absent = await evaluateMergeGate(store, { number: 24, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence({ review: { state: "absent" } }));
     expect(absent.checks?.map((entry) => entry.code)).toEqual([
-      "NO_TICKET", "OPEN_QUESTIONS", "WRONG_STAGE", "DEPENDENCY_BLOCKED", "NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE", "SYNC_REQUIRED",
+      "NO_TICKET", "OPEN_QUESTIONS", "WRONG_STAGE", "DEPENDENCY_BLOCKED", "WRONG_TARGET", "NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE", "SYNC_REQUIRED",
     ]);
     expect(absent.findings.map((entry) => entry.code)).toEqual(["NO_REVIEW_RECORD"]);
     expect(absent.ok).toBe(true);
@@ -243,7 +243,7 @@ describe("phase-2 merge-gate evidence", () => {
 
   it("marks ticket-dependent checks skipped when linkage fails", async () => {
     const result = await evaluateMergeGate(store, { number: 26, headSha: head, branch: "no-ticket", body: null }, evidence());
-    expect(result.checks?.map((entry) => entry.outcome)).toEqual(["fail", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped"]);
+    expect(result.checks?.map((entry) => entry.outcome)).toEqual(["fail", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped"]);
     expect(result.ok).toBe(false);
   });
 

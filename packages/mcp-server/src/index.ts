@@ -26,6 +26,8 @@ import {
   repoDocsMap,
   resolveSources,
   SourceDeclarationArraySchema,
+  deliveryPolicySource,
+  resolveDelivery,
   resolveGroupKinds,
   resolveProfiles,
   resolveProofTypes,
@@ -401,6 +403,24 @@ async function summarise(item: Item, blockedIds: Set<string>) {
     capture: isCaptureItem(item),
     capture_disposition: item.capture_disposition ?? null,
     deployment: item.deployment ?? null,
+    // FRD-031: how far the change has travelled, independent of the stage.
+    // Only emitted when something was actually recorded, so an untouched
+    // ticket's view is byte-for-byte what it was before.
+    ...(item.delivery_state !== undefined || item.delivery_branch !== undefined
+      ? {
+          delivery: {
+            state: item.delivery_state ?? "not-integrated",
+            branch: item.delivery_branch ?? null,
+            sha: item.delivery_sha ?? null,
+            candidate: item.delivery_candidate ?? null,
+            releaseBranch: item.delivery_release_branch ?? null,
+            releaseTag: item.delivery_release_tag ?? null,
+            backportRequired: item.delivery_backport_required ?? null,
+            backportSha: item.delivery_backport_sha ?? null,
+            recordedAt: item.delivery_recorded_at ?? null,
+          },
+        }
+      : {}),
     created: item.created,
     updated: item.updated,
     archived: item.archived,
@@ -463,6 +483,36 @@ const createFields = {
     .string()
     .optional()
     .describe("Deployment status (only when the board declares environments): n/a | not-deployed | <env-id>"),
+  delivery_state: z
+    .string()
+    .optional()
+    .describe(
+      "Delivery state (FRD-031): not-integrated | integrated | release-candidate | released | deployed | production-verified. " +
+        "Independent of the workflow stage and never a gate input — recording a release can never stand in for proof. " +
+        "`integrated` and beyond need delivery_branch plus a full 40-character delivery_sha; `released` and beyond also need " +
+        "delivery_release_branch and delivery_release_tag.",
+    ),
+  delivery_branch: z
+    .string()
+    .optional()
+    .describe(
+      "Branch the change was integrated into. Must be the project's integration branch, or its release branch for a hotfix " +
+        "— see get_status.delivery. Naming the release branch on a project that has one is what records the required backport.",
+    ),
+  delivery_sha: z.string().optional().describe("Exact merged SHA on delivery_branch (full 40 characters, never abbreviated)"),
+  delivery_candidate: z
+    .string()
+    .optional()
+    .describe("Release-candidate identity; accepted only when the project declares delivery.releaseCandidatePattern and this matches it"),
+  delivery_release_branch: z.string().optional().describe("Release branch the change shipped from; must be the project's declared release branch"),
+  delivery_release_tag: z.string().optional().describe("Release tag the change shipped under"),
+  delivery_backport_sha: z
+    .string()
+    .optional()
+    .describe(
+      "Exact merged SHA of the integration backport that discharges delivery_backport_required. " +
+        "That obligation is derived by Kanmer, not set by you: a real backport SHA is the only thing that clears it.",
+    ),
   capture_evidence: z
     .array(z.string())
     .optional()
@@ -681,6 +731,13 @@ server.registerTool(
       dispatch: dispatchPolicyView(dispatchPolicy),
       /** FRD-030 lease timing: explicit so workers know their heartbeat cadence and the expiry window. */
       leases: leaseConfig(board),
+      /**
+       * FRD-031 Git delivery policy, fully resolved. `source` is worth reading:
+       * `default` on a project that believes it declared one means the block is
+       * missing from board.yml — for example because an older server, which does
+       * not know the key, round-tripped the file.
+       */
+      delivery: { ...resolveDelivery(board), source: deliveryPolicySource(board) },
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
         path: projectRoot,
@@ -983,6 +1040,9 @@ server.registerTool(
         return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval round trip failed; dispatch remains refused", policy);
       }
     }
+    // FRD-031: the verify prompt names this project's integration branch, not
+    // a hardcoded `main`.
+    const verificationTarget = resolveDelivery(await store.getBoard()).integrationBranch;
     try {
       const status = await dispatchSupervisor.start({
         projectId: projectRoot,
@@ -991,7 +1051,7 @@ server.registerTool(
         ticketId: ticket_id,
         provider: provider as never,
         requestedBy: actorName(server, extra),
-        task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id) },
+        task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id, verificationTarget) },
         ...(timeout_ms === undefined ? {} : { timeoutMs: timeout_ms }),
       });
       return ok({ ok: true, status, deliverable: task.deliverable, warning: feasibility.warning ?? null, policy });
@@ -1427,6 +1487,45 @@ server.registerTool(
         .string()
         .optional()
         .describe("Deployment status; pass \"\" to clear (only when the board declares environments)"),
+      delivery_state: z
+        .string()
+        .optional()
+        .describe(
+          "Delivery state (FRD-031): not-integrated | integrated | release-candidate | released | deployed | production-verified. " +
+            "Independent of the workflow stage and never a gate input — recording a release can never stand in for proof. " +
+            "`integrated` and beyond need delivery_branch plus a full 40-character delivery_sha; `released` and beyond also need " +
+            "delivery_release_branch and delivery_release_tag. Pass \"\" to clear.",
+        ),
+      delivery_branch: z
+        .string()
+        .optional()
+        .describe(
+          "Branch the change was integrated into. Must be this project's integration branch, or its release branch for a hotfix " +
+            "— see get_status.delivery. Naming the release branch is what records the required integration backport. Pass \"\" to clear.",
+        ),
+      delivery_sha: z
+        .string()
+        .optional()
+        .describe("Exact merged SHA on delivery_branch (full 40 characters, never abbreviated); pass \"\" to clear"),
+      delivery_candidate: z
+        .string()
+        .optional()
+        .describe(
+          "Release-candidate identity; accepted only when the project declares delivery.releaseCandidatePattern and this matches it. " +
+            "Pass \"\" to clear.",
+        ),
+      delivery_release_branch: z
+        .string()
+        .optional()
+        .describe("Release branch the change shipped from; must be this project's declared release branch. Pass \"\" to clear."),
+      delivery_release_tag: z.string().optional().describe("Release tag the change shipped under; pass \"\" to clear"),
+      delivery_backport_sha: z
+        .string()
+        .optional()
+        .describe(
+          "Exact merged SHA of the integration backport that discharges delivery_backport_required. That obligation is derived " +
+            "by Kanmer, not set by you: a real backport SHA is the only thing that clears it. Pass \"\" to clear.",
+        ),
       capture_evidence: z
         .array(z.string())
         .optional()

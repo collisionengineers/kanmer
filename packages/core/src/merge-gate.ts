@@ -1,3 +1,5 @@
+import { deliveryTargets, resolveDelivery } from "./board.js";
+import type { DeliveryPolicy } from "./types.js";
 import type { KanmerStore, OpenQuestionCount } from "./index.js";
 
 export type MergeGateFindingCode =
@@ -5,6 +7,7 @@ export type MergeGateFindingCode =
   | "OPEN_QUESTIONS"
   | "WRONG_STAGE"
   | "DEPENDENCY_BLOCKED"
+  | "WRONG_TARGET"
   | "NO_REVIEW_RECORD"
   | "STALE_REVIEW"
   | "COMMITS_UNREACHABLE"
@@ -18,6 +21,14 @@ export interface MergeGatePrInput {
   headSha: string;
   branch: string;
   body?: string | null;
+  /**
+   * The branch the pull request targets (`pull_request.base.ref`).
+   *
+   * Optional because older callers do not supply it, and an absent value
+   * **skips** the target check rather than inventing a default — a gate that
+   * guessed `main` would be exactly the hardcoding FRD-031 removes.
+   */
+  baseRef?: string;
 }
 
 /** A result that is useful to operators as well as the annotation adapter. */
@@ -162,7 +173,7 @@ function noTicket(pr: MergeGatePrInput, message: string): MergeGateResult {
 }
 
 /** The compatibility-period checks whose level follows the strict switch. */
-const SOFT_CODES: ReadonlySet<MergeGateFindingCode> = new Set(["NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE", "SYNC_REQUIRED"]);
+const SOFT_CODES: ReadonlySet<MergeGateFindingCode> = new Set(["WRONG_TARGET", "NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE", "SYNC_REQUIRED"]);
 
 function levelFor(code: MergeGateFindingCode, strict: boolean): MergeGateFindingLevel {
   return SOFT_CODES.has(code) && !strict ? "warning" : "error";
@@ -187,6 +198,7 @@ function phase2NoTicket(
     skipped("OPEN_QUESTIONS", why, strict),
     skipped("WRONG_STAGE", why, strict),
     skipped("DEPENDENCY_BLOCKED", why, strict),
+    skipped("WRONG_TARGET", why, strict),
     skipped("NO_REVIEW_RECORD", why, strict),
     skipped("STALE_REVIEW", why, strict),
     skipped("COMMITS_UNREACHABLE", why, strict),
@@ -287,11 +299,59 @@ function syncCheck(evidence: MergeGatePhase2Evidence, strict: boolean): MergeGat
   }
 }
 
+/**
+ * WRONG_TARGET: a normal implementation PR targets the project's **configured
+ * integration branch** (FRD-031), not a hardcoded `main`.
+ *
+ * A ticket that has already recorded delivery on the release branch is a
+ * hotfix, and its PR legitimately targets that branch instead — which is why
+ * this reads the ticket's delivery record rather than guessing from the branch
+ * name. An event with no `base.ref` is skipped, never assumed.
+ *
+ * Soft by default like the other CORE-123 compatibility checks: a repository
+ * that has never declared a policy resolves to main-only, so its existing PRs
+ * pass unchanged, and `KANMER_GATE_STRICT` is what makes a wrong target block.
+ */
+function targetCheck(
+  item: { delivery_branch?: string },
+  pr: MergeGatePrInput,
+  policy: DeliveryPolicy,
+  strict: boolean,
+): MergeGateCheck {
+  const level = levelFor("WRONG_TARGET", strict);
+  if (!pr.baseRef) {
+    return { code: "WRONG_TARGET", level, outcome: "skipped", message: "the pull-request event carried no base branch" };
+  }
+  const { hotfix, prTarget: expected } = deliveryTargets(policy, item);
+  const details = {
+    baseRef: pr.baseRef,
+    expected,
+    integrationBranch: policy.integrationBranch,
+    releaseBranch: policy.releaseBranch,
+    hotfix,
+  };
+  if (pr.baseRef === expected) {
+    return pass(
+      "WRONG_TARGET",
+      level,
+      `pull request targets the ${hotfix ? "release" : "integration"} branch "${expected}"`,
+      details,
+    );
+  }
+  return fail(
+    "WRONG_TARGET",
+    level,
+    `pull request targets "${pr.baseRef}"; this project's ${hotfix ? "release" : "integration"} branch is "${expected}"`,
+    details,
+  );
+}
+
 function evaluatePhase2(
-  item: { id: string; status: string; archived?: boolean },
+  item: { id: string; status: string; archived?: boolean; delivery_branch?: string },
   pr: MergeGatePrInput,
   questions: OpenQuestionCount,
   evidence: MergeGatePhase2Evidence,
+  policy: DeliveryPolicy,
 ): MergeGateResult {
   const checks: MergeGateCheck[] = [pass("NO_TICKET", "error", `Kanmer ticket ${item.id} resolved`)];
   const findings: MergeGateFinding[] = [];
@@ -321,6 +381,10 @@ function evaluatePhase2(
   } else {
     checks.push(pass("DEPENDENCY_BLOCKED", "error", `Kanmer ticket ${item.id} has no live blockers`, { blockers: [] }));
   }
+
+  const target = targetCheck(item, pr, policy, evidence.strict === true);
+  checks.push(target);
+  if (target.outcome === "fail" || target.outcome === "warn") findings.push(target as MergeGateFinding);
 
   const review = reviewChecks(pr, evidence);
   checks.push(...review.checks);
@@ -356,6 +420,9 @@ export async function evaluateMergeGate(store: KanmerStore, pr: MergeGatePrInput
     return { ok: mergeGateOk(findings), ticketId: resolved.ticketId, source: resolved.source, pr, questions, findings };
   }
 
-  const result = evaluatePhase2(item, pr, questions, phase2);
+  // FRD-031: the target the gate expects is the project's own, read from the
+  // board the gate fetched — never a constant.
+  const policy = resolveDelivery(await store.getBoard());
+  const result = evaluatePhase2(item, pr, questions, phase2, policy);
   return { ...result, source: resolved.source };
 }

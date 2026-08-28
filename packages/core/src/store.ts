@@ -40,6 +40,8 @@ import {
   resolveGroupKinds,
   readBoard,
   readBoardWithSource,
+  deliveryTargets,
+  resolveDelivery,
   resolveEnvironments,
   resolveProfiles,
   resolveProofTypes,
@@ -120,7 +122,12 @@ import {
   type RenewTicketInput,
   type UpdateItemPatch,
   type BatchState,
+  type DeliveryPolicy,
+  DELIVERY_PATCH_KEYS,
+  DELIVERY_STATES,
   LEASE_PHASES,
+  deliveryStateRank,
+  isDeliveryState,
   isLegacyLease,
   isTerminalTicket,
   isOperatorReason,
@@ -692,6 +699,11 @@ export class KanmerStore {
     if (input.groups !== undefined) await this.assertGroups(input.groups);
     if (input.refs !== undefined) await this.assertRefs(input.refs);
     if (input.deployment !== undefined) assertDeploymentAgainstBoard(board, input.deployment);
+    if (input.delivery_state !== undefined && !isDeliveryState(input.delivery_state)) {
+      throw new Error(
+        `DELIVERY_STATE_INVALID: unknown delivery_state "${input.delivery_state}". Valid: ${DELIVERY_STATES.join(", ")}.`,
+      );
+    }
     for (const target of [...(input.links ?? []), ...(input.blocks ?? [])]) {
       if (!(await this.getItem(target))) {
         throw new Error(`No item with id "${target}" to link to`);
@@ -774,6 +786,17 @@ export class KanmerStore {
       if (input.commits !== undefined && input.commits.length > 0) item.commits = input.commits;
       if (input.prs !== undefined && input.prs.length > 0) item.prs = input.prs;
       if (input.deployment !== undefined && input.deployment !== "") item.deployment = input.deployment;
+      // FRD-031 delivery state. Set, derive, then validate the *merged* record,
+      // so a create is judged by exactly the rule an update is.
+      if (touchesDelivery(input)) {
+        for (const key of DELIVERY_PATCH_KEYS) {
+          const value = input[key];
+          if (value !== undefined && value !== "") item[key] = value;
+        }
+        const policy = resolveDelivery(board);
+        applyDeliveryEffects(policy, item, item.updated);
+        assertDeliveryAgainstBoard(policy, item);
+      }
       const file =
         format >= 2
           ? ticketFileIn(this.paths, area, id)
@@ -803,7 +826,8 @@ export class KanmerStore {
       fields.area !== undefined ||
       fields.profile !== undefined ||
       fields.groups !== undefined ||
-      fields.deployment !== undefined
+      fields.deployment !== undefined ||
+      touchesDelivery(fields)
     ) {
       board = await this.getBoard();
       if (fields.status !== undefined) assertStage(fields.status);
@@ -853,6 +877,19 @@ export class KanmerStore {
         updated: nowIso(),
       };
       if (pruned.deployment === "") delete next.deployment; // "" clears deployment
+      // FRD-031. `""` clears one delivery field, the same sentinel `deployment`
+      // uses; the derived fields are then recomputed and the merged record —
+      // not the patch — is validated, so clearing a hotfix's branch also
+      // clears the backport it owed.
+      if (touchesDelivery(pruned)) {
+        for (const key of DELIVERY_PATCH_KEYS) {
+          if (pruned[key] === "") delete next[key];
+        }
+        board ??= await this.getBoard();
+        const policy = resolveDelivery(board);
+        applyDeliveryEffects(policy, next, next.updated);
+        assertDeliveryAgainstBoard(policy, next);
+      }
       if (next.docs_todo === false) delete next.docs_todo;
       if (next.refs && next.refs.length === 0) delete next.refs;
       if (next.commits && next.commits.length === 0) delete next.commits;
@@ -2572,6 +2609,136 @@ function assertDeploymentAgainstBoard(board: BoardConfig, value: string): void {
   }
 }
 
+/** A full commit SHA. Delivery evidence names an exact commit, never an abbreviation. */
+const DELIVERY_SHA_RE = /^[0-9a-f]{40}$/iu;
+
+/** Whether a caller's patch touches any delivery field at all. */
+function touchesDelivery(patch: Partial<UpdateItemPatch> | Partial<CreateItemInput>): boolean {
+  return DELIVERY_PATCH_KEYS.some((key) => (patch as Record<string, unknown>)[key] !== undefined);
+}
+
+/** Turn a delivery-policy branch glob into an anchored matcher (`release/*` → `release/v1`). */
+function candidatePatternMatches(pattern: string, value: string): boolean {
+  const source = pattern
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"))
+    .join(".+");
+  return new RegExp(`^${source}$`, "u").test(value);
+}
+
+/**
+ * Derive the delivery fields that are the store's to decide, never the
+ * caller's, and stamp when the record last changed (FRD-031).
+ *
+ * `delivery_backport_required` is recomputed from scratch every time rather
+ * than toggled, so it can never be left behind by a later edit: a hotfix that
+ * has its backport SHA, or whose branch is no longer the release branch, simply
+ * stops owing one. That also means a caller cannot record itself as owing
+ * nothing — the only way to discharge the obligation is a real backport SHA.
+ */
+function applyDeliveryEffects(policy: DeliveryPolicy, next: Item, stamp: string): void {
+  const owesBackport =
+    policy.hotfixBackport && deliveryTargets(policy, next).hotfix && next.delivery_backport_sha === undefined;
+  if (owesBackport) next.delivery_backport_required = policy.integrationBranch;
+  else delete next.delivery_backport_required;
+  next.delivery_recorded_at = stamp;
+}
+
+/**
+ * Validate a ticket's delivery record against the project's delivery policy
+ * (FRD-031), reading the **merged** post-patch item so a two-call sequence is
+ * judged exactly like a one-call one.
+ *
+ * Deliberately not enforced: forward-only progression. A real release gets
+ * rolled back, so a state may move backwards. What cannot happen is a state
+ * claimed without the evidence that state means — which is what this checks.
+ * Nothing here is a gate input (ADR-0005): a released ticket with no proof is
+ * still refused entry to Done, by the gate engine, which never reads these
+ * fields.
+ */
+function assertDeliveryAgainstBoard(policy: DeliveryPolicy, item: Item): void {
+  const state = item.delivery_state;
+  if (state !== undefined && !isDeliveryState(state)) {
+    throw new Error(
+      `DELIVERY_STATE_INVALID: unknown delivery_state "${state}". Valid: ${DELIVERY_STATES.join(", ")}.`,
+    );
+  }
+  const rank = state ? deliveryStateRank(state) : 0;
+
+  for (const key of ["delivery_sha", "delivery_backport_sha"] as const) {
+    const value = item[key];
+    if (value !== undefined && !DELIVERY_SHA_RE.test(value)) {
+      throw new Error(`DELIVERY_SHA_INVALID: ${key} "${value}" is not a full 40-character commit SHA.`);
+    }
+  }
+
+  if (
+    item.delivery_branch !== undefined &&
+    item.delivery_branch !== policy.integrationBranch &&
+    item.delivery_branch !== policy.releaseBranch
+  ) {
+    throw new Error(
+      `DELIVERY_TARGET_INVALID: delivery_branch "${item.delivery_branch}" is neither the integration branch ` +
+        `"${policy.integrationBranch}" nor the release branch "${policy.releaseBranch}".`,
+    );
+  }
+  if (item.delivery_release_branch !== undefined && item.delivery_release_branch !== policy.releaseBranch) {
+    throw new Error(
+      `DELIVERY_TARGET_INVALID: delivery_release_branch "${item.delivery_release_branch}" is not this project's ` +
+        `release branch "${policy.releaseBranch}".`,
+    );
+  }
+
+  if (item.delivery_candidate !== undefined) {
+    if (!policy.releaseCandidatePattern) {
+      throw new Error(
+        `DELIVERY_NO_CANDIDATE_POLICY: this project declares no delivery.releaseCandidatePattern, so it has no ` +
+          `release candidates and delivery_candidate cannot be set.`,
+      );
+    }
+    if (!candidatePatternMatches(policy.releaseCandidatePattern, item.delivery_candidate)) {
+      throw new Error(
+        `DELIVERY_NO_CANDIDATE_POLICY: delivery_candidate "${item.delivery_candidate}" does not match this ` +
+          `project's delivery.releaseCandidatePattern "${policy.releaseCandidatePattern}".`,
+      );
+    }
+  }
+
+  if (rank >= deliveryStateRank("integrated")) {
+    if (item.delivery_branch === undefined || item.delivery_sha === undefined) {
+      throw new Error(
+        `DELIVERY_EVIDENCE_MISSING: delivery_state "${state}" claims the change is integrated, so it needs both ` +
+          `delivery_branch and an exact 40-character delivery_sha.`,
+      );
+    }
+  }
+  if (state === "release-candidate" && item.delivery_candidate === undefined) {
+    throw new Error(
+      `DELIVERY_EVIDENCE_MISSING: delivery_state "release-candidate" needs delivery_candidate naming the ` +
+        `immutable candidate this change was frozen into.`,
+    );
+  }
+  if (rank >= deliveryStateRank("released")) {
+    if (item.delivery_release_branch === undefined || item.delivery_release_tag === undefined) {
+      throw new Error(
+        `DELIVERY_EVIDENCE_MISSING: delivery_state "${state}" claims the change is released, so it needs both ` +
+          `delivery_release_branch and delivery_release_tag.`,
+      );
+    }
+  }
+
+  // A backport SHA is only meaningful for a real hotfix. On a main-only project
+  // nothing is ever a hotfix — the release branch *is* the integration branch —
+  // so `deliveryTargets` is the check, not a bare branch comparison.
+  if (item.delivery_backport_sha !== undefined && !deliveryTargets(policy, item).hotfix) {
+    throw new Error(
+      `DELIVERY_NO_BACKPORT_REQUIRED: delivery_backport_sha is only meaningful for a hotfix delivered on a release ` +
+        `branch that differs from the integration branch. This project integrates into "${policy.integrationBranch}" ` +
+        `and releases from "${policy.releaseBranch}"; this record names "${item.delivery_branch ?? "(none)"}".`,
+    );
+  }
+}
+
 /** The fields of `pruned` whose application would actually change the file. */
 function changedFields(current: Item, pruned: Partial<UpdateItemPatch>): string[] {
   const changed: string[] = [];
@@ -2580,8 +2747,8 @@ function changedFields(current: Item, pruned: Partial<UpdateItemPatch>): string[
     if (key === "body") {
       // serialiseItem writes body.trim(), so compare what would be stored.
       if (String(value).trim() !== String(existing ?? "").trim()) changed.push(key);
-    } else if (key === "deployment" && value === "") {
-      if (existing !== undefined) changed.push(key); // "" clears deployment
+    } else if ((key === "deployment" || (DELIVERY_PATCH_KEYS as readonly string[]).includes(key)) && value === "") {
+      if (existing !== undefined) changed.push(key); // "" clears the field
     } else if (JSON.stringify(value) !== JSON.stringify(existing)) {
       changed.push(key);
     }

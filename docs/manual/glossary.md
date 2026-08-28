@@ -42,6 +42,21 @@ shared context. Two kinds ship: epic and horizon.
 **Horizon** — a group meaning *this is what matters now*. A time box rather than
 a feature.
 
+**Integration branch** — the branch a project's ordinary pull requests target
+and its ordinary verification proves. Most projects use `main`, which is what
+Kanmer assumes when a project says nothing; a project that develops on `dev` and
+releases from `main` declares that instead, and every worker then gets the right
+base branch, pull-request target and verification target without being told.
+
+**Delivery state** — how far a change has actually travelled: not integrated,
+integrated into a branch at an exact commit, included in a release candidate,
+released under a branch and tag, deployed, production verified. It is recorded
+separately from the workflow stage on purpose. A ticket is Done when it has been
+accepted against its integration target — it does not sit waiting for the next
+production release — and its inclusion in that release is recorded here
+afterwards. Delivery state never opens a gate: recording a release can never
+stand in for proof.
+
 **Lease** — an agent's renewable hold on a ticket's workspace (its branch and
 worktree). It expires unless renewed, so a dead agent's ticket can be taken
 over — with its work kept — instead of staying taken forever.

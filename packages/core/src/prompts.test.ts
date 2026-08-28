@@ -45,7 +45,9 @@ describe("taskFeasibility", () => {
     for (const stage of ["backlog", "preparing", "implementing"]) {
       const f = taskFeasibility("verify", at(stage));
       expect(f.ok, stage).toBe(false);
-      expect(f.reason).toMatch(/merged main/);
+      // CORE-116/FRD-031: the reason names the integration branch generically,
+      // because `main` is only *this* project's integration branch.
+      expect(f.reason).toBe("nothing is merged yet — verify runs on the merged integration branch");
     }
     for (const stage of ["review", "verifying", "done"]) {
       expect(taskFeasibility("verify", at(stage)).ok, stage).toBe(true);

@@ -308,7 +308,9 @@ export async function collectReconciliationEvidence(
     pullRequest,
     proof: proofEvidence(await store.getDoc(id, "proof")),
     workspace: await workspaceEvidence(store, item.worktree, item.branch, run, fs.stat, options.resolveCommonDir),
-    // CORE-116 owns persisted release attempts. This collector must never
+    // CORE-132 owns persisted release attempts (the release-channel lease and
+    // candidate identity); CORE-116 delivered only policy and delivery state,
+    // neither of which is a release attempt. This collector must never
     // manufacture a neutral observation for evidence it cannot inspect.
     release: { state: "not-applicable" },
   };

@@ -336,6 +336,31 @@ export const DeploymentConfigSchema = z.object({
 export type DeploymentConfig = z.infer<typeof DeploymentConfigSchema>;
 
 /**
+ * The `delivery` block on board.yml — the project's Git delivery policy
+ * (FRD-031).
+ *
+ * Every key is optional so a project can declare only what differs from the
+ * default, and an absent block means the default outright: integrate into
+ * `main`, release from `main`, no release candidates, backport a hotfix. That
+ * default *is* Kanmer's own policy, which FRD-031 forbids changing merely to
+ * demonstrate another one — so Kanmer's board carries no block at all.
+ *
+ * Resolve it with `resolveDelivery(board)` rather than reading these fields:
+ * `releaseBranch` defaults to the *integration* branch, not to a constant.
+ */
+export const DeliveryConfigSchema = z.object({
+  /** Branch normal implementation PRs target. Absent ⇒ `main`. */
+  integrationBranch: z.string().min(1).optional(),
+  /** Branch releases are cut from. Absent ⇒ the integration branch (main-only). */
+  releaseBranch: z.string().min(1).optional(),
+  /** Glob for immutable release candidates, e.g. `release/*`. Absent/null ⇒ candidates are not enabled. */
+  releaseCandidatePattern: z.string().min(1).nullable().optional(),
+  /** Whether a release-branch hotfix owes a backport to the integration branch. Absent ⇒ true. */
+  hotfixBackport: z.boolean().optional(),
+});
+export type DeliveryConfig = z.infer<typeof DeliveryConfigSchema>;
+
+/**
  * board.yml — the status/area/priority definitions that drive tools and GUI.
  *
  * `statuses` is the single workflow dimension (the board's columns). Boards
@@ -377,6 +402,8 @@ export const BoardConfigSchema = z.object({
   repoDocs: z.record(z.string()).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
+  /** Git delivery policy (FRD-031). Absent ⇒ main-only; see `resolveDelivery`. */
+  delivery: DeliveryConfigSchema.optional(),
   /** Project-declared research sources (FRD-027 / ADR-0020). */
   sources: SourceDeclarationArraySchema.optional(),
   /** Minutes before a ticket claim is considered expired (FRD-030). Absent ⇒ 30. */
@@ -513,6 +540,34 @@ export const ItemFrontmatterSchema = z
     capture_decided_by: z.string().optional(),
     /** Deployment status; only meaningful when the board declares environments. */
     deployment: z.string().optional(),
+    /**
+     * Delivery state (CORE-116, FRD-031). Every field is optional and additive,
+     * so a board written by an older Kanmer parses unchanged and re-emits these
+     * untouched (`.passthrough()` below, plus `orderKeys` in frontmatter.ts).
+     *
+     * This is deliberately **not** the workflow stage. The stage says whether
+     * the ticket was accepted against its integration target; this says how far
+     * the change has actually travelled. Nothing here is ever a gate input
+     * (ADR-0005), so recording a release can never stand in for proof.
+     */
+    delivery_state: z.string().optional(),
+    /** Branch the work was integrated into — the integration branch, or the release branch for a hotfix. */
+    delivery_branch: z.string().optional(),
+    /** Exact merged SHA on `delivery_branch` (full 40-hex). */
+    delivery_sha: z.string().optional(),
+    /** Release-candidate identity this change was frozen into; minted by CORE-132. */
+    delivery_candidate: z.string().optional(),
+    delivery_release_branch: z.string().optional(),
+    delivery_release_tag: z.string().optional(),
+    /**
+     * Derived, never a caller input: the integration branch a release-branch
+     * hotfix owes a backport to. Cleared only by `delivery_backport_sha`.
+     */
+    delivery_backport_required: z.string().optional(),
+    /** Exact merged SHA of the backport that discharged `delivery_backport_required`. */
+    delivery_backport_sha: z.string().optional(),
+    /** When any delivery field last changed; stamped by the store. */
+    delivery_recorded_at: TimestampSchema.optional(),
     archived: z.boolean().default(false),
     created: TimestampSchema.default(""),
     updated: TimestampSchema.default(""),
@@ -548,7 +603,7 @@ export interface ItemFilter {
 }
 
 /** Input for creating an item. id/created/updated are allocated by the store. */
-export interface CreateItemInput {
+export interface CreateItemInput extends DeliveryPatch {
   type: ItemType;
   title: string;
   status?: string;
@@ -580,7 +635,7 @@ export interface CreateItemInput {
 }
 
 /** A patch for updateItem: any frontmatter field plus body. All optional. */
-export interface UpdateItemPatch {
+export interface UpdateItemPatch extends DeliveryPatch {
   /** Document-inclusive revision CAS (FRD-029); see `SetDocOptions.expectedRevision`. */
   expectedRevision?: string;
   title?: string;
@@ -776,6 +831,98 @@ export interface TransferTicketInput {
 /** Bootstrap claim state (CORE-121). */
 export type ClaimState = "unclaimed" | "live" | "expired";
 
+/**
+ * How far a change has actually travelled (FRD-031), in order.
+ *
+ * Deliberately independent of the six workflow stages: a ticket reaches Done on
+ * acceptance against its *integration* target, and its inclusion in a release
+ * is recorded here afterwards. `not-integrated` is the absent-field default.
+ */
+export const DELIVERY_STATES = [
+  "not-integrated",
+  "integrated",
+  "release-candidate",
+  "released",
+  "deployed",
+  "production-verified",
+] as const;
+export type DeliveryState = (typeof DELIVERY_STATES)[number];
+
+/** True for one of the six recorded delivery states. */
+export function isDeliveryState(value: string): value is DeliveryState {
+  return (DELIVERY_STATES as readonly string[]).includes(value);
+}
+
+/**
+ * Rank of a delivery state, used only to ask "is this state at or beyond X?".
+ * It is not an ordering the store enforces: a real release can be rolled back,
+ * so regression is legal. What is *not* legal is claiming a state without the
+ * evidence that state requires — that is what `assertDeliveryAgainstBoard` checks.
+ */
+export function deliveryStateRank(state: DeliveryState): number {
+  return DELIVERY_STATES.indexOf(state);
+}
+
+/** The integration branch assumed when board.yml declares no delivery policy. */
+export const DEFAULT_INTEGRATION_BRANCH = "main";
+
+/** A project's resolved Git delivery policy — every field decided (FRD-031). */
+export interface DeliveryPolicy {
+  /** Branch normal implementation PRs target and ordinary verification proves. */
+  integrationBranch: string;
+  /** Branch releases are cut from; equal to `integrationBranch` for a main-only project. */
+  releaseBranch: string;
+  /** Glob for immutable release candidates; null when candidates are not enabled. */
+  releaseCandidatePattern: string | null;
+  /** Whether a release-branch hotfix owes a backport to the integration branch. */
+  hotfixBackport: boolean;
+}
+
+/** Whether a resolved policy came from board.yml or from the shipped default. */
+export type DeliveryPolicySource = "board" | "default";
+
+/**
+ * The delivery fields a caller may set (FRD-031). `""` clears one field, the
+ * same sentinel `deployment` uses.
+ *
+ * `delivery_backport_required` is absent on purpose: it is *derived* by the
+ * store from the policy and `delivery_branch`, so a hotfix cannot record itself
+ * as owing nothing. `delivery_recorded_at` is stamped, not supplied.
+ */
+export interface DeliveryPatch {
+  delivery_state?: string;
+  delivery_branch?: string;
+  delivery_sha?: string;
+  delivery_candidate?: string;
+  delivery_release_branch?: string;
+  delivery_release_tag?: string;
+  delivery_backport_sha?: string;
+}
+
+/** The frontmatter keys a `DeliveryPatch` may write, plus the two derived ones. */
+export const DELIVERY_PATCH_KEYS = [
+  "delivery_state",
+  "delivery_branch",
+  "delivery_sha",
+  "delivery_candidate",
+  "delivery_release_branch",
+  "delivery_release_tag",
+  "delivery_backport_sha",
+] as const satisfies readonly (keyof DeliveryPatch)[];
+
+/** Every delivery frontmatter key, in serialisation order. */
+export const DELIVERY_FIELD_KEYS = [
+  "delivery_state",
+  "delivery_branch",
+  "delivery_sha",
+  "delivery_candidate",
+  "delivery_release_branch",
+  "delivery_release_tag",
+  "delivery_backport_required",
+  "delivery_backport_sha",
+  "delivery_recorded_at",
+] as const;
+
 /** Default claim window when board.yml does not set `claimExpiryMinutes`. */
 export const DEFAULT_CLAIM_EXPIRY_MINUTES = 30;
 /** Default heartbeat cadence when board.yml does not set `leaseHeartbeatMinutes`. */
@@ -928,7 +1075,12 @@ export interface ReconciliationEvidence {
     /** Proven via `--git-common-dir`; recovery recommendations do not infer it. */
     claimIdentity: "not-applicable" | "matches-claim" | "foreign-repository" | "branch-mismatch" | "detached" | "unavailable";
   };
-  /** CORE-116 owns persisted release attempts; until then this is `not-applicable`. */
+  /**
+   * Release-attempt observation. CORE-116 delivered the delivery *policy* and
+   * per-ticket delivery *state*; persisted release **attempts** — the release
+   * channel lease, immutable candidate identity and supersession — are
+   * CORE-132, so until that lands this is always `not-applicable`.
+   */
   release: {
     state: "not-applicable" | "superseded" | "contended" | "unavailable";
   };

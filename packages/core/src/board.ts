@@ -1,9 +1,12 @@
 import YAML from "yaml";
 import {
   BoardConfigSchema,
+  DEFAULT_INTEGRATION_BRANCH,
   type BoardColumn,
   type BoardConfig,
   type BoardSource,
+  type DeliveryPolicy,
+  type DeliveryPolicySource,
 } from "./types.js";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
@@ -29,7 +32,13 @@ export const DEFAULT_GROUP_KINDS = [
  *
  * No `statuses` and no `priorities` — stages are constants (ADR-0002) and
  * priority is gone (ADR-0006). What remains configurable is areas, profiles,
- * group kinds, proof types and deployment environments.
+ * group kinds, proof types, deployment environments and the Git delivery
+ * policy (FRD-031).
+ *
+ * A fresh board deliberately gets **no** `delivery` block: the resolved default
+ * is main-only, which is what a new project wants and what Kanmer's own
+ * repository uses. Writing the block only when a project actually differs keeps
+ * an unconfigured board readable by a Kanmer that predates FRD-031.
  */
 export function defaultBoardConfig(): BoardConfig {
   return {
@@ -209,6 +218,85 @@ export function resolveEnvironments(board: BoardConfig): readonly string[] {
 }
 
 /**
+ * The project's Git delivery policy, every field decided (FRD-031).
+ *
+ * The default is not a constant per field: `releaseBranch` falls back to the
+ * *integration* branch, so declaring only `integrationBranch: dev` gives a
+ * project that integrates into `dev` and releases from `dev` — not one that
+ * silently releases from `main`. Declaring nothing gives main-only, which is
+ * exactly Kanmer's own policy.
+ */
+export function resolveDelivery(board: BoardConfig): DeliveryPolicy {
+  const integrationBranch = board.delivery?.integrationBranch ?? DEFAULT_INTEGRATION_BRANCH;
+  return {
+    integrationBranch,
+    releaseBranch: board.delivery?.releaseBranch ?? integrationBranch,
+    releaseCandidatePattern: board.delivery?.releaseCandidatePattern ?? null,
+    hotfixBackport: board.delivery?.hotfixBackport ?? true,
+  };
+}
+
+/**
+ * Whether the resolved policy came from board.yml or from the shipped default.
+ *
+ * Worth reporting rather than inferring: a board that *did* declare a policy and
+ * lost it (an older server round-trips board.yml through a key-stripping schema)
+ * looks identical to one that never declared anything, except for this.
+ */
+export function deliveryPolicySource(board: BoardConfig): DeliveryPolicySource {
+  return board.delivery ? "board" : "default";
+}
+
+/**
+ * Which branch a ticket's work is based on, targets and is verified against
+ * (FRD-031) — the single rule the merge gate and the execution packet both use,
+ * so they cannot disagree about what a hotfix is.
+ *
+ * A ticket is a hotfix when its *recorded delivery* names the release branch on
+ * a project whose release branch differs from its integration branch. That is
+ * deliberately read from evidence rather than guessed from a branch name: a
+ * branch called `hotfix/...` proves nothing, and a recorded delivery does.
+ */
+export function deliveryTargets(
+  policy: DeliveryPolicy,
+  item: { delivery_branch?: string },
+): { hotfix: boolean; baseBranch: string; prTarget: string; verificationTarget: string } {
+  const hotfix =
+    policy.releaseBranch !== policy.integrationBranch && item.delivery_branch === policy.releaseBranch;
+  const branch = hotfix ? policy.releaseBranch : policy.integrationBranch;
+  return { hotfix, baseBranch: branch, prTarget: branch, verificationTarget: branch };
+}
+
+/** A branch name a delivery policy may name: no whitespace, no leading/trailing `/`, no `..`. */
+const DELIVERY_BRANCH_RE = /^(?!\/)(?!.*\.\.)(?!.*\/$)\S+$/u;
+
+/**
+ * Reject a delivery policy that cannot be acted on.
+ *
+ * `integrationBranch === releaseBranch` is deliberately **legal** — that is a
+ * main-only project, the default and the common case.
+ */
+function assertDeliveryPolicy(board: BoardConfig): void {
+  const delivery = board.delivery;
+  if (!delivery) return;
+  for (const key of ["integrationBranch", "releaseBranch"] as const) {
+    const value = delivery[key];
+    if (value !== undefined && !DELIVERY_BRANCH_RE.test(value)) {
+      throw new Error(`Invalid delivery.${key} "${value}": a branch name cannot contain whitespace, "..", or a leading/trailing "/"`);
+    }
+  }
+  const pattern = delivery.releaseCandidatePattern;
+  if (pattern !== undefined && pattern !== null) {
+    if (!DELIVERY_BRANCH_RE.test(pattern)) {
+      throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": it cannot contain whitespace, "..", or a leading/trailing "/"`);
+    }
+    if (!pattern.includes("*")) {
+      throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": a candidate pattern must contain "*" (for example "release/*")`);
+    }
+  }
+}
+
+/**
  * The board's final stage.
  *
  * A constant in format 3 — stages no longer come from the board (ADR-0002), so
@@ -292,5 +380,6 @@ export async function readBoardWithSource(
 export async function writeBoard(paths: KanmerPaths, board: BoardConfig): Promise<void> {
   const validated = BoardConfigSchema.parse(board);
   assertUniquePrefixes(validated);
+  assertDeliveryPolicy(validated);
   await writeFileAtomic(paths.boardFile, YAML.stringify(validated));
 }

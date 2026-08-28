@@ -1,195 +1,241 @@
 ---
 kind: proof-record
-merged_sha: "d523a29365a20133fc5f0e16a29df40b1a80bd8e"
-environment: "Detached worktree .worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e at d523a29365a20133fc5f0e16a29df40b1a80bd8e; Windows 11 Pro 26200, Node v24.15.0, npm 11.14.1; deps installed with npm ci"
-verified_at: "2026-08-28T07:46:13Z"
-result: FAIL
-failure_class: implementation
+merged_sha: "add0da7fc17968796f43b3035065de400a4db2d4"
+environment: >-
+  Detached worktree .worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4
+  at exact PR #305 merge commit add0da7fc17968796f43b3035065de400a4db2d4;
+  Microsoft Windows NT 10.0.26200.0, Node v24.15.0, npm 11.14.1; clean npm ci install;
+  independent hosted main-push run 33166963130.
+verified_at: "2026-08-28T11:45:18.5951103Z"
+result: PASS
 attempts:
   - attempted_at: "2026-08-28T07:23:00Z"
-    command: "npm ci"
+    command: >-
+      npm ci
     cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
     exit_code: 0
     result: PASS
-    summary: "Workspace dependencies installed cleanly in the detached verification worktree."
+    summary: >-
+      Workspace dependencies installed cleanly in the detached verification worktree.
   - attempted_at: "2026-08-28T07:25:21Z"
-    command: "npm run verify"
+    command: >-
+      npm run verify
     cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
     exit_code: 1
     result: FAIL
-    summary: "The authoritative rail died at step 2 of 12 (`npm test`) after 9m00s. 15 failures in scripts/verify-skill-prose.test.mjs, every one `ReferenceError: rmSync is not defined`. Deterministic, not load-sensitive."
-  - attempted_at: "2026-08-28T07:34:30Z"
-    command: "npm run test:scripts"
-    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
-    exit_code: 1
-    result: FAIL
-    summary: "Isolated reproduction: exactly 15 `ReferenceError: rmSync is not defined`, one per surviving bare `rmSync(` call site in scripts/verify-skill-prose.test.mjs."
-  - attempted_at: "2026-08-28T07:35:05Z"
-    command: "npm run test -w @kanmer/core"
-    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
-    exit_code: 0
-    result: PASS
-    summary: "23 test files, 562/562 passed in 119.73s. Includes the unchanged stale-lock cases in io.test.ts that gate lock recovery on owner liveness and identity."
-  - attempted_at: "2026-08-28T07:37:07Z"
-    command: "npm run test -w @kanmer/gui"
-    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
-    exit_code: 0
-    result: PASS
-    summary: "54 test files, 524/524 passed in 401.27s, exit 0. No unhandled `EPERM: … watch` rejection — cause 6 (index.sync.test.ts closeProject) is genuinely fixed."
-  - attempted_at: "2026-08-28T07:43:50Z"
-    command: "npm run test:http -w @kanmer/mcp-server"
-    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
-    exit_code: 0
-    result: PASS
-    summary: "Exit 0 in 45s."
-  - attempted_at: "2026-08-28T07:44:40Z"
-    command: "node --test scripts/antigravity-plugin-config.test.mjs"
-    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
-    exit_code: 0
-    result: PASS
-    summary: "4 pass, 0 fail, **skipped 0**, under an agent harness. Both `cmd.exe` tests genuinely executed (79.9 ms / 66.5 ms); the reason-carrying conditional skip did not fire. Cause 3 fixed by removing NoDefaultCurrentDirectoryInExePath from the child env, not by skipping."
-  - attempted_at: "2026-08-28T07:45:10Z"
-    command: "npm run typecheck; npm run verify:docs; npm run verify:skills; npm run verify:agents-block; npm run plugin:check; npm run mcpb:check"
-    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
-    exit_code: 0
-    result: PASS
-    summary: "All six remaining rail steps pass individually (exit 0 each), isolating the rail failure to scripts/verify-skill-prose.test.mjs alone."
-  - attempted_at: "2026-08-28T07:30:00Z"
-    command: "gh run view 33151189671 --job 98783311973 --log-failed"
-    cwd: "C:/Users/Alex/Documents/GitHub/kanmer"
-    exit_code: 0
-    result: FAIL
-    summary: "Hosted CI at the exact merge SHA: workflow 'Pull request verification' conclusion=failure. verify job failed identically — `rmSync is not defined`, tests 136, pass 121, fail 15, skipped 0. Independent confirmation on a second host."
+    summary: >-
+      The authoritative rail died at step 2 of 12 (npm test) after 9m00s. Fifteen failures in
+      scripts/verify-skill-prose.test.mjs, every one ReferenceError: rmSync is not defined.
+      Deterministic, not load-sensitive.
   - attempted_at: "2026-08-28T07:28:00Z"
-    command: "git diff -U0 d523a293^1 d523a293 | grep '^-[^-]' | grep -E 'expect\\(|assert\\.|assert\\(|\\.toBe|\\.toEqual|\\.toThrow|\\.rejects|\\.resolves'"
+    command: >-
+      git diff -U0 d523a293^1 d523a293 | grep '^-[^-]' | grep -E
+      'expect\(|assert\.|assert\(|\.toBe|\.toEqual|\.toThrow|\.rejects|\.resolves'
     cwd: "C:/Users/Alex/Documents/GitHub/kanmer"
     exit_code: 0
     result: PASS
-    summary: "Assertion-integrity sweep of the removed side of all 52 changed files returns exactly one line, whose added counterpart differs only in the hang-guard constant 1_000 -> 30_000 inside a Promise.race. Matcher unchanged."
+    summary: >-
+      Assertion-integrity sweep of the removed side of all 52 changed files returned exactly one
+      line, whose added counterpart differed only in the hang-guard constant 1_000 to 30_000
+      inside a Promise.race. Matcher unchanged.
+  - attempted_at: "2026-08-28T07:30:00Z"
+    command: >-
+      gh run view 33151189671 --job 98783311973 --log-failed
+    cwd: "C:/Users/Alex/Documents/GitHub/kanmer"
+    exit_code: 0
+    result: FAIL
+    summary: >-
+      Hosted CI at exact merge SHA d523a29365a20133fc5f0e16a29df40b1a80bd8e:
+      workflow Pull request verification conclusion=failure. The verify job failed identically;
+      scripts tests 136, pass 121, fail 15, skipped 0. Independent confirmation on a second host.
+  - attempted_at: "2026-08-28T07:34:30Z"
+    command: >-
+      npm run test:scripts
+    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
+    exit_code: 1
+    result: FAIL
+    summary: >-
+      Isolated reproduction: exactly 15 ReferenceError: rmSync is not defined failures, one per
+      surviving bare rmSync call in scripts/verify-skill-prose.test.mjs.
+  - attempted_at: "2026-08-28T07:35:05Z"
+    command: >-
+      npm run test -w @kanmer/core
+    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Twenty-three test files, 562/562 passed in 119.73s. Includes the unchanged stale-lock cases
+      in io.test.ts that gate lock recovery on owner liveness and identity.
+  - attempted_at: "2026-08-28T07:37:07Z"
+    command: >-
+      npm run test -w @kanmer/gui
+    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Fifty-four test files, 524/524 passed in 401.27s. No unhandled EPERM watch rejection;
+      index.sync.test.ts closeProject cleanup was genuinely fixed.
+  - attempted_at: "2026-08-28T07:43:50Z"
+    command: >-
+      npm run test:http -w @kanmer/mcp-server
+    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      MCP-server HTTP suite exited 0 in 45s.
+  - attempted_at: "2026-08-28T07:44:40Z"
+    command: >-
+      node --test scripts/antigravity-plugin-config.test.mjs
+    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Four pass, zero fail, skipped 0 under an agent harness. Both cmd.exe tests genuinely ran
+      (79.9ms and 66.5ms); the reason-carrying conditional skip did not fire.
+  - attempted_at: "2026-08-28T07:45:10Z"
+    command: >-
+      npm run typecheck; npm run verify:docs; npm run verify:skills;
+      npm run verify:agents-block; npm run plugin:check; npm run mcpb:check
+    cwd: ".worktrees/verify-core-128-d523a29365a20133fc5f0e16a29df40b1a80bd8e"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      All six remaining rail steps passed individually, isolating the old rail failure to
+      scripts/verify-skill-prose.test.mjs alone.
+  - attempted_at: "2026-08-28T11:26:52Z"
+    command: >-
+      npm ci
+    cwd: ".worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Clean dependency install completed in 22.25s: 647 packages added and 652 audited.
+  - attempted_at: "2026-08-28T11:27:26.5435090Z"
+    command: >-
+      node --test scripts/verify-skill-prose.test.mjs
+    cwd: ".worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4"
+    exit_code: 1
+    result: FAIL
+    summary: >-
+      The clean checkout had no generated packages/core/dist/index.js, so Node exited with
+      ERR_MODULE_NOT_FOUND before loading any test. This was a missing build prerequisite, not a
+      test result or source regression; the environment was changed by the next build before retry.
+  - attempted_at: "2026-08-28T11:27:39.0376882Z"
+    command: >-
+      npm run build
+    cwd: ".worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Core ESM/types and MCP-server ESM/standalone bundles built successfully, satisfying the
+      focused script's generated-dist prerequisite.
+  - attempted_at: "2026-08-28T11:28:08.3343462Z"
+    command: >-
+      node --test scripts/verify-skill-prose.test.mjs
+    cwd: ".worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Focused regression check passed: tests 28, pass 28, fail 0, skipped 0, duration 26.315s.
+      All 15 formerly unbound teardown calls now execute through removeTreeWithRetrySync.
+  - attempted_at: "2026-08-28T11:28:40.4549390Z"
+    command: >-
+      npm run test:scripts
+    cwd: ".worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Complete scripts suite passed: tests 136, suites 11, pass 136, fail 0, skipped 0,
+      duration 28.286s.
+  - attempted_at: "2026-08-28T11:29:23.8661609Z"
+    command: >-
+      npm run verify:skills
+    cwd: ".worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      All canonical skill prose and controller-contract checks passed.
+  - attempted_at: "2026-08-28T11:29:38.0505687Z"
+    command: >-
+      npm run verify
+    cwd: ".worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      The sole complete local Windows rail at the exact merge SHA passed end to end, finishing
+      2026-08-28T11:44:38.5770333Z. Core 562/562, GUI 524/524, MCP server 144/144,
+      scripts 136/136, MCP smoke 338/338, protocol 50/50, discovery 13/13, agents block 31/31;
+      typecheck, docs, headless, MCPB, skill checks, and plugin bundle byte sync all passed.
+  - attempted_at: "2026-08-28T11:44:50Z"
+    command: >-
+      gh run view 33166963130 --repo collisionengineers/kanmer
+      --json status,conclusion,headSha,event,createdAt,updatedAt,url,jobs
+    cwd: "C:/Users/Alex/Documents/GitHub/kanmer"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Hosted main-push workflow completed success at exact head
+      add0da7fc17968796f43b3035065de400a4db2d4. Verify job 98834566641 and its authoritative
+      rail step both succeeded; the rail ran 2026-08-28T11:23:38Z to 11:29:14Z.
+  - attempted_at: "2026-08-28T11:45:18.5951103Z"
+    command: >-
+      git -C .worktrees/verify-core-128-add0da7fc17968796f43b3035065de400a4db2d4
+      rev-parse HEAD; symbolic-ref --short -q HEAD; status --short --branch
+    cwd: "C:/Users/Alex/Documents/GitHub/kanmer"
+    exit_code: 0
+    result: PASS
+    summary: >-
+      Post-rail assertion: HEAD equals add0da7fc17968796f43b3035065de400a4db2d4,
+      symbolic-ref is empty as required for detached HEAD, and status is clean with only
+      '## HEAD (no branch)'. The path remains distinct from the board and implementation worktrees.
 ---
 
 # Proof — CORE-128
 
-Verified independently at the exact merge SHA. I did not write or review this code.
+Verified independently at the exact GitHub merge identity. I did not author, review, or merge
+the remediation.
 
 ## Result
 
-**FAIL — `failure_class: implementation`.** Retryable in the ordinary sense, but not by
-rerunning: the failure is deterministic and needs a code change.
+PASS at add0da7fc17968796f43b3035065de400a4db2d4.
 
-This is the one ticket whose deliverable *is* a green rail. At
-`d523a29365a20133fc5f0e16a29df40b1a80bd8e` the rail is red, on this Windows host and on the
-hosted runner, on every run.
+GitHub reports PR #305 MERGED with that exact mergeCommit. The deterministic verification
+worktree was created from the full SHA, remained detached and clean before and after the rail,
+and was never the board worktree or the retained implementation worktree.
 
-## The failure
+## Exact-SHA evidence
 
-`npm run verify` dies at step 2 of 12 (`npm test`) with 15 failures in
-`scripts/verify-skill-prose.test.mjs`, all `ReferenceError: rmSync is not defined`.
+- The focused regression passes 28/28 with no skips.
+- The full scripts suite passes 136/136 with no skips.
+- The canonical skill checks pass.
+- Exactly one complete local npm run verify rail ran on this host and passed every step.
+- The independent hosted push-to-main verify rail also passed at the same merge SHA.
+- No assertion was weakened or removed by PR #305: its one-file current-main diff is the
+  mechanical conversion of 15 remaining bare rmSync teardown calls to
+  removeTreeWithRetrySync.
 
-At the merge SHA that file imports
+The first focused invocation in the clean checkout is deliberately retained as FAIL: it exited
+before test loading because generated core dist did not yet exist. A successful build changed
+that environment, after which the same command passed. It was not rerun unchanged.
 
-```js
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
-```
+## Historical failure retained
 
-— `rmSync` is gone from the import list — while 15 `rmSync(fixture, { recursive: true, force: true })`
-call sites survive at lines 363, 379, 398, 416, 439, 506, 522, 535, 552, 569, 586, 599, 616,
-638 and 670. Fifteen call sites, fifteen failures.
+The earlier exact-merge proof at d523a29365a20133fc5f0e16a29df40b1a80bd8e remains fully
+represented in the chronological attempt ledger. Its local and hosted rails failed with the same
+15 ReferenceError results because the file had 15 rmSync calls after the import was removed.
+PR #305 corrected every surviving call without changing any assertion. F-005 and F-007 from the
+old proof are therefore resolved by source change plus independent local and hosted execution,
+not by reclassification or an unchanged rerun.
 
-### How it arose
+The original ten-run acceptance streak remains in the ticket's checklist and pre-merge report.
+This post-merge remediation followed the release controller's bounded rule: one clean exact-SHA
+local rail plus one independent hosted rail for a deterministic missing-binding repair.
 
-PR #300 was **squash-merged**, so `d523a293` has a single parent, `70d23efd`. On that parent
-the file imports `rmSync` and has 25 bare call sites. The CORE-128 branch was written against
-an older `main` where only 10 existed; SKILL-036 (`70d23efd`, goal orchestration) added 15 more
-while the branch was in flight. The squash applied the branch's import line — correctly dropping
-`rmSync` — and converted only the 10 call sites the branch knew about. Git merged both changes
-cleanly because they touch different lines. The result is a semantic merge conflict that
-compiles and only fails at runtime.
+## Residual risk
 
-### Disposition of the review's F-005
-
-The review recorded this as **F-005**, "SKILL-036 landed 15 new bare `rmSync` in
-`verify-skill-prose.test.mjs` after this branch converted it — drift already on `main`", and
-dispositioned it **accepted risk / cosmetic drift**. That disposition is wrong. It is not style
-drift: the branch removed the binding those 15 statements resolve against, so they are 15 hard
-`ReferenceError`s. This is the finding that should have blocked the merge.
-
-The fix is one line — restore `rmSync` to the `node:fs` import, or convert the 15 sites to
-`removeTreeWithRetrySync` for consistency with the rest of the ticket.
-
-## What the ticket did get right
-
-The failure above is unrelated to the ticket's substance. Every one of the six causes is
-genuinely fixed, and the fix made the rail **more honest, not quieter**:
-
-- **Assertion integrity is clean.** The removed side of all 52 changed files yields exactly one
-  assertion line; its added counterpart changes only a `Promise.race` hang-guard constant
-  (`1_000` -> `30_000`) with the matcher `/TUNNEL_CHILD_EXITED_BEFORE_READY/` intact. No test
-  case was deleted: every changed test file has an identical `test(`/`it(` count on both sides.
-  Both `timeoutMs: 5` cases that *assert* a timeout — `readiness.test.mjs:118`
-  (`TUNNEL_READINESS_TIMEOUT`) and `doctor.test.mjs:75` — are byte-identical across the merge.
-  Every raised budget is a process-spawn timeout, a hang guard, or a vitest test/hook budget;
-  none sits in a test that asserts a timeout fires, so none can mask a regression.
-- **The only new `.skip` does not fire.** `node --test scripts/antigravity-plugin-config.test.mjs`
-  reports 4 pass, **skipped 0** in this agent shell, with both `cmd.exe` tests running in 79.9 ms
-  and 66.5 ms. They failed 100 % under an agent before.
-- **`packages/core/src/io.ts` is purely additive** — 50 insertions, 0 deletions — so the lock
-  implementation, `recoverStaleLock`, `DEFAULT_LOCK_RETRY_MS` and `DEFAULT_LOCK_STALE_MS` are
-  byte-unchanged. The 32 145 ms ladder is opt-in per call site.
-- **Core 562/562, GUI 524/524, `test:http`, and the six remaining rail steps all exit 0.**
-  The GUI suite raises no unhandled `EPERM: … watch` rejection, so cause 6 is fixed.
-
-### Stale-lock safety
-
-The `ORPHAN_MIGRATION_LOCK_RETRY_MS` ladder is `[10, 25, 60, 150, 300, 600, 1_000, 2_000, 3_000,
-5_000 x5]` = **32 145 ms over 14 steps**, which exceeds `DEFAULT_LOCK_STALE_MS` (30 000 ms). It
-cannot steal a live lock. Established **by close reading and by execution**.
-
-Close reading of `recoverStaleLock` (`packages/core/src/io.ts:314`) shows age is necessary but
-never sufficient — it is a gate, not a decision:
-
-1. `if (Math.max(0, persistedAge, filesystemAge) < staleAfterMs) return false;` — age only.
-2. `ownerMarkerActive(...)` -> `return false` while the owner marker is live.
-3. `alive = processAlive(record.pid); if (alive && record.identity) alive = currentIdentity === undefined || currentIdentity === record.identity;` then `if (alive) return false;`
-
-So a waiter that has spent 32 s in the ladder still declines to reclaim unless the recorded owner
-process is **dead**, or PID reuse is **proven** by an identity mismatch. Identity that cannot be
-obtained (`currentIdentity === undefined`) keeps `alive` true, and any throw in the probe
-`return false`s — both fail **closed**, exactly as the comment claims. `stillOwnsStaleLock()`
-re-reads contents, `dev`, `ino` and `mtimeMs` and re-runs the liveness and marker checks before
-the quarantine rename, which is the atomic ownership transition.
-
-By execution, `packages/core/src/io.test.ts` — whose diff is teardown-only — carries
-"recovers a stale lock only when the recorded owner is dead", "reclaims a stale lock when the
-recorded PID was reused" and "fails closed when a live owner's identity cannot be inspected".
-All pass in the 562/562 core run above.
-
-## Known findings — confirmed at the merge SHA
-
-| ID | Confirmed | Note |
-|---|---|---|
-| F-001 | Yes | `shimUnreachable` matches only `/is not recognized as an internal or external command/i`, the launcher-regression signature. The primary guard is unconditional: `validate()` does `assert.deepEqual(entry.args, expected)` against the shipped `plugins/kanmer/mcp_config.json` in a test with no skip, so it fails closed. Accepted risk stands. |
-| F-002 | Yes | `io.ts:661` claims "~1 s of patience" for `10 x 100 ms`. Node's rimraf uses `retryDelay * i`, so the real budget is `100 x (1+…+10)` = **5 500 ms**. Bounded and safe; the comment's arithmetic is wrong. |
-| F-003 | Yes | `cloudflared.test.mjs:317` races an uncleared `setTimeout(…, 30_000)`; the losing timer is never `clearTimeout`-ed, so the `node:test` process stays alive for the full guard after a fast pass. `supervisor.test.mjs:11-25` next door has the correct `finally { clearTimeout(timer); }`. Cost only. |
-| F-004 | Yes | `AGENTS.md` §8 has two items numbered `20` (lines 661 and 664). Cosmetic. |
-| F-005 | Yes — **and it is a blocker, not accepted risk** | See above. 15 bare `rmSync` with the import removed = 15 `ReferenceError`s. |
-| F-006 | Not exercised | ~32 s block on GUI project open under contention is a real consequence of the ladder, but needs a contended GUI open to observe; not reachable from this rail. |
-| F-007 | **Vindicated** | The 10-run streak was measured at `7061045b`, one commit behind. At the merge SHA the count is **0 of 1** — the rail fails deterministically. The gap F-007 named is exactly where the defect entered. |
-
-## Clean `npm run verify` runs at the merge SHA
-
-**0.** One full-rail run was executed end to end (exit 1). Rerunning was not attempted beyond
-that because the failure is a missing binding, not a timing race: it reproduced identically in an
-isolated `npm run test:scripts` (exit 1) and on the hosted runner (conclusion `failure`, same 15
-failures). Repeating a deterministic failure to reach a count would be theatre, not evidence.
-
-## Recommendation to the controller
-
-Route back to Implementing for a one-line fix (restore `rmSync` to the `node:fs` import in
-`scripts/verify-skill-prose.test.mjs`, or convert the 15 remaining call sites to
-`removeTreeWithRetrySync`), then re-verify. `main` is currently red, so this also blocks every
-other lane's rail.
-
-Not filed as tickets — recommended only. The identity-probe stall is already filed as CORE-134,
-outside HZN-008.
+No new source risk was found in the remediation. The old proof's already dispositioned minor
+notes remain historical residuals outside this one-file repair: the conditional Antigravity skip
+is signature-limited and did not fire; one retry-budget comment understates Node's cumulative
+delay; one test-only timer can add cost; duplicate AGENTS numbering is cosmetic; and the
+contended GUI-open latency path was not directly exercised. None invalidates the named acceptance
+evidence or the exact-SHA PASS.

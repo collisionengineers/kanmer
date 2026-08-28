@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { removeTreeWithRetry } from "./io.js";
 import { KanmerStore } from "./store.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
 import { deliveryPolicySource, deliveryTargets, resolveDelivery } from "./board.js";
@@ -19,7 +20,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(root, { recursive: true, force: true });
+  await removeTreeWithRetry(root);
 });
 
 const ticketFile = (id: string) => path.join(root, ".kanmer", "areas", "_none", id, `${id}.md`);

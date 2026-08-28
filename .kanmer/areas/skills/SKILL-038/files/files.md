@@ -41,3 +41,27 @@
 - **Renumbering or rewriting `## 4. Mandatory stop predicates`** (1877 bytes, sha256 `03796a0e…`) or any `## N.` heading.
 - **`scripts/antigravity-plugin-config.test.mjs`**, `.worktrees/kanmer`, `.worktrees/core-128`, `.worktrees/core-132` and every `verify-*` worktree.
 - **Adding a skill or changing `EXPECTED_SKILLS` from 12.**
+
+
+---
+
+## Review remediation amendment — PR #304 exact head `8a909ee97d95a0c50e5102c3c7f88d4c575614ba`
+
+This amendment supersedes only the earlier statements that there is no run-schema change, that `AGENTS.md` is not edited, and that the expected diff has four files. The original research and completed implementation history remain intact.
+
+### Added mutation surface
+
+| Path | Review remediation responsibility |
+|---|---|
+| `plugins/kanmer/skills/kanmer-auto/SKILL.md` | Before retaining internal dependents, detect directed dependency cycles and self-loops; name the cycle path/members; dispatch none; give every member an explicit blocked disposition. Define schema 3 as the first contract with `transient_retry_limit` and a durable `Transient` count. Refuse active schema 1/2 records under schema-3 assumptions; preserve and terminally close the legacy record under its own schema, then create a distinct schema-3 successor. Unknown/absent schema remains a hard refusal. |
+| `plugins/kanmer/skills/kanmer-auto/assets/run-state-template.md` | Stamp `schema: 3`; retain `transient_retry_limit: 2` and the `Transient` ledger column. |
+| `plugins/kanmer/skills/kanmer-auto/assets/current-run-template.md` | Stamp `schema: 3`; remain only a pointer to the complete history record, never an in-place migration surface. |
+| `AGENTS.md` | Update the canonical `kanmer-auto` inventory and add one concise controller contract covering internal/external blockers, cycle disposition, retry limit 2, and the schema-3/no-in-place-rewrite transition. |
+| `scripts/verify-skill-prose.mjs` | Pin cycle detection before retention, explicit blocked/no-dispatch behavior, schema 3, schema-1/2 refusal and no rewrite, both template stamps, and all four AGENTS conventions. |
+| `scripts/verify-skill-prose.test.mjs` | Add isolated mutation fixtures for cycles, schema transition/template stamps, and AGENTS. `goalFixture()` must copy real `AGENTS.md`. Every new teardown uses `removeTreeWithRetrySync`. |
+
+### CORE-128 separation
+
+After rebasing onto `add0da7fc17968796f43b3035065de400a4db2d4`, the 15 pre-existing cleanup conversions belong wholly to CORE-128/main and must disappear from PR #304's net diff. The five teardown calls introduced by SKILL-038 remain `removeTreeWithRetrySync(fixture)`. Remove the unrelated paragraph-only reflow from commit `8a909ee`, and do not retain commit prose claiming CORE-128 remediation.
+
+Still out of scope: every `packages/**` path, F-008/current-pointer race, another workflow or tool, new tickets, HZN membership changes, and any live rewrite of HZN-008's schema-1 run.

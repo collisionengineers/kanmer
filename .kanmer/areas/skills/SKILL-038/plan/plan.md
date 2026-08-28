@@ -311,3 +311,69 @@ Run from the lane worktree with absolute paths.
 The PR is open against `main` from `skill-038` with a `Kanmer: SKILL-038`
 footer, the post-implementation report is written, and SKILL-038 is in
 **Review**. Do not review, resolve threads, or merge this work.
+
+
+---
+
+## Consolidated review-remediation plan — 2026-08-28
+
+### Exact inputs
+
+- Current verified base: `add0da7fc17968796f43b3035065de400a4db2d4`.
+- Stale PR head: `8a909ee97d95a0c50e5102c3c7f88d4c575614ba`; prior base `d523a29365a20133fc5f0e16a29df40b1a80bd8e`.
+- GitHub strict current-base protection is enabled; PR #304 reports `BEHIND`.
+- Four current review threads are one consolidated major remediation:
+  - `PRRT_kwDOT2PEds6dGORs` — dependency cycles.
+  - `PRRT_kwDOT2PEds6dGORx` — run-schema versioning.
+  - `PRRT_kwDOT2PEds6dGOR3` — CORE-128 separation.
+  - `PRRT_kwDOT2PEds6dGOR-` — canonical AGENTS contract.
+- `git merge-tree --write-tree add0da7… 8a909ee…` succeeds; no semantic merge conflict is expected.
+
+### Ordered implementation
+
+1. Rebase the existing `.worktrees/skill-038` / `skill-038-blocked-dependents` pair onto exact `add0da7…`. Preserve no second worktree and no new ticket.
+2. Audit the post-rebase diff:
+   - no pre-existing CORE-128 teardown line remains in the net diff;
+   - exactly the five SKILL-038-added teardowns use `removeTreeWithRetrySync`;
+   - no bare `rmSync(` remains;
+   - remove the paragraph-only reflow and rewrite/squash history so it does not claim CORE-128 remediation.
+3. In `kanmer-auto/SKILL.md`, form the directed live-blocker graph before applying internal-retention:
+   - detect every strongly connected cycle and self-loop;
+   - acyclic internal dependencies remain queued and serially ordered;
+   - external blockers still exclude with named ids;
+   - a cycle records an ordered cycle path and complete member set, dispatches none of its members, records each as `blocked` in selection/ledger/events/report, and makes the run explicitly `blocked` instead of waiting forever.
+4. Version the run contract:
+   - schema 3 is current and is the first schema with `transient_retry_limit` plus the durable `Transient` counter;
+   - a schema-1 or schema-2 active record is never resumed, restamped, supplemented, or rewritten under schema-3 assumptions;
+   - preserve its entire ledger, close it with a terminal status legal in that schema plus reason/successor id, and create a new schema-3 record/new run id with a freshly frozen roster;
+   - unknown or absent schemas are a hard refusal;
+   - update the required-field list for new schema-3 runs.
+5. Stamp both run templates `schema: 3`; preserve the pointer/history separation and every existing retry-budget field.
+6. Update root `AGENTS.md` in the same diff for internal versus external blockers, cycle behavior, numeric default 2, and no in-place old-schema rewrite.
+7. Extend check 19 and its mutation suite:
+   - cycle check must order before the acyclic-retention check and pin path/members, blocked disposition, and no dispatch;
+   - schema check pins version 3, schema-1/2 refusal, no in-place rewrite, and both templates;
+   - AGENTS check pins all four conventions;
+   - fixtures delete/reorder each clause independently and keep sibling checks green;
+   - derive final assertion/test counts from the edited tree instead of preserving stale 38/33 counts.
+8. Re-prove `## 4. Mandatory stop predicates` remains 1877 bytes with SHA-256 `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`; do not alter the eleven numbered sections.
+9. Run, once on the final head: `npm run build:core`, `npm run verify:skills`, `node --test scripts/verify-skill-prose.test.mjs`, `git diff --check`, then the complete `npm run verify` Windows rail. Preserve every exit/result.
+10. Update the post-implementation report and PR body to remove CORE-128 ownership, describe cycles/schema 3/AGENTS, and name the exact new head.
+11. Push the rebased branch with `--force-with-lease` only after verifying the expected old remote head `8a909ee…`. Wait for all automated review/check activity on the exact new head.
+12. Post one public consolidated disposition for all four threads, obtain one fresh independent review plus one delta review, resolve only after durable disposition, sync the board, require fresh `verify` and `kanmer-gate`, then merge and exactly verify.
+
+### Negative cases
+
+- A→B→A and A→A never enter dependency waiting.
+- An acyclic A→B retains both and orders B after A.
+- An external live blocker excludes its dependent and names the blocker.
+- Schema 1/2 is not treated as if it carried retry counters.
+- The live HZN-008 schema-1 run is not mutated by this PR.
+- Missing/unknown schema is refused.
+- Removing any AGENTS convention or template stamp fails its own named check.
+- Main's 15 CORE-128 cleanup lines are absent from the net diff; SKILL-038's five new teardown calls use the helper from their first retained version.
+- No `packages/**` change, fifth failure class, new service, stage, or ticket.
+
+### Acceptance
+
+The final PR is based on exact current main, contains only the six declared files, has no open blocker/major finding or unresolved thread, and has fresh exact-head `verify` plus `kanmer-gate`. The fresh-head check creation also completes CORE-135's remaining stale-base proof.

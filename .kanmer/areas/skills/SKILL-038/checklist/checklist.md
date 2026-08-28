@@ -52,3 +52,24 @@ consequences, both recorded in `scratch/execute.md`:
 
 The `[post-merge]` PR-check box stays for the reviewer/verifier: no red run was
 produced here, so no flake-discharge evidence was needed.
+
+
+## Consolidated PR #304 review remediation
+
+- [ ] Rebase the existing branch/worktree onto exact `add0da7fc17968796f43b3035065de400a4db2d4`; record the new head and fresh-check creation.
+- [ ] Remove CORE-128 ownership from the net diff/history: no pre-existing cleanup-line edit, no paragraph-only reflow, no remediation claim.
+- [ ] Confirm exactly five SKILL-038-added teardown calls use `removeTreeWithRetrySync` and no bare `rmSync(` remains.
+- [ ] Add cycle/self-loop detection before internal-retention; name path and members, dispatch none, block every member and the run explicitly.
+- [ ] Preserve acyclic internal ordering and external-blocker exclusion with ids.
+- [ ] Stamp run schema 3 and define the schema-1/2 terminal-successor path without in-place rewrite.
+- [ ] Stamp both run templates schema 3 while retaining retry budget/counter and pointer/history separation.
+- [ ] Update canonical root `AGENTS.md` for blockers, cycles, retry limit 2, and schema transition.
+- [ ] Add isolated validator assertions/mutation fixtures for cycles, schema transition/template stamps, and AGENTS; every new teardown uses the shared retry helper.
+- [ ] Re-prove mandatory stop predicates: 1877 bytes and SHA-256 `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
+- [ ] Audit the final diff: exactly six declared files, no `packages/**`, no weakened assertion.
+- [ ] Run focused commands, `git diff --check`, and one complete final Windows `npm run verify` rail; retain exact exits.
+- [ ] Update the report/PR body, commit, and push with lease against old remote head `8a909ee97d95a0c50e5102c3c7f88d4c575614ba`.
+- [ ] Wait for every automated reviewer/check on the exact new head; record one consolidated disposition.
+- [ ] Obtain a fresh independent review and one delta review; resolve all four threads only after public dispositions.
+- [ ] Sync the board; require fresh-head `verify` and `kanmer-gate` green before merge.
+- [ ] Merge, verify the exact merge SHA, write proof, and close the ticket/workspace.

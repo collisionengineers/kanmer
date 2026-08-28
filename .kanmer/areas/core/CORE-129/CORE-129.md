@@ -10,14 +10,13 @@ assignee: ''
 profile: fix
 labels:
   - reliable-autonomy
-groups:
-  - HZN-008
+groups: []
 links: []
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-08-27T23:52:07.334Z'
+updated: '2026-08-28T04:25:59.656Z'
 ---
 
 ## What

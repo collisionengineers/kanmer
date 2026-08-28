@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Implement durable /goal orchestration with bounded independent review and
   verification
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: feature
@@ -26,11 +26,12 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 commits:
   - aa5f73daa03d94c609ce8d45646ab52fd0f54b0b
+  - 26306355aaf2fb374dbfb2e63e82dd344724654a
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/302'
 archived: false
 created: '2026-08-26T21:02:42.025Z'
-updated: '2026-08-28T06:00:13.996Z'
+updated: '2026-08-28T06:16:37.597Z'
 ---
 
 ## What

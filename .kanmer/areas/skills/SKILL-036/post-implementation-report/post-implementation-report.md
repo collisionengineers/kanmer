@@ -145,3 +145,81 @@ unrelated script tests fail there (see below).
 cases map to a named section in the table above; every new clause has a check-19
 assertion; every check-19 assertion has a fixture test that proves it fails when
 its clause is deleted.
+
+---
+
+## Remediation round 1 — head `26306355aaf2fb374dbfb2e63e82dd344724654a`
+
+Everything above this line describes head `aa5f73da`, the head the independent
+review attested against. It is left intact as the round-1 claim; where its
+numbers are superseded, this section says so explicitly. This is remediation
+**round 1 of a budget of 1**, taken in the sanctioned same-PR re-entry lane on
+the authority of the `needs-changes` attestation (`scratch/review.md`, version
+`29342076fa26203e`) bound to that head. Same branch, same worktree, same
+PR #302 — no second PR, no re-take, no new worktree.
+
+One commit: `26306355`, five files, 421 insertions / 34 deletions. Still nothing
+under `packages/`, and nothing in `scripts/antigravity-plugin-config.test.mjs`.
+
+### Finding by finding
+
+| Finding | Severity | What changed | Which check pins it now |
+|---|---|---|---|
+| **F1** | blocker | §1 step 1 was the single group-only resolution (`list_items group:`) for five declared scopes, contradicting the orientation's own statement that the host group's membership is not the roster. It is replaced by **one resolution step per scope** — ticket (`get_item`), group (`list_items group:`), area (`list_items area:` in `list_board` order), list (`get_item` per named id, operator order, unknown/archived id is a stop before the freeze), board (`list_items` unfiltered, board order). The freeze and the gates-first readiness rules are then stated **once** and declared to apply identically to all five, so no scope has its own semantics. §1 step 2 now reads the **run host group's** context, which is what a non-group scope actually has. | Five named checks — `kanmer-auto resolves the roster for {ticket,group,area,list,board} scope` — plus `kanmer-auto freezes and gates every scope's roster identically`. Deleting any one scope's resolution step fails **that scope's own check** while the other four still pass; the fixture proves that per scope. |
+| **F2** | major | `git rebase origin/main` at the old :192-193 — the controller's only branch operation — becomes a rebase onto the run's recorded `delivery_target`, with absolute `-C` paths, and states that the integration branch is policy resolved in the preflight rather than a constant. CORE-116's `deliveryTargets` is now wired through to the one place it mattered. | `kanmer-auto rebases onto the recorded delivery target, never a literal main`, which asserts `rebase origin/<delivery_target>` **and** the absence of `rebase origin/main`. The fixture reverts the clause to `origin/main` and requires the FAIL. |
+| **F3** | major | The one automatic replan was authorised on the controller's own classification of a finding as a plan defect with **no budget precondition**, which at `remediation_budget: 1` coincides exactly with the exhausted state — so a controller taking that bullet never reached the bullet forbidding the bypass. The precondition the ticket's own `open-questions` adopted as its conservative default is restored explicitly: the replan is available **only while the remediation budget is still available before it is spent**, checked first from the live item, and a ticket whose `review_round` has reached its `remediation_budget` gets **no** automatic replan at all regardless of classification. The text now separates the two decisions — classification decides *whether* a replan is the right route, the budget decides whether one is *available* — and records that a replan neither resets nor increments `review_round`. | `kanmer-auto allows its one replan only before the remediation budget is spent`. The fixture deletes the precondition clause and requires the FAIL. |
+| **F11** | minor (was accepted-risk; fixed anyway) | Both forbidden-claim checks were narrower than their names. Each is now a **list** of rules covering every phrasing that would make the name untrue — including "performs / executes / carries out the merge", "runs `gh pr merge`", "kanmer-auto merges the pull request", "merge is performed by the controller", "a budget-exhausted lane may self-replan", and "after `REMEDIATION_BUDGET_EXHAUSTED` the controller replans automatically". The failure detail now names which rule matched. The skill's genuine negations ("never runs `gh pr merge`", "never merges its own PR", "budget is **still available before it is spent**") are not contiguous matches for any rule, so only the affirmative claim fires. | The two checks keep their names (`no controller performing the merge itself`, `no self-authorised replan after an exhausted budget`). A new fixture appends **eight** paraphrases one at a time, each in its own fixture, and requires the correctly-named check to FAIL for each. |
+| **F4** | minor | The sync-before-gate commands compared the literal `kanmer-board`. They now use `<board-branch>`, defined as the **configured** branch read from `get_status.boardWorktree.expectedBranch` — the repository variable `KANMER_BOARD_BRANCH` the hosted gate itself uses, falling back to `kanmer-board` only when unset — and the prose names it as the same defect class as a hardcoded `main`. | Folded into `kanmer-auto pushes the board before it trusts a gate result`, which now requires `origin/<board-branch>`, `expectedBranch`, `KANMER_BOARD_BRANCH`, **and** the absence of `origin/kanmer-board`. The fixture reverts to the literal and requires the FAIL. |
+| **F6** | minor | The template gained four fields while staying `schema: 1`, so a legacy record passed startup validation and resumed with no frozen selector, authority or delivery target. Both templates are stamped `schema: 2`, and the resume section states that a `schema: 1` record is **not** resumed as-is: the controller stops and reports it, and the operator either completes the four fields and stamps `schema: 2` or starts a new run. An unknown or absent `schema` is the same stop. Nothing in `packages/core` reads this field — it is skill-level validation — so no runtime behaviour changes. | `kanmer-auto requires run-record schema 2 and refuses to resume a schema-1 record`, plus `run-state template is stamped schema: 2` and `current-run template is stamped schema: 2`. One fixture mutates all three and requires all three FAILs. |
+| **F7** | minor | The active-Review invariant unconditionally demanded an active or queued reviewer, with no exemption for the supported **up to review** target whose stop condition is exactly a ticket parked in Review with its PR open. That exemption is now stated, and scoped: at that target such a ticket is *at target*, not unexplained; every other target still requires a reviewer. | Folded into `kanmer-auto states the active Review and Verifying invariants`. The fixture removes the exemption clause and requires the FAIL. |
+| **F9** | minor | The identity preflight required the fingerprint to equal "the run record's `project_fingerprint`", which a brand-new run — whose record does not exist until after the freeze — can never satisfy. It now splits the two cases: a **resumed** run must match the existing record (a mismatch is a stop); a **new** run has no record yet, so the value read here is what gets written at creation. | `kanmer-auto's identity preflight covers a new run as well as a resumed one`. The fixture collapses it back to the single case and requires the FAIL. |
+| **F10** | minor | The evidence-hygiene rule ("a minor/note/accepted-risk finding does not become a new ticket") collided with `kanmer-review`'s `deferred-to-ticket` disposition, which is invalid without a linked ticket — leaving an out-of-scope minor with no legal disposition. The exception is now explicit: a finding the reviewer genuinely defers as out of scope takes `deferred-to-ticket` **and** its ticket whatever its severity; a minor left as accepted residual risk is not deferred and gets no ticket. | `kanmer-auto keeps `deferred-to-ticket` legal for an out-of-scope finding`. The fixture removes the exception and requires the FAIL. |
+
+### Not re-opened
+
+**F5, F8, F12, F13, F14 and F15 stay dispositioned accepted residual risk and
+were not touched.** F8 in particular needs an expected-version or
+exclusive-create option on `set_group_doc` in `packages/core`, which this ticket
+excludes and CORE-131 is editing. Nothing here files a follow-up ticket, adds a
+fifth `failure_class`, renumbers a section, changes `EXPECTED_SKILLS` from 12, or
+adds a thirteenth skill. `## 4. Mandatory stop predicates` is byte-identical and
+no `## 1.`–`## 11.` heading is in the diff — verified by `git diff | grep '^[+-]## '`
+returning nothing.
+
+### Corrected verification hand-off
+
+These supersede the round-1 table's counts.
+
+| Command | Expected at the merged SHA |
+|---|---|
+| `npm run verify:skills` | exit 0, `ALL CHECKS PASSED`, `the roster is 12 skills`, and check block 19 showing **31** `PASS` lines (was 18) |
+| `npm run verify:agents-block` | exit 0, `31/31 checks passed` |
+| `node --test scripts/verify-skill-prose.test.mjs` | exit 0, `tests 28 / pass 28 / fail 0` (was 18), including the eleven new `goal contract validator …` mutation tests |
+| `git diff --name-only <base>..<merged-sha>` | eight files, none under `packages/`, `plugins/kanmer/mcp/`, or `scripts/antigravity-plugin-config.test.mjs` |
+
+**Commands actually run in the ticket worktree this round, with exit codes:**
+
+| Command | Exit | Result |
+|---|---|---|
+| `node scripts/verify-skill-prose.mjs` | 0 | `ALL CHECKS PASSED`; check 19 = 31 `PASS`, 0 `FAIL` |
+| `npm run verify:skills` | 0 | same rail via the package script |
+| `npm run verify:agents-block` | 0 | `31/31 checks passed` |
+| `node --test scripts/verify-skill-prose.test.mjs` | 0 | `tests 28 / pass 28 / fail 0` |
+| `git push origin skill-036-durable-goal-orchestration` | 0 | `aa5f73da..26306355`, fast-forward on the existing branch |
+| `gh pr view 302` | 0 | `state OPEN`, `headRefOid 26306355aaf2fb374dbfb2e63e82dd344724654a`; `gh pr list --head …` returns only #302 |
+| `npm run verify` | **not run** | Still not owed, and for the reason the reviewer explicitly accepted last round (F15): this round's diff again touches no `packages/` code, no bundle and no tool reference, so the full rail's compiled surfaces are unreachable by it, and a linked worktree has no `node_modules`. Hosted CI on the PR is the rail of record. |
+| `npm run test:scripts` | **not re-run** | Its discharge is unchanged: this round touches neither `scripts/antigravity-plugin-config.test.mjs` (CORE-128's `EBUSY` pair) nor anything `auto-run-state.test.mjs` reads — that test builds its fixtures from inline template literals and never reads `run-state-template.md`, so the `schema: 2` stamp cannot reach it. |
+
+### Fixture standard
+
+The reviewer's 42-case mutation battery found the round-1 checks well
+constructed and asked for the same standard on the new ones. Eleven new
+`test(...)` blocks were added, and the ones that iterate do so with a fresh
+fixture per case: **five** scope mutations (each also asserting a *sibling*
+scope's check still passes, so no scope is propped up by a neighbour) and
+**eight** forbidden-claim paraphrases. Every new assertion has a mutation that
+deletes exactly the clause it claims to pin and requires the FAIL **by check
+name**, using `expectFail`/`expectPass` helpers that print the whole validator
+output on mismatch. The existing `edit()` helper still asserts its anchor exists
+before mutating, so a silently reworded clause fails the fixture rather than
+passing it. No new assertion can pass vacuously.

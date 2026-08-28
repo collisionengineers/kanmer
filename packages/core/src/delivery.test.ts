@@ -6,6 +6,7 @@ import { KanmerStore } from "./store.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
 import { deliveryPolicySource, deliveryTargets, resolveDelivery } from "./board.js";
 import { evaluateMergeGate } from "./merge-gate.js";
+import { DISPATCH_TASKS, NEUTRAL_VERIFICATION_TARGET } from "./prompts.js";
 import { DELIVERY_STATES, deliveryStateRank, isDeliveryState, type DeliveryConfig } from "./types.js";
 
 let root: string;
@@ -576,5 +577,30 @@ describe("deliveryTargets — the one shared rule (CORE-116, FRD-031)", () => {
 
   it("ignores a delivery branch that is the integration branch", () => {
     expect(deliveryTargets(devToMain, { delivery_branch: "dev" }).hotfix).toBe(false);
+  });
+});
+
+describe("verification target in dispatch prompts (CORE-116, FRD-031)", () => {
+  it("names the project's integration branch, and stays neutral without one", () => {
+    const verify = DISPATCH_TASKS.find((task) => task.id === "verify");
+    expect(verify).toBeDefined();
+    expect(verify?.prompt("CORE-1", "dev")).toContain("on merged dev");
+    // A caller with no board (a settings preview) gets a neutral phrase rather
+    // than a branch name that may be wrong for this project.
+    expect(verify?.prompt("CORE-1")).toContain(`on merged ${NEUTRAL_VERIFICATION_TARGET}`);
+    expect(verify?.prompt("CORE-1")).not.toContain("on merged main");
+  });
+});
+
+describe("a main-only project has no hotfixes at all (CORE-116)", () => {
+  it("refuses a backport SHA even though delivery_branch equals the release branch", async () => {
+    // The trap: on a main-only board `delivery_branch === releaseBranch` is
+    // true for every ticket, so a bare branch comparison would accept a
+    // backport SHA that can never mean anything.
+    const item = await store.createItem({ type: "ticket", title: "T" });
+    await store.updateItem(item.id, { delivery_state: "integrated", delivery_branch: "main", delivery_sha: SHA_A });
+    await expect(store.updateItem(item.id, { delivery_backport_sha: SHA_B })).rejects.toThrow(
+      /DELIVERY_NO_BACKPORT_REQUIRED/u,
+    );
   });
 });

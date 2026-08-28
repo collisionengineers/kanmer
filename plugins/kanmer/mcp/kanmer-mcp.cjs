@@ -43123,7 +43123,7 @@ function candidatePatternMatches(pattern, value) {
   return new RegExp(`^${source}$`, "u").test(value);
 }
 function applyDeliveryEffects(policy, next, stamp) {
-  const owesBackport = policy.hotfixBackport && policy.releaseBranch !== policy.integrationBranch && next.delivery_branch !== void 0 && next.delivery_branch === policy.releaseBranch && next.delivery_backport_sha === void 0;
+  const owesBackport = policy.hotfixBackport && deliveryTargets(policy, next).hotfix && next.delivery_backport_sha === void 0;
   if (owesBackport) next.delivery_backport_required = policy.integrationBranch;
   else delete next.delivery_backport_required;
   next.delivery_recorded_at = stamp;
@@ -43183,9 +43183,9 @@ function assertDeliveryAgainstBoard(policy, item) {
       );
     }
   }
-  if (item.delivery_backport_sha !== void 0 && item.delivery_branch !== policy.releaseBranch) {
+  if (item.delivery_backport_sha !== void 0 && !deliveryTargets(policy, item).hotfix) {
     throw new Error(
-      `DELIVERY_NO_BACKPORT_REQUIRED: delivery_backport_sha is only meaningful for a hotfix delivered on the release branch "${policy.releaseBranch}"; this record names "${item.delivery_branch ?? "(none)"}".`
+      `DELIVERY_NO_BACKPORT_REQUIRED: delivery_backport_sha is only meaningful for a hotfix delivered on a release branch that differs from the integration branch. This project integrates into "${policy.integrationBranch}" and releases from "${policy.releaseBranch}"; this record names "${item.delivery_branch ?? "(none)"}".`
     );
   }
 }

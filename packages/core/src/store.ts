@@ -40,6 +40,7 @@ import {
   resolveGroupKinds,
   readBoard,
   readBoardWithSource,
+  deliveryTargets,
   resolveDelivery,
   resolveEnvironments,
   resolveProfiles,
@@ -2637,11 +2638,7 @@ function candidatePatternMatches(pattern: string, value: string): boolean {
  */
 function applyDeliveryEffects(policy: DeliveryPolicy, next: Item, stamp: string): void {
   const owesBackport =
-    policy.hotfixBackport &&
-    policy.releaseBranch !== policy.integrationBranch &&
-    next.delivery_branch !== undefined &&
-    next.delivery_branch === policy.releaseBranch &&
-    next.delivery_backport_sha === undefined;
+    policy.hotfixBackport && deliveryTargets(policy, next).hotfix && next.delivery_backport_sha === undefined;
   if (owesBackport) next.delivery_backport_required = policy.integrationBranch;
   else delete next.delivery_backport_required;
   next.delivery_recorded_at = stamp;
@@ -2730,10 +2727,14 @@ function assertDeliveryAgainstBoard(policy: DeliveryPolicy, item: Item): void {
     }
   }
 
-  if (item.delivery_backport_sha !== undefined && item.delivery_branch !== policy.releaseBranch) {
+  // A backport SHA is only meaningful for a real hotfix. On a main-only project
+  // nothing is ever a hotfix — the release branch *is* the integration branch —
+  // so `deliveryTargets` is the check, not a bare branch comparison.
+  if (item.delivery_backport_sha !== undefined && !deliveryTargets(policy, item).hotfix) {
     throw new Error(
-      `DELIVERY_NO_BACKPORT_REQUIRED: delivery_backport_sha is only meaningful for a hotfix delivered on the ` +
-        `release branch "${policy.releaseBranch}"; this record names "${item.delivery_branch ?? "(none)"}".`,
+      `DELIVERY_NO_BACKPORT_REQUIRED: delivery_backport_sha is only meaningful for a hotfix delivered on a release ` +
+        `branch that differs from the integration branch. This project integrates into "${policy.integrationBranch}" ` +
+        `and releases from "${policy.releaseBranch}"; this record names "${item.delivery_branch ?? "(none)"}".`,
     );
   }
 }

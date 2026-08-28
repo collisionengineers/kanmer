@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Quarantine or fix the recurring Windows core-test timing failures that block
   verification
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-28T00:04:05.223Z'
 labels:
   - reliable-autonomy
 groups:
@@ -17,7 +19,7 @@ refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
 archived: false
 created: '2026-08-27T23:52:07.305Z'
-updated: '2026-08-27T23:52:07.305Z'
+updated: '2026-08-28T00:04:05.223Z'
 ---
 
 ## What

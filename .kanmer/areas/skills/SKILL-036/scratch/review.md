@@ -1,275 +1,300 @@
 ---
 kind: review-attestation
 pr: "302"
-head_sha: "aa5f73daa03d94c609ce8d45646ab52fd0f54b0b"
-verdict: needs-changes
+head_sha: "26306355aaf2fb374dbfb2e63e82dd344724654a"
+board_sha: "94ee49ec40a2693d80872489d0dd446e13cd5338"
+verdict: pass
 reviewer: "independent-review-agent (claude-opus-5, distinct role from implementer claude-code)"
 independent: true
 plan_hash: "b6050e0897324ca4"
-ticket_updated: "2026-08-28T05:39:17.064Z"
+ticket_updated: "2026-08-28T06:16:37.597Z"
 expected_reviewers: []
 threads_snapshot:
   - thread: "PRRT_kwDOT2PEds6dElIH"
-    finding: "F1"
-    resolved: false
-  - thread: "PRRT_kwDOT2PEds6dElIK"
-    finding: "F4"
-    resolved: false
+    finding: "F-001"
+    resolved: true
   - thread: "PRRT_kwDOT2PEds6dElIM"
-    finding: "F2"
-    resolved: false
-  - thread: "PRRT_kwDOT2PEds6dElIO"
-    finding: "F7"
-    resolved: false
+    finding: "F-002"
+    resolved: true
   - thread: "PRRT_kwDOT2PEds6dElIR"
-    finding: "F3"
-    resolved: false
-  - thread: "PRRT_kwDOT2PEds6dElIU"
-    finding: "F8"
-    resolved: false
+    finding: "F-003"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dElIK"
+    finding: "F-004"
+    resolved: true
   - thread: "PRRT_kwDOT2PEds6dElIY"
-    finding: "F5"
-    resolved: false
+    finding: "F-005"
+    resolved: true
   - thread: "PRRT_kwDOT2PEds6dElIZ"
-    finding: "F6"
-    resolved: false
+    finding: "F-006"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dElIO"
+    finding: "F-007"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dElIU"
+    finding: "F-008"
+    resolved: true
   - thread: "PRRT_kwDOT2PEds6dElIa"
-    finding: "F9"
-    resolved: false
+    finding: "F-009"
+    resolved: true
   - thread: "PRRT_kwDOT2PEds6dElIe"
-    finding: "F10"
-    resolved: false
+    finding: "F-010"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dE-Ty"
+    finding: "F-019"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dE-T1"
+    finding: "F-020"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dE-T3"
+    finding: "F-021"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dE-T6"
+    finding: "F-022"
+    resolved: true
+  - thread: "PRRT_kwDOT2PEds6dE-T-"
+    finding: "F-023"
+    resolved: true
 findings:
-  - id: F1
+  - id: F-001
     severity: blocker
-    summary: "Four of the five newly advertised scopes have no roster-resolution procedure. Section 1 step 1 still resolves the roster with `list_items group: \"<explicit group>\"` and the host group's order, while the new orientation states the host group's membership is not the roster. A ticket-, area-, list- or board-scoped run therefore cannot freeze the roster it was asked for. Blocks FRD-034 Behaviour (\"accepts one ticket, group, area, explicit ticket list or a prepared board\") and AC1."
-    disposition: open
-  - id: F2
+    summary: "Four of the five advertised scopes had no roster-resolution procedure; section 1 step 1 resolved only the host group, contradicting the same PR's statement that host membership is not the roster. Blocked FRD-034 Behaviour and AC1."
+    disposition: fixed
+  - id: F-002
     severity: major
-    summary: "The controller's only branch operation still hardcodes main: `After anything merges to `main`, lanes still in flight rebase ... (git fetch origin && git rebase origin/main)` at SKILL.md:192-193. This directly contradicts the preflight clause added by this same PR (\"A controller never hardcodes `main`\") and leaves the newly recorded `delivery_target` unused where it matters, making CORE-116's deliveryTargets decorative in the controller."
-    disposition: open
-  - id: F3
+    summary: "The controller's only branch operation hardcoded `git rebase origin/main`, contradicting the preflight's never-hardcode-`main` rule and leaving `delivery_target` unused."
+    disposition: fixed
+  - id: F-003
     severity: major
-    summary: "The one automatic replan is authorised on the controller's own classification of a blocking delta-review finding as a \"plan defect\", with no precondition on the remediation budget. At the default `remediation_budget: 1` the delta review occurs when `review_round` already equals the budget, so the replan window coincides exactly with the exhausted state that CORE-121's gate exists to stop. `review -> preparing` is store-legal on a bare reason (backwardMoveEffects returns `{reason}` for every pair except review->implementing), so a self-classified plan defect is a store-legal route around the operator gate. The shipped text also omits the precondition its own open-questions record adopted as the conservative default (\"available before the remediation budget is spent\")."
-    disposition: open
-  - id: F4
+    summary: "The one automatic replan was authorised on the controller's own classification of a plan defect with no budget precondition; at the default `remediation_budget: 1` that window coincided exactly with the exhausted state CORE-121's gate exists to stop."
+    disposition: fixed
+  - id: F-004
     severity: minor
-    summary: "The sync-before-gate commands compare literal `kanmer-board` refs, but the board branch is the configurable repository variable `KANMER_BOARD_BRANCH` (used as `$KANMER_BOARD_BRANCH` by the PR workflow itself). Same defect class as the never-hardcode-`main` rule this PR introduces."
-    disposition: open
-  - id: F5
+    summary: "Sync-before-gate commands compared literal `kanmer-board` refs though the board branch is the configurable `KANMER_BOARD_BRANCH`."
+    disposition: fixed
+  - id: F-005
     severity: minor
-    summary: "No numeric verification budget exists: kanmer-verify routes `transient` to \"stays in Verifying, rerun the failed check\" with no maximum attempt count, and \"a non-PASS result is retryable by default\". FRD-034 AC5 names review AND verification budgets."
+    summary: "No numeric verification budget: `transient` routes to a rerun with no maximum attempt count. FRD-034 AC5 names review and verification budgets."
     disposition: accepted-risk
-    reason: "Bounded in practice by two shipped rules rather than a counter: kanmer-auto section 9 states \"Never automatically retry failed ... verification commands\", so the controller parks rather than loops, and this PR's new active-Verifying invariant forbids reporting `completed` while a ticket sits in an unexplained Verifying state. Repeated unchanged audits are therefore stopped. A numeric budget would need a store field (packages/), which this ticket correctly excludes. Recorded as residual risk for CORE-119."
-  - id: F6
+    reason: "Deliberately untouched this round. Bounded by two shipped rules rather than a counter: section 9's \"Never automatically retry failed ... verification commands\" means the controller parks rather than loops, and the active-Verifying invariant forbids reporting `completed` while a ticket sits unexplained in Verifying. A numeric budget would need a store field in packages/, correctly excluded here. Residual risk for CORE-119."
+  - id: F-006
     severity: minor
-    summary: "run-state-template.md gains `scope`, `scope_selector`, `authority` and `delivery_target` but remains `schema: 1`, so a legacy schema-1 record passes startup schema validation and resumes without a frozen selector, recorded authority or delivery target."
-    disposition: open
-  - id: F7
+    summary: "Templates gained four fields but stayed `schema: 1`, so a legacy record would resume without a frozen selector, authority or delivery target."
+    disposition: fixed
+  - id: F-007
     severity: minor
-    summary: "The active-Review invariant unconditionally requires an active or immediately queued reviewer, with no exemption for the supported \"up to review\" target point, whose stop condition is precisely a ticket parked in Review with its PR open."
-    disposition: open
-  - id: F8
+    summary: "The active-Review invariant had no exemption for the supported \"up to review\" target point, whose stop condition is a ticket parked in Review."
+    disposition: fixed
+  - id: F-008
     severity: minor
-    summary: "Two controllers starting concurrently against one host group can both observe no active `automation/current.md` and overwrite each other's pointer: `set_group_doc` performs an unconditional replacement with no expected-version or exclusive-create option. This PR widens exposure by newly permitting several concurrent controllers."
+    summary: "Two controllers starting concurrently against one host group can overwrite each other's `automation/current.md`; `set_group_doc` has no expected-version or exclusive-create option."
     disposition: accepted-risk
-    reason: "Closing the race requires an expected-version or exclusive-create option on `set_group_doc` in packages/core, which this ticket explicitly excludes and the CORE-131 lane is editing now. The shipped mitigations (a different controller owning a `running` record is a stop predicate; write-then-read-back) narrow but do not eliminate the window. Recorded as residual risk; the disjoint-scope-and-workspace precondition the new prose states is the operating control."
-  - id: F9
+    reason: "Deliberately untouched this round. Closing the race needs a packages/core change this ticket excludes and the CORE-131 lane is editing. Mitigations remain: a different controller owning a `running` record is a stop predicate, plus write-then-read-back and the disjoint-scope-and-workspace precondition. Residual risk for CORE-119."
+  - id: F-009
     severity: minor
-    summary: "The preflight requires `get_status.project.fingerprint` to equal \"the run record's `project_fingerprint`\", but preflight runs before the roster freeze and a brand-new run has no record yet (it is created later). Read literally, a fresh run can never satisfy the check."
-    disposition: open
-  - id: F10
+    summary: "The preflight identity check was unsatisfiable for a brand-new run, which has no run record to compare its fingerprint against."
+    disposition: fixed
+  - id: F-010
     severity: minor
-    summary: "The new evidence-hygiene rule (\"a finding dispositioned minor, note or accepted-risk does not become a new ticket ... a new ticket needs a blocker or major finding\") conflicts with kanmer-review's requirement that a genuinely out-of-scope finding be dispositioned `deferred-to-ticket`, a disposition invalid without a linked ticket. An out-of-scope minor has no legal disposition under the combined instructions."
-    disposition: open
-  - id: F11
+    summary: "The evidence-hygiene rule forbidding tickets for minor findings collided with kanmer-review's `deferred-to-ticket` disposition, leaving an out-of-scope minor with no legal disposition."
+    disposition: fixed
+  - id: F-011
     severity: minor
-    summary: "The two forbidden-claim regexes in check 19 are narrower than their names. `/controller (?:merges|may merge|then merges) the (?:PR|pull request)/i` misses \"The controller performs the merge itself\", \"kanmer-auto merges the pull request\" and \"The controller runs gh pr merge\"; `/budget is (?:spent|exhausted)[^.]*\\breplan\\b/i` misses \"A budget-exhausted lane may self-replan\" and \"After REMEDIATION_BUDGET_EXHAUSTED the controller replans automatically\"."
-    disposition: accepted-risk
-    reason: "Verified by probing both regexes against six and five realistic paraphrases respectively. They are backstops, not the primary guard: the load is carried by the positive assertions (never runs `gh pr merge`, **coordinates** the merge; it does not perform it, to get around that refusal, reason beginning `operator:`), each of which I independently proved fails on deletion. A regression would have to add a contradiction while leaving the positive clauses intact."
-  - id: F12
+    summary: "The two forbidden-claim regexes were narrower than their names and missed realistic paraphrases such as \"The controller performs the merge itself\" and \"A budget-exhausted lane may self-replan\"."
+    disposition: fixed
+  - id: F-012
     severity: note
-    summary: "Check 19's `/REMEDIATION_BUDGET_EXHAUSTED/` sub-assertion is satisfied by a pre-existing occurrence at SKILL.md:205, so that one sub-assertion is non-additive; deleting the new escalation-boundary occurrence at :271 alone does not fail the check."
+    summary: "Check 19's `/REMEDIATION_BUDGET_EXHAUSTED/` sub-assertion is satisfied by a pre-existing occurrence at SKILL.md:205, so that one sub-assertion is non-additive."
     disposition: accepted-risk
-    reason: "The check's four other sub-assertions all fail correctly on deletion, so the check as a whole is non-vacuous and does pin the escalation boundary. Confirmed by a 42-mutation battery."
-  - id: F13
+    reason: "Deliberately untouched. The check's other sub-assertions all fail correctly on deletion, so the check as a whole is non-vacuous and does pin the escalation boundary."
+  - id: F-013
     severity: note
-    summary: "Section 7 instructs \"Record all three in the ledger\" (implementation, reviewer, verifier run identities), but the ticket ledger has a single `Worker` column and no reviewer/verifier identity columns; the three are recoverable only from the append-only Event log."
+    summary: "\"Record all three in the ledger\" (implementation, reviewer, verifier identities) has no dedicated ledger columns; the three are recoverable only from the Event log."
     disposition: accepted-risk
-    reason: "AC2's proof obligation is discharged by the attestation itself (`reviewer`, `independent`, `head_sha`) cross-checked against `expected_reviewers`, which kanmer-review already settles. The ledger is a convenience record, not the AC2 artefact."
-  - id: F14
+    reason: "Deliberately untouched. AC2's proof obligation is discharged by the attestation itself (`reviewer`, `independent`, `head_sha`) cross-checked against `expected_reviewers`. The ledger is a convenience record, not the AC2 artefact."
+  - id: F-014
     severity: note
-    summary: "FRD-034 Behaviour says the durable run records \"project, authority, fixed initial roster and retry budget\". The run-state template now carries project, authority and the frozen roster, but no retry-budget field."
+    summary: "FRD-034 Behaviour names a recorded \"retry budget\"; the run-state template has no such field."
     disposition: accepted-risk
-    reason: "The retry budget is `remediation_budget` on the ticket, the store-authoritative location CORE-121 owns, and is read live before dispatch (SKILL.md:204). Snapshotting it into the run record would create a second, staleable copy of a store-owned counter. The run side records consumption via the ledger's Attempt and new Replan columns."
-  - id: F15
+    reason: "Deliberately untouched. The budget is `remediation_budget` on the ticket, the store-authoritative location CORE-121 owns, read live before dispatch. A snapshot would be a second staleable copy of a store-owned counter."
+  - id: F-015
     severity: note
-    summary: "Deviation: `npm run verify` was not run locally, because a linked worktree has no node_modules. Focused rails were run instead."
+    summary: "Deviation: `npm run verify` was not run locally in either round, because a linked worktree has no node_modules."
     disposition: accepted-risk
-    reason: "Acceptable here. The diff touches no packages/ code, no bundle and no tool reference, so the full rail's compiled surfaces cannot be reached. The hosted `verify` job is green at this exact head (run 33145396862, 5m20s), which is the same rail with a build. I independently re-ran both focused rails at the head in my own detached worktree: verify-skill-prose 0, verify-agents-block 31/31. The CORE-131 lane's `npm ci`-in-worktree approach is preferable in general but not required for a prose-only diff."
+    reason: "Acceptable. The delta touches no packages/ code (0 paths under packages/), so the full rail's compiled surfaces are unreachable by it. The hosted `verify` job is green at this exact head (run 33147236831, 4m55s). I re-ran both focused rails myself at this head: verify-skill-prose exit 0 with 31 check-19 assertions, verify-agents-block 31/31, and the fixture file 28/28."
+  - id: F-016
+    severity: note
+    summary: "F-003's fix closes the controller-side route, but the `operator:` reason prefix that reopens a spent budget remains a string convention rather than an authenticated claim."
+    disposition: accepted-risk
+    reason: "Pre-existing CORE-121 design, shipped and merged, and outside this ticket's packages/ boundary. Recorded so the F-003 fix is not read as a stronger guarantee than it is: it binds a controller that follows the contract, and check 19 pins the contract."
+  - id: F-017
+    severity: note
+    summary: "Because the precondition is `review_round` < `remediation_budget`, at the default budget of 1 the automatic replan is never available at a delta review. The feature is inert on default settings and activates only where an operator has raised the budget."
+    disposition: accepted-risk
+    reason: "The correct conservative outcome, matching the open-questions record's adopted default, but recorded so a later reader does not assume the replan paragraph is live by default."
+  - id: F-018
+    severity: note
+    summary: "My own round-1 attestation used finding ids `F1`..`F15`, which the merge gate rejected as invalid (`findings[0].id must be an F-### identifier`, a STALE_REVIEW warning), so it was not counted as a valid attestation."
+    disposition: fixed
+    reason: "Corrected here: ids are `F-001`..`F-023` per `packages/core/src/review-attestation.ts`, and `board_sha` is recorded so SYNC_REQUIRED evaluates as `current` by ancestry rather than `unrecorded`."
+  - id: F-019
+    severity: minor
+    summary: "New: the rebase clause uses the run's single recorded `delivery_target`, but `deliveryTargets(policy, item)` (origin/main `packages/core/src/board.ts:260`) resolves per ticket and is hotfix-aware, so one run-wide value cannot represent a run mixing an ordinary ticket with a recorded hotfix."
+    disposition: accepted-risk
+    reason: "Verified the signature on origin/main: the function takes `item.delivery_branch` and returns hotfix/baseBranch/prTarget/verificationTarget. Real but narrow — it diverges only on a project whose releaseBranch differs from its integrationBranch AND a hotfix ticket in the same run; board.ts documents main-only as the default and common case, where the two are identical. Strictly better than the hardcoded `main` it replaced, and the preflight already names each ticket's own execution packet as a target source. Residual risk for CORE-119."
+  - id: F-020
+    severity: minor
+    summary: "New: the replan still moves `review` -> `preparing` directly, which `backwardMoveEffects` does not attestation-guard; the reviewer suggests taking the guarded `review` -> `implementing` return first and walking back one stage at a time."
+    disposition: rejected-with-reason
+    reason: "The observation is factually right and is already recorded as residual (F-016, F-017), but the proposed remedy would be wrong: routing a plan defect through `review -> implementing` increments `review_round` and consumes a remediation round, contradicting the deliberate design that a replan \"does not raise `remediation_budget`\" and is a distinct route from remediation. The meaningful control is the budget precondition added this round, which is pinned by check 19 and which I proved fails on deletion. Backward moves are also not subject to the one-forward-gated-boundary rule, so no gate is skipped."
+  - id: F-021
+    severity: minor
+    summary: "New: `git rev-parse origin/<board-branch>` reads the local remote-tracking ref, which is only as fresh as the last fetch, so the sync comparison does not consult the actual remote."
+    disposition: accepted-risk
+    reason: "Analysed rather than accepted: the omission fails safe. A remote-tracking ref can only name commits that were on the remote, so local == tracking still proves the local board tip is on the remote. A remote that has advanced makes the comparison fail spuriously (a false alarm, the safe direction), never falsely certify. The unsafe direction — local commits not pushed — is always caught, because an unpushed tip can never equal the tracking ref. Adding an explicit fetch would still be a cheap improvement and is recorded for CORE-119, but it is not a correctness hole."
+  - id: F-022
+    severity: minor
+    summary: "New: for area, list, board and ticket scopes, roster members may belong to groups other than the run host, but step 2 reads only the host group's context, so binding epic/horizon decisions on a member's own group go unread."
+    disposition: accepted-risk
+    reason: "A real incompleteness in newly added functionality rather than a regression: before this change the only scope was one group, where host and member group coincide. FRD-034 does not name group contexts among its criteria, so no acceptance criterion is unmet. Recorded as residual risk for CORE-119, where a multi-group golden-board roster would exercise it."
+  - id: F-023
+    severity: major
+    summary: "New: section 1 step 2's \"Drop archived or blocked tickets\" drops a dependent whose blocker is inside the same roster, because `blockedSet()` hands the whole board to `computeBlockedIds`, which marks a target blocked whenever any live item that blocks it is not at the last stage. The freeze then prevents it rejoining, so section 2's `blocks`-edge ordering rule is unreachable for an in-roster pair."
+    disposition: deferred-to-ticket
+    ticket: "SKILL-038"
+    reason: "Verified in source (`packages/mcp-server/src/index.ts:412`, `packages/core/src/links.ts:61-73`). Pre-existing — both sentences predate this PR and neither is in the diff — but materially amplified by the new area/list/board scopes. Deferred rather than fixed in place because the remediation budget is spent and merging does not make the shipped state worse than main today."
 ---
 
-# Review attestation — SKILL-036 (PR #302)
+# Review attestation — SKILL-036 (PR #302), delta review
 
-Independent review at head `aa5f73daa03d94c609ce8d45646ab52fd0f54b0b`. I did
-not write this change and did not rely on the implementer's report for any
-finding below; every claim was re-derived from the diff, the shipped prose, the
-store source, and rails I ran myself.
+Independent delta review at head `26306355aaf2fb374dbfb2e63e82dd344724654a`,
+scoped to the diff since `aa5f73da` plus confirmation that every finding I
+raised is actually fixed. Previous attestation: `needs-changes` at `aa5f73da`.
 
-**Verdict: `needs-changes`.** One blocker (F1) and two majors (F2, F3). The
-ticket stays in Review. Not merged.
+**Verdict: `pass`.** All three blocking/major findings from round 1 are fixed,
+all five swept minors are fixed, and F-011 was fixed although it had been
+accepted as residual risk. Five new findings arrived from the automated reviewer
+on this head: four minor (dispositioned) and one major that is **pre-existing
+and not introduced by this change**, filed as **SKILL-038** and dispositioned
+`deferred-to-ticket`. No blocker.
 
-## What the change does
+## The delta
 
-Eight files, 460 insertions / 26 deletions, nothing under `packages/`. It
-extends `kanmer-auto` in place with FRD-034's five scopes and a frozen roster, a
-preflight, wider overlap detection, a sync-before-gate rule, an escalation
-boundary, active Review/Verifying invariants and evidence-hygiene rules; adds
-matching clauses to `kanmer-review` and `kanmer-verify`; adds template fields;
-and enforces all of it with a new check block 19 (18 assertions) plus five
-fixture tests.
+One commit, fast-forward `aa5f73da..26306355`, five files, 421 insertions /
+34 deletions. **Zero paths under `packages/`.** No renumbering
+(`git diff | grep '^[+-]## '` is empty), `EXPECTED_SKILLS` still 12.
 
-## Extend in place, or a thirteenth skill?
+## Every round-1 finding
 
-**Extend in place is the right call, and I would have made the same one.** I
-verified each premise of the implementer's argument rather than accepting it:
+| Id | Sev | Status | Evidence I checked myself |
+|---|---|---|---|
+| F-001 | blocker | **fixed** | Section 1 step 1 now carries five per-scope resolution steps — ticket `get_item`, group `list_items group:`, area `list_items area:` in `list_board` order, list `get_item` per named id with an unknown/archived id a stop *before* the freeze, board `list_items` unfiltered — plus "the result is one ordered list frozen into `## Selection contract` … and steps 2–6 below apply to it identically". Step 2 now reads "the **run host group's** shared context", removing the contradiction. I verified the tool calls are real, not plausible: `list_items` genuinely filters by `area` (`smoke.mjs:1133`) and runs unfiltered. |
+| F-002 | major | **fixed** | Rebase is onto `origin/<delivery_target>` with absolute `git -C` paths, and the check asserts the positive form **and** `!/rebase origin\/main/`. (Refined by new finding F-019.) |
+| F-003 | major | **fixed** | See the dedicated section below. |
+| F-004 | minor | **fixed** | `<board-branch>` resolves from `get_status.boardWorktree.expectedBranch`. I verified that field exists and means what the prose says: `packages/mcp-server/src/index.ts:602` is `process.env.KANMER_BOARD_BRANCH?.trim() \|\| "kanmer-board"`, exposed under `boardWorktree` at :667 — including the documented fallback. |
+| F-006 | minor | **fixed** | Both templates stamped `schema: 2`, plus a refuse-to-resume rule for schema 1, unknown or absent. I verified no `packages/` code reads the run-record `schema` field, so stamping 2 cannot break a server path. |
+| F-007 | minor | **fixed** | Explicit "up to review" exemption; "Every other target still requires one." |
+| F-009 | minor | **fixed** | Identity split into resumed and new. |
+| F-010 | minor | **fixed** | `deferred-to-ticket` carved out — which is exactly the disposition this review needed for F-023. |
+| F-011 | minor | **fixed** | Both forbidden claims became four-rule lists; 13/13 paraphrases now caught. |
+| F-005, F-008, F-012, F-013, F-014, F-015 | minor/note | **untouched by design** | Confirmed absent from the delta; still `accepted-risk`. Not re-opened. |
 
-- `kanmer-auto` genuinely already owns every durable-state mechanism FRD-034
-  names — the run record and history path, the run/disposition vocabularies, the
-  five-step reconciliation loop, the stop predicates, the serial fallback
-  (section 6), role independence (section 7) and the four-list report (section 10).
-- `verify-skill-prose.mjs` checks 13, 14, 16 and 18 do assert that prose
-  verbatim, so a fork would have to either duplicate the assertions or leave the
-  second orchestrator unenforced.
-- Two skills with authority over one `automation/current.md` is a real defect,
-  not a rhetorical one — F8 shows the single-writer case is already racy.
+## F-003: is the window actually closed, or only re-narrated?
 
-The roster stays at 12 (`EXPECTED_SKILLS = 12`, and the validator reports
-`the roster is 12 skills`). The trigger description was correctly widened to
-name `/goal` and to drop the now-false "DO NOT USE FOR a single ticket or an
-ungrouped area"; at 486 characters it is well inside frontmatter limits.
+Closed. The precondition is checked **first, from the live item**, and is
+explicitly not satisfiable by classification. I re-traced the arithmetic against
+`store.ts` rather than accepting the prose:
 
-The cost of extending in place is precisely F1: the *declaration* of five scopes
-landed in the orientation section while the *resolution procedure* stayed in
-section 1 as a group-only call, because section 1's shape did not change. That
-is the "quietly left a criterion unmet because it did not fit the existing
-skill's shape" failure, and it is why F1 is a blocker rather than a nit.
+- `remediation_budget` defaults to 1 and `review_round` to 0.
+- Review 1 blocks; the sanctioned return runs `review -> implementing` and
+  `backwardMoveEffects` returns `review_round: round + 1` — so it is 1.
+- At the delta review, `review_round (1) >= remediation_budget (1)`, so the new
+  precondition denies the replan in exactly the window the old text permitted.
+- The replan cannot manufacture headroom: `backwardMoveEffects` returns a bare
+  `{reason}` for every pair except `review -> implementing`, so
+  `review -> preparing` neither resets nor increments `review_round`. The skill
+  now states this and it is true.
+- The replan is still separately capped at one per ticket.
 
-## FRD-034 criterion-by-criterion
+F-016, F-017 and F-020 record the honest caveats.
 
-| Criterion | Where it lands at this head | Met? |
-|---|---|---|
-| Behaviour: accepts one ticket, group, area, explicit ticket list or prepared board | Declared at SKILL.md:17-19 and in the description. **No resolution procedure exists for four of the five**: section 1 step 1 is still `list_items group: "<explicit group>"` using the host group's order, which the same PR declares is *not* the roster. | **No — F1** |
-| Behaviour: durable run records project, authority, fixed roster, retry budget | `project_fingerprint`, new `authority`, frozen roster in Selection contract. Retry budget lives on the ticket as `remediation_budget`, read live. | Yes (F14 note) |
-| Behaviour: new unrelated tickets and captures do not join a running roster | Roster "resolved once at run creation and never re-resolved"; captures excluded explicitly with `CAPTURE_NOT_PROMOTED`. | Yes |
-| Behaviour: reconcile before dispatch and after every result | Pre-existing section 3 five-step loop, unchanged; extended with sync-before-gate and the active-stage invariants. | Yes |
-| Behaviour: review by a fresh run bound to the exact current PR head | kanmer-review's attestation binds `head_sha`; new section 7 requires distinct implementation/reviewer/verifier run identities. | Yes (F13 note) |
-| Behaviour: after merge a fresh verifier validates **the configured target's** exact merged SHA | Preflight resolves the verification target from delivery policy. But the controller's only branch operation still rebases onto hardcoded `origin/main`. | Partial — **F2** |
-| AC1 — frozen roster, leases, terminal disposition for every member, no unrelated captures | Freeze, captures and leases (claim transfer, `take_ticket renew`, `LEASE_EXPIRED`) all present; completion definition in section 8. **But the roster cannot be frozen for four of five scopes.** | **No — F1** |
-| AC2 — attestations prove implementation identity differs from reviewer, bound to exact head | `reviewer` + `independent` + `head_sha` in the attestation, cross-checked against `expected_reviewers`; new distinct-run-identity clause. | Yes |
-| AC3 — in-scope correction stays in the original ticket/PR, one delta review | Pre-existing, asserted by check 18, unchanged by this diff. | Yes |
-| AC4 — exact merged-SHA PASS before Done, failures routed to the correct earlier phase | kanmer-verify's four-class routing table, intact; strengthened by the earned-`transient` rule. | Yes |
-| AC5 — budgets stop repeated unchanged audits, preserving minor/note dispositions | Bounded-churn section plus the scope-discipline clause. Weakened by F3 (self-classified replan reopens the loop) and by the absence of a verification budget (F5). Minor/note preservation is stated but collides with `deferred-to-ticket` (F10). | Partial — **F3** |
-| Edge case — merged PR left in Review, PASS proof left in Verifying | New "Active Review and Verifying invariants" section, with `completed` forbidden while either is unexplained. | Yes (F7 wrinkle) |
-| Edge case — owner-only decision is one exact question, not a retry counter | Pre-existing section 1.6 and the `REMEDIATION_BUDGET_EXHAUSTED` operator-only rule at :205, reinforced by the escalation boundary. | Yes |
+## Mutation battery on the new assertions
 
-## Scrutiny items I was asked to settle
+Same standard as round 1; I did not rely on the fixtures. All against fresh
+copies of the real skills tree:
 
-**1. No renumbering damage — clean.** Base and head both carry `## 1.` through
-`## 11.` with identical numbers and titles; `## 4. Mandatory stop predicates` is
-byte-identical. Only the unnumbered orientation heading was retitled. All new
-material landed as `###` subsections. I ran both rails myself at the head in my
-own detached worktree: `verify-skill-prose.mjs` exit 0 with `ALL CHECKS PASSED`,
-`verify-agents-block.mjs` 31/31.
+- **A — deletion: 20 mutations, 0 vacuous.** Every new clause fails its *named*
+  check when deleted, including both `schema: 2` stamps, all five per-scope
+  steps, the budget precondition, `expectedBranch`, and the up-to-review
+  exemption.
+- **B — anti-absorption: 5/5.** Deleting each scope's step fails **only** that
+  scope's check while its four siblings still pass. This is the property that
+  matters for F-001: check 19 now pins the *capability* per scope, not the
+  sentence advertising all five. The implementer's claim that each fixture also
+  asserts a sibling still passes is true — `scopeMutations` drives both
+  `expectFail` and `expectPass`.
+- **C — negative assertions: 2/2.** Re-introducing `rebase origin/main` or
+  `rev-parse origin/kanmer-board` is rejected by name.
+- **D — forbidden-claim paraphrases: 13/13 caught**, including all five that
+  escaped round 1.
 
-**2. Check 19's fixtures genuinely fail on deletion — yes, verified
-independently.** The five fixture tests pass (18/18 in the file). More
-importantly I did not take them on trust: I built a 42-case mutation battery
-that deletes each asserted clause from a fresh copy of the real skills tree and
-requires the *named* check to emit `FAIL`. **41 of 42 mutations correctly
-failed their named check.** The single exception is F12 — a harness artefact
-(single-occurrence replace against a token that legitimately pre-exists at
-:205), not a vacuous check. The fixtures are also well built: `edit()` asserts
-its anchor exists before mutating, so a silently renamed clause fails the
-fixture rather than passing it. Both forbidden claims are genuinely exercised by
-fixture 3 and do fire — though see F11 on their breadth.
+Rails at this head, run by me: `verify-skill-prose.mjs` exit 0, `ALL CHECKS
+PASSED`, 98 checks with **31** in block 19; `verify-agents-block.mjs` 31/31;
+`node --test scripts/verify-skill-prose.test.mjs` **28/28**.
 
-**3. CORE-121 laundering — partially closed, and this is F3.** The explicit
-bypass is refused and pinned: the text says the controller "never routes
-`review` -> `preparing` to get around that refusal", and deleting `to get around
-that refusal` fails check 19. I confirmed from `store.ts` that
-`backwardMoveEffects` returns a bare `{reason}` for every pair except
-`review -> implementing`, so `review -> preparing` neither resets nor increments
-`review_round` — the counter survives a replan, which is good and means a replan
-loop cannot reset the budget. **But** the replan is authorised on the
-controller's own classification of a finding as a "plan defect", with no budget
-precondition, and at the default budget of 1 that window coincides exactly with
-the exhausted state. A controller taking bullet one never reaches bullet two.
-The shipped text also drops the "available before the remediation budget is
-spent" precondition that the ticket's own open-questions record adopted as its
-conservative default.
+## The five new findings
 
-**4. The controller still never merges — confirmed.** `never runs `gh pr merge``
-survives verbatim and is asserted by both check 13 and check 19; deleting it
-fails check 19. The new material says "**coordinates** the merge; it does not
-perform it" and "never as a reason for the controller to merge instead".
-Coordination did not become permission.
+F-019, F-021 and F-022 are minor and dispositioned `accepted-risk` with reasons
+above; F-020 is `rejected-with-reason` because its proposed remedy would consume
+a remediation round for a plan defect and so contradict the design F-003 asked
+for.
 
-**5. Delivery targets from policy — this is F2.** The preflight is correct and
-well argued (including why main-only is a resolved answer, not an absent one).
-It is not wired through: `git rebase origin/main` at :192-193 is the controller's
-only branch operation and still hardcodes main.
+**F-023 is major and is the one I filed.** Section 1 step 2 drops "blocked"
+tickets, but `computeBlockedIds` marks a dependent blocked whenever any live
+blocker exists anywhere on the board — including one inside the same roster. So
+a roster containing both a blocker and its dependent silently loses the
+dependent before the freeze, and section 2's `blocks`-edge ordering rule can
+never fire. I verified this in source rather than accepting the claim. It is
+**pre-existing** (neither sentence is in this diff) though materially amplified
+by the new area/list/board scopes, so it does not make the merged state worse
+than `main` today. Filed as **SKILL-038** and dispositioned `deferred-to-ticket`
+because the remediation budget is spent.
 
-**6. No fifth `failure_class` — confirmed.** The vocabulary line is unchanged at
-`implementation | plan | transient | inconclusive`, the routing table still has
-exactly four rows, and check 18 asserts them row by row and passes. CORE-131's
-four-way routing is safe.
+## FRD-034 at this head
 
-**7. AGENTS.md — confirmed outside the managed block.** The block runs lines
-1-81; the edited skills-tree line is 227. One line, and the old text ("clear an
-area via parallel subagents in conflict-free waves") was genuinely wrong.
+The two criteria unmet or partial in round 1 are now met:
 
-## Deviation judgement
+- **Behaviour "accepts one ticket, group, area, explicit ticket list or a
+  prepared board"** and **AC1** — met. Each scope has an executable resolution
+  step using a tool call I verified exists, one freeze rule, one readiness rule.
+  (F-023 qualifies AC1 for rosters with internal dependency chains; deferred.)
+- **Behaviour "the configured target's exact merged SHA"** — met. The delivery
+  target is used at the controller's only branch operation, not merely recorded.
+- **AC5** — met. The replan is bounded by the budget as well as by its own
+  one-per-ticket cap, and minor/note preservation no longer collides with
+  `deferred-to-ticket`.
 
-`npm run verify` not being run locally is **acceptable** — see F15. The diff
-touches no `packages/` code, so the full rail's compiled surfaces are
-unreachable by it, and the hosted `verify` job is green at this exact head. The
-CORE-131 lane's `npm ci`-in-worktree approach is better practice in general, but
-that lane edits `packages/core` and genuinely needs a build; this one does not.
-The difference does not matter here.
+AC2, AC3, AC4 and both edge cases were met at round 1 and are untouched.
 
-The `test:scripts` discharge holds. I verified the load-bearing claim
-specifically: `scripts/auto-run-state.test.mjs` builds every fixture from inline
-template literals, imports only `packages/core/dist/index.js`, performs no disk
-read of the asset templates and accepts no root override — so this PR's template
-edits cannot reach it. It passes 1/1 from the built main checkout. The two
-`ERR_MODULE_NOT_FOUND` failures are the missing build, and the two `EBUSY`
-failures are `scripts/antigravity-plugin-config.test.mjs`, confirmed absent from
-the eight-file diff and off-limits as CORE-128's. I also checked the rest of the
-`test:scripts` set: `pr-workflow.test.mjs` does read the changed `AGENTS.md`,
-but asserts only on merge-gate and board-regate strings, none of which this
-one-line change touches.
+## CI
 
-## CI at this head
+`verify` **SUCCESS** (4m55s) at `26306355`, run 33147236831.
 
-Required checks are green: `verify` SUCCESS (5m20s) and `kanmer-gate` SUCCESS
-(1m1s), both in run 33145396862 at `aa5f73da`; `regate` skipped by design. The
-earlier `kanmer-gate` failure against a pre-push board was re-run and is now
-green, so that discharge is sound. No flake discharge was needed.
+`kanmer-gate` failed in that run, and the failure is fully explained and not a
+regression: its single error was `WRONG_STAGE` — "SKILL-036 is in stage
+`implementing`; expected `review`" — evaluated against `boardSha 9ec55d06`, a
+board tip predating the `b09f1eb7` push that returned the ticket to Review. That
+is precisely the stale-board artefact this PR documents. The board is now
+current at `94ee49ec` with `status: review`. The gate does not re-run on a board
+push, so it needs an explicit re-run once this attestation is pushed.
+
+That run also warned `STALE_REVIEW: findings[0].id must be an F-### identifier`
+— a defect in my own round-1 attestation, fixed here (F-018).
 
 ## Residual risk carried forward
 
-F5, F8, F11, F12, F13, F14 and F15 are dispositioned `accepted-risk` with
-reasons above and are **not** filed as tickets, per HZN-008 scope discipline —
-filing them would un-accept the risk just accepted. The two that matter most for
-CORE-119 are F5 (no numeric verification budget; bounded only by the
-no-auto-retry rule) and F8 (the `current.md` pointer race, which needs a
-`packages/core` change this ticket correctly excluded).
-
-## What is required to reach `pass`
-
-F1, F2 and F3 fixed in this PR under the sanctioned same-PR return, with check
-19 extended so each fix is enforced rather than merely written — the standard
-this ticket set for itself. F4, F6, F7, F9 and F10 are minors that should be
-swept in the same batch since they are all single-clause edits in the same
-files, but they do not individually block `pass`.
+F-005, F-008, F-012, F-013, F-014, F-015, F-016, F-017, F-019, F-021, F-022 —
+all `accepted-risk` with reasons, none filed, per HZN-008 scope discipline.
+F-020 is `rejected-with-reason`. F-023 is `deferred-to-ticket` as SKILL-038.
+The most relevant to CORE-119 remain F-005 (no numeric verification budget),
+F-008 (the `current.md` pointer race) and F-023 (in-roster dependency ordering).

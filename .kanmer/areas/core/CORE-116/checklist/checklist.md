@@ -94,3 +94,5 @@
 - [ ] `git branch -d core-116-delivery-policy` (`-D` if squash/rebase-merged) + delete remote branch
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+**Closeout complete** — worktree `.worktrees/core-116` removed (exit 0); branch `core-116-delivery-policy` deleted locally with `-d` (exit 0, safe — showed as merged into `origin/core-116-delivery-policy` and the SHA matched the verified merge commit's ancestor) and deleted on remote (exit 0); `git fetch --prune origin` (exit 0) and `git worktree prune` (exit 0) run; `take_ticket action: "release"` succeeded, ticket remains status `done`, not archived.

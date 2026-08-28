@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-28T04:07:47.728Z'
   verifying: '2026-08-28T04:46:33.477Z'
   done: '2026-08-28T05:09:41.382Z'
-taken_at: '2026-08-28T03:15:53.988Z'
-branch: core-116-delivery-policy
-worktree: .worktrees/core-116
 labels:
   - reliable-autonomy
 groups:
@@ -35,7 +32,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/299'
 archived: false
 created: '2026-08-26T21:02:41.969Z'
-updated: '2026-08-28T05:12:21.071Z'
+updated: '2026-08-28T05:13:20.462Z'
 ---
 
 ## What
@@ -59,3 +56,15 @@ Main-only and dev-to-release projects need correct targets and merge SHAs withou
 - [ ] A main-only fixture targets and verifies `main` at its exact merged SHA; a dev-to-main fixture targets `dev`, proves integration and records final release separately; a release-branch hotfix records its required integration backport; recorded release evidence never satisfies a stage gate.
 
 ## Outcome
+
+**Shipped:** merged via [PR #299](https://github.com/collisionengineers/kanmer/pull/299), merge commit `28a12643f1721cf7607ce5427f55fae281ba5026`. Configurable Git delivery policy and per-ticket delivery state — a `delivery:` block in `board.yml` with `resolveDelivery`/`deliveryTargets`/`assertDeliveryPolicy`; nine additive `delivery_*` ticket fields validated against the *merged* post-patch record; a `WRONG_TARGET` merge-gate check fed by `pull_request.base.ref`; a `delivery` block on the execution packet naming base SHA, base branch, PR target and verification target; `get_status.delivery`; delivery params on `create_item`/`update_item`. Tool roster unchanged at 39; no board-format bump; Kanmer's own board policy unchanged.
+
+**Scope split:** FRD-031 was split during implementation. This ticket delivered AC1, AC5, AC2-minus-its-candidate-clause and the "release evidence never verifies an unmerged branch" edge case. [[CORE-132]] owns AC2's immutable-candidate clause, AC3, AC4 and the unavailable-release-service retry edge. FRD-031 itself was not edited. The independent review verified criterion by criterion that nothing fell into the gap.
+
+**Carried-forward defect:** `packages/mcp-server/src/index.ts:1045` uses `resolveDelivery(...).integrationBranch` instead of `deliveryTargets(...).verificationTarget`, so a hotfix's `dispatch_task` verification prompt would name the wrong branch. It blocks no acceptance criterion (the execution packet and merge gate both route through `deliveryTargets` correctly) and is already folded into CORE-132 as a required fix with its own verification checkbox — deliberately not filed as a separate ticket, per the group's Scope discipline.
+
+**Residual risk:** the review recorded 13 findings, all minor/note, all dispositioned accepted residual risk in attestation `ec30a08bcf3b2ecd`. No follow-up tickets were filed.
+
+**Verification note worth preserving:** the hosted push run at the merge SHA (33142774219) initially failed on `store.test.ts > "updates fields and stamps updated"` (548/549). A re-run of the same job at the same SHA with no code change succeeded. The test is untouched by this PR, passed locally 549/549 at the exact SHA, and the new board read is guarded by `touchesDelivery()` so an ordinary update gains no I/O — so this was the known intermittent Windows timing class, not a regression. Both attempts are retained in the proof.
+
+**Deployment:** this board declares no `deployment` block (attempting to set `deployment` on this ticket is refused with "This board has no deployment tracking"), so there is nothing to record — n/a, consistent with CORE-117's closeout.

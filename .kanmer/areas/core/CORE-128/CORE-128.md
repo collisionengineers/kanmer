@@ -20,9 +20,13 @@ groups:
 links: []
 refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
+commits:
+  - a717c4f0013358fd321bcf873eeba99277d78f44
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/300'
 archived: false
 created: '2026-08-27T23:52:07.305Z'
-updated: '2026-08-28T00:39:15.920Z'
+updated: '2026-08-28T05:36:30.019Z'
 ---
 
 ## What

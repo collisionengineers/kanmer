@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:events";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { rm } from "node:fs/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Item, KanmerStore } from "@kanmer/core";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 vi.mock("electron", () => ({ app: { getPath: () => join(tmpdir(), "kanmer-dispatch-test") } }));
 
@@ -72,7 +72,7 @@ describe("project-scoped dispatches", () => {
   });
 
   it("passes effective model and append-only suffix to the provider argv", async () => {
-    await rm(join(tmpdir(), "kanmer-dispatch-test"), { recursive: true, force: true });
+    await removeTreeWithRetry(join(tmpdir(), "kanmer-dispatch-test"));
     await setDispatchSettings({ providers: { claude: { defaultModel: "sonnet", promptSuffix: "run lint" } } });
     const proc = child(104);
     let invocation: { command: string; args: readonly string[] } | undefined;

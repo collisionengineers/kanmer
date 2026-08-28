@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { connect as connectSocket } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "kanmer-http-test-"));
 process.env.KANMER_ROOT = root;
@@ -59,7 +60,7 @@ function authorizerFor(tokens, calls = { count: 0 }) {
 }
 
 test.after(async () => {
-  await rm(root, { recursive: true, force: true });
+  await removeTreeWithRetry(root);
 });
 
 test("project resolution fails before binding and leaves no listener", () => {
@@ -84,7 +85,14 @@ test("project resolution fails before binding and leaves no listener", () => {
     cwd: os.tmpdir(),
     env: cleanEnv,
     encoding: "utf8",
-    timeout: 2_000,
+    // This is a whole cold Node process that then imports dist/http.js and the
+    // MCP SDK before it can answer. On Windows the process spawn alone costs
+    // tens of milliseconds and module load runs into hundreds; when a second
+    // verification rail shares the host, the pair regularly exceeded 2 s and
+    // the test failed `spawnSync ETIMEDOUT` (CORE-128). This is a guard against
+    // a hang, not a performance assertion, so it is sized well above the cost
+    // rather than close to it.
+    timeout: 30_000,
   });
   assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0, `child did not fail cleanly: ${result.stderr}`);
@@ -252,10 +260,17 @@ test("limits, principal-bound sessions, deterministic expiry, and restart invali
 
   let releaseAuthorization;
   const authorizationGate = new Promise((resolve) => { releaseAuthorization = resolve; });
+  // Resolves the moment the first request is actually inside the authorizer.
+  // Waiting on that rather than on a fixed sleep is what makes "the cap is
+  // occupied" an observation instead of a guess: a 5 ms sleep was a race the
+  // moment a second verification rail shared the host (CORE-128).
+  let signalAuthorizationEntered;
+  const authorizationEntered = new Promise((resolve) => { signalAuthorizationEntered = resolve; });
   const cappedHost = createKanmerHttpHost({
     authorizer: {
       async authorize(request) {
         if (request.headers.authorization !== `Bearer ${first.token}`) throw new Error("UNAUTHORIZED");
+        signalAuthorizationEntered();
         await authorizationGate;
         return { principal: "first" };
       },
@@ -266,7 +281,7 @@ test("limits, principal-bound sessions, deterministic expiry, and restart invali
   const cappedReady = await cappedHost.start();
   try {
     const held = fetch(cappedReady.endpoint, { method: "GET", headers: authHeaders(first.token) });
-    await wait(5);
+    await authorizationEntered;
     const rejected = await fetch(cappedReady.endpoint, { method: "GET", headers: authHeaders(first.token) });
     assert.equal(rejected.status, 429, "global in-flight cap rejects before dispatch");
     releaseAuthorization();

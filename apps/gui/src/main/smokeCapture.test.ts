@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { removeTreeWithRetry } from "@kanmer/core";
 import {
   SMOKE_CAPTURE_PATH_ENV,
   captureSmokePage,
@@ -44,7 +45,7 @@ describe("writeSmokeCapture", () => {
       await expect(readFile(path, "utf8")).resolves.toBe("fresh-png");
       await expect(writeSmokeCapture(path, Buffer.from("replacement"))).rejects.toMatchObject({ code: "EEXIST" });
     } finally {
-      await rm(dir, { recursive: true, force: true });
+      await removeTreeWithRetry(dir);
     }
   });
 });

@@ -1,10 +1,11 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 vi.mock("electron", () => ({
   app: { isPackaged: false, getAppPath: () => process.cwd() },
@@ -14,7 +15,7 @@ vi.mock("electron", () => ({
 const { RemoteAccessManager, remoteBoardBranchEnvironment } = await import("./manager.js");
 const { canonicalProjectPath } = await import("./identity.js");
 const roots: string[] = [];
-afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
+afterEach(async () => { await Promise.all(roots.splice(0).map((root) => removeTreeWithRetry(root))); });
 
 const identity = { fingerprint: "kanmer-proj-v1:" + "a".repeat(64), boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" as const };
 const config = { executable: "cloudflared", tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: "/credentials.json", hostname: "mcp.example.com", enabled: true, autoStart: false, expectedConfigGeneration: null };

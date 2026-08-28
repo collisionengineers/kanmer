@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -71,9 +71,14 @@ vi.mock("./kanmerGit.js", async () => {
 import { __kanmerTest } from "./index.js";
 import { ensureBoardWorktree } from "./kanmerGit.js";
 import { readSettings, setKanmerGitHandoff } from "./settings.js";
+import { removeTreeWithRetrySync } from "@kanmer/core";
 
 const execFile = promisify(execFileCallback);
-const REAL_GIT_FIXTURE_TIMEOUT_MS = 30_000;
+// Real-Git fixtures: the budget tracks Windows process latency, not the code
+// under test. Raised from 30 s alongside kanmerGit.test.ts (CORE-128), where a
+// sibling case measured 35.2 s under a concurrent verification rail. Bounded,
+// so a genuine hang is still reported.
+const REAL_GIT_FIXTURE_TIMEOUT_MS = 120_000;
 const REAL_GIT_CLEANUP_RETRIES = 20;
 const REAL_GIT_CLEANUP_RETRY_DELAY_MS = 100;
 const git = async (cwd: string, ...args: string[]): Promise<string> =>
@@ -88,7 +93,7 @@ let repo: string;
 let origin: string;
 
 beforeEach(async () => {
-  rmSync(join(tmpdir(), "kanmer-core084-electron"), { recursive: true, force: true });
+  removeTreeWithRetrySync(join(tmpdir(), "kanmer-core084-electron"));
   dir = mkdtempSync(join(tmpdir(), "kanmer-core084-sync-"));
   origin = join(dir, "origin.git");
   repo = join(dir, "repo");
@@ -104,9 +109,23 @@ beforeEach(async () => {
   await git(repo, "push", "-u", "origin", "main");
   electronMocks.syncBoard.mockReset();
   electronMocks.syncBoard.mockImplementation(async (status) => status);
-});
+  // Same bounded budget as the teardown below: this hook drives eight real
+  // `git` subprocesses, which overruns Vitest's ten-second default hook budget
+  // on a contended Windows host (CORE-128). Scoped to this file.
+}, REAL_GIT_FIXTURE_TIMEOUT_MS);
 
 afterEach(async () => {
+  // Close the project rather than only dropping its context entry:
+  // `closeProject` is what closes the filesystem watcher, and dropping the map
+  // entry leaves that watcher running over a fixture this hook is about to
+  // delete. On Windows the watcher then raises
+  // `EPERM: operation not permitted, watch '…\.kanmer\areas'` as an
+  // **unhandled rejection**, which fails the whole rail while the suite itself
+  // reports 524/524 green — seen on the hosted runner, and a pre-existing race
+  // rather than anything this ticket introduced (CORE-128). The manual
+  // clearInterval/delete below stays as the fallback for a context
+  // `closeProject` could not take.
+  await __kanmerTest.closeProject(repo);
   const ctx = __kanmerTest.contexts.get(repo) as { syncTimer?: ReturnType<typeof setInterval> } | undefined;
   if (ctx?.syncTimer) clearInterval(ctx.syncTimer);
   __kanmerTest.contexts.delete(repo);

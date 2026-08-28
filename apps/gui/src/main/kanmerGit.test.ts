@@ -7,13 +7,21 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { classifySyncFailure, ensureBoardWorktree, guardGitBranchPreference, ignoreEntriesToAppend, inspectBoardSync, inspectBoardWorktree, preflightBoardSync, refreshBoardBranch, refreshBoardBranchForPreference, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync, syncBoard } from "./kanmerGit.js";
+import { removeTreeWithRetrySync } from "@kanmer/core";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
 // filesystem latency routinely exceeds Vitest's five-second unit-test budget;
 // keep that larger, bounded budget scoped to this file rather than weakening
 // the GUI suite's global default for pure tests.
-const REAL_GIT_TEST_TIMEOUT_MS = 30_000;
+//
+// Raised from 30 s (CORE-128): with a second verification rail sharing the
+// host, the slowest case here measured 35.2 s and failed
+// `Test timed out in 30000ms` while asserting nothing unusual. Each of these
+// tests drives a dozen or more real `git` subprocesses, so the budget tracks
+// process latency, not the code under test — 120 s is ~3.4x the worst measured
+// case and still bounded, so a genuine hang is still reported.
+const REAL_GIT_TEST_TIMEOUT_MS = 120_000;
 const REAL_GIT_CLEANUP_RETRIES = 20;
 const REAL_GIT_CLEANUP_RETRY_DELAY_MS = 100;
 
@@ -77,7 +85,13 @@ beforeEach(async () => {
   writeFileSync(join(repo, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
   await git(repo, "add", "--", ".kanmer");
   await git(repo, "commit", "-m", "board");
-});
+  // Same bounded budget as the teardown below, and for the same reason: this
+  // hook runs nine real `git` subprocesses against two real repositories, which
+  // Vitest's ten-second default hook budget does not cover once a second
+  // verification rail shares the host — it failed `Hook timed out in 10000ms`
+  // (CORE-128). Scoped to this file rather than raised globally, exactly as the
+  // note above REAL_GIT_TEST_TIMEOUT_MS intends.
+}, REAL_GIT_TEST_TIMEOUT_MS);
 
 afterEach(async () => {
   await rm(dir, {
@@ -737,7 +751,7 @@ describe("ensureBoardWorktree reconciliation", () => {
 
     // Repair the same canonical path; retry must not create or select another
     // worktree and a repeated retry must remain idempotent.
-    rmSync(ignorePath, { recursive: true, force: true });
+    removeTreeWithRetrySync(ignorePath);
     const retried = await ensureBoardWorktree(repo, "kanmer-board");
     expect(retried).toMatchObject({ available: true, boardRoot: resolve(boardRoot), branch: "kanmer-board", error: null, paused: false });
     const repeated = await ensureBoardWorktree(repo, "kanmer-board");

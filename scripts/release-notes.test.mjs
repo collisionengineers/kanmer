@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import test from "node:test";
+import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -52,6 +53,6 @@ updated: '2026-08-21T13:02:17.321Z'
     );
     assert.doesNotMatch(output, /\(\[PR\]\((?:#)?96\)\)/);
   } finally {
-    rmSync(boardRoot, { recursive: true, force: true });
+    removeTreeWithRetrySync(boardRoot);
   }
 });

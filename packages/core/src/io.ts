@@ -656,6 +656,56 @@ export async function removeFile(file: string): Promise<void> {
   await fs.rm(file, { force: true });
 }
 
+/**
+ * Total backoff for {@link removeTreeWithRetry}: `RM_TREE_MAX_RETRIES` attempts
+ * spaced `RM_TREE_RETRY_MS` apart, so ~1 s of patience. That is far longer than
+ * Windows takes to release a handle after the holder exits, and far shorter
+ * than a caller waits before assuming the delete is stuck.
+ */
+const RM_TREE_MAX_RETRIES = 10;
+const RM_TREE_RETRY_MS = 100;
+
+/**
+ * Remove a directory tree, retrying while Windows is still letting go of it.
+ *
+ * Windows closes handles asynchronously. A file whose last handle has just been
+ * released is *delete-pending*: it no longer opens, but it still occupies its
+ * directory entry, so the parent's `rmdir` fails `ENOTEMPTY`. A directory that
+ * is (or just was) a live process's working directory fails `EBUSY` for the
+ * same reason — which is exactly what a test that spawns `cmd.exe` and then
+ * removes its fixture hits. A realtime scanner or the search indexer opening a
+ * file the moment it is written produces the same window under load.
+ *
+ * `fs.rm` already knows how to wait: its recursive implementation retries
+ * `EBUSY`, `EMFILE`, `ENFILE`, `ENOTEMPTY` and `EPERM` — but only while
+ * `maxRetries > 0`, and the default is `0`. So the whole fix is to ask for the
+ * retries, in one place, rather than rediscovering it at each call site.
+ *
+ * `force: true` keeps a missing target a no-op. Anything still failing after
+ * the budget is a real error and is thrown, not swallowed.
+ */
+export async function removeTreeWithRetry(target: string): Promise<void> {
+  await fs.rm(target, {
+    recursive: true,
+    force: true,
+    maxRetries: RM_TREE_MAX_RETRIES,
+    retryDelay: RM_TREE_RETRY_MS,
+  });
+}
+
+/**
+ * Synchronous {@link removeTreeWithRetry}, for tests and scripts whose cleanup
+ * runs in a synchronous context. Same budget, same reasoning.
+ */
+export function removeTreeWithRetrySync(target: string): void {
+  fsSync.rmSync(target, {
+    recursive: true,
+    force: true,
+    maxRetries: RM_TREE_MAX_RETRIES,
+    retryDelay: RM_TREE_RETRY_MS,
+  });
+}
+
 let _counter = 0;
 function tmpCounter(): number {
   _counter = (_counter + 1) % 1_000_000;

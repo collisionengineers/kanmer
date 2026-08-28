@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { removeTreeWithRetry } from "./io.js";
 import { KanmerStore } from "./store.js";
 import { STAGE_IDS } from "./stages.js";
 import { lastStageId } from "./board.js";
@@ -19,7 +20,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(root, { recursive: true, force: true });
+  await removeTreeWithRetry(root);
 });
 
 describe("KanmerStore", () => {
@@ -1089,7 +1090,7 @@ describe("format v1 compatibility", () => {
   });
 
   afterEach(async () => {
-    await fs.rm(v1root, { recursive: true, force: true });
+    await removeTreeWithRetry(v1root);
   });
 
   it("detects format 1 and keeps reading/writing the legacy layout", async () => {
@@ -1229,7 +1230,7 @@ describe("reference files", () => {
   });
 
   afterEach(async () => {
-    await fs.rm(root, { recursive: true, force: true });
+    await removeTreeWithRetry(root);
   });
 
   it("copies a file in and lists it, without touching gates", async () => {

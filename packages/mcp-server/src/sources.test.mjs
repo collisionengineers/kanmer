@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createPinnedLookup, fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "../dist/index.js";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 function fakeResponse(body, headers = {}, status = 200) {
   return new Response(body, { status, headers: { "content-type": "text/plain", ...headers } });
@@ -30,7 +31,7 @@ test("llms fetch follows only bounded same-origin direct markdown links", async 
     assert.deepEqual(result.failures, []);
     assert.deepEqual(calls, ["https://docs.example.test/llms.txt", "https://docs.example.test/guide.md"]);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -54,7 +55,7 @@ test("fresh cache avoids network and stale cache revalidates with validators", a
     const cacheFile = (await readdir(cacheDir))[0];
     assert.match(JSON.parse(await readFile(path.join(cacheDir, cacheFile), "utf8")).sha256, /^[a-f0-9]{64}$/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -86,7 +87,7 @@ test("scopes cached validators to the effective final redirect target", async ()
       { url: final, validator: '"final-1"' },
     ]);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -115,7 +116,7 @@ test("invalid or unbounded source URLs fail before network access", async () => 
       /private or local destination/,
     );
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -163,7 +164,7 @@ test("fails closed for non-global DNS destinations, including mapped IPv4", asyn
         address,
       );
     } finally {
-      await rm(cacheDir, { recursive: true, force: true });
+      await removeTreeWithRetry(cacheDir);
     }
   }
   const publicCache = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-public-"));
@@ -189,7 +190,7 @@ test("fails closed for non-global DNS destinations, including mapped IPv4", asyn
       assert.equal(result.documents[0].text, "# public", address);
     }
   } finally {
-    await rm(publicCache, { recursive: true, force: true });
+    await removeTreeWithRetry(publicCache);
   }
 });
 
@@ -236,9 +237,9 @@ test("validates each redirect hop and resolves relative links from the final URL
       }),
       /redirected outside/,
     );
-    await rm(redirectCache, { recursive: true, force: true });
+    await removeTreeWithRetry(redirectCache);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -270,7 +271,7 @@ test("preserves manifest validators across same-origin redirects", async () => {
     assert.equal(revalidated.fromCache, true);
     assert.equal(finalHeaders.length, 2);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -308,7 +309,7 @@ test("rechecks DNS destinations for every redirect and linked request", async ()
     ]);
     assert.equal(lookups, 6);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -328,7 +329,7 @@ test("passes the validated DNS addresses to the outbound request seam", async ()
     assert.equal(result.documents[0].text, "# Docs");
     assert.deepEqual(requests, [{ url: "https://docs.example.test/llms.txt", addresses: ["93.184.216.34"], encoding: "identity" }]);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -357,7 +358,7 @@ test("bounds DNS resolution with the same request deadline", async () => {
       /request timed out/,
     );
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -377,7 +378,7 @@ test("filters images, clears fragments, and rejects credential-bearing linked qu
     ]);
     assert.deepEqual(calls, ["https://docs.example.test/llms.txt", "https://docs.example.test/guide.md"]);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -394,7 +395,7 @@ test("stops collecting linked pages at the hard page budget", async () => {
     assert.equal(calls.length, LLMS_TXT_POLICY.maxLinkedPages + 1);
     assert.equal(result.documents.length, LLMS_TXT_POLICY.maxLinkedPages + 1);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -410,7 +411,7 @@ test("requires an explicit supported content type", async () => {
       /missing content type/,
     );
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -459,7 +460,7 @@ test("cancels bodies on every early-abandon response path", async () => {
       );
       assert.equal(cancelled, true, scenario.name);
     } finally {
-      await rm(cacheDir, { recursive: true, force: true });
+      await removeTreeWithRetry(cacheDir);
     }
   }
 });
@@ -485,7 +486,7 @@ test("root 304 revalidates cached linked documents and keeps cache digest", asyn
     const cacheFile = (await readdir(cacheDir)).find((name) => name.endsWith(".json"));
     assert.match(JSON.parse(await readFile(path.join(cacheDir, cacheFile), "utf8")).sha256, /^[a-f0-9]{64}$/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -523,7 +524,7 @@ test("persists replacement root validators after a 304 revalidation", async () =
     });
     assert.equal(round, 1);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -542,7 +543,7 @@ test("ignores malformed or tampered cache JSON and rebuilds it atomically", asyn
     assert.equal(rebuilt.fromCache, false);
     assert.equal(calls, 2);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -567,7 +568,7 @@ test("refuses symlinked cache directories before network or lock access", async 
     );
     assert.equal(calls, 0);
   } finally {
-    await rm(parent, { recursive: true, force: true });
+    await removeTreeWithRetry(parent);
   }
 });
 
@@ -590,7 +591,7 @@ test("rejects cache documents outside the declared origin and over policy bounds
     await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl: async () => { calls++; return fakeResponse("# Rebuilt again"); }, now: () => 3_000 });
     assert.equal(calls, 2);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -614,7 +615,7 @@ test("keeps prior linked failures when root refresh falls back to stale cache", 
     assert.match(result.failures.join("\n"), /linked unavailable/);
     assert.match(result.failures.join("\n"), /root unavailable/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -645,7 +646,7 @@ test("final redirects cannot leave the declared origin and concurrent cache writ
     assert.equal(Array.isArray(cache.documents), true);
     assert.match(cache.sha256, /^[a-f0-9]{64}$/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -667,7 +668,7 @@ test("a validator response without a cached representation is surfaced", async (
       /304 without a cached representation/,
     );
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -684,7 +685,7 @@ test("surfaces an uncached linked 304 during a fresh root fetch", async () => {
     assert.deepEqual(result.documents.map((document) => document.url), ["https://docs.example.test/llms.txt"]);
     assert.match(result.failures.join("\n"), /guide\.md returned HTTP 304 without a cached representation/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -721,7 +722,7 @@ test("aggregate byte budget is enforced while reading linked responses", async (
     assert.equal(result.documents.length, 1);
     assert.match(result.failures[0], /exceeds the .*byte response limit/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -755,7 +756,7 @@ test("charges partial linked read failures to the aggregate byte budget", async 
     assert.deepEqual(calls, ["https://docs.example.test/llms.txt", "https://docs.example.test/a.md"]);
     assert.match(result.failures.join("\n"), /response read failed after/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -782,7 +783,7 @@ test("serializes concurrent refresh transactions and lets the second caller reus
     assert.deepEqual(results.map((result) => result.documents[0].text), ["# Docs", "# Docs"]);
     assert.equal(results.filter((result) => result.fromCache).length, 1);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -818,7 +819,7 @@ test("a concurrent forced refresh revalidates after the active refresh completes
     assert.equal(forcedResult.documents[0].text, "# Forced");
     assert.equal(forcedResult.fromCache, false);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -849,7 +850,7 @@ test("a forced caller retries after the active refresh rejects", async () => {
     assert.equal(calls, 2);
   } finally {
     release();
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -885,7 +886,7 @@ test("charges retained 304 linked bytes before accepting a changed page", async 
     ]);
     assert.match(refreshed.failures.join("\n"), /aggregate response limit/);
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });
 
@@ -917,6 +918,6 @@ test("retries a linked page that was missing from the prior cached document set"
     ]);
     assert.equal(refreshed.documents[1].text, "# Recovered");
   } finally {
-    await rm(cacheDir, { recursive: true, force: true });
+    await removeTreeWithRetry(cacheDir);
   }
 });

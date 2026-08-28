@@ -14,11 +14,12 @@
 // `isNewerVersion(bundled, installed)` could never be true. The button in
 // Settings.tsx is rendered only when `updateAvailable` is true, which made
 // GUI-080's merged reconciliation unreachable by construction.
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 // <repo>/apps/gui/src/main/ → <repo>/apps/gui, which is what `app.getAppPath()`
 // returns in development; `pluginRoot()` walks two levels up from it.
@@ -34,7 +35,7 @@ const { SKILLS_VERSION_FILE, formatSkillsStamp } = await import("./providers.js"
 
 const roots: string[] = [];
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(roots.splice(0).map((root) => removeTreeWithRetry(root)));
 });
 
 async function projectWithStamp(version: string): Promise<string> {

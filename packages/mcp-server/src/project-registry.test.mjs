@@ -6,6 +6,7 @@ import { mkdtemp, readdir, readFile, rm, stat, writeFile, mkdir } from "node:fs/
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 const { KanmerStore } = await import("@kanmer/core");
 const registry = await import(new URL("../dist/project-registry.js", import.meta.url));
@@ -61,7 +62,7 @@ test.before(async () => {
   await storeB.init({ fallbackFingerprint: "kanmer-proj-v1:" + "b".repeat(64) });
   await rm(path.join(boardB, ".kanmer", "project.json"), { force: true });
 });
-test.after(async () => { await rm(home, { recursive: true, force: true }); });
+test.after(async () => { await removeTreeWithRetry(home); });
 
 test("registry location is decided by the spawning environment, never a request", () => {
   assert.deepEqual(registryLocation({}, home), { path: path.join(home, ".kanmer", "endpoints.json"), source: "default" });

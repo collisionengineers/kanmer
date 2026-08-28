@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { checkDocStructure, resolveRepoDocs } from "./check-doc-structure.mjs";
+import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const canonical = readFileSync(
@@ -62,6 +63,6 @@ test("the freshness check discovers repoDocs from a board worktree", () => {
       adr: "docs/custom/adr/**",
     });
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });

@@ -6,6 +6,7 @@ import test from "node:test";
 import { mkdtempSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { checkIsolatedPlugin } from "./lib/plugin-isolation.mjs";
+import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sourcePluginRoot = join(root, "plugins", "kanmer");
@@ -41,7 +42,7 @@ test("an external-only dependency cannot be borrowed from the fixture checkout",
     );
     assert.equal(existsSync(isolatedRoot), false, "failed isolated payload is cleaned");
   } finally {
-    rmSync(fx.root, { recursive: true, force: true });
+    removeTreeWithRetrySync(fx.root);
   }
 });
 
@@ -57,7 +58,7 @@ test("a missing manifest-selected entry fails before a child can borrow anything
     );
     assert.equal(existsSync(isolatedRoot), false, "invalid payload is cleaned");
   } finally {
-    rmSync(fx.root, { recursive: true, force: true });
+    removeTreeWithRetrySync(fx.root);
   }
 });
 
@@ -71,6 +72,6 @@ test("a non-responsive child hits the bounded handshake timeout and is cleaned",
     );
     assert.equal(existsSync(isolatedRoot), false, "timed-out child payload is cleaned");
   } finally {
-    rmSync(fx.root, { recursive: true, force: true });
+    removeTreeWithRetrySync(fx.root);
   }
 });

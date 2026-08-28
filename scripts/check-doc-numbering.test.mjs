@@ -14,11 +14,12 @@
 //      removed at the end of the test; nothing is left behind.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { findDuplicates, groupByNumber } from "./check-doc-numbering.mjs";
+import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 
 describe("check-doc-numbering", () => {
   test("the real docs/ tree has no duplicate ADR/FRD/PRD numbers", () => {
@@ -37,7 +38,7 @@ describe("check-doc-numbering", () => {
       assert.deepEqual(groups.get("0001"), ["ADR-0001-first.md"]);
       assert.deepEqual(groups.get("0002"), ["ADR-0002-second.md"]);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      removeTreeWithRetrySync(dir);
     }
   });
 
@@ -64,7 +65,7 @@ describe("check-doc-numbering", () => {
       // The clean number must not be reported.
       assert.doesNotMatch(problems[0], /ADR-0014/);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      removeTreeWithRetrySync(dir);
     }
   });
 
@@ -84,8 +85,8 @@ describe("check-doc-numbering", () => {
       assert.equal(problems.length, 1);
       assert.match(problems[0], /^ADR-0001 has 2 files:/);
     } finally {
-      rmSync(adrDir, { recursive: true, force: true });
-      rmSync(frdDir, { recursive: true, force: true });
+      removeTreeWithRetrySync(adrDir);
+      removeTreeWithRetrySync(frdDir);
     }
   });
 });

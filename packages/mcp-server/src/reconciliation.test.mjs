@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { KanmerStore } from "../../core/dist/index.js";
+import { KanmerStore, removeTreeWithRetry } from "../../core/dist/index.js";
 import {
   GH_MAX_BUFFER,
   GH_TIMEOUT_MS,
@@ -101,7 +101,7 @@ function ghRun({ view = new Map([["12", mergedJson]]), checks = passChecks } = {
 
 async function fixtureStore(t, prefix) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
-  t.after(async () => { await fs.rm(root, { recursive: true, force: true }); });
+  t.after(async () => { await removeTreeWithRetry(root); });
   const store = new KanmerStore(root);
   await store.init();
   return { root, store };
@@ -268,7 +268,7 @@ test("a linked .worktrees/<id> checkout of the source repository is matches-clai
   const dirty = await collectReconciliationEvidence(store, taken.id);
   assert.equal(dirty.workspace.state, "dirty");
   const otherRoot = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-reconciliation-other-"));
-  t.after(async () => { await fs.rm(otherRoot, { recursive: true, force: true }); });
+  t.after(async () => { await removeTreeWithRetry(otherRoot); });
   git(["init", "-q", "-b", "main"], otherRoot);
   git(["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "--allow-empty", "-q", "-m", "root"], otherRoot);
   const foreignTicket = await store.createItem({ type: "ticket", title: "Foreign", profile: "custom", requires: {}, status: "implementing" });

@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { liveBoardBranchError, liveBoardBranchMatches } from "./syncBranch.js";
 import type { NativeReconnectRequirement } from "../shared/ipc.js";
-import { withExclusiveFileLock } from "@kanmer/core";
+import { removeTreeWithRetry, withExclusiveFileLock } from "@kanmer/core";
 
 const execFile = promisify(execFileCallback);
 
@@ -515,7 +515,11 @@ async function resumeOrphanMigrationUnlocked(repoRoot: string, boardRoot: string
       throw new Error("Source board changed during orphan migration; refusing cleanup.");
     }
     await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
-    await rm(quarantine, { recursive: true, force: true });
+    // `git rm` has just released this tree; on Windows the handles it held go
+    // away asynchronously, so an immediate un-retried removal can fail
+    // ENOTEMPTY and take the restore path below — turning a completed
+    // migration into a retained quarantine (CORE-128).
+    await removeTreeWithRetry(quarantine);
     await rm(marker, { force: true });
   } catch (error) {
     if (existsSync(quarantine) && !existsSync(sourceBoard)) {
@@ -533,10 +537,28 @@ async function resumeOrphanMigrationUnlocked(repoRoot: string, boardRoot: string
   }
 }
 
+/**
+ * Backoff for the orphan-migration lock, ~32 s in total.
+ *
+ * The shared default (`DEFAULT_LOCK_RETRY_MS`, ~2.1 s) is sized for a board
+ * *file* write. This critical section is a different order of work: `git
+ * commit`, `git push`, `git diff`, `git rm`, a full directory fingerprint and a
+ * tree removal. On Windows under load the holder routinely needs more than
+ * 2.1 s, and a waiter that gave up then reported the migration unavailable even
+ * though nothing had gone wrong — a lost race presented as a failure
+ * (CORE-128). The budget is still bounded: a genuinely stuck holder is still
+ * reported rather than waited on forever, and the lock's own stale-owner
+ * recovery is unchanged.
+ */
+const ORPHAN_MIGRATION_LOCK_RETRY_MS = [10, 25, 60, 150, 300, 600, 1_000, 2_000, 3_000, 5_000, 5_000, 5_000, 5_000, 5_000] as const;
+
 /** Serialize orphan source cleanup with writers using the shared file-lock semantics. */
 async function resumeOrphanMigration(repoRoot: string, boardRoot: string, branch: string): Promise<void> {
-  await withExclusiveFileLock(join(repoRoot, ".worktrees", ORPHAN_MIGRATION_LOCK), () =>
-    resumeOrphanMigrationUnlocked(repoRoot, boardRoot, branch));
+  await withExclusiveFileLock(
+    join(repoRoot, ".worktrees", ORPHAN_MIGRATION_LOCK),
+    () => resumeOrphanMigrationUnlocked(repoRoot, boardRoot, branch),
+    { retryDelaysMs: ORPHAN_MIGRATION_LOCK_RETRY_MS },
+  );
 }
 
 /** Locate or initialise the canonical board worktree for a Git source root. */
@@ -722,5 +744,8 @@ export async function syncBoard(status: KanmerGitStatus): Promise<KanmerGitStatu
 }
 
 export async function removeBoardWorktree(boardRoot: string): Promise<void> {
-  if (existsSync(boardRoot)) await rm(boardRoot, { recursive: true, force: true });
+  // A board worktree is normally being removed right after something stopped
+  // reading it; Windows releases those handles asynchronously, so retry rather
+  // than fail the removal (see AGENTS.md §8 gotcha 20).
+  if (existsSync(boardRoot)) await removeTreeWithRetry(boardRoot);
 }

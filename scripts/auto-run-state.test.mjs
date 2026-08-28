@@ -1,10 +1,10 @@
 // Disposable real-board proof for SKILL-016's group-document resume contract.
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { KanmerStore } from "../packages/core/dist/index.js";
+import { KanmerStore, removeTreeWithRetry } from "../packages/core/dist/index.js";
 
 const fingerprint = "sha256:disposable-board";
 const run = (id, group, status = "running", first = "queued", project = fingerprint, controller = "codex-auto") => `---
@@ -51,7 +51,7 @@ async function resumeDecision(store, group, controller, project) {
 
 test("durable auto resume uses actual group documents and live board reconciliation", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "kanmer-auto-real-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  t.after(() => removeTreeWithRetry(root));
   const store = new KanmerStore(root);
   await store.init();
   const group = await store.createGroup("horizon", "Disposable run");

@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import { KanmerStore } from "../../core/dist/index.js";
 import { assertGitRepository, collectCommitReachability } from "./git-reachability.mjs";
 import { parseReviewEvidence, readStrictFlag } from "./check-pr.mjs";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const cli = path.join(repoRoot, "packages", "mcp-server", "src", "check-pr.mjs");
@@ -146,7 +147,7 @@ test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
     assert.equal(JSON.parse(infra.stdout).infrastructureError, true);
     assert.doesNotMatch(infra.stderr, /node_modules|[A-Za-z]:\\/);
   } finally {
-    await fs.rm(board, { recursive: true, force: true });
+    await removeTreeWithRetry(board);
   }
 });
 
@@ -197,7 +198,7 @@ test("attestation checks warn by default and block under KANMER_GATE_STRICT", as
     });
     assert.equal(passResult.checks.at(-1).code, "SYNC_REQUIRED");
   } finally {
-    await fs.rm(board, { recursive: true, force: true });
+    await removeTreeWithRetry(board);
   }
 });
 
@@ -267,7 +268,7 @@ test("SYNC_REQUIRED compares the attested board_sha with the fetched board tip",
     assert.equal(malformed.status, 0);
     assert.match(malformed.stderr, /\[STALE_REVIEW\]::review attestation is invalid%3A board_sha/);
   } finally {
-    await fs.rm(board, { recursive: true, force: true });
+    await removeTreeWithRetry(board);
   }
 });
 
@@ -282,7 +283,7 @@ test("check-pr fails closed when board item input is malformed", async () => {
     assert.equal(result.status, 2);
     assert.equal(JSON.parse(result.stdout).infrastructureError, true);
   } finally {
-    await fs.rm(board, { recursive: true, force: true });
+    await removeTreeWithRetry(board);
   }
 });
 

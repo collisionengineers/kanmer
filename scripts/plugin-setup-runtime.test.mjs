@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourcePluginRoot = join(root, "plugins", "kanmer");
@@ -40,8 +41,8 @@ test("the setup skill's installed-layout command is runnable and idempotent", ()
     assert.equal(second.status, 0, second.stderr);
     assert.equal(readFileSync(join(target, "AGENTS.md"), "utf8"), afterFirst);
   } finally {
-    rmSync(installed.root, { recursive: true, force: true });
-    rmSync(target, { recursive: true, force: true });
+    removeTreeWithRetrySync(installed.root);
+    removeTreeWithRetrySync(target);
   }
 });
 
@@ -58,7 +59,7 @@ test("the packaged setup runtime refuses malformed markers without changing the 
     assert.match(result.stderr, /malformed kanmer:instructions block/);
     assert.equal(readFileSync(agents, "utf8"), malformed);
   } finally {
-    rmSync(installed.root, { recursive: true, force: true });
-    rmSync(target, { recursive: true, force: true });
+    removeTreeWithRetrySync(installed.root);
+    removeTreeWithRetrySync(target);
   }
 });

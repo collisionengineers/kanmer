@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { KanmerStore } from "../../core/dist/index.js";
 import { readPrEvent } from "./check-pr.mjs";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const cli = path.join(repoRoot, "packages", "mcp-server", "src", "check-pr.mjs");
@@ -71,7 +72,7 @@ test("the gate passes a main-only project's PR into main and never mentions a wr
   assert.equal(targetCheck(json).outcome, "pass");
   assert.equal(targetCheck(json).details.expected, "main");
   assert.equal(json.findings.some((f) => f.code === "WRONG_TARGET"), false);
-  await fs.rm(board, { recursive: true, force: true });
+  await removeTreeWithRetry(board);
 });
 
 test("the gate warns, without blocking, when a PR misses the configured integration branch", async () => {
@@ -84,7 +85,7 @@ test("the gate warns, without blocking, when a PR misses the configured integrat
   assert.equal(check.details.baseRef, "main");
   assert.equal(check.details.expected, "dev");
   assert.match(stderr, /::warning title=kanmer\/gate \[WRONG_TARGET\]/u);
-  await fs.rm(board, { recursive: true, force: true });
+  await removeTreeWithRetry(board);
 });
 
 test("KANMER_GATE_STRICT promotes a wrong target to a blocking error", async () => {
@@ -96,7 +97,7 @@ test("KANMER_GATE_STRICT promotes a wrong target to a blocking error", async () 
   assert.equal(json.ok, false);
   assert.equal(status, 1);
   assert.match(stderr, /::error title=kanmer\/gate \[WRONG_TARGET\]/u);
-  await fs.rm(board, { recursive: true, force: true });
+  await removeTreeWithRetry(board);
 });
 
 test("an event with no base ref skips the target check rather than guessing", async () => {
@@ -105,7 +106,7 @@ test("an event with no base ref skips the target check rather than guessing", as
   const { json } = runGate(board, event, { KANMER_GATE_STRICT: "1" });
   assert.equal(targetCheck(json).outcome, "skipped");
   assert.equal(json.findings.some((f) => f.code === "WRONG_TARGET"), false);
-  await fs.rm(board, { recursive: true, force: true });
+  await removeTreeWithRetry(board);
 });
 
 test("a recorded hotfix legitimately targets the release branch", async () => {
@@ -115,5 +116,5 @@ test("a recorded hotfix legitimately targets the release branch", async () => {
   const onRelease = runGate(board, event, { KANMER_GATE_STRICT: "1" }).json;
   assert.equal(targetCheck(onRelease).outcome, "pass");
   assert.equal(targetCheck(onRelease).details.hotfix, true);
-  await fs.rm(board, { recursive: true, force: true });
+  await removeTreeWithRetry(board);
 });

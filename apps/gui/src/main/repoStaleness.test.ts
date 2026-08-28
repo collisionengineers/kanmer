@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { defaultBoardConfig, detectStaleness, resolvePaths } from "@kanmer/core";
 import { BLOCK_BODY, END, removeManagedBlock, START } from "./agentsBlock.js";
 import { repoStalenessFor } from "./repoStaleness.js";
+import { removeTreeWithRetrySync } from "@kanmer/core";
 
 const roots: string[] = [];
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -23,7 +24,7 @@ function write(file: string, content: string): void {
 }
 
 afterEach(() => {
-  for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+  for (const root of roots.splice(0)) removeTreeWithRetrySync(root);
 });
 
 describe("repoStalenessFor", () => {

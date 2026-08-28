@@ -1,7 +1,8 @@
-import { readdir, rm } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { removeTreeWithRetry } from "@kanmer/core";
 
 const fixture = vi.hoisted(() => ({ userData: "", sequence: 0 }));
 vi.mock("electron", () => ({ app: { getPath: () => fixture.userData } }));
@@ -20,7 +21,7 @@ beforeEach(() => {
   fixture.userData = join(tmpdir(), `kanmer-gui129-settings-${process.pid}-${fixture.sequence += 1}`);
 });
 
-afterEach(async () => { await rm(fixture.userData, { recursive: true, force: true }); });
+afterEach(async () => { await removeTreeWithRetry(fixture.userData); });
 
 function renameError(code: string): NodeJS.ErrnoException {
   return Object.assign(new Error(`rename failed: ${code}`), { code });

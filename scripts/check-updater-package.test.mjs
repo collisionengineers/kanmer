@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { removeTreeWithRetry } from "../packages/core/dist/index.js";
 
 const execFileAsync = promisify(execFile);
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -69,7 +70,7 @@ test("check-updater-package accepts a complete synthetic packaged output", async
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /updater package OK \(8 checks\)/);
   } finally {
-    await rm(out, { recursive: true, force: true });
+    await removeTreeWithRetry(out);
   }
 });
 
@@ -82,7 +83,7 @@ test("check-updater-package reports a missing launcher without hiding other chec
     assert.match(result.stderr, /missing .*kanmer-mcp\.cmd/);
     assert.match(result.stderr, /updater package FAILED/);
   } finally {
-    await rm(out, { recursive: true, force: true });
+    await removeTreeWithRetry(out);
   }
 });
 
@@ -94,7 +95,7 @@ test("check-updater-package rejects a malformed launcher contract", async () => 
     assert.notEqual(result.code, 0);
     assert.match(result.stderr, /missing launcher-contract marker/);
   } finally {
-    await rm(out, { recursive: true, force: true });
+    await removeTreeWithRetry(out);
   }
 });
 
@@ -106,6 +107,6 @@ test("check-updater-package rejects a missing MCP bundle", async () => {
     assert.notEqual(result.code, 0);
     assert.match(result.stderr, /missing .*kanmer-mcp\.cjs/);
   } finally {
-    await rm(out, { recursive: true, force: true });
+    await removeTreeWithRetry(out);
   }
 });

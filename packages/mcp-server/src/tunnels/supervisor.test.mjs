@@ -8,7 +8,11 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function waitFor(promise, label, timeoutMs = 1_000) {
+// The default is a hang guard, not a latency assertion: every call below waits
+// for something the supervisor is expected to reach promptly, and a shorter
+// budget only turns host contention into a spurious failure. 1 s was too tight
+// on Windows with a second verification rail running (CORE-128).
+async function waitFor(promise, label, timeoutMs = 30_000) {
   let timer;
   try {
     return await Promise.race([

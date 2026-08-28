@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { renameWithRetry, withExclusiveFileLock, writeFileAtomic, TMP_FILE_RE } from "./io.js";
+import { removeTreeWithRetry, renameWithRetry, withExclusiveFileLock, writeFileAtomic, TMP_FILE_RE } from "./io.js";
 
 let dir: string;
 
@@ -10,7 +10,7 @@ beforeEach(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-io-"));
 });
 afterEach(async () => {
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 });
+  await removeTreeWithRetry(dir);
 });
 
 /** An error shaped like the one Windows raises when a handle blocks a replace. */

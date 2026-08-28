@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DOCTOR_CHECK_IDS, runDoctor } from "../dist/doctor/index.js";
+import { removeTreeWithRetrySync } from "@kanmer/core";
 
 test("doctor emits a stable schema-v1 ordered report and explicit public skips", async () => {
   const report = await runDoctor({ mode: "config", config: { projectRoot: "fixture", expectedProject: "kanmer-proj-v1:fixture", remoteHostname: "doctor.example.test", secretReference: "protected-ref" } });
@@ -96,7 +97,7 @@ test("packaged local CLI rejects an unsafe endpoint before probing it", async (t
   let hits = 0;
   const boardRoot = mkdtempSync(join(tmpdir(), "kanmer-doctor-cli-test-"));
   mkdirSync(join(boardRoot, ".kanmer"));
-  t.after(() => rmSync(boardRoot, { recursive: true, force: true }));
+  t.after(() => removeTreeWithRetrySync(boardRoot));
   const server = createServer((_request, response) => { hits++; response.end(); });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();

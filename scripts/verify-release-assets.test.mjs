@@ -18,9 +18,10 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 
 import {
   expectedAssets,
@@ -578,7 +579,7 @@ describe("expectedAssets — version filter, rename, manifest handling", () => {
     );
     return dir;
   }
-  const cleanup = () => dir && rmSync(dir, { recursive: true, force: true });
+  const cleanup = () => dir && removeTreeWithRetrySync(dir);
 
   test("filters to the requested version — other versions' artifacts are ignored", (t) => {
     t.after(cleanup);

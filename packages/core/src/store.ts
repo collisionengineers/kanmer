@@ -123,6 +123,9 @@ import {
   type UpdateItemPatch,
   type BatchState,
   type DeliveryPolicy,
+  type ReconciliationApplyInput,
+  type ReconciliationApplyResult,
+  type ReconciliationResponsibility,
   DELIVERY_PATCH_KEYS,
   DELIVERY_STATES,
   LEASE_PHASES,
@@ -1620,6 +1623,169 @@ export class KanmerStore {
       }
       return next;
     });
+  }
+
+  /**
+   * Apply ONE reconciliation action proposed by the FRD-028 inspector
+   * (CORE-131). This is a dispatcher, not a mutation path: every branch reaches
+   * an existing verb — `moveItem`, `releaseTicket` or `transferTicket` — and
+   * hands it the caller's `expectedRevision`, so the verb's own locked
+   * compare-and-set inside `withLeaseLock` is the atomicity boundary. There is
+   * no new lock section, no second ownership model and no new stage.
+   *
+   * The precondition re-check below reads the item OUTSIDE the lock, and that
+   * is deliberately not PR #286's defect: #286 took its CAS token from its own
+   * read, so the check validated nothing. Here `expectedRevision` comes from
+   * the caller — bound to the evidence the recommendation was computed from —
+   * and the verb re-reads and re-checks it under the lock. This read only fails
+   * fast and names the responsible controller for the audit line.
+   *
+   * Authority is unchanged: `review → implementing` is still judged by
+   * `backwardMoveEffects`, so it needs a `needs-changes` attestation bound to
+   * this ticket's PR or a caller-supplied reason beginning `operator:`. This
+   * code never synthesises one, never passes `force`, never deletes a branch or
+   * worktree and never cleans a workspace.
+   */
+  async applyReconciliation(id: string, input: ReconciliationApplyInput): Promise<ReconciliationApplyResult> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (current.type !== "ticket") {
+      throw new Error(`Only tickets can be reconciled; "${id}" is a ${current.type}`);
+    }
+    const actor = input.actor?.trim() || this.actor;
+    const target = input.targetStatus;
+    const requireStatus = (expected: string): void => {
+      if (current.status !== expected) {
+        throw new Error(
+          `RECONCILIATION_PRECONDITION_FAILED: "${id}" is ${current.status}, but ${input.action} applies only to a ticket in ${expected}.`,
+        );
+      }
+    };
+    const requireTarget = (expected: string): void => {
+      if (target !== expected) {
+        throw new Error(
+          `RECONCILIATION_PRECONDITION_FAILED: ${input.action} on "${id}" targets ${expected}, not ${target ?? "(none)"}.`,
+        );
+      }
+    };
+    const requireNoTarget = (): void => {
+      if (target !== undefined) {
+        throw new Error(
+          `RECONCILIATION_PRECONDITION_FAILED: ${input.action} on "${id}" is a claim action and takes no target status (got ${target}).`,
+        );
+      }
+    };
+
+    let next: Item;
+    switch (input.action) {
+      case "MOVE_TO_VERIFYING": {
+        requireStatus("review");
+        requireTarget("verifying");
+        next = await this.moveItem(id, { status: "verifying", expectedRevision: input.expectedRevision });
+        break;
+      }
+      case "MOVE_TO_DONE": {
+        requireStatus("verifying");
+        requireTarget("done");
+        next = await this.moveItem(id, { status: "done", expectedRevision: input.expectedRevision });
+        break;
+      }
+      case "MOVE_TO_IMPLEMENTING": {
+        requireStatus("review");
+        requireTarget("implementing");
+        // Deliberately NOT defaulted. Review → Implementing is CORE-121's
+        // audited authority: only the caller's own reason can satisfy it, and
+        // an absent one must reach `backwardMoveEffects` and be refused with
+        // BACKWARD_MOVE_NEEDS_REASON rather than papered over here.
+        next = await this.moveItem(id, {
+          status: "implementing",
+          expectedRevision: input.expectedRevision,
+          ...(input.reason !== undefined ? { reason: input.reason } : {}),
+        });
+        break;
+      }
+      case "ROUTE_VERIFICATION_FAILURE": {
+        requireStatus("verifying");
+        if (target !== "implementing" && target !== "preparing") {
+          throw new Error(
+            `RECONCILIATION_PRECONDITION_FAILED: ${input.action} on "${id}" routes to implementing or preparing, not ${target ?? "(none)"}.`,
+          );
+        }
+        // An ordinary backward move out of Verifying: a reason alone authorises
+        // it. The default quotes the proof in `kanmer-verify/SKILL.md`'s
+        // grammar so the audit reads the same whoever moved the ticket.
+        const failureClass = target === "implementing" ? "implementation" : "plan";
+        const reason = input.reason?.trim()
+          || `proof FAIL ${failureClass}: routed by apply_reconciliation from the ticket's recorded proof record`;
+        next = await this.moveItem(id, { status: target, expectedRevision: input.expectedRevision, reason });
+        break;
+      }
+      case "RELEASE_CLEAN_TERMINAL_CLAIM": {
+        requireStatus("done");
+        requireNoTarget();
+        // Releases the CLAIM, never the workspace: FRD-028 acceptance 4's
+        // "cleanup" is removing an owner from a terminal, clean, explicitly
+        // authorised target. Removing a worktree or branch stays in closeout.
+        next = await this.releaseTicket(id, { expectedRevision: input.expectedRevision });
+        break;
+      }
+      case "RECOVER_EXPIRED_CLAIM": {
+        requireNoTarget();
+        if (!current.taken_at) {
+          throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to recover.`);
+        }
+        const lease = leaseState(current, new Date(), leaseConfig(await this.getBoard()));
+        if (lease.state !== "expired") {
+          throw new Error(
+            `CLAIM_LIVE: "${id}" is held by ${current.assignee || "an unknown actor"} until ${lease.expiresAt ?? "(unknown)"}. ` +
+              `Reconciliation recovers only an expired claim; a live one is an operator transfer.`,
+          );
+        }
+        // No reason is passed, ever: an `operator:` reason synthesised here
+        // would let this path reclaim a live lease, and `transferTicket` must
+        // stay free to refuse that with CLAIM_LIVE. Dirty work is preserved —
+        // a transfer changes who is responsible, never where the work is.
+        const controller = input.controller?.trim();
+        next = await this.transferTicket(id, {
+          assignee: controller || actor,
+          ...(controller ? { controller } : {}),
+          expectedRevision: input.expectedRevision,
+          ...(input.recovery ? { recovery: input.recovery } : {}),
+        });
+        break;
+      }
+      default: {
+        const exhaustive: never = input.action;
+        throw new Error(`Unknown reconciliation action: ${String(exhaustive)}`);
+      }
+    }
+
+    const from = KanmerStore.responsibilityOf(current);
+    const to = KanmerStore.responsibilityOf(next);
+    const claimAction = input.action === "RELEASE_CLEAN_TERMINAL_CLAIM" || input.action === "RECOVER_EXPIRED_CLAIM";
+    const transition = `reconcile ${input.action} by ${actor}`
+      + (claimAction ? `; controller ${from.controller ?? "(none)"} → ${to.controller ?? "(none)"}` : `; stage ${from.status} → ${to.status}`)
+      + `; revision ${input.expectedRevision}`;
+    // The durable audit record (FRD-028 acceptance 2). `## Transitions` is
+    // committed to the board branch and is itself part of the ticket's
+    // document-inclusive revision. The verbs above write their own lines for
+    // what THEY did; this one records why reconciliation acted.
+    if (loc.kind === "v2") await this.appendTransition(id, transition);
+    // Secondary index only: appendActivity is best-effort and self-truncating
+    // (activity.ts), which is exactly why it is not the audit record.
+    await appendActivity(this.paths, [
+      this.activity(id, "update", { field: "reconciliation", from: from.status, to: input.action }),
+    ]);
+    return { item: next, action: input.action, from, to, transition };
+  }
+
+  /** Who is responsible for a ticket right now; null once nothing holds it. */
+  private static responsibilityOf(item: Item): ReconciliationResponsibility {
+    return {
+      status: item.status,
+      controller: item.taken_at ? (item.claim_controller ?? item.assignee ?? null) : null,
+    };
   }
 
   /**

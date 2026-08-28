@@ -66,10 +66,11 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 39 tools", tools.tools.length === 39, `got ${tools.tools.length}`);
+  check("tools/list returns 40 tools", tools.tools.length === 40, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "reconcile_ticket",
+    "apply_reconciliation",
     "link_doc",
     "get_doc_gates",
     "migrate_board",
@@ -3092,11 +3093,25 @@ Second proof attempt passed; the first failure is retained.
   );
 
   // CORE-122: reconcile_ticket is a read-only inspector with an advisory
-  // recommendation and no apply surface. An unclaimed Review ticket with no
-  // PR has one safe recommendation: return it to Implementing.
+  // recommendation. An unclaimed Review ticket with no PR has one safe
+  // recommendation: return it to Implementing. CORE-131 adds the apply half —
+  // a separate, explicitly revision-bound tool; the dry run still mutates
+  // nothing (FRD-028 acceptance 1 must not regress).
   const reconcileTool = tools.tools.find((t) => t.name === "reconcile_ticket");
   check("reconcile_ticket is read-only and discloses external Git/GitHub reads", reconcileTool?.annotations?.readOnlyHint === true && reconcileTool?.annotations?.openWorldHint === true);
-  check("apply_reconciliation is not registered", !tools.tools.some((t) => t.name === "apply_reconciliation"));
+  const applyTool = tools.tools.find((t) => t.name === "apply_reconciliation");
+  check(
+    "apply_reconciliation is registered as a non-destructive, non-idempotent write that discloses external reads",
+    applyTool?.annotations?.readOnlyHint === false &&
+      applyTool?.annotations?.destructiveHint === false &&
+      applyTool?.annotations?.idempotentHint === false &&
+      applyTool?.annotations?.openWorldHint === true &&
+      applyTool?.inputSchema?.required?.includes("expected_revision") === true &&
+      // registerTool injects expected_project for every write tool; it is
+      // never hand-added to the schema.
+      Object.keys(applyTool?.inputSchema?.properties ?? {}).sort().join(",") === "controller,expected_project,expected_revision,id,reason",
+    JSON.stringify(applyTool?.annotations ?? null) + " " + Object.keys(applyTool?.inputSchema?.properties ?? {}).sort().join(","),
+  );
   const reconcileId = JSON.parse(
     textOf(await client.callTool({
       name: "create_item",
@@ -3106,10 +3121,14 @@ Second proof attempt passed; the first failure is retained.
   const reconcileBefore = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: reconcileId } })));
   const reconciliation = JSON.parse(textOf(await client.callTool({ name: "reconcile_ticket", arguments: { id: reconcileId } })));
   check(
-    "reconcile_ticket returns an advisory recommendation with claim facts",
+    "reconcile_ticket returns an advisory recommendation with claim facts, bound to the ticket revision",
     reconciliation.evidence?.ticket?.id === reconcileId &&
       reconciliation.recommendation?.action === "MOVE_TO_IMPLEMENTING" &&
       reconciliation.recommendation?.advisory === true &&
+      reconciliation.recommendation?.ticketId === reconcileId &&
+      reconciliation.recommendation?.revision === reconcileBefore.revision &&
+      // The revision is the only freshness token: no second proposal hash.
+      reconciliation.recommendation?.id === undefined &&
       reconciliation.proposal === undefined &&
       reconciliation.evidence?.claim?.state === "unclaimed" &&
       reconciliation.evidence?.claim?.reviewRound === 0 &&
@@ -3123,6 +3142,50 @@ Second proof attempt passed; the first failure is retained.
     "reconcile_ticket never mutates the ticket",
     reconcileAfter.status === "review" && reconcileAfter.updated === reconcileBefore.updated,
     JSON.stringify({ before: reconcileBefore.updated, after: reconcileAfter.updated, status: reconcileAfter.status }),
+  );
+  // FRD-028 acceptance 2: a stale revision is a structured conflict that
+  // writes nothing.
+  const staleApply = await client.callTool({
+    name: "apply_reconciliation",
+    arguments: { id: reconcileId, expected_revision: "rev1:0000000000000000", reason: "operator: smoke", expected_project: expectedProject },
+  });
+  const staleApplyItem = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: reconcileId } })));
+  check(
+    "apply_reconciliation refuses a stale expected_revision and mutates nothing",
+    staleApply.isError === true &&
+      staleApply.structuredContent?.error?.code === "REVISION_CONFLICT" &&
+      staleApplyItem.status === "review" &&
+      staleApplyItem.revision === reconcileBefore.revision &&
+      staleApplyItem.updated === reconcileBefore.updated,
+    textOf(staleApply),
+  );
+  // The production caller: the same recommendation, applied through a real MCP
+  // client, with the operator authority CORE-121's contract demands.
+  const applied = await client.callTool({
+    name: "apply_reconciliation",
+    arguments: {
+      id: reconcileId,
+      expected_revision: reconcileBefore.revision,
+      reason: "operator: reconciliation smoke returns the PR-less review ticket",
+      expected_project: expectedProject,
+    },
+  });
+  const appliedResult = applied.isError ? null : JSON.parse(textOf(applied));
+  const appliedItem = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: reconcileId } })));
+  const appliedExecution = JSON.parse(
+    textOf(await client.callTool({ name: "get_ticket_doc", arguments: { id: reconcileId, doc: "scratch/execution" } })),
+  );
+  check(
+    "apply_reconciliation applies the current recommendation and records one durable transition",
+    applied.isError !== true &&
+      appliedResult?.action === "MOVE_TO_IMPLEMENTING" &&
+      appliedResult?.item?.status === "implementing" &&
+      appliedResult?.result?.recommendation?.action === "MOVE_TO_IMPLEMENTING" &&
+      appliedItem.status === "implementing" &&
+      appliedExecution.content?.includes("## Transitions") === true &&
+      appliedExecution.content?.includes(`reconcile MOVE_TO_IMPLEMENTING by `) === true &&
+      appliedExecution.content?.includes(`; stage review → implementing; revision ${reconcileBefore.revision}`) === true,
+    textOf(applied) + " " + JSON.stringify(appliedExecution.content ?? null),
   );
 
   // --- FRD-029 AC4/AC5 (MCP-054): named endpoints, observational only -----

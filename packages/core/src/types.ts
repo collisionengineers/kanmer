@@ -1067,6 +1067,13 @@ export interface ReconciliationEvidence {
   proof: {
     state: "absent" | "pass" | "fail" | "invalid";
     mergedSha?: string;
+    /**
+     * The proof record's `failure_class` (SKILL-037), decoded by the host
+     * boundary. A non-PASS record that names no class — or names one this
+     * build does not know — is `inconclusive`, which is the skill's explicit
+     * default and never means "retryable".
+     */
+    failureClass?: ReconciliationFailureClass;
   };
   workspace: {
     state: "not-recorded" | "clean" | "dirty" | "missing" | "unavailable";
@@ -1093,13 +1100,81 @@ export interface ReconciliationFinding {
 }
 
 /**
- * Advisory only. Nothing consumes this as authority: the inspector never
- * mutates the board and there is no apply surface until CORE-115 lands.
+ * How a verification failure is classified by the proof record it came from
+ * (SKILL-037, `kanmer-verify/SKILL.md`). `implementation` and `plan` route the
+ * ticket backwards; `transient` and `inconclusive` leave it in Verifying.
+ */
+export type ReconciliationFailureClass = "implementation" | "plan" | "transient" | "inconclusive";
+
+/**
+ * The exhaustive set of recoveries reconciliation may propose and
+ * `apply_reconciliation` may perform (FRD-028 acceptance 2-4). Every member is
+ * composed from an existing store verb: there is no new stage, no force-push,
+ * no required-check bypass, no worktree or branch deletion and no workspace
+ * cleaning.
+ */
+export type ReconciliationAction =
+  | "MOVE_TO_IMPLEMENTING"
+  | "MOVE_TO_VERIFYING"
+  | "MOVE_TO_DONE"
+  | "ROUTE_VERIFICATION_FAILURE"
+  | "RELEASE_CLEAN_TERMINAL_CLAIM"
+  | "RECOVER_EXPIRED_CLAIM";
+
+/**
+ * Advisory, and bound to the state it was computed from. `advisory: true`
+ * still means nothing in core consumes it as authority — an apply is always an
+ * explicit second call. `revision` is the ticket's document-inclusive revision
+ * (FRD-029) at collection time and is what `apply_reconciliation` compares
+ * `expected_revision` against, so a proof rewritten between the dry run and the
+ * apply is refused rather than acted on (CORE-113 F-015). The pure classifier
+ * cannot read a store, so it emits `revision: null` and the host boundary that
+ * collected the evidence stamps the real value.
  */
 export interface ReconciliationRecommendation {
-  action: "MOVE_TO_IMPLEMENTING" | "MOVE_TO_VERIFYING" | "MOVE_TO_DONE" | "RELEASE_CLEAN_TERMINAL_CLAIM";
+  action: ReconciliationAction;
   targetStatus?: string;
   advisory: true;
+  /** The ticket this recommendation was computed for. */
+  ticketId: string;
+  /** Document-inclusive revision it was computed from; null on a legacy-layout ticket. */
+  revision: string | null;
+}
+
+/**
+ * One explicit, revision-bound apply of a reconciliation action. The action
+ * and `targetStatus` come from a freshly re-collected recommendation, never
+ * from the caller's memory; `expectedRevision` is the freshness token and is
+ * passed straight into the store verb's own locked CAS.
+ */
+export interface ReconciliationApplyInput {
+  action: ReconciliationAction;
+  targetStatus?: string;
+  /** Document-inclusive revision CAS; refused with `Conflict:` when stale. */
+  expectedRevision: string;
+  /** Judged by the existing backward-move contract; never synthesised as `operator:` here. */
+  reason?: string;
+  /** Durable controller identity recorded by a claim recovery. */
+  controller?: string;
+  /** Who the audit line names; defaults to the store's activity actor. */
+  actor?: string;
+  /** Host-collected re-read recorded by a claim recovery (never acted on). */
+  recovery?: LeaseRecoveryEvidence;
+}
+
+/** Who was responsible, and at what stage, on either side of an applied action. */
+export interface ReconciliationResponsibility {
+  status: string;
+  controller: string | null;
+}
+
+export interface ReconciliationApplyResult {
+  item: Item;
+  action: ReconciliationAction;
+  from: ReconciliationResponsibility;
+  to: ReconciliationResponsibility;
+  /** The durable `## Transitions` line this apply appended. */
+  transition: string;
 }
 
 export interface ReconciliationResult {

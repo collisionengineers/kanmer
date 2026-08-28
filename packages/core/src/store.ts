@@ -47,8 +47,12 @@ import {
 } from "./board.js";
 import { FIRST_STAGE, STAGE_IDS, isStageId, stageIndex } from "./stages.js";
 import {
+  CAPTURE_DISPOSITIONS,
+  CAPTURE_PROFILE_ID,
   GOVERNING_DOC,
   QUESTIONS_RESOLVED,
+  isCaptureDisposition,
+  isCaptureItem,
   resolveProfileId,
   validateProfileMap,
   type ProfileMap,
@@ -682,6 +686,9 @@ export class KanmerStore {
     if (input.status !== undefined) assertStage(input.status);
     if (input.area !== undefined) assertFieldAgainstBoard(board, "area", input.area);
     if (input.profile !== undefined) assertProfileAgainstBoard(board, input.profile, input.requires);
+    if (input.profile === CAPTURE_PROFILE_ID) {
+      assertCaptureObservation(input.title, input.body);
+    }
     if (input.groups !== undefined) await this.assertGroups(input.groups);
     if (input.refs !== undefined) await this.assertRefs(input.refs);
     if (input.deployment !== undefined) assertDeploymentAgainstBoard(board, input.deployment);
@@ -753,6 +760,17 @@ export class KanmerStore {
       if (input.blocks !== undefined && input.blocks.length > 0) item.blocks = input.blocks;
       if (input.refs !== undefined && input.refs.length > 0) item.refs = input.refs;
       if (input.docs_todo === true) item.docs_todo = true;
+      // FRD-032: a capture never acquires document debt automatically. Nothing
+      // here defaults `docs_todo`, and the `capture` profile declares no
+      // `governing-doc` requirement, so the probe is never even consulted.
+      if (input.capture_evidence !== undefined && input.capture_evidence.length > 0) {
+        item.capture_evidence = input.capture_evidence;
+      }
+      if (input.profile === CAPTURE_PROFILE_ID) {
+        item.capture_actor = input.capture_actor?.trim() || this.actor;
+      } else if (input.capture_actor !== undefined && input.capture_actor.trim() !== "") {
+        item.capture_actor = input.capture_actor.trim();
+      }
       if (input.commits !== undefined && input.commits.length > 0) item.commits = input.commits;
       if (input.prs !== undefined && input.prs.length > 0) item.prs = input.prs;
       if (input.deployment !== undefined && input.deployment !== "") item.deployment = input.deployment;
@@ -817,7 +835,12 @@ export class KanmerStore {
           ? await this.backwardMoveEffects(loc, current, fields.status, reason)
           : null;
       const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: undefined };
-      const pruned = pruneUndefined({ ...fields, ...backwardEffects });
+      // FRD-032. Both rules read the ticket **as currently stored**, so a
+      // promotion is judged against the thing it is promoting rather than
+      // against the state its own patch is trying to create.
+      assertCaptureObservationRetained(current, fields);
+      const captureEffects = await this.captureDecisionEffects(current, fields);
+      const pruned = pruneUndefined({ ...fields, ...backwardEffects, ...captureEffects });
       const changed = changedFields(current, pruned);
       if (changed.length === 0) {
         // No-op writes must not bump `updated` — staleness reporting and the
@@ -834,6 +857,7 @@ export class KanmerStore {
       if (next.refs && next.refs.length === 0) delete next.refs;
       if (next.commits && next.commits.length === 0) delete next.commits;
       if (next.prs && next.prs.length === 0) delete next.prs;
+      if (next.capture_evidence && next.capture_evidence.length === 0) delete next.capture_evidence;
       if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
         board ??= await this.getBoard();
         await this.assertDocGate(loc.dir, board, next, current.status, next.status);
@@ -1320,6 +1344,18 @@ export class KanmerStore {
       const current = parseItem(await readText(loc.file));
       if (current.type !== "ticket") {
         throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
+      }
+      // FRD-032. `assertDocGate` below already refuses a capture any move into
+      // a working stage, but a take naming the stage the capture is already in
+      // never reaches it — and a taken capture is exactly what would then start
+      // appearing as an expired claim. So refuse the take itself.
+      if (isCaptureItem(current)) {
+        throw new Error(
+          `CAPTURE_NOT_PROMOTED: "${id}" is a quick capture and cannot be taken. ` +
+            `Promote it first with update_item capture_disposition ("promoted" or "batch", ` +
+            `together with the profile it should carry); until then it holds no claim, ` +
+            `no workspace and no lease.`,
+        );
       }
       await this.assertRevision(loc, id, input.expectedRevision);
       const board = await this.getBoard();
@@ -2008,6 +2044,121 @@ export class KanmerStore {
   }
 
   /**
+   * The promotion decision (FRD-032), resolved into the frontmatter it implies.
+   *
+   * Promotion is deliberately a *recorded decision on the ticket* rather than a
+   * new tool: a capture is already an ordinary ticket, `update_item` already
+   * carries derived effects (an `area` change moves the ticket's folder), and
+   * CORE-124 set the house precedent that additive frontmatter needs no new
+   * verb. Returning effects rather than writing means the whole promotion —
+   * disposition, link, archive and profile change — lands in the single atomic
+   * write `updateItem` was already going to make, under the board write lock.
+   *
+   * Every refusal is a stable code, because a controller routes on them.
+   */
+  private async captureDecisionEffects(
+    current: Item,
+    fields: UpdateItemPatch,
+  ): Promise<Partial<Item>> {
+    const raw = fields.capture_disposition;
+    if (raw === undefined) {
+      if (fields.capture_result !== undefined) {
+        throw new Error(
+          `CAPTURE_DISPOSITION_INVALID: "${current.id}" was given capture_result without ` +
+            `capture_disposition. A result only means something as part of a recorded decision.`,
+        );
+      }
+      return {};
+    }
+    const disposition = raw.trim();
+    if (!isCaptureDisposition(disposition)) {
+      throw new Error(
+        `CAPTURE_DISPOSITION_INVALID: "${disposition}" is not a promotion outcome. ` +
+          `Valid: ${CAPTURE_DISPOSITIONS.join(", ")}.`,
+      );
+    }
+    if (!isCaptureItem(current)) {
+      throw new Error(
+        `CAPTURE_DISPOSITION_INVALID: "${current.id}" is not a capture ` +
+          `(profile "${current.profile ?? "unset"}"), so there is no capture to promote.`,
+      );
+    }
+    // `retained` is the one decision that may be revisited: "keep it as a
+    // capture for now" must not be the trap that freezes it as one forever.
+    if (current.capture_disposition && current.capture_disposition !== "retained") {
+      throw new Error(
+        `CAPTURE_ALREADY_DISPOSED: "${current.id}" was already promoted as ` +
+          `"${current.capture_disposition}"` +
+          (current.capture_decided_at ? ` on ${current.capture_decided_at}` : "") +
+          `. A promotion is recorded once; only "retained" may be superseded.`,
+      );
+    }
+    const result = fields.capture_result?.trim();
+    const promotesProfile =
+      fields.profile !== undefined && fields.profile !== CAPTURE_PROFILE_ID;
+    const requireResult = (what: string): string => {
+      if (!result) {
+        throw new Error(
+          `CAPTURE_RESULT_REQUIRED: disposition "${disposition}" must name ${what} ` +
+            `in capture_result — the outcome is what makes the decision auditable.`,
+        );
+      }
+      return result;
+    };
+    const requireProfile = (): void => {
+      if (!promotesProfile) {
+        throw new Error(
+          `CAPTURE_PROMOTION_NEEDS_PROFILE: disposition "${disposition}" turns "${current.id}" ` +
+            `into deliverable work, so the same update must set a non-capture profile. ` +
+            `Its gate requirements then apply from this decision onward, never retroactively.`,
+        );
+      }
+    };
+
+    const effects: Partial<Item> = {
+      capture_disposition: disposition,
+      capture_decided_at: nowIso(),
+      capture_decided_by: this.actor,
+    };
+    if (result) effects.capture_result = result;
+
+    switch (disposition) {
+      case "duplicate": {
+        const target = requireResult("the ticket this duplicates");
+        if (!(await this.getItem(target))) {
+          throw new Error(
+            `CAPTURE_RESULT_REQUIRED: no item with id "${target}" to merge "${current.id}" into.`,
+          );
+        }
+        const links = fields.links ?? current.links ?? [];
+        if (!links.includes(target)) effects.links = [...links, target];
+        effects.archived = true;
+        break;
+      }
+      case "already-fixed":
+      case "not-required":
+        effects.archived = true;
+        break;
+      case "batch":
+        requireResult("the small-fix batch it joins");
+        requireProfile();
+        break;
+      case "promoted":
+        requireProfile();
+        break;
+      case "retained":
+        if (promotesProfile) {
+          throw new Error(
+            `CAPTURE_DISPOSITION_INVALID: "retained" keeps "${current.id}" a capture, ` +
+              `so it cannot also set profile "${fields.profile}". Use "promoted" instead.`,
+          );
+        }
+        break;
+    }
+    return effects;
+  }
+
+  /**
    * Hard document gates on a transition — the generalisation of the old proof
    * gate. Resolve the ticket area's gates, evaluate them against the from→to
    * move (threshold semantics in {@link evaluateGates}), and throw once listing
@@ -2023,6 +2174,32 @@ export class KanmerStore {
     toStatus: string,
   ): Promise<void> {
     const report = await this.gateReport(ticketDir, board, item);
+
+    // FRD-032, and first because it is not a document question at all. A
+    // capture owes nothing, so the gate engine — which can only ask for
+    // evidence — would happily wave it all the way to Done in one move. What a
+    // capture actually needs is a *decision*, and this is the single choke
+    // point every stage change passes through (`updateItem`, `assertMoveAllowed`
+    // for `moveItem`, and `takeTicket`), which is what makes "promotion never
+    // silently selects a capture for autonomous delivery" a mechanism rather
+    // than a convention in a skill.
+    //
+    // The resolved profile is honoured as well as the explicit field: refusing
+    // more here is always safe, and it closes the area-`defaultProfile` case
+    // that the explicit-field predicate deliberately does not cover.
+    if (
+      toStatus !== FIRST_STAGE &&
+      (isCaptureItem(item) || report.profile === CAPTURE_PROFILE_ID)
+    ) {
+      throw new Error(
+        `CAPTURE_NOT_PROMOTED: "${item.id}" is a quick capture, so it cannot move to ` +
+          `"${toStatus}". A capture stays in "${FIRST_STAGE}" until it is promoted by an ` +
+          `explicit recorded decision — update_item with capture_disposition ` +
+          `("promoted" or "batch", together with the profile it should carry) turns it into ` +
+          `deliverable work; "duplicate", "already-fixed", "not-required" close it; ` +
+          `"retained" keeps it as it is.`,
+      );
+    }
 
     // Checked before the missing-document gate, because the two failures are
     // opposite: this one fires when every document is present. Reporting it as
@@ -2344,6 +2521,36 @@ function assertProfileAgainstBoard(
 }
 
 /**
+ * A capture must carry the two things that make it worth having: a concise
+ * title and the observation itself (FRD-032).
+ *
+ * The observation is the **body**, not a frontmatter field. That is what makes
+ * it searchable through the existing full-text search and visible in a board
+ * GUI that knows nothing about captures — and it keeps prose out of YAML.
+ * Evidence is separate and genuinely optional: an empty list is valid.
+ */
+function assertCaptureObservation(title: string | undefined, body: string | undefined): void {
+  const missing: string[] = [];
+  if (!(title ?? "").trim()) missing.push("a title");
+  if (!(body ?? "").trim()) missing.push("an observation (the ticket body)");
+  if (missing.length) {
+    throw new Error(
+      `CAPTURE_OBSERVATION_REQUIRED: a capture needs ${missing.join(" and ")}. ` +
+        `Optional evidence may be empty; these two may not.`,
+    );
+  }
+}
+
+/** The same rule on update: a capture may not be emptied out after the fact. */
+function assertCaptureObservationRetained(current: Item, fields: UpdateItemPatch): void {
+  const staysCapture =
+    fields.profile === CAPTURE_PROFILE_ID ||
+    (fields.profile === undefined && isCaptureItem(current));
+  if (!staysCapture) return;
+  assertCaptureObservation(fields.title ?? current.title, fields.body ?? current.body);
+}
+
+/**
  * Validate a per-ticket deployment value against the board's declared
  * environments. `n/a` (not deployable) and `not-deployed` are always accepted;
  * any other value must be one of `board.deployment.environments`. Rejected
@@ -2389,6 +2596,11 @@ function matchesFilter(item: Item, filter: ItemFilter): boolean {
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
   if (filter.group && !(item.groups ?? []).includes(filter.group)) return false;
+  // The ticket's *explicit* profile (FRD-032), which is what makes
+  // `profile: "capture"` the filter that shows or hides quick captures. An
+  // unset profile matches nothing here rather than matching the board default:
+  // a filter asks a question about the file, it does not resolve one.
+  if (filter.profile && item.profile !== filter.profile) return false;
   return true;
 }
 

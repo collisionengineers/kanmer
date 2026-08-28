@@ -9,6 +9,7 @@ import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
 import { LAST_STAGE, STAGES, type Stage } from "./stages.js";
 import {
+  CAPTURE_PROFILE_ID,
   DEFAULT_PROFILES,
   DEFAULT_PROFILE_ID,
   DEFAULT_PROOF_TYPES,
@@ -81,6 +82,33 @@ const FIX_REVIEW_PROFILE = "fix";
 const FIX_REVIEW_BOUNDARY = "enter-review";
 const FIX_REVIEW_REQUIREMENTS: readonly string[] = ["post-implementation-report"];
 
+/**
+ * Give every board the `capture` profile (FRD-032).
+ *
+ * Same reasoning as `injectFixEnterReview` above: `board.profiles ?? …` means a
+ * board that has ever been written carries its own table and never consults
+ * `DEFAULT_PROFILES` again, so editing that table alone would ship quick capture
+ * to new boards only. Every existing board — including the live one this repo is
+ * tracked on — would refuse `profile: "capture"` at `assertProfileAgainstBoard`.
+ *
+ * This injection is narrower than ADR-0014's. It adds a profile rather than a
+ * *boundary*, and the profile it adds declares no boundaries at all, so no
+ * profile's gated-boundary count changes and `collapsesPipeline` sees exactly
+ * what it saw before — the property ADR-0011's second limit exists to protect.
+ * It runs before the `questions-resolved` pass like its sibling, and that pass
+ * is a no-op on it: an empty map has no boundary to attach the requirement to.
+ *
+ * A board that already defines `capture` keeps its own version, whatever shape
+ * it has given it. FRD-032 is the authorisation; no ADR is required, because the
+ * one operation ADR-0011 guards against is the one this does not do.
+ */
+function injectCaptureProfile(
+  base: Record<string, ProfileMap>,
+): Record<string, ProfileMap> {
+  if (CAPTURE_PROFILE_ID in base) return base;
+  return { ...base, [CAPTURE_PROFILE_ID]: {} };
+}
+
 function injectFixEnterReview(
   base: Record<string, ProfileMap>,
 ): Record<string, ProfileMap> {
@@ -97,8 +125,9 @@ function injectFixEnterReview(
 
 /**
  * Profiles in force: the board's table, or the shipped defaults — with
- * `fix`'s `enter-review` added (ADR-0014, above) and then `questions-resolved`
- * injected into every boundary each profile already declares.
+ * `fix`'s `enter-review` added (ADR-0014, above), `capture` added (FRD-032,
+ * above), and then `questions-resolved` injected into every boundary each
+ * profile already declares.
  *
  * The injection is what makes "existing boards inherit the requirement"
  * (ADR-0011, FRD-009 R5) actually true. Editing `DEFAULT_PROFILES` alone would
@@ -140,8 +169,8 @@ function injectFixEnterReview(
 const QUESTIONS_BOUNDARIES: readonly string[] = ["leave-preparing", "enter-review", "enter-done"];
 
 export function resolveProfiles(board: BoardConfig): Record<string, ProfileMap> {
-  const base = injectFixEnterReview(
-    (board.profiles ?? DEFAULT_PROFILES) as Record<string, ProfileMap>,
+  const base = injectCaptureProfile(
+    injectFixEnterReview((board.profiles ?? DEFAULT_PROFILES) as Record<string, ProfileMap>),
   );
   const out: Record<string, ProfileMap> = {};
   for (const [id, profile] of Object.entries(base)) {

@@ -4,7 +4,7 @@ ticket, not of the board.
 
 A **profile** is the answer to "how much does this one owe?"
 
-## The four that ship
+## The five that ship
 
 | Profile | Owes |
 |---|---|
@@ -12,13 +12,39 @@ A **profile** is the answer to "how much does this one owe?"
 | **chore** | A plan before leaving Preparing; proof before Done. |
 | **feature** | A linked governing document before leaving Backlog; research, a files document, a plan and a checklist before leaving Preparing; a post-implementation report before Review; proof before Done. |
 | **spike** | Research before Done. Nothing else — a spike's output *is* the finding. |
+| **capture** | Nothing. A recorded observation, not yet work — see below. |
 
 There is also **custom**, which asks for nothing until you tell it what to ask
 for, ticket by ticket.
 
-Every profile except `spike` and `custom` additionally requires that the
-ticket's open questions are resolved at each of its boundaries. That is not a
-document — see below.
+Every profile except `spike`, `capture` and `custom` additionally requires that
+the ticket's open questions are resolved at each of its boundaries. That is not
+a document — see below.
+
+## Quick capture
+
+`capture` is the profile for the thing you noticed but cannot honestly size
+yet. It needs a title and a body — the observation — and nothing else. You can
+attach evidence, and you can leave it in Backlog forever; nothing will nag you
+about it, because there is nothing it owes.
+
+What makes it more than "a ticket with no documents" is the other half: a
+capture **cannot** leave Backlog, cannot be taken, and is never picked up by an
+autonomous run. It leaves that state only when someone records a decision about
+it — it was a duplicate, it was already fixed, it joins a small batch of fixes,
+it is real work with a real profile now, it stays a capture for now, or it no
+longer matters. Whichever it is, the decision is written on the ticket.
+
+That is the point. The failure mode captures prevent is the half-filed ticket:
+a one-line observation that looks like planned work, gets picked up by whoever
+is clearing the backlog, and turns out to be nobody's idea of a specification.
+A capture is honest about being an observation until a human says otherwise.
+
+Two limits worth knowing. The observation lives in the ticket body, so it is
+searchable like any other ticket — but a capture with an empty title or an empty
+body is refused, because those two are the whole record. And `capture` is not
+usable as an **area** or board default profile: it is a choice you make about
+one observation, not a weight you set for a whole area.
 
 ## Choosing one
 

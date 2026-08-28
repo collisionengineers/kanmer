@@ -491,6 +491,26 @@ export const ItemFrontmatterSchema = z
     commits: z.array(z.string()).optional(),
     /** PR references — number or URL — associated with this ticket (emitted only when non-empty). */
     prs: z.array(z.string()).optional(),
+    /**
+     * Quick capture (CORE-117, FRD-032). Every field is optional and additive,
+     * so a board written by an older Kanmer parses unchanged and re-emits these
+     * untouched (`.passthrough()` below, plus `orderKeys` in frontmatter.ts).
+     *
+     * The observation itself is deliberately **not** here: it is the ticket
+     * body, which is already searched by `searchItems` and already rendered by
+     * every board GUI. What lives in frontmatter is only what a machine has to
+     * reason about — the evidence list, who recorded it, and the one promotion
+     * decision that took it out of capture state.
+     */
+    capture_evidence: z.array(z.string()).optional(),
+    /** Who recorded the observation; stamped from the activity actor on create. */
+    capture_actor: z.string().optional(),
+    /** The recorded promotion outcome — one of `CAPTURE_DISPOSITIONS`. */
+    capture_disposition: z.string().optional(),
+    /** What the disposition resolved to: a ticket id, a batch id or a link. */
+    capture_result: z.string().optional(),
+    capture_decided_at: TimestampSchema.optional(),
+    capture_decided_by: z.string().optional(),
     /** Deployment status; only meaningful when the board declares environments. */
     deployment: z.string().optional(),
     archived: z.boolean().default(false),
@@ -517,6 +537,12 @@ export interface ItemFilter {
    * so this is a predicate over `item.groups` — nothing is read from the group.
    */
   group?: string;
+  /**
+   * Requirement profile (FRD-032). A predicate over the ticket's *explicit*
+   * `profile`, which is what makes `profile: "capture"` the filter that shows
+   * or hides quick captures. `searchItems` inherits it for free.
+   */
+  profile?: string;
   /** Include archived items (default false). */
   includeArchived?: boolean;
 }
@@ -545,6 +571,11 @@ export interface CreateItemInput {
   prs?: string[];
   /** Deployment status; only accepted when the board declares environments. */
   deployment?: string;
+  /** Optional capture evidence (FRD-032): screenshot paths, files or links. */
+  capture_evidence?: string[];
+  /** Who recorded the capture; defaults to the activity actor. */
+  capture_actor?: string;
+  /** The observation. Required, and refused when blank, for a `capture`. */
   body?: string;
 }
 
@@ -572,6 +603,16 @@ export interface UpdateItemPatch {
   prs?: string[];
   /** Deployment status; only accepted when the board declares environments. */
   deployment?: string;
+  /** Capture evidence (FRD-032); `[]` clears it. */
+  capture_evidence?: string[];
+  /**
+   * Record the promotion decision (FRD-032). Accepted only on a ticket that is
+   * currently a capture, validated against `CAPTURE_DISPOSITIONS`, and applied
+   * with the derived effect its outcome implies — see `store.updateItem`.
+   */
+  capture_disposition?: string;
+  /** What that decision resolved to: a ticket id, a batch id or a link. */
+  capture_result?: string;
   /** Fractional sort key (moveItem's `position` computes this for you). */
   order?: number;
   body?: string;

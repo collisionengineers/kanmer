@@ -22,8 +22,8 @@ import {
 } from "./CustomRequiresEditor.js";
 import type { Vocabulary } from "../lib/profileDraft.js";
 
-/** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3). */
-const PROFILE_IDS = ["feature", "fix", "chore", "spike", "custom"] as const;
+/** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3, FRD-032). */
+const PROFILE_IDS = ["feature", "fix", "chore", "spike", "capture", "custom"] as const;
 import { progressDocId } from "../lib/docProgress.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { ChipInput } from "./ChipInput.js";

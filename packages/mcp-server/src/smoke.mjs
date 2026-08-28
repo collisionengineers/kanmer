@@ -1092,6 +1092,8 @@ try {
     "area",
     "assignee",
     "blocked",
+    "capture",
+    "capture_disposition",
     "checklist",
     "created",
     "deployment",
@@ -1114,6 +1116,91 @@ try {
     JSON.stringify(summaryKeys) === JSON.stringify(expectedKeys),
     summaryKeys.join(","),
   );
+
+  // Quick capture (FRD-032): the whole round trip over the wire — record an
+  // observation with no documents, find it by its words, be refused delivery,
+  // then promote it with one recorded decision.
+  const capture = await client.callTool({
+    name: "create_item",
+    arguments: {
+      type: "ticket",
+      title: "Board flickers on renewal",
+      profile: "capture",
+      body: "The column header flickers when a lease is renewed mid-drag.",
+      capture_evidence: ["shots/flicker.png"],
+    },
+  });
+  const captureId = JSON.parse(textOf(capture)).id;
+  const captureFile = path.join(sandbox, ".kanmer", "areas", "_none", captureId, `${captureId}.md`);
+  const captureRaw = fs.readFileSync(captureFile, "utf8");
+  check(
+    "create_item profile capture writes the observation and its evidence, and no docs_todo",
+    captureRaw.includes("profile: capture") &&
+      captureRaw.includes("shots/flicker.png") &&
+      captureRaw.includes("flickers when a lease is renewed") &&
+      !captureRaw.includes("docs_todo"),
+    captureId,
+  );
+  const captureNoBody = await client.callTool({
+    name: "create_item",
+    arguments: { type: "ticket", title: "No observation", profile: "capture" },
+  });
+  check(
+    "create_item refuses a capture with no observation",
+    textOf(captureNoBody).includes("CAPTURE_OBSERVATION_REQUIRED"),
+  );
+  const captureGates = await client.callTool({
+    name: "get_doc_gates",
+    arguments: { id: captureId },
+  });
+  check(
+    "a capture owes no document at any boundary",
+    JSON.parse(textOf(captureGates)).boundaries.length === 0,
+  );
+  const captureSearch = await client.callTool({
+    name: "search_items",
+    arguments: { query: "flickers", profile: "capture" },
+  });
+  check(
+    "search_items finds a capture by the words of its observation",
+    JSON.parse(textOf(captureSearch)).some((i) => i.id === captureId && i.capture === true),
+  );
+  const captureMove = await client.callTool({
+    name: "move_item",
+    arguments: { id: captureId, status: "preparing" },
+  });
+  check(
+    "move_item refuses an unpromoted capture",
+    textOf(captureMove).includes("CAPTURE_NOT_PROMOTED"),
+  );
+  const captureTake = await client.callTool({
+    name: "take_ticket",
+    arguments: { id: captureId, branch: "capture-branch" },
+  });
+  check("take_ticket refuses an unpromoted capture", textOf(captureTake).includes("CAPTURE_NOT_PROMOTED"));
+  const capturePacket = await client.callTool({
+    name: "get_execution_packet",
+    arguments: { id: captureId },
+  });
+  check(
+    "get_execution_packet refuses an unpromoted capture",
+    JSON.parse(textOf(capturePacket)).ready === false &&
+      textOf(capturePacket).includes("quick capture"),
+  );
+  const promoted = await client.callTool({
+    name: "update_item",
+    arguments: { id: captureId, capture_disposition: "promoted", profile: "chore" },
+  });
+  const promotedItem = JSON.parse(textOf(promoted));
+  check(
+    "update_item records the promotion decision and applies the new profile",
+    promotedItem.capture_disposition === "promoted" &&
+      promotedItem.profile === "chore" &&
+      typeof promotedItem.capture_decided_at === "string" &&
+      fs.readFileSync(captureFile, "utf8").includes("capture_disposition: promoted"),
+    `${promotedItem.profile}/${promotedItem.capture_disposition}`,
+  );
+  await client.callTool({ name: "update_item", arguments: { id: captureId, archived: true } });
 
   // Areas: add an area column, create a ticket in it, filter by it.
   const addArea = await client.callTool({

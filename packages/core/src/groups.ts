@@ -46,12 +46,13 @@ export interface Group extends GroupFrontmatter {
 
 /** A group with everything derived from its members (never stored). */
 export interface GroupWithMembers extends Group {
-  members: { id: string; title: string; status: string; archived: boolean }[];
-  /** Non-archived members per stage — the progress bar's input. */
+  /** Every member, captures included — membership is visibility, not workload. */
+  members: { id: string; title: string; status: string; archived: boolean; profile?: string }[];
+  /** Non-archived, non-capture members per stage — the progress bar's input. */
   progress: Record<string, number>;
-  /** Non-archived member count. */
+  /** Non-archived, non-capture member count (FRD-032). */
   total: number;
-  /** Non-archived members in the final stage. */
+  /** Non-archived, non-capture members in the final stage. */
   complete: number;
 }
 

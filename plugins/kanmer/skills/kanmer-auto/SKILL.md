@@ -52,7 +52,13 @@ store secrets, full prompts, or large command output.
    group's order and show the resolved roster, target point, and exclusions to
    the operator before starting. `list_items`, not `get_group`, supplies the
    taken, blocked, and profile fields needed for selection.
-2. Read the group's shared context. Drop archived or blocked tickets. A ticket
+2. Read the group's shared context. Drop archived or blocked tickets, and drop
+   **quick captures** — a summary with `capture: true` (profile `capture`) is a
+   recorded observation, not selected work, and promoting one is an operator
+   decision this skill never makes. Report them in the exclusions rather than
+   silently omitting them; the server refuses to move, take or packet one
+   (`CAPTURE_NOT_PROMOTED`), so a capture that reaches selection is a bug in the
+   roster, not a ticket to unblock. A ticket
    taken by another actor is handled by its claim state, never by `force`:
    - a **live** foreign claim (`claim_expires_at` in the future, or a
      pause/resume note in its scratch) belongs to that actor — drop it and

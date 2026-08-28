@@ -61,9 +61,10 @@ describe("board prefix uniqueness", () => {
     expect(lastStageId()).toBe("done");
   });
 
-  it("the default board ships the four profiles and a sane default", () => {
+  it("the default board ships the five profiles and a sane default", () => {
     const board = defaultBoardConfig();
     expect(Object.keys(board.profiles ?? {}).sort()).toEqual([
+      "capture",
       "chore",
       "custom",
       "feature",

@@ -19,6 +19,7 @@ import {
   computeBlockedIds,
   detectStaleness,
   getLinkGraph,
+  isCaptureItem,
   lastStageId,
   linkItems,
   migrateBoard,
@@ -395,6 +396,10 @@ async function summarise(item: Item, blockedIds: Set<string>) {
     order: item.order ?? null,
     blocked: blockedIds.has(item.id),
     refs: item.refs ?? null,
+    // FRD-032: a roster needs to see, in the listing it already makes, that a
+    // ticket is an unpromoted observation rather than selectable work.
+    capture: isCaptureItem(item),
+    capture_disposition: item.capture_disposition ?? null,
     deployment: item.deployment ?? null,
     created: item.created,
     updated: item.updated,
@@ -432,7 +437,7 @@ const createFields = {
     .string()
     .optional()
     .describe(
-      "Requirement profile — which documents each stage boundary needs of this ticket. feature | fix | chore | spike | custom (see list_board → profiles). Omit to inherit the area default, then the board default.",
+      "Requirement profile — which documents each stage boundary needs of this ticket. feature | fix | chore | spike | capture | custom (see list_board → profiles). Omit to inherit the area default, then the board default. `capture` files a quick observation: it needs a title and a body and owes no document, but it stays in Backlog and cannot be taken until an explicit promotion decision.",
     ),
   requires: z
     .record(z.array(z.string()))
@@ -458,7 +463,22 @@ const createFields = {
     .string()
     .optional()
     .describe("Deployment status (only when the board declares environments): n/a | not-deployed | <env-id>"),
-  body: z.string().optional().describe("Markdown body; may contain [[id]] wiki-links"),
+  capture_evidence: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Quick-capture evidence: screenshot/file paths or links. Optional — an empty or absent list is valid.",
+    ),
+  capture_actor: z
+    .string()
+    .optional()
+    .describe("Who observed this; defaults to the calling client on a capture"),
+  body: z
+    .string()
+    .optional()
+    .describe(
+      "Markdown body; may contain [[id]] wiki-links. On a `capture` this is the observation itself and is required — that is what makes it searchable.",
+    ),
 };
 
 const expectedProjectField = z
@@ -792,6 +812,12 @@ server.registerTool(
       status: z.string().optional().describe("Filter by status id (workflow stage)"),
       area: z.string().optional().describe("Filter by area id"),
       label: z.string().optional().describe("Filter by a label"),
+      profile: z
+        .string()
+        .optional()
+        .describe(
+          "Filter by the ticket's explicit requirement profile. `capture` lists only quick captures; every other value excludes them. Matches the field as written, so a ticket inheriting its area/board default matches nothing here.",
+        ),
       group: z
         .string()
         .optional()
@@ -809,12 +835,13 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guard(
-    async ({ type, status, area, label, group, include_archived, updated_since, sort, limit }) => {
+    async ({ type, status, area, label, profile, group, include_archived, updated_since, sort, limit }) => {
       const { items, warnings } = await store.listItemsWithWarnings({
         type,
         status,
         area,
         label,
+        profile,
         group,
         includeArchived: include_archived,
       });
@@ -1043,18 +1070,22 @@ server.registerTool(
   {
     title: "Search items",
     description:
-      "Full-text search over item id, title, body, labels and assignee. Returns matching summaries.",
+      "Full-text search over item id, title, body, labels and assignee — so a quick capture is found by the words of its observation, which is stored as the body. Returns matching summaries. Narrow with profile the same way list_items does.",
     inputSchema: {
       query: z.string().describe("Text to search for"),
       type: itemTypeEnum.optional().describe("Restrict to one item type"),
+      profile: z
+        .string()
+        .optional()
+        .describe("Restrict to one explicit requirement profile, e.g. \"capture\""),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ query, type }) => {
+  guard(async ({ query, type, profile }) => {
     const blocked = await blockedSet();
     return ok(
       await Promise.all(
-        (await store.searchItems(query, { type })).map((i) => summarise(i, blocked)),
+        (await store.searchItems(query, { type, profile })).map((i) => summarise(i, blocked)),
       ),
     );
   }),
@@ -1323,7 +1354,7 @@ server.registerTool(
   {
     title: "Create an item",
     description:
-      "Create a ticket. Returns the created item including its allocated id — tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. Creation is ungated: a ticket may be created directly in any stage (imports/backfills of finished work) — the document gates apply on move_item, not creation. Link governing docs with refs (each must exist) or set docs_todo. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+      "Create a ticket. Returns the created item including its allocated id — tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. Creation is ungated: a ticket may be created directly in any stage (imports/backfills of finished work) — the document gates apply on move_item, not creation. Link governing docs with refs (each must exist) or set docs_todo. To record an observation you are not ready to size, use profile \"capture\": it needs only a title and a body (the observation) plus optional capture_evidence, never acquires docs_todo, and stays out of goal selection until it is promoted. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
     inputSchema: createFields,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
@@ -1363,7 +1394,7 @@ server.registerTool(
   {
     title: "Update an item",
     description:
-      "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder — the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here — create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
+      "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder — the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here — create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten. This is also where a quick capture is promoted: capture_disposition records one deliberate outcome and applies the link, archive or profile change it implies, in the same atomic write.",
     inputSchema: {
       id: z.string().describe("Item id to update"),
       title: z.string().optional(),
@@ -1374,7 +1405,7 @@ server.registerTool(
         .string()
         .optional()
         .describe(
-          "Requirement profile: feature | fix | chore | spike | custom. Gates re-evaluate immediately — changing it can unblock a move that was blocked a moment ago.",
+          "Requirement profile: feature | fix | chore | spike | capture | custom. Gates re-evaluate immediately — changing it can unblock a move that was blocked a moment ago, and promoting a capture applies its new profile's requirements only from that decision onward.",
         ),
       requires: z
         .record(z.array(z.string()))
@@ -1396,6 +1427,20 @@ server.registerTool(
         .string()
         .optional()
         .describe("Deployment status; pass \"\" to clear (only when the board declares environments)"),
+      capture_evidence: z
+        .array(z.string())
+        .optional()
+        .describe("Quick-capture evidence (paths or links); [] clears it"),
+      capture_disposition: z
+        .string()
+        .optional()
+        .describe(
+          "Promote a capture with one recorded decision: duplicate | already-fixed | batch | promoted | retained | not-required. `duplicate` needs capture_result naming the ticket it merges into (it is linked and archived); `already-fixed` and `not-required` archive it; `batch` needs capture_result naming the batch AND a non-capture profile in the same call; `promoted` needs that profile; `retained` keeps it a capture and is the only decision that may later be superseded.",
+        ),
+      capture_result: z
+        .string()
+        .optional()
+        .describe("What the disposition resolved to: a ticket id, a batch id or a link"),
       body: z.string().optional(),
       archived: z.boolean().optional(),
       expected_revision: expectedRevisionField,

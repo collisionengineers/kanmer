@@ -9,9 +9,11 @@ import type {
   TicketDocumentWithVersion,
 } from "@kanmer/core";
 import {
+  CAPTURE_PROFILE_ID,
   compileStepPacket,
   contentVersion,
   extractAtxSection,
+  isCaptureItem,
   leaseConfig,
   leaseState,
   parsePlan,
@@ -494,6 +496,14 @@ export async function getExecutionPacket(input: {
   }
   if (gates.profile === "spike") {
     return refuse(project, `Profile "spike" is research-first; execution packets are not available for spikes.`, [], item, gates);
+  }
+  // FRD-032. A capture owes no document, so `missingRequirements` below would
+  // report nothing missing and hand a worker a "ready" packet for an
+  // observation nobody has decided to deliver. Refused here, beside the spike
+  // refusal, for the same reason: the profile says this is not implementation
+  // work yet.
+  if (isCaptureItem(item) || gates.profile === CAPTURE_PROFILE_ID) {
+    return refuse(project, `"${id}" is a quick capture, not planned work. Promote it first with update_item capture_disposition ("promoted" or "batch") and the profile it should carry; a capture is never selected for autonomous delivery.`, [], item, gates);
   }
 
   const missing = missingRequirements(gates);

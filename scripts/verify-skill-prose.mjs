@@ -591,5 +591,133 @@ for (const [name, ok] of remediationContract) {
   check(name, ok, ok ? "contract present" : "SKILL-037 remediation-loop wording missing");
 }
 
+console.log("\n=== 19. SKILL-036 durable `/goal` orchestration contract ===");
+// FRD-034's controller is `kanmer-auto` extended, not a second orchestrator: the
+// durable run record, the status vocabulary, the reconciliation loop and the
+// stop predicates are already checks 13 and 14's, and forking them was the
+// explicit non-goal. What check 19 adds is the part FRD-034 asks for that no
+// tool reports and check 13 cannot see — the frozen roster, the preflight, the
+// overlap breadth, the sync-before-gate rule, the escalation boundary, the
+// active-stage invariants, and the evidence rules a two-day multi-controller
+// run paid for. Each is asserted in the one skill that can act on it, exactly
+// as check 18 does, because a rewrite that drops one silently reverts to the
+// failure it was written from.
+const goalContract = [
+  [
+    "kanmer-auto accepts the five goal scopes and freezes its roster",
+    /one ticket, one explicit existing group, one area, an explicit\s+ticket list, or the prepared board/i.test(autoSkill) &&
+      /run\s+host group/i.test(autoSkill) &&
+      /never re-resolved/i.test(autoSkill) &&
+      /created after that freeze never joins\s+a running roster/i.test(autoSkill) &&
+      /quick capture[\s\S]{0,200}only after an explicit promotion/i.test(autoSkill) &&
+      /never the project, and never a ticket merely because the\s+ticket exists on the board/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto preflights identity, delivery target and board health",
+    /### Preflight before the first mutation/.test(autoSkill) &&
+      /project_fingerprint/.test(autoSkill) &&
+      /never hardcodes `main`/i.test(autoSkill) &&
+      /verification target/i.test(autoSkill) &&
+      /get_status\.boardWorktree/.test(autoSkill),
+  ],
+  [
+    "kanmer-auto detects overlap beyond the files document and holds contending rails",
+    /contract or API surface/i.test(autoSkill) &&
+      /lockfile/i.test(autoSkill) &&
+      /heavyweight shared resource/i.test(autoSkill) &&
+      /hold the second rail rather than reading its flake as a regression/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto pushes the board before it trusts a gate result",
+    /### Push the board before trusting a gate/.test(autoSkill) &&
+      /reads the \*\*remote\*\*\s+board tip/i.test(autoSkill) &&
+      /rev-parse origin\/kanmer-board/.test(autoSkill) &&
+      /SYNC_REQUIRED/.test(autoSkill) &&
+      /never commit or push the board branch outside an explicit grant/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto bounds churn and adds no second route around the budget",
+    /one automatic replan/i.test(autoSkill) &&
+      /REMEDIATION_BUDGET_EXHAUSTED/.test(autoSkill) &&
+      /to get around that refusal/i.test(autoSkill) &&
+      /reason beginning `operator:`/.test(autoSkill) &&
+      /still fails materially after its one\s+replan/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto states the active Review and Verifying invariants",
+    /### Active Review and Verifying invariants/.test(autoSkill) &&
+      /active or immediately queued reviewer/i.test(autoSkill) &&
+      /active or immediately queued verification attempt/i.test(autoSkill) &&
+      /Verifying is not a holding column/i.test(autoSkill) &&
+      /unexplained Review or Verifying state/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto coordinates the merge, keeps role identities distinct, and still never merges",
+    /distinct \*\*run identity\*\*/i.test(autoSkill) &&
+      /\*\*coordinates\*\* the merge; it does not perform it/i.test(autoSkill) &&
+      /never runs `gh pr merge`/.test(autoSkill) &&
+      /required_conversation_resolution/.test(autoSkill),
+  ],
+  [
+    "kanmer-auto keeps the evidence rules no tool reports",
+    /### Read the evidence, not its summary/.test(autoSkill) &&
+      /never frontmatter-only/i.test(autoSkill) &&
+      /`threads_snapshot` is a YAML \*\*array\*\*/i.test(autoSkill) &&
+      /uses an \*\*absolute path\*\*/i.test(autoSkill) &&
+      /un-accepts the risk that was just accepted/i.test(autoSkill) &&
+      /secrets-manager listing command/i.test(autoSkill),
+  ],
+  [
+    "kanmer-review binds its gate reading to a pushed board and resolves what it disposes",
+    /does not re-run when the board is pushed/i.test(reviewSkill) &&
+      /required_conversation_resolution/.test(reviewSkill) &&
+      /dispositioning a finding and resolving its thread are one\s+obligation/i.test(reviewSkill) &&
+      /resolve\s+the thread only after that/i.test(reviewSkill),
+  ],
+  [
+    "kanmer-verify earns transient with evidence and reads a proof in full",
+    /`transient` is a conclusion you earn, never one you assert/i.test(verifySkill) &&
+      /same job at the same SHA with no code change/i.test(verifySkill) &&
+      /mechanism argument/i.test(verifySkill) &&
+      /Read a proof record \*\*in full\*\*/i.test(verifySkill) &&
+      /its own log paths/i.test(verifySkill),
+  ],
+];
+for (const [name, ok] of goalContract) {
+  check(name, ok, ok ? "contract present" : "SKILL-036 goal-controller wording missing");
+}
+
+// The run record is where a resumed controller learns what it is adopting, so
+// the scope, the granted authority and the resolved delivery target belong in
+// the template rather than in one run's prose.
+for (const field of ["scope:", "scope_selector:", "authority:", "delivery_target:"]) {
+  check(`run-state template records ${field}`, runStateBody.includes(field), field);
+}
+check(
+  "run-state Selection contract freezes the roster and the ledger tracks the replan",
+  /\*\*frozen at/.test(runStateBody) && /\| Replan \|/.test(runStateBody),
+  "frozen roster + replan column",
+);
+check(
+  "current-run pointer names the scope it is resuming",
+  /^scope: /m.test(currentRunBody) && /^scope_selector: /m.test(currentRunBody),
+  "scope + selector",
+);
+
+// Two claims that must stay absent. The first is the role boundary that
+// FRD-034's "the controller merges after the final independent pass" is easily
+// misread into — the live run's own invariant is that the reviewer merges. The
+// second is the bypass that would make CORE-121's operator gate decorative: the
+// store guards only review → implementing, so a controller answering an
+// exhausted budget by routing review → preparing has re-opened the remediation
+// loop on its own authority.
+const forbiddenGoalClaims = [
+  ["controller performing the merge itself", /controller (?:merges|may merge|then merges) the (?:PR|pull request)/i],
+  ["self-authorised replan after an exhausted budget", /budget is (?:spent|exhausted)[^.]*\breplan\b/i],
+];
+for (const [name, rule] of forbiddenGoalClaims) {
+  check(`no ${name}`, !rule.test(autoSkill), "unsafe controller claim absent");
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

@@ -79,7 +79,10 @@ report condition; do not reuse it by force or choose an unrecorded alternate.
 ## Run and record the evidence
 
 Read the plan/checklist and packet command hint already bound to the ticket,
-then run the named deterministic checks in the detached worktree. Do not
+then run the named deterministic checks in the detached worktree. Give this
+verification its own log paths, named from the ticket and merged SHA: two
+verifiers running at once and sharing one log file destroy each other's
+evidence. Do not
 invent a green result for a manual GUI, hosted GitHub, provider, deployment,
 or Windows-lock check that is unavailable. Record that attempt as
 `INCONCLUSIVE` with exit code `null` when no process ran. A failed command is
@@ -133,7 +136,14 @@ failure_class: implementation # implementation | plan | transient | inconclusive
   unmet requirement the plan never covered).
 - `transient` — the environment, not the change: flake, timeout under load,
   a hosted service unavailable, a known host quirk already recorded on the
-  board.
+  board. **`transient` is a conclusion you earn, never one you assert.** A red
+  run — local or hosted — is discharged only with all three of: a re-run of the
+  same job at the same SHA with no code change, a confirmation that the failing
+  test or file is untouched by this diff, and a mechanism argument for why the
+  change cannot reach it. Retain every attempt, red and green, in the proof.
+  Judging by a hosted rail is necessary and not sufficient: a single red hosted
+  run is no more proof of a regression than a single green local run is proof of
+  correctness.
 - `inconclusive` — no process ran or the evidence cannot distinguish the
   three above; say what would make it conclusive.
 
@@ -147,6 +157,11 @@ quotes the proof (every backward move is audited under `## Transitions`):
 | `inconclusive` | stays in Verifying | report the unavailable check and what would make it conclusive; hosted rails may be authoritative. Default for any non-PASS proof that names no class. |
 | `implementation` | `verifying` → `implementing` | `move_item` with `reason: "proof FAIL implementation: <summary>"`; the fix reuses the same ticket, branch and worktree, but the reviewed PR is already merged, so the fix necessarily opens a new PR against the integration target and the next review binds to that new PR. |
 | `plan` | `verifying` → `preparing` | `move_item` with `reason: "proof FAIL plan: <summary>"`; the plan is revised through `kanmer-plan` before any new implementation. |
+
+Read a proof record **in full** before acting on it, your own or an earlier
+one — the frontmatter carries the only machine-readable verdict, and prose
+appended below it can contradict `result:`. A frontmatter-only read is how a
+failed attempt gets reported as a pass.
 
 Only `PASS`, or an operator's `WAIVED_BY_OPERATOR`, permits the final move.
 Call `get_doc_gates` immediately before `move_item`; move one boundary only,

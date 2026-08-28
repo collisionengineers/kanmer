@@ -42,3 +42,16 @@ Current gates ignore these labels; use `get_doc_gates` for live gate behaviour.
 - **Deviation from the plan's Commands list:** `npm run verify` was **not run**. A linked git worktree has no `node_modules`, so the full rail cannot execute there, and `scripts/check-plugin-sync.mjs` refuses to run from a linked worktree by design. The bundle is untouched, so `plugin:check` is not owed. The focused rails (`verify:skills`, `verify:agents-block`, `test:scripts`, the fixture tests) were run instead, and hosted CI on the PR is the rail of record.
 - `npm run test:scripts` exited 1 with four failures, all discharged with evidence in the post-implementation report: two belong to `scripts/antigravity-plugin-config.test.mjs` (CORE-128's lane, untouched by this diff), and two are `ERR_MODULE_NOT_FOUND` on the unbuilt `packages/core/dist` — both re-run green from the built main checkout (`pass 2 / fail 0`) at the same code, with the diff confirmed not to touch either test file or anything it imports.
 - One operator-only question is parked in `open-questions` with its recommendation implemented as the conservative default; no follow-up ticket was filed, per HZN-008's Scope discipline section.
+
+---
+
+## Closeout — SKILL-036
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/<id>`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

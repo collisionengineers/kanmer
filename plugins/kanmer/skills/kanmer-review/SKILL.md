@@ -167,7 +167,13 @@ findings: []
 id of the board branch tip (`get_status.boardSync.localSha`, with `ahead` at 0)
 after the board has been pushed; the CI gate checks it is on the remote board
 and reports `SYNC_REQUIRED` when the attestation names a board the remote has
-never seen — push the board first, then write it. `expected_reviewers` is the
+never seen — push the board first, then write it. The gate reads the **remote**
+board tip and does not re-run when the board is pushed, so confirm the push
+before you treat any gate result as current — on a server that does not report
+`boardSync`, compare the board worktree's board-branch tip with its remote
+counterpart using absolute paths. A gate that passes while recording that no
+review attestation exists is that same stale board, not a verdict you may rely
+on. `expected_reviewers` is the
 settled set from the section above and `threads_snapshot` the thread list
 mapped to findings; this skill always writes both (an empty list is a truthful
 value when the controller named no reviewer or the head has no threads), and
@@ -182,7 +188,14 @@ risk, while frontmatter remains the machine-facing authority.
 
 Every comment gets a disposition. Fix it in the PR, reject it with a reason,
 accept the named risk, or file and link a blocking ticket. Do not silently
-drop a review thread. If changes are needed, write `needs-changes` and take
+drop a review thread. Branch protection that sets
+`required_conversation_resolution` holds the PR at a blocked merge state until
+every thread is resolved, however green the checks and whatever the approval
+count, so **dispositioning a finding and resolving its thread are one
+obligation** — yours, not the author's or the controller's. Post the disposition
+publicly on the PR first, so the record survives outside the board, and resolve
+the thread only after that. A review that disposes every finding and resolves no
+thread leaves a PR that cannot merge. If changes are needed, write `needs-changes` and take
 the sanctioned return below; do not merge. A stale head, stale plan version,
 changed ticket timestamp, new thread on the same head, unresolved
 blocker/major finding, or changed required checks requires a fresh gather and

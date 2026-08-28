@@ -227,7 +227,7 @@ kanmer/
         kanmer-review/    # 4-doc PR review, PR feedback → tickets, then merge → Verifying
         kanmer-verify/    # Verifying stage: validate on merged main, write proof.md → Done
         kanmer-closeout/  # post-merge: proof finalized, commits/prs/deployment, cleanup
-        kanmer-auto/      # clear an area via parallel subagents in conflict-free waves
+        kanmer-auto/      # durable /goal controller: frozen roster, bounded lanes, review+verify
         kanmer-report/    # board report: standup ("now") or retro ("since <period>")
         kanmer-groom/     # board-editing triage: dedupe, split, archive, doc-gate debt
         kanmer-import/    # GitHub issues → tickets, idempotent (PR feedback → kanmer-review)

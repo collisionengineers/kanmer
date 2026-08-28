@@ -360,7 +360,7 @@ test("goal contract validator rejects an unfrozen roster and a missing preflight
     assert.match(result.stdout, /FAIL {2}kanmer-auto accepts the five goal scopes and freezes its roster/);
     assert.match(result.stdout, /FAIL {2}kanmer-auto preflights identity, delivery target and board health/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -376,7 +376,7 @@ test("goal contract validator rejects trusting a stale gate and routing around a
     assert.match(result.stdout, /FAIL {2}kanmer-auto pushes the board before it trusts a gate result/);
     assert.match(result.stdout, /FAIL {2}kanmer-auto bounds churn and adds no second route around the budget/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -395,7 +395,7 @@ test("goal contract validator rejects a controller that merges or self-replans p
     assert.match(result.stdout, /FAIL {2}no controller performing the merge itself/);
     assert.match(result.stdout, /FAIL {2}no self-authorised replan after an exhausted budget/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -413,7 +413,7 @@ test("goal contract validator rejects a run record that loses its scope or roste
     assert.match(result.stdout, /FAIL {2}run-state Selection contract freezes the roster and the ledger tracks the replan/);
     assert.match(result.stdout, /FAIL {2}current-run pointer names the scope it is resuming/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -436,7 +436,7 @@ test("goal contract validator rejects a stale-gate review and an asserted transi
     assert.match(result.stdout, /FAIL {2}kanmer-review binds its gate reading to a pushed board/);
     assert.match(result.stdout, /FAIL {2}kanmer-verify earns transient with evidence and reads a proof in full/);
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -503,7 +503,7 @@ test("goal contract validator rejects a scope advertised with no resolution step
       expectFail(result.stdout, failed);
       expectPass(result.stdout, unaffected);
     } finally {
-      rmSync(fixture, { recursive: true, force: true });
+      removeTreeWithRetrySync(fixture);
     }
   }
 });
@@ -519,7 +519,7 @@ test("goal contract validator rejects a roster that is not frozen and gated the 
     assert.notEqual(result.status, 0);
     expectFail(result.stdout, "kanmer-auto freezes and gates every scope's roster identically");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -532,7 +532,7 @@ test("goal contract validator rejects a controller that rebases onto a hardcoded
     assert.notEqual(result.status, 0);
     expectFail(result.stdout, "kanmer-auto rebases onto the recorded delivery target, never a literal main");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -549,7 +549,7 @@ test("goal contract validator rejects a replan with no remediation-budget precon
     assert.notEqual(result.status, 0);
     expectFail(result.stdout, "kanmer-auto allows its one replan only before the remediation budget is spent");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -566,7 +566,7 @@ test("goal contract validator rejects an identity preflight a fresh run can neve
     assert.notEqual(result.status, 0);
     expectFail(result.stdout, "kanmer-auto's identity preflight covers a new run as well as a resumed one");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -583,7 +583,7 @@ test("goal contract validator rejects evidence hygiene that leaves an out-of-sco
     assert.notEqual(result.status, 0);
     expectFail(result.stdout, "kanmer-auto keeps `deferred-to-ticket` legal for an out-of-scope finding");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -596,7 +596,7 @@ test("goal contract validator rejects a sync check against a hardcoded board bra
     assert.notEqual(result.status, 0);
     expectFail(result.stdout, "kanmer-auto pushes the board before it trusts a gate result");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -613,7 +613,7 @@ test("goal contract validator rejects an active-Review invariant with no up-to-r
     assert.notEqual(result.status, 0);
     expectFail(result.stdout, "kanmer-auto states the active Review and Verifying invariants");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -635,7 +635,7 @@ test("goal contract validator rejects a run record that resumes at the pre-scope
     expectFail(result.stdout, "run-state template is stamped schema: 2");
     expectFail(result.stdout, "current-run template is stamped schema: 2");
   } finally {
-    rmSync(fixture, { recursive: true, force: true });
+    removeTreeWithRetrySync(fixture);
   }
 });
 
@@ -667,7 +667,7 @@ test("goal contract validator catches every phrasing of the two forbidden contro
       assert.notEqual(result.status, 0, `unguarded paraphrase: ${sentence}`);
       expectFail(result.stdout, failed);
     } finally {
-      rmSync(fixture, { recursive: true, force: true });
+      removeTreeWithRetrySync(fixture);
     }
   }
 });

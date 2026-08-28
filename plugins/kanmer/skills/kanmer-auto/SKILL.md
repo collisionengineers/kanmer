@@ -42,14 +42,26 @@ silently replaced. Validate its schema, group, project fingerprint, controller
 ownership, and referenced history path. A different controller owning a
 `running` record is a stop predicate.
 
+The current run-record schema is **`schema: 2`**, the version that carries
+`scope`, `scope_selector`, `authority` and `delivery_target`. A record still at
+`schema: 1` predates all four, so resuming it would restore a run with no frozen
+selector, no recorded authority and no resolved delivery target — exactly the
+state the rest of this skill assumes cannot exist. A schema-1 record is
+therefore **not** resumed as-is: stop, report it, and let the operator either
+complete those four fields and stamp `schema: 2`, or start a new run. An
+unknown or absent `schema` is the same stop.
+
 ### Preflight before the first mutation
 
 Before the roster is frozen, and before any ticket write or dispatch:
 
-- **Identity.** `get_status.project.fingerprint` must equal the run record's
-  `project_fingerprint`. A mismatch is a stop, not a value to overwrite. Send
-  the fingerprint as `expected_project` on writes when `compat.expectedProject`
-  is advertised as optional.
+- **Identity.** `get_status.project.fingerprint` is the run's identity. For a
+  **resumed** run it must equal the existing record's `project_fingerprint`,
+  and a mismatch is a stop, not a value to overwrite. For a **new** run there is
+  no record yet — the record is created after the roster is frozen — so the
+  fingerprint read here is the value written into it at creation, and there is
+  nothing to compare it against. Send the fingerprint as `expected_project` on
+  writes when `compat.expectedProject` is advertised as optional.
 - **Repo staleness.** Report every `get_status.repo.stale` entry. A `behind`
   artefact is an operator action through `kanmer-setup`; it is never a repair
   this controller performs in the middle of a run.
@@ -92,18 +104,40 @@ store secrets, full prompts, or large command output.
 
 ## 1. Roster and gates-first readiness
 
-1. Call `get_status`, then `list_items group: "<explicit group>"`; use the
-   group's order and show the resolved roster, target point, and exclusions to
-   the operator before starting. `list_items`, not `get_group`, supplies the
-   taken, blocked, and profile fields needed for selection.
-2. Read the group's shared context. Drop archived or blocked tickets, and drop
-   **quick captures** — a summary with `capture: true` (profile `capture`) is a
-   recorded observation, not selected work, and promoting one is an operator
-   decision this skill never makes. Report them in the exclusions rather than
-   silently omitting them; the server refuses to move, take or packet one
-   (`CAPTURE_NOT_PROMOTED`), so a capture that reaches selection is a bug in the
-   roster, not a ticket to unblock. A ticket
-   taken by another actor is handled by its claim state, never by `force`:
+1. Call `get_status`, then **resolve the roster from the run's declared
+   scope**. Each of the five scopes has its own resolution step, and every one
+   of them resolves through `list_items` or `get_item` — never `get_group`,
+   whose derived members carry only id/title/stage and not the taken, blocked
+   and profile fields selection needs:
+   - **ticket scope** — `get_item "<TICKET-ID>"` for the one named ticket. The
+     roster is that single id. The run still names a host group, and that
+     group's membership is never added to it.
+   - **group scope** — `list_items group: "<explicit group>"`, in the group's
+     order.
+   - **area scope** — `list_items area: "<area id>"`, in board order resolved
+     with `list_board`, not in id order.
+   - **list scope** — `get_item` for each id the operator named, in the order
+     they named them, which is the roster order. An unknown or archived id is a
+     stop before the freeze, never a silently dropped member.
+   - **board scope** — `list_items` with no scope filter, in board order: the
+     prepared board is every non-archived ticket that step 2's exclusions do
+     not drop.
+
+   Then show the resolved roster, its scope and selector, the target point and
+   the exclusions to the operator before starting. Whichever step produced it,
+   the result is one ordered list frozen into `## Selection contract` at that
+   moment and never re-resolved, and steps 2–6 below apply to it identically:
+   the gates-first readiness rules do not vary by scope, and a ticket that
+   appears in a later `list_items` answer never joins a roster that is already
+   frozen.
+2. Read the run host group's shared context. Drop archived or blocked tickets,
+   and drop **quick captures** — a summary with `capture: true` (profile
+   `capture`) is a recorded observation, not selected work, and promoting one is
+   an operator decision this skill never makes. Report them in the exclusions
+   rather than silently omitting them; the server refuses to move, take or
+   packet one (`CAPTURE_NOT_PROMOTED`), so a capture that reaches selection is a
+   bug in the roster, not a ticket to unblock. A ticket taken by another actor
+   is handled by its claim state, never by `force`:
    - a **live** foreign claim (`claim_expires_at` in the future, or a
      pause/resume note in its scratch) belongs to that actor — drop it and
      coordinate;
@@ -189,8 +223,13 @@ On every result or timeout, the controller:
    in the ledger/event log; and
 5. writes and reads back the run record before selecting another action.
 
-After anything merges to `main`, lanes still in flight rebase before opening a
-PR (`git fetch origin && git rebase origin/main`). A failed ticket does not
+After anything merges to the run's recorded `delivery_target`, lanes still in
+flight rebase onto that same target before opening a PR, with absolute paths and
+never a literal branch name (`git -C <absolute-lane-worktree> fetch origin`,
+then `git -C <absolute-lane-worktree> rebase origin/<delivery_target>`). The
+integration branch is policy resolved in the preflight, not a constant: a
+controller that types `main` here has hardcoded the one branch the preflight
+exists to stop it hardcoding. A failed ticket does not
 silently disappear: record the exact failure, release it only under the phase
 skill's rules, return it to the appropriate stage, and classify it in the run.
 
@@ -219,9 +258,16 @@ remote has already seen. Before treating one as current, confirm the board
 branch is pushed, from a normal checkout and with absolute paths:
 
 ```sh
-git -C <absolute-path-to-board-worktree> rev-parse kanmer-board
-git -C <absolute-repository-root> rev-parse origin/kanmer-board
+git -C <absolute-path-to-board-worktree> rev-parse <board-branch>
+git -C <absolute-repository-root> rev-parse origin/<board-branch>
 ```
+
+`<board-branch>` is the **configured** board branch, never a hardcoded
+`kanmer-board`: read it from `get_status.boardWorktree.expectedBranch`, which is
+the repository variable `KANMER_BOARD_BRANCH` the hosted gate itself uses and
+which falls back to `kanmer-board` only when unset. This is the same defect
+class as a hardcoded `main`, and it is wrong for the same reason — the default
+being right on this board is not the branch being fixed.
 
 The two must be equal. On a server that reports it, `get_status.boardSync` with
 `ahead` at 0 and a matching local SHA is the same fact; older servers do not
@@ -254,7 +300,12 @@ never commit or push the board branch outside an explicit grant.
   ticket needs a blocker or major finding, or one that blocks a named governing
   acceptance criterion. Everything else stays recorded as residual risk on the
   ticket that owns it, and a roster that grows faster than it clears is the
-  failure this prevents.
+  failure this prevents. The one exception is `kanmer-review`'s
+  **`deferred-to-ticket`** disposition, which is invalid without a linked
+  ticket: a finding the reviewer genuinely defers as out of scope takes that
+  disposition *and* its ticket whatever its severity, because the alternative is
+  a finding with no legal disposition at all. Deferring is the deliberate act; a
+  minor left as accepted residual risk is not deferred and gets no ticket.
 
 ### Bounded churn and the escalation boundary
 
@@ -264,10 +315,20 @@ them; what the controller owns is the route out when they are spent.
 
 - The delta review still blocks, and the blocking finding is a **plan** defect —
   the implementation does what the plan said and the plan is what is wrong. The
-  controller may take **one automatic replan** for that ticket: one `move_item`
-  to `preparing` with a reason quoting the finding ids, one fresh planning
-  subagent, one plan revision, then re-execute on the same ticket. Record it
-  once in the ledger's replan column. It does not raise `remediation_budget`.
+  controller may take **one automatic replan** for that ticket, and only while
+  the remediation budget is **still available before it is spent**. That
+  precondition is checked first, from the live item, and never satisfied by the
+  controller's own reading of the finding: read `review_round` and
+  `remediation_budget`, and a ticket whose `review_round` has already reached
+  its `remediation_budget` gets **no** automatic replan at all — that lane
+  belongs to the operator under the next bullet, and classifying its finding as
+  a plan defect does not change that. Classification decides *whether* a replan
+  is the right route; the budget decides whether one is available at all. When
+  the precondition holds: one `move_item` to `preparing` with a reason quoting
+  the finding ids, one fresh planning subagent, one plan revision, then
+  re-execute on the same ticket. Record it once in the ledger's replan column.
+  It does not raise `remediation_budget`, and it neither resets nor increments
+  `review_round`, so no number of replans can buy a fresh remediation round.
 - `move_item` refuses `REMEDIATION_BUDGET_EXHAUSTED`. The budget is genuinely
   spent. That lane goes `blocked` with the refusal quoted verbatim while the run
   continues other safe lanes. The controller **never** routes `review` →
@@ -282,7 +343,11 @@ them; what the controller owns is the route out when they are spent.
 ### Active Review and Verifying invariants
 
 A selected ticket in **Review** must have an open PR, a current head SHA, an
-active or immediately queued reviewer, and an attestation state. A selected
+active or immediately queued reviewer, and an attestation state. The one
+exemption is the supported **up to review** target point, whose stop condition
+is precisely a ticket parked in Review with its PR open: at that target such a
+ticket is **at target**, not unexplained, and requires no queued reviewer. Every
+other target still requires one. A selected
 ticket in **Verifying** must have a confirmed merged PR, an exact merge SHA, an
 active or immediately queued verification attempt, and a known proof state.
 

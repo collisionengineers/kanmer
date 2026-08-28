@@ -631,7 +631,10 @@ const goalContract = [
     "kanmer-auto pushes the board before it trusts a gate result",
     /### Push the board before trusting a gate/.test(autoSkill) &&
       /reads the \*\*remote\*\*\s+board tip/i.test(autoSkill) &&
-      /rev-parse origin\/kanmer-board/.test(autoSkill) &&
+      /rev-parse origin\/<board-branch>/.test(autoSkill) &&
+      /get_status\.boardWorktree\.expectedBranch/.test(autoSkill) &&
+      /KANMER_BOARD_BRANCH/.test(autoSkill) &&
+      !/rev-parse origin\/kanmer-board/.test(autoSkill) &&
       /SYNC_REQUIRED/.test(autoSkill) &&
       /never commit or push the board branch outside an explicit grant/i.test(autoSkill),
   ],
@@ -644,12 +647,37 @@ const goalContract = [
       /still fails materially after its one\s+replan/i.test(autoSkill),
   ],
   [
+    "kanmer-auto rebases onto the recorded delivery target, never a literal main",
+    /recorded `delivery_target`/.test(autoSkill) &&
+      /rebase origin\/<delivery_target>/.test(autoSkill) &&
+      /integration branch is policy resolved in the preflight/i.test(autoSkill) &&
+      !/rebase origin\/main/.test(autoSkill),
+  ],
+  [
+    "kanmer-auto allows its one replan only before the remediation budget is spent",
+    /still available before it is spent/i.test(autoSkill) &&
+      /already reached\s+its `remediation_budget` gets \*\*no\*\* automatic replan/i.test(autoSkill) &&
+      /neither resets nor increments\s+`review_round`/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto's identity preflight covers a new run as well as a resumed one",
+    /For a\s+\*\*resumed\*\* run it must equal the existing record's `project_fingerprint`/i.test(autoSkill) &&
+      /For a \*\*new\*\* run there is\s+no record yet/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto keeps `deferred-to-ticket` legal for an out-of-scope finding",
+    /\*\*`deferred-to-ticket`\*\* disposition, which is invalid without a linked\s+ticket/i.test(autoSkill) &&
+      /disposition \*and\* its ticket whatever its severity/i.test(autoSkill),
+  ],
+  [
     "kanmer-auto states the active Review and Verifying invariants",
     /### Active Review and Verifying invariants/.test(autoSkill) &&
       /active or immediately queued reviewer/i.test(autoSkill) &&
       /active or immediately queued verification attempt/i.test(autoSkill) &&
       /Verifying is not a holding column/i.test(autoSkill) &&
-      /unexplained Review or Verifying state/i.test(autoSkill),
+      /unexplained Review or Verifying state/i.test(autoSkill) &&
+      /exemption is the supported \*\*up to review\*\* target point/i.test(autoSkill) &&
+      /Every\s+other target still requires one/i.test(autoSkill),
   ],
   [
     "kanmer-auto coordinates the merge, keeps role identities distinct, and still never merges",
@@ -687,6 +715,42 @@ for (const [name, ok] of goalContract) {
   check(name, ok, ok ? "contract present" : "SKILL-036 goal-controller wording missing");
 }
 
+// F1: the orientation advertises five scopes, and an advertisement is not a
+// capability. Each scope gets its own named check so that deleting one
+// resolution step fails for that scope by name rather than being absorbed by a
+// neighbour, which is the difference between pinning the roster procedure and
+// pinning the sentence that claims it exists.
+const scopeResolution = [
+  ["ticket", /\*\*ticket scope\*\* — `get_item "<TICKET-ID>"`/],
+  ["group", /\*\*group scope\*\* — `list_items group: "<explicit group>"`/],
+  ["area", /\*\*area scope\*\* — `list_items area: "<area id>"`/],
+  ["list", /\*\*list scope\*\* — `get_item` for each id the operator named/],
+  ["board", /\*\*board scope\*\* — `list_items` with no scope filter/],
+];
+for (const [scope, rule] of scopeResolution) {
+  check(
+    `kanmer-auto resolves the roster for ${scope} scope`,
+    rule.test(autoSkill),
+    rule.test(autoSkill) ? "resolution step present" : "scope declared with no resolution step",
+  );
+}
+check(
+  "kanmer-auto freezes and gates every scope's roster identically",
+  /frozen into `## Selection contract` at that\s+moment and never re-resolved/.test(autoSkill) &&
+    /gates-first readiness rules do not vary by scope/i.test(autoSkill),
+  "one freeze rule, one readiness rule",
+);
+
+// F6: the four fields below arrived with schema 2, so a record left at schema 1
+// resumes without any of them unless the version says so.
+check(
+  "kanmer-auto requires run-record schema 2 and refuses to resume a schema-1 record",
+  /The current run-record schema is \*\*`schema: 2`\*\*/.test(autoSkill) &&
+    /A record still at\s+`schema: 1`/.test(autoSkill) &&
+    /\*\*not\*\* resumed as-is/i.test(autoSkill),
+  "schema 2 + schema-1 stop",
+);
+
 // The run record is where a resumed controller learns what it is adopting, so
 // the scope, the granted authority and the resolved delivery target belong in
 // the template rather than in one run's prose.
@@ -698,6 +762,9 @@ check(
   /\*\*frozen at/.test(runStateBody) && /\| Replan \|/.test(runStateBody),
   "frozen roster + replan column",
 );
+for (const [label, body] of [["run-state", runStateBody], ["current-run", currentRunBody]]) {
+  check(`${label} template is stamped schema: 2`, /^schema: 2$/m.test(body), "schema: 2");
+}
 check(
   "current-run pointer names the scope it is resuming",
   /^scope: /m.test(currentRunBody) && /^scope_selector: /m.test(currentRunBody),
@@ -711,12 +778,35 @@ check(
 // store guards only review → implementing, so a controller answering an
 // exhausted budget by routing review → preparing has re-opened the remediation
 // loop on its own authority.
+// Each name is backed by every phrasing that would make the name untrue, not by
+// one phrasing: a backstop that only catches the wording someone happened to
+// write first is a backstop that reports safety it does not have. The negations
+// the skill genuinely contains ("never runs `gh pr merge`", "never merges its
+// own PR", "budget is **still available before it is spent**") are not
+// contiguous matches for any rule below, so the affirmative claim is what fires.
 const forbiddenGoalClaims = [
-  ["controller performing the merge itself", /controller (?:merges|may merge|then merges) the (?:PR|pull request)/i],
-  ["self-authorised replan after an exhausted budget", /budget is (?:spent|exhausted)[^.]*\breplan\b/i],
+  [
+    "controller performing the merge itself",
+    [
+      /(?:controller|kanmer-auto) (?:merges|may merge|then merges|will merge) the (?:PR|pull request)/i,
+      /(?:controller|kanmer-auto) (?:performs|executes|carries out|completes) the merge/i,
+      /(?:controller|kanmer-auto) (?:runs|invokes|calls) `?gh pr merge/i,
+      /merge is performed by the (?:controller|orchestrator)/i,
+    ],
+  ],
+  [
+    "self-authorised replan after an exhausted budget",
+    [
+      /budget is[^.]*\b(?:spent|exhausted)\b[^.]*\breplans?\b/i,
+      /budget[- ]exhausted[^.]*\b(?:self-)?replans?\b/i,
+      /REMEDIATION_BUDGET_EXHAUSTED[^.]*\breplans?\b/i,
+      /\breplans?\b[^.]*\b(?:once|after|when|because)\s+the\s+(?:remediation\s+)?budget is (?:spent|exhausted)/i,
+    ],
+  ],
 ];
-for (const [name, rule] of forbiddenGoalClaims) {
-  check(`no ${name}`, !rule.test(autoSkill), "unsafe controller claim absent");
+for (const [name, rules] of forbiddenGoalClaims) {
+  const hit = rules.find((rule) => rule.test(autoSkill));
+  check(`no ${name}`, hit === undefined, hit ? `matched ${hit}` : "unsafe controller claim absent");
 }
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);

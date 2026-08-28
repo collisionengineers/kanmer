@@ -1,6 +1,6 @@
 ---
 kind: auto-run
-schema: 1
+schema: 2
 run_id: <UTC timestamp and controller slug>
 group: <EPIC-000 or HZN-000 — the run host group whose automation/ owns this record>
 scope: group

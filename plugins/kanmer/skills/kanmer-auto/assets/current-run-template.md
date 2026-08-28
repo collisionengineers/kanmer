@@ -1,6 +1,6 @@
 ---
 kind: auto-current
-schema: 1
+schema: 2
 run_id: <run_id>
 run_path: automation/runs/<run-id>.md
 group: <EPIC-000 or HZN-000 — run host group>

@@ -2,10 +2,10 @@
 
 ## Prepare
 
-- [ ] Re-read project identity, board branch, board local/remote equality, CORE-135 version, and protection baseline.
-- [ ] Sync the completed research, files, plan and checklist before execution.
-- [ ] Create `.worktrees/core-135` on `core-135-current-base-regate` from exact current `origin/main`.
-- [ ] Take CORE-135 with the exact branch/worktree and stable project fingerprint.
+- [x] Re-read project identity, board branch, board local/remote equality, CORE-135 version, and protection baseline.
+- [x] Sync the completed research, files, plan and checklist before execution.
+- [x] Create `.worktrees/core-135` on `core-135-current-base-regate` from exact current `origin/main`.
+- [x] Take CORE-135 with the exact branch/worktree and stable project fingerprint.
 
 ## Current-base protection
 

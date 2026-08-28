@@ -2,12 +2,15 @@
 id: CORE-135
 type: ticket
 title: Require current-base verification and activate board-push re-gating
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: release-controller
 profile: fix
 stageEntered:
   preparing: '2026-08-28T11:57:22.052Z'
+taken_at: '2026-08-28T12:02:32.407Z'
+branch: core-135-current-base-regate
+worktree: .worktrees/core-135
 labels:
   - reliable-autonomy
 links:
@@ -17,7 +20,7 @@ refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
 archived: false
 created: '2026-08-28T11:56:59.489Z'
-updated: '2026-08-28T11:57:22.052Z'
+updated: '2026-08-28T12:02:32.407Z'
 ---
 
 ## What

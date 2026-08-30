@@ -63,7 +63,7 @@
 - [ ] Wait for every expected automated reviewer on the exact head.
 - [ ] Obtain one fresh independent delta review bound to the exact head and
   pushed board inputs.
-- [ ] Publicly disposition and resolve all eight current GitHub threads.
+- [ ] Publicly disposition and resolve all nine current GitHub threads.
 - [ ] Replace the whole-file review attestation with an exact-head PASS.
 - [ ] Sync the board and require exact-head `verify` plus `kanmer-gate` green.
 - [ ] Merge PR #304 and verify the exact merge SHA.

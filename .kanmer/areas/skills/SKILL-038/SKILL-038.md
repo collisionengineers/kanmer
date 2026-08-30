@@ -11,6 +11,7 @@ profile: fix
 stageEntered:
   preparing: '2026-08-28T07:14:56.353Z'
   review: '2026-08-28T07:45:24.771Z'
+  implementing: '2026-08-28T13:08:50.695Z'
 taken_at: '2026-08-28T07:20:16.060Z'
 branch: skill-038-blocked-dependents
 worktree: .worktrees/skill-038
@@ -25,12 +26,12 @@ blocks:
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 commits:
-  - 8010881c4e48ffabe97aba674361980f8ab3b279
+  - 22c3cfa239e87893cc6fc639d27746273e614754
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/304'
 archived: false
 created: '2026-08-28T06:35:43.709Z'
-updated: '2026-08-28T12:42:07.902Z'
+updated: '2026-08-30T21:04:25.412Z'
 ---
 
 ## What

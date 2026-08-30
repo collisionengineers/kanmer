@@ -377,3 +377,89 @@ footer, the post-implementation report is written, and SKILL-038 is in
 ### Acceptance
 
 The final PR is based on exact current main, contains only the six declared files, has no open blocker/major finding or unresolved thread, and has fresh exact-head `verify` plus `kanmer-gate`. The fresh-head check creation also completes CORE-135's remaining stale-base proof.
+
+
+---
+
+## Exact-head delta-remediation amendment — PR #304 head `8010881c4e48ffabe97aba674361980f8ab3b279`
+
+This amendment supersedes the earlier cycle and legacy-successor steps only where
+they set the whole run blocked during selection or allowed a successor before
+legacy workers were quiescent. It is the one consolidated response to
+F-001–F-004 in review attestation `301136bc9e266eab`.
+
+### Root-cause invariant
+
+Roster resolution is one ordered pipeline:
+
+1. apply every ordinary exclusion, including archived/capture rules and live
+   foreign-claim handling;
+2. resolve external-blocker exclusions to a fixed point;
+3. build the remaining live blocker graph and detect every cyclic strongly
+   connected component plus self-loop;
+4. give cycle members and all transitive downstream dependents terminal
+   `blocked` dispositions that name the originating cycle;
+5. retain and order only the remaining safe acyclic internal chains.
+
+A cyclic component does not stop unrelated work. The run stays `running` while
+any safe lane is queued or active and becomes `blocked` only after every safe
+lane is terminal.
+
+Legacy schema transition has a separate fail-closed invariant: reconcile every
+recorded lane, worker, claim, workspace, Git/PR/CI fact and result before
+changing the legacy run or pointer. An active or uncertain legacy worker means
+no terminal rewrite, no successor, and no pointer change; preserve exact
+evidence and stop for operator handoff. Only when every legacy worker is proven
+inactive may the complete old ledger be preserved, terminally closed under its
+own schema, and linked to a distinct schema-3 successor.
+
+### Files and symbols
+
+- `plugins/kanmer/skills/kanmer-auto/SKILL.md`
+  - schema-1/2 transition paragraph: add reconciliation/quiescence gate and the
+    no-mutation/no-successor uncertain path;
+  - §1 step 2: put claim handling before dependency closure, make external
+    exclusions a fixed point, detect SCCs/self-loops, propagate through
+    downstream dependents, and defer run-wide `blocked` until safe lanes end.
+- `AGENTS.md` item 22: mirror the ordered selection pipeline, downstream
+  terminality, independent-lane continuation, and legacy quiescence rule.
+- `scripts/verify-skill-prose.mjs` check 19: pin each ordering/safety clause by
+  its own named assertion; update the schema transition and AGENTS assertions.
+- `scripts/verify-skill-prose.test.mjs`: add isolated mutation fixtures using
+  the existing copied-tree helpers and `removeTreeWithRetrySync`.
+- Both schema-3 templates remain unchanged unless a focused assertion proves a
+  missing required field; no template change is expected in this delta.
+
+### Required negative scenarios
+
+- `A ↔ B` with A live-foreign-claimed: A is excluded for the claim, then B is
+  excluded with A named; no cycle is recorded.
+- `A ↔ B`, `B → C → E`, plus independent D: A/B/C/E are terminally blocked
+  and undispatched with the cycle witness; D reaches its target; only then does
+  the run become blocked.
+- Multiple cyclic components plus a self-loop: every component has an ordered
+  witness path and complete member set; downstream propagation names the
+  correct origin.
+- Active and uncertain schema-1/2 workers: the old ledger and pointer are
+  byte-preserved and no successor exists.
+- Fully quiescent schema-1/2 run: preserve the complete ledger, use a terminal
+  status legal to that schema, record reason and successor id, then create and
+  read back one distinct schema-3 successor.
+- Existing acyclic internal, outside-roster blocker, retry-budget, schema stamp,
+  CORE-128 separation and mandatory-section tests stay green.
+
+### Verification and handoff
+
+Run `npm run build:core`, `npm run verify:skills`,
+`node --test scripts/verify-skill-prose.test.mjs`, `git diff --check`, then
+one uninterrupted `npm run verify` at the final committed head. Derive counts
+from results. Re-prove the mandatory section remains 1,877 bytes with SHA-256
+`03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`,
+the diff remains exactly the declared six files with no `packages/**`, and all
+teardowns use the shared retry helper.
+
+Amend the existing single commit, push only with lease against exact remote
+`8010881c4e48ffabe97aba674361980f8ab3b279`, wait for new exact-head checks and
+automated review, then perform one delta review limited to F-001–F-008, changed
+lines, direct contracts and tests. No thread is resolved before public durable
+disposition and the passing delta attestation.

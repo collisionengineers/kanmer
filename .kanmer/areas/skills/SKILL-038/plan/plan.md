@@ -499,3 +499,63 @@ existing verbatim refusal. No second exception is introduced. Run the focused
 skill validator and mutation suite, re-prove the mandatory-section hash and
 six-file boundary, then run one complete `npm run verify` rail at the amended
 exact head before review resumes.
+
+
+---
+
+## Root-cause replan — exact-head F-010 through F-012
+
+Automated Codex review at exact head
+`339be5c802197bdd3e96c7dcbda591c02f9fe972` settled with three additional
+major findings:
+
+- F-010 / `PRRT_kwDOT2PEds6dkP3F`: the classified-only route prevents the
+  same-SHA evidence rerun that `kanmer-verify` requires before a proof can earn
+  `transient`.
+- F-011 / `PRRT_kwDOT2PEds6dkP3G`: an acyclic blocker intentionally stopped at
+  an early target such as Review remains live on the board, so its dependent
+  can stay queued forever.
+- F-012 / `PRRT_kwDOT2PEds6dkP3I`: several independent AGENTS validator
+  conjuncts still lack their own deletion/weakening mutation.
+
+### One coherent correction
+
+1. Use one budget and one durable `Transient` count for two explicitly
+   authorised **fresh independent verifier** entries. The evidence-bootstrap
+   entry is legal only when the prior proof is `INCONCLUSIVE`, explicitly names
+   a missing same-job/same-SHA rerun, confirms the failing path is untouched by
+   the diff, and records a concrete environmental mechanism hypothesis. The
+   controller increments `Transient` before dispatch; it never reruns the
+   command itself, reuses the same verifier, or self-classifies the result.
+2. A later fresh verifier may enter after authoritative
+   `failure_class: transient`; it also increments the same counter before
+   dispatch and is subject to the same `transient_retry_limit`. An unclassified
+   proof without that explicit evidence request, and every `implementation` or
+   `plan` proof, never enters. This matches the parked default-2 decision: one
+   count can establish the first classification and one remains for a genuinely
+   flaky later check.
+3. Resolve the requested target before dependency retention. The board's final
+   stage is the only target that clears a live `blocks` edge. For a shallower
+   target, keep the blocker as safe work to its requested stop, but give every
+   direct and transitive downstream dependent a terminal `blocked` run
+   disposition naming the blocker, requested target and final stage; dispatch
+   none. Independent lanes finish before the run becomes blocked. Only a target
+   capable of clearing all live internal blockers may use the existing serial
+   retention rule.
+4. Mirror both distinctions in root `AGENTS.md`. Complete the existing AGENTS
+   mutation table for the outside-roster rule, safe internal retention, ordered
+   cycle witness, partial-target closure, classifier-evidence boundary, and
+   quiescent distinct schema-3 successor. Every row must fail the one AGENTS
+   check while the corresponding skill-level assertion remains green.
+
+### Files, negative cases and commands
+
+Modify only the existing four prose/validator files; both schema templates stay
+unchanged. Add focused cases for: first red -> one classifier evidence rerun ->
+transient -> fresh counted verifier; unclassified evidence without the exact bootstrap request and every implementation/plan proof get no dispatch; both authorised fresh verifier entries consume the same lane counter; `A -> B` at up-to-Review
+terminally blocks B after A reaches Review; the same chain at final closeout
+retains and orders both; multi-hop downstream closure plus independent D; and
+one mutation per guarded AGENTS clause. Preserve the six-file total diff,
+mandatory-section bytes/hash, schema stamps, CORE-128 separation and all prior
+negative cases. Run the validator and mutation suite, then one full clean
+`npm run verify` rail only after the new committed head is stable.

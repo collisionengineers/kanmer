@@ -4,30 +4,39 @@
 
 PR #304 is based on exact green main
 `add0da7fc17968796f43b3035065de400a4db2d4` and represented by one truthful
-final commit, `339be5c802197bdd3e96c7dcbda591c02f9fe972`.
+final commit, `0eece7d6eaa1272696095e84eee7e43397702729`.
 
 The controller contract now:
 
-- applies ordinary exclusions, including live foreign claims, before the
-  external-blocker fixed point and internal dependency graph;
-- keeps safe acyclic in-roster dependents queued behind their blockers and
-  excludes external blockers with their ids named;
-- detects every cyclic SCC and self-loop, records complete members and an
-  ordered witness, blocks every member and transitive downstream dependent,
-  and lets unrelated safe lanes finish before run-wide blocking;
+- applies ordinary exclusions, including live foreign claims, before external
+  blocker closure and dependency-graph construction;
+- resolves dependency feasibility against the requested terminal target before
+  retaining a dependent: a blocker that cannot reach the board's final stage
+  gives itself and every downstream dependent an explicit blocked disposition,
+  while a closeout/Done target and already-Done blockers retain valid acyclic
+  ordering;
+- keeps safe acyclic in-roster dependents queued behind their blockers, excludes
+  external blockers with their ids named, detects every cyclic SCC and
+  self-loop, blocks every cycle member and transitive downstream dependent, and
+  lets unrelated safe lanes finish before run-wide blocking;
 - persists `transient_retry_limit: 2` and a per-ticket `Transient` count in
-  schema 3, with an exact exhausted-budget refusal;
-- permits only one automatic verification retry route: a fresh independent
-  verifier after `kanmer-verify` classifies the prior exact-SHA proof
-  `transient`, while the persisted counter has room; direct, same-worker,
-  unclassified, and non-transient retries remain forbidden;
+  schema 3, with an exact exhausted-budget refusal and a frozen exhausted
+  schedule;
+- permits exactly two fresh independent-verifier entries into that single
+  persisted budget: an evidence-bootstrap request whose authoritative result is
+  `INCONCLUSIVE`/`inconclusive`, and a later authoritative exact-SHA
+  `transient` classification. The bootstrap must name the same failing job and
+  SHA, keep the failing path untouched, state a concrete environmental
+  mechanism hypothesis, and request fresh evidence. The controller cannot
+  self-classify and the same worker cannot retry;
 - reconciles every schema-1/schema-2 worker and requires proven quiescence
   before closing the preserved old record under its own schema and linking a
-  distinct schema-3 successor; active or uncertain legacy state leaves the
+  distinct schema-3 successor. Active or uncertain legacy state leaves the
   ledger and pointer byte-identical and creates no successor.
 
 Root `AGENTS.md` carries the same dependency, retry, and schema-transition
-contract. The validator and mutation suite pin each clause independently.
+contract. The validator and mutation suite pin the independently guarded
+clauses.
 
 ## Exact diff
 
@@ -50,12 +59,13 @@ The eleven numbered sections remain unchanged.
 
 ## Verification and retained attempts
 
-Focused evidence at exact final head `339be5c802197bdd3e96c7dcbda591c02f9fe972`:
+Focused evidence at exact final head
+`0eece7d6eaa1272696095e84eee7e43397702729`:
 
-- `npm run build:core`: PASS.
 - `node scripts/verify-skill-prose.mjs`: PASS.
-- `node --test scripts/verify-skill-prose.test.mjs`: PASS, 40/40.
-- `git diff --check`: PASS.
+- `node --test scripts/verify-skill-prose.test.mjs`: PASS, 41/41.
+- `npm run verify:skills`: PASS.
+- `git diff --check origin/main...HEAD`: PASS.
 
 Retained rails:
 
@@ -64,23 +74,34 @@ Retained rails:
    establishing host latency without a source change.
 2. Head `22c3cfa`: INCONCLUSIVE after external interruption.
 3. Head `22c3cfa`: PASS in one complete clean Windows rail on 2026-08-30.
-4. Head `f5a3837`: INCONCLUSIVE by deliberate stop after the independent delta
-   reviewer found that the new AGENTS retry invariant lacked mutation coverage.
-5. Final head `339be5c802197bdd3e96c7dcbda591c02f9fe972`: PASS in one uninterrupted
-   `npm run verify` Windows rail on 2026-08-30.
+4. Head `f5a3837`: INCONCLUSIVE by deliberate stop after independent review
+   found a changed-contract test gap.
+5. Head `339be5c`: PASS in one complete Windows rail.
+6. Final head `0eece7d6eaa1272696095e84eee7e43397702729`, standalone clean
+   checkout: INCONCLUSIVE. Core 562/562, GUI 524/524, MCP HTTP 144/144 and all
+   preceding work passed; scripts were 148/149 because the clone inherited a
+   filesystem `origin`, so the release-notes test generated a local-path PR
+   link. This was a verification-checkout metadata defect, not a source failure.
+7. The verification clone's `origin` alone was set to
+   `https://github.com/collisionengineers/kanmer.git`; the focused
+   release-notes test passed 1/1.
+8. The second complete `npm run verify` rail at the same exact final SHA then
+   passed uninterrupted: core 562/562, GUI 524/524, MCP HTTP 144/144, scripts
+   149/149, MCP smoke 338/338, protocol 50/50, discovery 13/13, AGENTS 31/31,
+   typecheck, documentation, headless smoke, MCPB, skills, and plugin
+   synchronization (40 tools, byte-identical bundle, 12 skill frontmatters).
 
-The final rail passed core 562/562, GUI 524/524, MCP HTTP 144/144, script
-148/148, MCP smoke 338/338, protocol 50/50, discovery 13/13, agents-block
-31/31, typecheck, documentation, MCPB and headless smoke, and plugin
-synchronization (40 tools, byte-identical bundle, 12 skills). The worktree
-remained clean.
+The source worktree is clean.
 
 ## Consolidated review remediation
 
-F-001 through F-008 remain fixed as previously recorded. Exact-head automated
-finding F-009 is also fixed: section 9 now explicitly reconciles the sole
-bounded proof-classified verification rerun with the general no-command-retry
-rule, and both the skill and canonical AGENTS forms have independent negative
-fixtures. Hosted exact-head checks, automated-review settlement, the formal
-independent PASS attestation, public thread dispositions, merge, and exact-merge
+F-001 through F-009 remain fixed. F-010 through F-012 are fixed together at the
+final head: the retry path has authoritative result and failure-class evidence
+on both permissible entries, dependency retention is target-aware and
+terminally propagates impossible targets, and each new AGENTS clause has a
+negative mutation. Independent pre-audit found no blocker or major finding
+after that remediation.
+
+Hosted exact-head checks, automated-review settlement, the formal independent
+PASS attestation, public thread dispositions, merge, and exact-merge
 verification remain review/verification work and are not claimed here.

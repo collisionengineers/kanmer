@@ -37,45 +37,54 @@
   `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
 - [x] Audit the final diff: exactly six declared files, no `packages/**`, no
   dependency or workflow change.
-- [x] Focused checks pass at exact commit `22c3cfa239e87893cc6fc639d27746273e614754`:
-  core build, skill validator, 39/39 mutation tests, and `git diff --check`.
-- [x] Retain the first final-head Windows rail: core 562/562 passed, GUI
-  522/524 with two unchanged fixed-5-second launcher timeouts; the same-SHA
-  focused launcher contract then passed 12/12.
-- [x] Retain the externally interrupted same-SHA rail as INCONCLUSIVE, not
-  PASS.
-- [x] One clean complete Windows `npm run verify` rail passes at exact commit
-  `22c3cfa239e87893cc6fc639d27746273e614754` on 2026-08-30.
-- [x] Write the corrected final-head post-implementation report.
+- [x] Retain all earlier exact-head verification attempts and their original
+  PASS, FAIL, or INCONCLUSIVE disposition.
 - [x] Commit with `Kanmer: SKILL-038`.
-
 - [x] Final focused validator and mutation suite pass at exact commit
-  `339be5c802197bdd3e96c7dcbda591c02f9fe972` (40/40 mutation tests).
+  `0eece7d6eaa1272696095e84eee7e43397702729` (41/41 mutation tests).
+- [x] Retain the first clean-checkout rail at the same exact head as
+  INCONCLUSIVE: all preceding suites passed and only the release-notes URL test
+  failed because the standalone clone inherited a filesystem origin.
+- [x] Change only the verification clone's `origin` metadata to the canonical
+  GitHub URL; focused release-notes test passes 1/1.
 - [x] One complete authoritative Windows `npm run verify` rail passes at exact
-  commit `339be5c802197bdd3e96c7dcbda591c02f9fe972`; the superseded `f5a3837` rail is retained as
-  INCONCLUSIVE because review found a changed-contract test gap while it ran.
+  commit `0eece7d6eaa1272696095e84eee7e43397702729`: core 562/562,
+  GUI 524/524, MCP HTTP 144/144, scripts 149/149, MCP smoke 338/338,
+  protocol 50/50, discovery 13/13, and AGENTS 31/31, plus typecheck,
+  documentation, headless, MCPB, skills, and plugin synchronization.
 
 ## Review, merge, and verification
 
-- [x] Push with lease against exact remote head
-  `22c3cfa239e87893cc6fc639d27746273e614754`.
-- [x] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
+- [ ] Push exact final head `0eece7d6eaa1272696095e84eee7e43397702729`
+  with lease against remote head `339be5c802197bdd3e96c7dcbda591c02f9fe972`.
+- [ ] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
 - [ ] Wait for every expected automated reviewer on the exact head.
 - [ ] Obtain one fresh independent delta review bound to the exact head and
   pushed board inputs.
-- [ ] Publicly disposition and resolve all nine current GitHub threads.
+- [ ] Publicly disposition and resolve every current GitHub thread.
 - [ ] Replace the whole-file review attestation with an exact-head PASS.
 - [ ] Sync the board and require exact-head `verify` plus `kanmer-gate` green.
 - [ ] Merge PR #304 and verify the exact merge SHA.
 - [ ] Write PASS proof, move through Verifying to Done, release the claim, and
   clean the workspace.
 
-
 ## Exact-head automated finding F-009
 
-- [x] Make the section-3 proof-classified bounded `transient` verification route
-  section 9's sole automatic command-retry exception.
+- [x] Make the section-3 proof-classified bounded `transient` verification
+  route section 9's sole automatic command-retry exception.
 - [x] Mirror the sole-exception invariant in root `AGENTS.md`.
 - [x] Mutation-pin both deletion and broadening of the exception without
   weakening the general no-retry rule.
 - [x] Re-run focused checks and one complete rail at the amended exact head.
+
+## Exact-head root-cause replan F-010–F-012
+
+- [x] Permit only two fresh counted verifier entries into one budgeted route:
+  an exact evidence-bootstrap request and a later `transient`-classified retry.
+- [x] Require same job/SHA, untouched-path evidence and a mechanism hypothesis
+  for bootstrap; prohibit controller self-classification and same-worker retry.
+- [x] Resolve dependency retention against the requested target; terminally
+  block all downstream dependents when that target cannot clear the blocker.
+- [x] Complete one negative AGENTS mutation per independently guarded clause.
+- [x] Re-run focused checks and one complete rail at exact immutable head
+  `0eece7d6eaa1272696095e84eee7e43397702729`.

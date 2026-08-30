@@ -2,38 +2,32 @@
 
 ## Outcome
 
-PR #304 is rebased onto exact green main
+PR #304 is based on exact green main
 `add0da7fc17968796f43b3035065de400a4db2d4` and represented by one truthful
-final commit, `22c3cfa239e87893cc6fc639d27746273e614754`.
+final commit, `339be5c802197bdd3e96c7dcbda591c02f9fe972`.
 
 The controller contract now:
 
-- distinguishes a board-wide `blocked` flag from a blocker inside the frozen
-  roster;
 - applies ordinary exclusions, including live foreign claims, before the
-  external-blocker fixed point and dependency graph;
-- keeps safe acyclic in-roster dependents queued behind their blockers;
-- excludes externally blocked dependents with the blocker ids named;
+  external-blocker fixed point and internal dependency graph;
+- keeps safe acyclic in-roster dependents queued behind their blockers and
+  excludes external blockers with their ids named;
 - detects every cyclic SCC and self-loop, records complete members and an
-  ordered witness path, and dispatches none;
-- propagates a terminal blocked disposition through every transitive
-  downstream dependent, naming the originating cycle;
-- keeps unrelated safe lanes running and moves the run to `blocked` only after
-  every safe lane is terminal;
-- bounds transient verification re-runs with `transient_retry_limit: 2`,
-  persisted with a per-ticket `Transient` counter;
-- uses run schema 3 for that counter and budget;
-- reconciles every schema-1/schema-2 lane, worker, claim, workspace, Git/PR/CI
-  fact, and result before any terminal transition;
-- preserves an active or uncertain legacy ledger and pointer byte-for-byte,
-  creates no successor, and requires exact evidence handoff;
-- only after every legacy worker is proven inactive, preserves and terminally
-  closes the old record under its own schema and links one distinct schema-3
-  successor with a fresh run id and roster;
-- refuses an absent or unknown schema and malformed schema-3 new-run fields.
+  ordered witness, blocks every member and transitive downstream dependent,
+  and lets unrelated safe lanes finish before run-wide blocking;
+- persists `transient_retry_limit: 2` and a per-ticket `Transient` count in
+  schema 3, with an exact exhausted-budget refusal;
+- permits only one automatic verification retry route: a fresh independent
+  verifier after `kanmer-verify` classifies the prior exact-SHA proof
+  `transient`, while the persisted counter has room; direct, same-worker,
+  unclassified, and non-transient retries remain forbidden;
+- reconciles every schema-1/schema-2 worker and requires proven quiescence
+  before closing the preserved old record under its own schema and linking a
+  distinct schema-3 successor; active or uncertain legacy state leaves the
+  ledger and pointer byte-identical and creates no successor.
 
-Root `AGENTS.md` carries the same ordered blocker, cycle-propagation,
-independent-lane, retry, and quiescent-schema-transition conventions.
+Root `AGENTS.md` carries the same dependency, retry, and schema-transition
+contract. The validator and mutation suite pin each clause independently.
 
 ## Exact diff
 
@@ -47,58 +41,46 @@ Exactly six declared files differ from `origin/main`:
 - `scripts/verify-skill-prose.test.mjs`
 
 There is no `packages/**`, dependency, manifest, or workflow change. CORE-128
-ownership is absent from both the net diff and branch history: no pre-existing
-main teardown is changed. Every fixture teardown introduced or retained by
-SKILL-038 uses `removeTreeWithRetrySync`; the file contains zero bare
-`rmSync(` calls.
+ownership is absent. Every SKILL-038 teardown uses
+`removeTreeWithRetrySync`; there is no bare `rmSync(` call.
 
 The mandatory-stop section remains exactly 1,877 UTF-8 bytes with SHA-256
 `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
-The eleven numbered sections remain `## 1.` through `## 11.`.
+The eleven numbered sections remain unchanged.
 
-## Tests and retained attempts
+## Verification and retained attempts
 
-Focused evidence at the exact committed tree:
+Focused evidence at exact final head `339be5c802197bdd3e96c7dcbda591c02f9fe972`:
 
 - `npm run build:core`: PASS.
 - `node scripts/verify-skill-prose.mjs`: PASS.
-- `node --test scripts/verify-skill-prose.test.mjs`: PASS, 39/39.
+- `node --test scripts/verify-skill-prose.test.mjs`: PASS, 40/40.
 - `git diff --check`: PASS.
 
-Retained final-head rail attempts:
+Retained rails:
 
-1. `npm run verify` on 2026-08-28: FAIL. Core passed 562/562; GUI passed
-   522/524. The two failures were unchanged portable-launcher tests hitting
-   Vitest's fixed five-second ceiling at 5.74s and 5.38s while the real-Git
-   GUI file took 992s. No source changed.
-2. Same-SHA focused launcher contract: PASS, 12/12; the two prior failures
-   completed in 2.38s each. This established the host-latency mechanism.
-3. A subsequent same-SHA full rail was externally interrupted during core
-   tests and is retained as INCONCLUSIVE.
-4. Clean Windows `npm run verify` on 2026-08-30: PASS at exact
-   `22c3cfa239e87893cc6fc639d27746273e614754`.
+1. Head `22c3cfa`: FAIL with core 562/562 and two unchanged fixed-five-second
+   GUI launcher timeouts; same-SHA focused launcher contract then passed 12/12,
+   establishing host latency without a source change.
+2. Head `22c3cfa`: INCONCLUSIVE after external interruption.
+3. Head `22c3cfa`: PASS in one complete clean Windows rail on 2026-08-30.
+4. Head `f5a3837`: INCONCLUSIVE by deliberate stop after the independent delta
+   reviewer found that the new AGENTS retry invariant lacked mutation coverage.
+5. Final head `339be5c802197bdd3e96c7dcbda591c02f9fe972`: PASS in one uninterrupted
+   `npm run verify` Windows rail on 2026-08-30.
 
-The successful complete rail included core 562/562, GUI 524/524, MCP HTTP
-144/144, script 147/147, MCP smoke 338/338, protocol 50/50, discovery 13/13,
-agents-block 31/31, MCPB and headless smoke, typecheck, documentation, and
-plugin synchronization (40 tools, byte-identical bundle, 12 skill
-frontmatters). It was one uninterrupted rail and the worktree remained clean.
+The final rail passed core 562/562, GUI 524/524, MCP HTTP 144/144, script
+148/148, MCP smoke 338/338, protocol 50/50, discovery 13/13, agents-block
+31/31, typecheck, documentation, MCPB and headless smoke, and plugin
+synchronization (40 tools, byte-identical bundle, 12 skills). The worktree
+remained clean.
 
 ## Consolidated review remediation
 
-All eight current findings are addressed in this one bounded batch:
-
-- F-001: legacy successor creation now requires complete reconciliation and
-  proven quiescence;
-- F-002: ordinary/live-claim exclusions precede external closure and graph
-  construction;
-- F-003: cycle blocking propagates through all downstream dependents;
-- F-004: independent safe lanes finish before run-wide blocking;
-- F-005: dependency cycles/self-loops terminate explicitly;
-- F-006: schema 3 and the preserved successor path version the retry contract;
-- F-007: CORE-128 remediation is absent;
-- F-008: canonical AGENTS conventions are present and mutation-pinned.
-
-Hosted exact-head checks, automated-review settlement, the independent delta
-review, public thread dispositions, merge, and exact-merge verification remain
-review/verification work and are not claimed here.
+F-001 through F-008 remain fixed as previously recorded. Exact-head automated
+finding F-009 is also fixed: section 9 now explicitly reconciles the sole
+bounded proof-classified verification rerun with the general no-command-retry
+rule, and both the skill and canonical AGENTS forms have independent negative
+fixtures. Hosted exact-head checks, automated-review settlement, the formal
+independent PASS attestation, public thread dispositions, merge, and exact-merge
+verification remain review/verification work and are not claimed here.

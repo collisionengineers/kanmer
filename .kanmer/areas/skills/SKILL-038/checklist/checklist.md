@@ -49,11 +49,17 @@
 - [x] Write the corrected final-head post-implementation report.
 - [x] Commit with `Kanmer: SKILL-038`.
 
+- [x] Final focused validator and mutation suite pass at exact commit
+  `339be5c802197bdd3e96c7dcbda591c02f9fe972` (40/40 mutation tests).
+- [x] One complete authoritative Windows `npm run verify` rail passes at exact
+  commit `339be5c802197bdd3e96c7dcbda591c02f9fe972`; the superseded `f5a3837` rail is retained as
+  INCONCLUSIVE because review found a changed-contract test gap while it ran.
+
 ## Review, merge, and verification
 
-- [ ] Push with lease against exact remote head
-  `8010881c4e48ffabe97aba674361980f8ab3b279`.
-- [ ] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
+- [x] Push with lease against exact remote head
+  `22c3cfa239e87893cc6fc639d27746273e614754`.
+- [x] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
 - [ ] Wait for every expected automated reviewer on the exact head.
 - [ ] Obtain one fresh independent delta review bound to the exact head and
   pushed board inputs.
@@ -63,3 +69,13 @@
 - [ ] Merge PR #304 and verify the exact merge SHA.
 - [ ] Write PASS proof, move through Verifying to Done, release the claim, and
   clean the workspace.
+
+
+## Exact-head automated finding F-009
+
+- [x] Make the section-3 proof-classified bounded `transient` verification route
+  section 9's sole automatic command-retry exception.
+- [x] Mirror the sole-exception invariant in root `AGENTS.md`.
+- [x] Mutation-pin both deletion and broadening of the exception without
+  weakening the general no-retry rule.
+- [x] Re-run focused checks and one complete rail at the amended exact head.

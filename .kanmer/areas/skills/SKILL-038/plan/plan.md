@@ -463,3 +463,39 @@ Amend the existing single commit, push only with lease against exact remote
 automated review, then perform one delta review limited to F-001–F-008, changed
 lines, direct contracts and tests. No thread is resolved before public durable
 disposition and the passing delta attestation.
+
+
+---
+
+## Exact-head automated finding amendment — F-009
+
+Automated Codex review at exact PR head
+`22c3cfa239e87893cc6fc639d27746273e614754` identified one remaining major
+contract contradiction: section 3 authorises bounded re-runs only after a proof
+is explicitly classified `transient`, while section 9 still forbids every
+automatic verification retry without naming that route.
+
+### Coherent correction
+
+- In `plugins/kanmer/skills/kanmer-auto/SKILL.md` section 9, retain the
+  blanket ban for implementation, migration, test and build commands. Make the
+  section-3 proof-classified `transient` verification route the sole explicit
+  exception, and bind it to the recorded numeric limit and durable counter.
+- In root `AGENTS.md` item 22, state the same sole-exception invariant so the
+  canonical controller inventory cannot disagree with the skill.
+- In `scripts/verify-skill-prose.mjs`, strengthen the retry/force contract and
+  add a named assertion that requires both halves: no general command retry and
+  exactly one bounded proof-classified verification exception.
+- In `scripts/verify-skill-prose.test.mjs`, mutate away the exception and mutate
+  it into an unclassified/unbounded retry. Each mutation must fail its own named
+  check while an unrelated sibling remains green.
+
+### Negative cases and commands
+
+A failed verification without an authoritative `transient` proof remains a
+hard no-retry. A proof-classified transient attempt with remaining recorded
+budget may re-run once through section 3. An exhausted budget blocks with the
+existing verbatim refusal. No second exception is introduced. Run the focused
+skill validator and mutation suite, re-prove the mandatory-section hash and
+six-file boundary, then run one complete `npm run verify` rail at the amended
+exact head before review resumes.

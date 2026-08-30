@@ -4,7 +4,7 @@
 
 PR #304 is based on exact green main
 `add0da7fc17968796f43b3035065de400a4db2d4` and represented by one truthful
-final commit, `1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`.
+final commit, `5d13609c39b27b99df5f586a0bb300cdf1c591cc`.
 
 The controller contract now:
 
@@ -55,7 +55,7 @@ The mandatory-stop section remains exactly 1,877 UTF-8 bytes with SHA-256
 
 ## Verification and retained attempts
 
-Focused evidence at exact final head
+Retained F-015 evidence at the prior exact head
 `1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`:
 
 - `node scripts/verify-skill-prose.mjs`: PASS.
@@ -121,3 +121,40 @@ At exact immutable head `1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`:
   562/562, GUI 524/524, MCP HTTP 144/144, scripts 149/149, MCP smoke 338/338,
   protocol 50/50, discovery 13/13, AGENTS 31/31, typecheck, docs, headless,
   MCPB, skills, and plugin synchronization.
+
+## Final controller-state remediation and exact-head evidence
+
+F-016 through F-021 were fixed together without expanding the six-file diff.
+The final controller contract now:
+
+- evaluates ordinary exclusions before target satisfaction, then determines
+  target-reached members before any dependency pruning;
+- preserves target-reached members and their outgoing live blocker evidence;
+- defers expired-claim transfer until a surviving member's first assignment;
+- snapshots and revalidates dependency safety before every assignment and after
+  every result, while keeping roster membership immutable;
+- propagates a terminal non-clearing blocker failure to every transitive
+  unsatisfied dependent without stopping unrelated safe lanes; and
+- durably prepares one deterministic legacy successor, preserves the exact
+  legacy roster and dispositions by default, rolls interrupted transitions
+  forward idempotently, and refuses malformed or conflicting intent.
+
+At exact immutable commit
+`5d13609c39b27b99df5f586a0bb300cdf1c591cc`:
+
+- `node scripts/verify-skill-prose.mjs`: PASS.
+- `node --test scripts/verify-skill-prose.test.mjs`: PASS, 44/44.
+- `npm run test:scripts`: PASS, 152/152.
+- `npm run verify:skills`: PASS.
+- `git diff --check`: PASS.
+- Mandatory stop predicates: 1,877 bytes, SHA-256
+  `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
+- Complete clean Windows `npm run verify`: PASS from detached standalone
+  checkout
+  `C:\\Users\\Alex\\Documents\\GitHub\\kanmer-verify-skill038-5d13609c`,
+  with canonical GitHub origin configured before the run. It passed core
+  562/562, GUI 524/524, MCP HTTP 144/144, scripts 152/152, MCP smoke 338/338,
+  protocol 50/50, discovery 13/13, AGENTS 31/31, typecheck, documentation,
+  headless smoke, MCPB, skills, and byte-identical plugin synchronization.
+
+The source worktree and verification checkout were clean at the exact head.

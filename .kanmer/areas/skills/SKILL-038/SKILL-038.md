@@ -26,12 +26,12 @@ blocks:
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 commits:
-  - 1d319fd86e9f5ab74684fe6d9d46538b01a0ad20
+  - 5d13609c39b27b99df5f586a0bb300cdf1c591cc
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/304'
 archived: false
 created: '2026-08-28T06:35:43.709Z'
-updated: '2026-08-30T23:08:26.633Z'
+updated: '2026-08-30T23:49:31.513Z'
 ---
 
 ## What
@@ -88,8 +88,8 @@ Filed from the SKILL-036 PR #302 delta review (finding F-023, severity major, di
 
 ## Verification
 
-- [ ] A roster containing a blocker and its dependent freezes with **both** members and orders them into one serial lane.
-- [ ] A ticket blocked from outside the roster is still excluded, with its reason reported.
-- [ ] Deleting the board-worktree preflight bullet fails the check that names it (N-1).
-- [ ] A ticket exceeding the numeric `transient` retry bound blocks with the exact refusal instead of retrying (F-005).
-- [ ] `npm run verify:skills` passes, and each new clause has a mutation proving its named check fails on deletion without failing a sibling.
+- [x] A roster containing a blocker and its dependent freezes with **both** members and orders them into one serial lane.
+- [x] A ticket blocked from outside the roster is still excluded, with its reason reported.
+- [x] Deleting the board-worktree preflight bullet fails the check that names it (N-1).
+- [x] A ticket exceeding the numeric `transient` retry bound blocks with the exact refusal instead of retrying (F-005).
+- [x] `npm run verify:skills` passes, and each new clause has a mutation proving its named check fails on deletion without failing a sibling.

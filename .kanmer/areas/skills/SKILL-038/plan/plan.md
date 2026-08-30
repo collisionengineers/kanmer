@@ -659,3 +659,71 @@ prevents classified retries beneath a raised limit, or invents a third path must
 fail the named check. Run the focused validator, mutation suite,
 `npm run test:scripts`, `npm run verify:skills`, diff/hash checks, and one
 clean complete Windows `npm run verify` rail at the amended exact head.
+
+
+## Settled exact-head controller-state remediation F-016–F-021
+
+The exact-head automated review and independent delta review agree that six
+remaining majors reduce to two central state invariants.
+
+### A. Frozen membership, continuously revalidated eligibility
+
+Roster membership stays immutable, but dispatch eligibility is live state.
+
+- Resolve exact target satisfaction before dependency feasibility. A member that
+  already meets the requested stop remains in the roster with a terminal
+  target-satisfied disposition and is not excluded or blocked as a dependent.
+  Its board edge remains a live blocker for other unsatisfied members until that
+  edge is actually cleared.
+- Classify an expired foreign claim as eligible without transferring it during
+  selection. Transfer only immediately before the first assignment, after the
+  member survives target/dependency feasibility and the claim is re-read.
+- Persist the blocker graph, blocker liveness and relevant run dispositions as
+  the dependency snapshot.
+- Before every assignment and after every worker result, compare live state with
+  that snapshot. If it differs, keep membership frozen but re-run external
+  blocker closure, SCC/downstream closure and target feasibility for every
+  nonterminal member that still needs advancement; persist/read back the new
+  snapshot and dispositions before dispatch.
+- Treat a blocker's later terminal non-success run disposition as unable to clear
+  its edge. Propagate that reason to every queued transitive dependent while
+  unrelated safe lanes continue. Never silently reopen a terminal run
+  disposition.
+
+### B. Roster-preserving, restart-safe legacy succession
+
+Before closing a quiescent schema-1/schema-2 run, choose one deterministic
+successor id and append/read back a legacy-schema event containing the complete
+recoverable successor intent: id, project, scope/selector, authority, delivery
+target, limits, exact ordered roster and existing dispositions.
+
+The normal successor preserves that exact legacy roster/disposition set and only
+initializes schema-3 retry state. A newly selected roster is permitted only under
+explicit operator authority recorded in the prepared intent; it is never an
+implicit consequence of schema transition.
+
+Startup handles both active and terminal legacy pointers carrying prepared
+intent. It re-proves quiescence before closing an active record; for a terminal
+record it creates the exact successor if absent or validates it byte-for-contract
+if present, then updates the pointer last. Missing, malformed or conflicting
+intent fails closed and never mints another id.
+
+### Files, symbols and negative cases
+
+- `plugins/kanmer/skills/kanmer-auto/SKILL.md`: selection order, dependency
+  snapshot/revalidation, deferred claim transfer, terminal-blocker propagation
+  and legacy transaction recovery.
+- `AGENTS.md`: mirror both controller-state invariants.
+- `scripts/verify-skill-prose.mjs`: named checks for target-first evaluation,
+  frozen-membership/live-eligibility revalidation, deferred transfer, terminal
+  propagation, roster preservation and idempotent roll-forward.
+- `scripts/verify-skill-prose.test.mjs`: one mutation per independently guarded
+  clause, retaining unaffected sibling assertions.
+
+Negative fixtures cover a late external blocker, late cycle, removed edge,
+terminal failed blocker with multi-hop dependents, already-at-Review dependent,
+expired claim later excluded, active prepared legacy transition, terminal
+half-transition with absent/present successor, conflicting intent, exact roster
+carry-forward and explicitly authorised fresh selection. Run the focused
+validator/mutation/scripts checks and one clean complete Windows rail at the
+amended exact head.

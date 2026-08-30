@@ -55,8 +55,8 @@
 
 ## Review, merge, and verification
 
-- [ ] Push exact final head `d10e79d1ac506e2e3b81a219a7c6749e670d45d9`
-  with lease against remote head `0eece7d6eaa1272696095e84eee7e43397702729`.
+- [ ] Push exact final head `5d13609c39b27b99df5f586a0bb300cdf1c591cc`
+  with lease against remote head `1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`.
 - [ ] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
 - [ ] Wait for every expected automated reviewer on the exact head.
 - [ ] Obtain one fresh independent delta review bound to the exact head and
@@ -116,4 +116,22 @@
 - [x] Permit classified-transient admissions while durable budget remains.
 - [x] State that raising the limit adds classified-path capacity, never a third path.
 - [x] Mirror and independently mutation-pin the contract in AGENTS and scripts.
+- [x] Re-run focused checks and one clean complete Windows rail at the amended head.
+
+
+## Settled exact-head controller-state remediation F-016–F-021
+
+- [x] Mark exact-target-satisfied members terminal before dependency feasibility.
+- [x] Keep target-satisfied members visible as blockers for unsatisfied members.
+- [x] Defer expired-claim transfer until the member is assignment-ready.
+- [x] Persist and revalidate dependency snapshots before assignment and after results.
+- [x] Re-run external, cycle/downstream and target closures without changing membership.
+- [x] Propagate a blocker's terminal non-success to queued transitive dependents.
+- [x] Preserve unrelated safe lanes and never reopen terminal run dispositions.
+- [x] Prepare/read back deterministic complete successor intent before legacy close.
+- [x] Preserve the exact legacy roster/dispositions by default.
+- [x] Permit fresh selection only under recorded explicit operator authority.
+- [x] Roll active/terminal prepared legacy transitions forward idempotently.
+- [x] Fail closed on missing, malformed or conflicting successor intent.
+- [x] Mirror and mutation-pin every clause in AGENTS and the validator.
 - [x] Re-run focused checks and one clean complete Windows rail at the amended head.

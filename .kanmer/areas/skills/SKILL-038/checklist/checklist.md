@@ -55,8 +55,8 @@
 
 ## Review, merge, and verification
 
-- [ ] Push exact final head `0eece7d6eaa1272696095e84eee7e43397702729`
-  with lease against remote head `339be5c802197bdd3e96c7dcbda591c02f9fe972`.
+- [ ] Push exact final head `d10e79d1ac506e2e3b81a219a7c6749e670d45d9`
+  with lease against remote head `0eece7d6eaa1272696095e84eee7e43397702729`.
 - [ ] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
 - [ ] Wait for every expected automated reviewer on the exact head.
 - [ ] Obtain one fresh independent delta review bound to the exact head and
@@ -88,3 +88,22 @@
 - [x] Complete one negative AGENTS mutation per independently guarded clause.
 - [x] Re-run focused checks and one complete rail at exact immutable head
   `0eece7d6eaa1272696095e84eee7e43397702729`.
+
+
+## Exact-head retry-state remediation F-013/F-014
+
+- [x] Accept canonical `FAIL | INCONCLUSIVE` plus exact
+  `failure_class: inconclusive` for evidence bootstrap, preserving every
+  existing evidence and independence obligation.
+- [x] Require a retained failed attempt when the bootstrap starts from
+  `result: FAIL`; continue refusing PASS, NOT_APPLICABLE, missing result, and
+  other classes.
+- [x] Reserve `Transient` once per logical verifier attempt and reuse that
+  reservation for the single confirmed pre-mutation launch retry.
+- [x] Keep unknown status non-dispatching; never decrement or reset a
+  reservation.
+- [x] Mirror and independently mutation-pin both contracts in root
+  `AGENTS.md`, the validator, and the mutation suite.
+- [x] Re-amend one truthful SKILL-038 commit and re-run focused checks.
+- [x] Run one complete clean Windows `npm run verify` rail at the next exact
+  immutable head.

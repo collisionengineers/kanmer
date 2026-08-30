@@ -559,3 +559,67 @@ one mutation per guarded AGENTS clause. Preserve the six-file total diff,
 mandatory-section bytes/hash, schema stamps, CORE-128 separation and all prior
 negative cases. Run the validator and mutation suite, then one full clean
 `npm run verify` rail only after the new committed head is stable.
+
+
+## Exact-head root-cause replan — F-013/F-014
+
+### Root cause
+
+The evidence-bootstrap and launch-retry rules were expressed in terms of
+physical dispatches instead of the canonical proof shape and one logical
+verification attempt:
+
+- `kanmer-verify` records an actual red command attempt as `FAIL`, while
+  `failure_class: inconclusive` is the correct aggregate classification before
+  the same-job rerun can distinguish a transient mechanism. Requiring only
+  top-level `INCONCLUSIVE` excludes that valid proof.
+- Section 9 permits one retry only when a verifier launch definitely failed
+  before mutation. Incrementing before every physical dispatch double-charges
+  the retry even though no additional verification process ran.
+
+### Bounded correction
+
+Only the existing six SKILL-038 files remain in scope.
+
+1. In `plugins/kanmer/skills/kanmer-auto/SKILL.md`, allow the bootstrap proof's
+   top-level result to be exactly `FAIL` or `INCONCLUSIVE`, keep
+   `failure_class: inconclusive`, and require the explicit same-job/same-SHA
+   request, retained failed attempt when one ran, untouched failing path,
+   environmental mechanism hypothesis, and a fresh independent verifier.
+   Continue refusing PASS, NOT_APPLICABLE, missing/other classes, self-
+   classification, and same-worker reruns.
+2. Define `Transient` as a durable reservation per logical verifier attempt:
+   increment once and read back before the first dispatch; the one confirmed
+   pre-mutation transport retry reuses that reservation and never increments,
+   decrements, or resets it. Unknown launch status dispatches nothing, and the
+   physical retry remains capped at one.
+3. Mirror both invariants in root `AGENTS.md`.
+4. Extend `scripts/verify-skill-prose.mjs` with exact anchors for both proof
+   results, retained-attempt obligation, logical-attempt reservation/reuse, and
+   no decrement/reset.
+5. Extend `scripts/verify-skill-prose.test.mjs` with one-clause mutations and
+   sibling assertions for every new guard. Preserve all assertions and
+   `removeTreeWithRetrySync` teardown use.
+6. Re-amend the one truthful SKILL-038 commit, run focused checks, then run one
+   complete clean Windows `npm run verify` rail at the next immutable head.
+
+### Negative cases
+
+- `PASS`, `NOT_APPLICABLE`, missing result, or a class other than
+  `inconclusive` cannot enter bootstrap.
+- `FAIL` without a retained non-zero attempt or without the explicit
+  same-job/same-SHA evidence request is refused.
+- A confirmed pre-mutation transport retry cannot increment `Transient` a
+  second time.
+- Unknown launch status cannot reuse the reservation or dispatch a replacement.
+- The reservation is never decremented or reset after a failed launch,
+  classification, or resume.
+
+### Commands
+
+- `node scripts/verify-skill-prose.mjs`
+- `node --test scripts/verify-skill-prose.test.mjs`
+- `npm run test:scripts`
+- `npm run verify:skills`
+- `git diff --check origin/main...HEAD`
+- one complete clean Windows `npm run verify`

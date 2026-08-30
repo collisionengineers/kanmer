@@ -107,3 +107,13 @@
 - [x] Re-amend one truthful SKILL-038 commit and re-run focused checks.
 - [x] Run one complete clean Windows `npm run verify` rail at the next exact
   immutable head.
+
+
+## Exact-head retry-capacity correction F-015
+
+- [x] Replace the literal two-attempt cap with exactly two authorization paths.
+- [x] Limit evidence bootstrap to one admission per ticket/run.
+- [x] Permit classified-transient admissions while durable budget remains.
+- [x] State that raising the limit adds classified-path capacity, never a third path.
+- [x] Mirror and independently mutation-pin the contract in AGENTS and scripts.
+- [x] Re-run focused checks and one clean complete Windows rail at the amended head.

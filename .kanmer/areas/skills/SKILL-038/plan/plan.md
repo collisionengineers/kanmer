@@ -623,3 +623,39 @@ Only the existing six SKILL-038 files remain in scope.
 - `npm run verify:skills`
 - `git diff --check origin/main...HEAD`
 - one complete clean Windows `npm run verify`
+
+
+## Exact-head retry-capacity correction F-015
+
+The retry contract has exactly two **authorization paths**, not exactly two
+total verifier attempts:
+
+1. The evidence-bootstrap path may admit at most one evidence-establishing
+   logical attempt for a ticket in a run.
+2. The classified-transient path may admit another fresh independent logical
+   attempt whenever the durable `Transient` count still has room beneath
+   `transient_retry_limit`.
+
+Every admitted logical attempt reserves one durable count before dispatch. The
+single confirmed pre-mutation transport launch retry reuses that reservation;
+unknown launch status remains non-dispatching. Raising
+`transient_retry_limit` adds capacity only to the classified-transient path
+and never creates a third authorization path.
+
+### Files and symbols
+
+- `plugins/kanmer/skills/kanmer-auto/SKILL.md`: correct the budget subsection
+  and section 9 authorization language.
+- `AGENTS.md`: mirror the two-path, configurable-capacity invariant.
+- `scripts/verify-skill-prose.mjs`: pin both path count and capacity semantics.
+- `scripts/verify-skill-prose.test.mjs`: add independent mutations for
+  bootstrap-at-most-once, recurring classified attempts while budget remains,
+  and raised-limit capacity without a third path.
+
+### Negative cases and commands
+
+A mutation that restores a literal two-attempt cap, permits repeated bootstrap,
+prevents classified retries beneath a raised limit, or invents a third path must
+fail the named check. Run the focused validator, mutation suite,
+`npm run test:scripts`, `npm run verify:skills`, diff/hash checks, and one
+clean complete Windows `npm run verify` rail at the amended exact head.

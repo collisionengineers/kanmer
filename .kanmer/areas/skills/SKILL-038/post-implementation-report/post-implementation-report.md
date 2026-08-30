@@ -4,7 +4,7 @@
 
 PR #304 is based on exact green main
 `add0da7fc17968796f43b3035065de400a4db2d4` and represented by one truthful
-final commit, `d10e79d1ac506e2e3b81a219a7c6749e670d45d9`.
+final commit, `1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`.
 
 The controller contract now:
 
@@ -22,14 +22,7 @@ The controller contract now:
 - persists `transient_retry_limit: 2` and a per-ticket `Transient` count in
   schema 3, with an exact exhausted-budget refusal and a frozen exhausted
   schedule;
-- permits exactly two logical fresh-independent-verifier attempts in that one
-  budget: an evidence bootstrap from authoritative `FAIL | INCONCLUSIVE` with
-  `failure_class: inconclusive`, then a later authoritative exact-SHA
-  `transient` classification. A FAIL bootstrap retains its non-zero attempt;
-  both require the explicit same-job/same-SHA request, untouched failing path,
-  and concrete environmental mechanism hypothesis, with no controller
-  self-classification or same-worker retry;
-- reserves the durable counter once per logical verifier attempt. The single
+- provides exactly two fresh-verifier authorization paths under one durable\n  budget. Evidence bootstrap may admit at most one evidence-establishing logical\n  attempt per ticket/run; the classified-transient path may admit another fresh\n  independent attempt whenever durable room remains. Raising the numeric limit\n  adds classified-path capacity, never a third path. FAIL bootstrap retains its\n  non-zero attempt, and both paths preserve the same-job/SHA, untouched-path,\n  mechanism-hypothesis, independence, and no-self-classification constraints;\n- reserves the durable counter once per logical verifier attempt. The single
   confirmed pre-mutation transport launch retry reuses the reservation without
   increment, decrement, or reset; unknown launch status dispatches no
   replacement;
@@ -63,7 +56,7 @@ The mandatory-stop section remains exactly 1,877 UTF-8 bytes with SHA-256
 ## Verification and retained attempts
 
 Focused evidence at exact final head
-`d10e79d1ac506e2e3b81a219a7c6749e670d45d9`:
+`1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`:
 
 - `node scripts/verify-skill-prose.mjs`: PASS.
 - `node --test scripts/verify-skill-prose.test.mjs`: PASS, 41/41.
@@ -82,7 +75,7 @@ Retained earlier rails preserve their original dispositions:
    inherited a filesystem origin and only the release-notes URL test failed;
    changing only clone remote metadata made the focused test pass 1/1 and a
    second complete rail PASS at the unchanged source SHA.
-5. Final head `d10e79d1ac506e2e3b81a219a7c6749e670d45d9`: one complete clean
+5. Prior head `d10e79d1ac506e2e3b81a219a7c6749e670d45d9`: one complete clean
    Windows `npm run verify` rail PASS from a detached standalone clone whose
    origin was set to the canonical GitHub URL before the run. It passed core
    562/562, GUI 524/524, MCP HTTP 144/144, scripts 149/149, MCP smoke 338/338,
@@ -94,7 +87,7 @@ The source worktree is clean.
 
 ## Consolidated review remediation
 
-F-001 through F-012 remain fixed. Exact-head F-013 and F-014 were accepted as
+F-001 through F-012 remain fixed. Exact-head F-013, F-014 and F-015 were accepted as
 one bounded retry-state remediation: canonical FAIL/inconclusive proof can now
 enter evidence bootstrap without rewriting the red attempt, and the one
 confirmed pre-mutation launch retry no longer double-charges a logical verifier
@@ -105,3 +98,26 @@ blockers is incorporated above.
 Pushing this final head, exact-head automated-review settlement, the formal
 independent PASS attestation, public thread dispositions, merge, and exact-merge
 verification remain review/verification work and are not claimed here.
+
+
+## Final F-015 exact-head evidence
+
+F-015 corrected a literal two-attempt cap that contradicted the configurable
+`transient_retry_limit`. The final contract has exactly two authorization
+paths: one evidence-bootstrap admission per ticket/run, and classified-transient
+admissions while durable budget remains. Every admitted logical attempt reserves
+one count; raising the limit adds classified-path capacity and no third path.
+
+At exact immutable head `1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`:
+
+- `node scripts/verify-skill-prose.mjs`: PASS.
+- `node --test scripts/verify-skill-prose.test.mjs`: PASS, 41/41.
+- `npm run test:scripts`: PASS, 149/149.
+- `npm run verify:skills`: PASS.
+- `git diff --check`: PASS.
+- Complete clean Windows `npm run verify`: PASS from detached standalone clone
+  `C:\\Users\\Alex\\Documents\\GitHub\\kanmer-verify-skill038-1d319fd8`
+  with canonical GitHub origin configured before the run. It passed core
+  562/562, GUI 524/524, MCP HTTP 144/144, scripts 149/149, MCP smoke 338/338,
+  protocol 50/50, discovery 13/13, AGENTS 31/31, typecheck, docs, headless,
+  MCPB, skills, and plugin synchronization.

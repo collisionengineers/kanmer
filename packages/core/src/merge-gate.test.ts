@@ -186,6 +186,11 @@ describe("phase-2 merge-gate evidence", () => {
   async function batchPacket(overrides: { member?: string; evidence?: Record<string, unknown>; questions?: Record<string, number> } = {}) {
     const free = { type: "ticket" as const, profile: "custom", requires: {}, status: "implementing" };
     const tickets = await Promise.all(["A", "B", "C"].map((title) => store.createItem({ ...free, title })));
+    const planVersions = new Map<string, string>();
+    for (const ticket of tickets) {
+      const plan = await store.setDoc(ticket.id, "plan", `# Plan — ${ticket.id}\n`);
+      planVersions.set(ticket.id, plan.version);
+    }
     await store.takeTicket(tickets[0]!.id, {
       branch: "batch-gate",
       worktree: ".worktrees/batch-gate",
@@ -194,7 +199,19 @@ describe("phase-2 merge-gate evidence", () => {
       batch: "batch-gate",
       batchMembers: tickets.map((ticket) => ticket.id),
     });
-    for (const ticket of tickets) await store.moveItem(ticket.id, { status: "review" });
+    for (const ticket of tickets.slice(1)) {
+      await store.takeTicket(ticket.id, {
+        branch: "batch-gate",
+        worktree: ".worktrees/batch-gate",
+        actor: "gate-controller",
+        controllerRun: "gate-controller-run",
+        batch: "batch-gate",
+      });
+    }
+    for (const ticket of tickets) {
+      await store.updateItem(ticket.id, { prs: ["77"] });
+      await store.moveItem(ticket.id, { status: "review" });
+    }
     const listed = await store.listItemsWithWarnings({ type: "ticket", includeArchived: true });
     expect(listed.warnings).toEqual([]);
     const byId = new Map(listed.items.map((item) => [item.id, item]));
@@ -202,12 +219,21 @@ describe("phase-2 merge-gate evidence", () => {
     const memberEvidence = tickets.map((ticket) => ({
       ticketId: ticket.id,
       item: byId.get(ticket.id)!,
+      planVersion: planVersions.get(ticket.id)!,
       questions: overrides.member === ticket.id && overrides.questions
         ? { checked: overrides.questions.checked ?? 0, total: overrides.questions.total ?? 0, open: overrides.questions.open ?? 0 }
         : { checked: 0, total: 0, open: 0 },
       evidence: evidence({
         strict: true,
-        review: { state: "valid", headSha: head, verdict: "pass", pr: "77", independent: true },
+        review: {
+          state: "valid",
+          headSha: head,
+          verdict: "pass",
+          pr: "77",
+          independent: true,
+          ticketUpdated: byId.get(ticket.id)!.updated,
+          planHash: planVersions.get(ticket.id)!,
+        },
         board: { sha: null, state: "unrecorded" },
         ...(overrides.member === ticket.id ? overrides.evidence : {}),
       }),
@@ -564,6 +590,142 @@ describe("phase-2 merge-gate evidence", () => {
         }));
       }
     }
+  });
+
+  it("hard-binds every member review to that member's current ticket and plan in strict and lenient modes", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const cases = [
+      {
+        name: "stale ticket timestamp",
+        review: (review: MergeGateReviewEvidence) => ({
+          ...review,
+          ticketUpdated: "2026-01-01T00:00:00.000Z",
+        } as MergeGateReviewEvidence),
+      },
+      {
+        name: "stale plan version",
+        review: (review: MergeGateReviewEvidence) => ({
+          ...review,
+          planHash: "stale-plan-version",
+        } as MergeGateReviewEvidence),
+      },
+      {
+        name: "padded ticket timestamp",
+        review: (review: MergeGateReviewEvidence) => review.state === "valid"
+          ? { ...review, ticketUpdated: ` ${review.ticketUpdated} ` }
+          : review,
+      },
+      {
+        name: "padded plan version",
+        review: (review: MergeGateReviewEvidence) => review.state === "valid"
+          ? { ...review, planHash: ` ${review.planHash} ` }
+          : review,
+      },
+      {
+        name: "missing member bindings",
+        review: (review: MergeGateReviewEvidence) => {
+          if (review.state !== "valid") return review;
+          const { ticketUpdated: _ticketUpdated, planHash: _planHash, ...withoutBindings } = review;
+          return withoutBindings;
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      for (const strict of [false, true]) {
+        const base = setBatchStrict(first.packet, strict);
+        const packet = updateBatchMember(base, selectedId, (member) => ({
+          ...member,
+          evidence: { ...member.evidence, review: testCase.review(member.evidence.review) },
+        }));
+        const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+        expect(result.ok, `${testCase.name}/${strict}`).toBe(false);
+        expect(result.findings, `${testCase.name}/${strict}`).toContainEqual(expect.objectContaining({
+          code: "STALE_REVIEW",
+          level: "error",
+          outcome: "fail",
+          details: expect.objectContaining({ ticketId: selectedId }),
+        }));
+      }
+    }
+  });
+
+  it("requires every member to have acquired the workspace and recorded the current PR in strict and lenient modes", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const wrongPr = updateBatchMember(first.packet, selectedId, (member) => ({
+      ...member,
+      item: { ...member.item!, prs: ["78"] },
+    }));
+    const untaken: MergeGateBatchEvidence = {
+      ...first.packet,
+      batch: {
+        ...first.packet.batch!,
+        members: first.packet.batch!.members.map((member) =>
+          member.id === selectedId ? { ...member, taken: false } : member
+        ),
+      },
+    };
+
+    for (const strict of [false, true]) {
+      const missingPr = await evaluateMergeGate({} as KanmerStore, first.pr, setBatchStrict(wrongPr, strict));
+      expect(missingPr.ok, `PR trace/${strict}`).toBe(false);
+      expect(missingPr.findings).toEqual([
+        expect.objectContaining({
+          code: "BATCH_ROSTER",
+          level: "error",
+          outcome: "fail",
+          details: expect.objectContaining({
+            missingPrTrace: [selectedId],
+            untaken: [],
+          }),
+        }),
+      ]);
+
+      const notAcquired = await evaluateMergeGate({} as KanmerStore, first.pr, setBatchStrict(untaken, strict));
+      expect(notAcquired.ok, `taken/${strict}`).toBe(false);
+      expect(notAcquired.findings).toEqual([
+        expect.objectContaining({
+          code: "BATCH_ROSTER",
+          level: "error",
+          outcome: "fail",
+          details: expect.objectContaining({
+            missingPrTrace: [],
+            untaken: [selectedId],
+          }),
+        }),
+      ]);
+    }
+
+    const canonicalUrl = `https://github.com/collisionengineers/kanmer/pull/${first.pr.number}`;
+    const canonical = {
+      ...first.packet,
+      members: first.packet.members.map((member) => ({
+        ...member,
+        item: { ...member.item!, prs: [canonicalUrl] },
+      })),
+    };
+    expect((await evaluateMergeGate({} as KanmerStore, first.pr, canonical)).ok).toBe(true);
+  });
+
+  it("preserves singular lenient compatibility when current ticket/plan review bindings are absent or stale", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "singular evidence", status: "review" });
+    const result = await evaluateMergeGate(
+      store,
+      { number: 88, headSha: head, branch: "singular", body: `Kanmer: ${ticket.id}` },
+      evidence({
+        review: {
+          state: "valid",
+          headSha: head,
+          verdict: "pass",
+          ticketUpdated: "stale-ticket",
+          planHash: "stale-plan",
+        },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.findings).toEqual([]);
   });
 
   it("applies strict-versus-lenient reachability and board-freshness behavior per member", async () => {

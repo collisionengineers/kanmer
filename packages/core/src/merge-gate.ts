@@ -58,6 +58,10 @@ export interface MergeGateReviewValid {
   verdict?: string;
   pr?: string;
   independent?: boolean;
+  /** Ticket timestamp the reviewer bound this verdict to. */
+  ticketUpdated?: string;
+  /** Exact content version of the reviewed ticket's plan document. */
+  planHash?: string;
   /** Board branch tip the reviewer attested to (CORE-123); absent on older records. */
   boardSha?: string;
   details?: Record<string, unknown>;
@@ -119,6 +123,8 @@ export interface MergeGateBatchMemberEvidence {
   ticketId: string;
   /** Ticket bytes from the CLI's one warning-free, archived-inclusive census. */
   item: Item | null;
+  /** Exact content version of this member's current plan document. */
+  planVersion: string | null;
   /** Question count gathered for this exact member; null is inconclusive. */
   questions: OpenQuestionCount | null;
   evidence: MergeGatePhase2Evidence;
@@ -271,6 +277,7 @@ function reviewChecks(
   pr: MergeGatePrInput,
   evidence: MergeGatePhase2Evidence,
   requireRosterIdentity = false,
+  current?: { ticketUpdated: string; planVersion: string | null },
 ): { checks: MergeGateCheck[]; findings: MergeGateFinding[] } {
   const checks: MergeGateCheck[] = [];
   const findings: MergeGateFinding[] = [];
@@ -298,6 +305,13 @@ function reviewChecks(
     const expected = normalizeSha(pr.headSha);
     const attestedPr = review.pr?.trim() ?? (typeof review.details?.pr === "string" ? review.details.pr.trim() : "");
     const independent = review.independent ?? review.details?.independent === true;
+    // Review bindings are byte-identity tokens, unlike PR labels and SHAs.
+    // Normalising whitespace here would let a record name evidence other than
+    // the exact item timestamp/document version it claims to have reviewed.
+    const attestedTicketUpdated = review.ticketUpdated ??
+      (typeof review.details?.ticketUpdated === "string" ? review.details.ticketUpdated : "");
+    const attestedPlanHash = review.planHash ??
+      (typeof review.details?.planHash === "string" ? review.details.planHash : "");
     checks.push(pass("NO_REVIEW_RECORD", reviewLevel, "review attestation is present"));
     if (!FULL_SHA_RE.test(actual) || !FULL_SHA_RE.test(expected) || actual !== expected) {
       const finding = fail("STALE_REVIEW", reviewLevel, `review attestation head ${actual || "(missing)"} does not match PR head ${expected || "(missing)"}`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
@@ -325,6 +339,23 @@ function reviewChecks(
       findings.push(finding);
     } else if (review.verdict?.toLowerCase() === "needs-changes" || (requireRosterIdentity && review.verdict?.toLowerCase() !== "pass")) {
       const finding = fail("STALE_REVIEW", reviewLevel, `review attestation has verdict ${review.verdict ?? "(missing)"}; batch members require pass`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
+      checks.push(finding);
+      findings.push(finding);
+    } else if (requireRosterIdentity && current && (
+      attestedTicketUpdated !== current.ticketUpdated ||
+      attestedPlanHash !== (current.planVersion ?? "")
+    )) {
+      const finding = fail(
+        "STALE_REVIEW",
+        reviewLevel,
+        "review attestation does not match this batch member's current ticket and plan evidence",
+        {
+          attestedTicketUpdated: attestedTicketUpdated || null,
+          ticketUpdated: current.ticketUpdated,
+          attestedPlanHash: attestedPlanHash || null,
+          planVersion: current.planVersion,
+        },
+      );
       checks.push(finding);
       findings.push(finding);
     } else {
@@ -437,6 +468,7 @@ function evaluatePhase2(
   policy: DeliveryPolicy,
   requireRosterIdentity = false,
   batchRoster: ReadonlySet<string> | null = null,
+  currentReviewEvidence?: { ticketUpdated: string; planVersion: string | null },
 ): MergeGateResult {
   const checks: MergeGateCheck[] = [pass("NO_TICKET", "error", `Kanmer ticket ${item.id} resolved`)];
   const findings: MergeGateFinding[] = [];
@@ -477,7 +509,7 @@ function evaluatePhase2(
   checks.push(target);
   if (target.outcome === "fail" || target.outcome === "warn") findings.push(target as MergeGateFinding);
 
-  const review = reviewChecks(pr, evidence, requireRosterIdentity);
+  const review = reviewChecks(pr, evidence, requireRosterIdentity, currentReviewEvidence);
   checks.push(...review.checks);
   findings.push(...review.findings);
 
@@ -623,6 +655,30 @@ async function evaluateBatch(
     );
   }
 
+  const memberStateById = new Map(state.members.map((member) => [member.id, member]));
+  const untaken = ticketIds.filter((id) => memberStateById.get(id)?.taken !== true);
+  const missingPrTrace = ticketIds.filter((_, index) =>
+    !(items[index]?.prs ?? []).some((recorded) => reviewPrMatches(recorded, pr))
+  );
+  if (untaken.length > 0 || missingPrTrace.length > 0) {
+    return batchRosterFailure(
+      pr,
+      ticketIds,
+      source,
+      `frozen batch ${batchId} lacks complete member workspace or PR evidence`,
+      {
+        batchId,
+        untaken,
+        missingPrTrace,
+        recordedPrs: ticketIds.map((ticketId, index) => ({
+          ticketId,
+          prs: items[index]?.prs ?? [],
+        })),
+      },
+      evidence,
+    );
+  }
+
   const targets = ticketIds.map((ticketId, index) => ({
     ticketId,
     prTarget: deliveryTargets(policy!, items[index]!).prTarget,
@@ -668,7 +724,7 @@ async function evaluateBatch(
     return { ok: mergeGateOk(findings), ticketId: null, ticketIds, batchId, source, pr, questions: null, findings, checks };
   }
 
-  const evidenceById = new Map(evidence.members.map((member) => [member.ticketId, member.evidence]));
+  const evidenceById = new Map(evidence.members.map((member) => [member.ticketId, member]));
   const batchRoster = new Set(ticketIds);
   const checks: MergeGateCheck[] = [pass("BATCH_ROSTER", "error", `explicit roster exactly matches frozen batch ${batchId}`, {
     batchId,
@@ -679,9 +735,19 @@ async function evaluateBatch(
   const findings: MergeGateFinding[] = [];
   let boardSha: string | null = null;
   for (const [index, id] of ticketIds.entries()) {
-    const memberEvidence = evidenceById.get(id)!;
+    const memberPacket = evidenceById.get(id)!;
+    const memberEvidence = memberPacket.evidence;
     const member = items[index]!;
-    const result = evaluatePhase2(member!, pr, questions[index]!, memberEvidence, policy!, true, batchRoster);
+    const result = evaluatePhase2(
+      member!,
+      pr,
+      questions[index]!,
+      memberEvidence,
+      policy!,
+      true,
+      batchRoster,
+      { ticketUpdated: member!.updated, planVersion: memberPacket.planVersion },
+    );
     if (boardSha === null) boardSha = memberEvidence.board?.sha ?? null;
     for (const check of result.checks ?? []) {
       const decorated = {

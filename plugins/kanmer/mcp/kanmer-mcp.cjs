@@ -46567,8 +46567,8 @@ function compactTicket(item, profile) {
     taken: takenDetails(item)
   };
 }
-function fullTicket(item, profile, revision) {
-  return { ...compactTicket(item, profile), body: item.body, revision };
+function fullTicket(item, profile, revision, workspace) {
+  return { ...compactTicket(item, profile), body: item.body, revision, workspace };
 }
 function takenDetails(item) {
   return item.taken_at ? {
@@ -46577,6 +46577,14 @@ function takenDetails(item) {
     branch: item.branch ?? null,
     worktree: item.worktree ?? null
   } : null;
+}
+function packetWorkspace(item, batch) {
+  if (item.taken_at || !batch) {
+    return { branch: item.branch ?? null, worktree: item.worktree ?? null };
+  }
+  const prefix = "worktree:";
+  const worktree = batch.workspace?.startsWith(prefix) ? batch.workspace.slice(prefix.length) || null : null;
+  return { branch: batch.branch, worktree };
 }
 function isWindowsAbsolute2(input) {
   return /^[A-Za-z]:[\\/]/.test(input) || /^\\\\/.test(input);
@@ -46900,6 +46908,7 @@ async function getExecutionPacket(input) {
       gates
     );
   }
+  const workspace = packetWorkspace(item, batch);
   const exactRecordedResume = resume !== void 0 && item.branch !== void 0 && resume.branch === item.branch && item.worktree !== void 0 && resume.worktree === item.worktree;
   const board = await store2.getBoard();
   const timing = leaseConfig(board);
@@ -46913,7 +46922,7 @@ async function getExecutionPacket(input) {
     leaseId: item.lease_id ?? null,
     leaseRevision: item.lease_revision ?? null,
     phase: item.lease_phase ?? null,
-    workspace: item.lease_workspace ?? null,
+    workspace: item.lease_workspace ?? batch?.workspace ?? null,
     heartbeatAt: item.lease_heartbeat_at ?? null,
     legacy: lease.legacy,
     heartbeatMinutes: timing.heartbeatMinutes,
@@ -46925,6 +46934,7 @@ async function getExecutionPacket(input) {
     claim.batch = {
       id: batch.id,
       frozenAt: batch.frozenAt,
+      branch: batch.branch,
       workspace: batch.workspace,
       members: batch.members.map((m) => m.id),
       pending: batch.members.filter((m) => !m.terminal).map((m) => m.id)
@@ -46987,7 +46997,7 @@ async function getExecutionPacket(input) {
       },
       ticket: { id: item.id, revision },
       batch: claim.batch?.id ?? null,
-      workspace: { branch: item.branch ?? null, worktree: item.worktree ?? null },
+      workspace,
       evidence,
       checklist,
       select: step,
@@ -47001,7 +47011,7 @@ async function getExecutionPacket(input) {
   return {
     ready: true,
     project,
-    ticket: fullTicket(item, gates.profile, revision),
+    ticket: fullTicket(item, gates.profile, revision, workspace),
     claim,
     delivery,
     groupContexts: contexts,

@@ -31,8 +31,9 @@ run and stop when the packet says to stop.
    ticket: validate and reuse that exact recorded worktree and branch; do not
    create another worktree or call `take_ticket` to take it again — renew the
    lease instead (`take_ticket action: "renew"` with the packet's
-   `claim.leaseId` / `claim.leaseRevision`). Otherwise create and validate
-   a fresh worktree and take the ticket. Send `expected_project` only when the
+   `claim.leaseId` / `claim.leaseRevision`). Otherwise acquire the packet's
+   workspace: an untaken frozen batch member reuses `ticket.workspace`, while
+   an isolated ticket creates and validates a fresh worktree before take. Send `expected_project` only when the
    preceding status call advertised `compat.expectedProject: "optional"`.
 5. Work only the packet's files and checklist, and record progress with
    version-aware MCP writes. Renew the claim before any long command.
@@ -93,8 +94,11 @@ human edit; re-read the packet and re-plan if a version conflict occurs. A
 warning never authorizes a repair outside this ticket; retain it for the
 external hand-off.
 
-`ticket.taken` selects the execution lane. A missing value means fresh work;
-create the recorded worktree and then take the ticket. A present value means
+`ticket.taken` selects the execution lane. A missing value means a fresh
+lease, not necessarily a new Git worktree: when `claim.batch` is present,
+`ticket.workspace` carries that manifest's immutable branch and portable
+worktree and the member must take those exact values without creating another
+worktree. In isolated mode, create the ticket worktree and then take it. A present value means
 resume the exact already-recorded branch and worktree. It is not permission to
 create another worktree, retake the ticket, clear its ownership, or replace its
 uncommitted work.
@@ -115,6 +119,10 @@ it back to `kanmer-plan` rather than guessing the missing fields. Without
 `step` the packet is unchanged and its `validation` report is advisory only.
 
 ## Project capability and worktree
+
+`ticket.taken` selects the execution lane: a missing value means fresh work
+authority, either on the projected frozen-batch workspace or on a new isolated
+workspace; a present value means resume the exact already-recorded branch and worktree.
 
 Before the first mutating call, retain the project identity from
 `get_status`: `project.project_id` when `project.identity` is `logical`,
@@ -223,6 +231,16 @@ repository root after the packet is ready. **Branch from the packet's
 work integrates into, and assuming `main` is how a `dev`-integrating project
 silently builds on the wrong base:
 
+An untaken frozen batch member is the exception to worktree creation. Its
+packet has `claim.batch`, and `ticket.workspace`, `claim.workspace`,
+`claim.batch.branch` / `claim.batch.workspace`, and any compiled
+`step.workspace` all name the already-created shared location. Validate that
+location and call `take_ticket` with those exact branch/worktree values plus
+the same `controller_run`; keep `ticket.taken: null` as proof that this member
+still needs its own lease. Never create `.worktrees/<member-id>` for it.
+
+For an isolated ticket, create the worktree:
+
 ```sh
 git fetch origin
 git worktree add .worktrees/<id-lowercase> -b <id>-<slug> origin/<delivery.baseBranch>
@@ -263,8 +281,11 @@ member's take declares and freezes the membership in one call —
 — and every later member is taken on that exact recorded worktree and branch
 with `batch: "<batch>"` and the same `controller_run` (any other workspace is
 `BATCH_WORKSPACE_MISMATCH`; adding a ticket later is `BATCH_FROZEN`). The
-packet's `claim.batch` lists the complete frozen roster and which members are
-still non-terminal.
+packet's `claim.batch` lists the complete frozen roster, immutable branch and
+workspace, and which members are still non-terminal. Before a later member is
+taken, the same branch and portable worktree are also projected through
+`ticket.workspace` and a compiled `step.workspace` so packet-first execution
+can acquire the existing shared location without guessing it.
 
 Before the first packet or take, the controller reads one nonempty
 `controller_run` from its durable run record and keeps it unchanged across

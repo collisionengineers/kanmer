@@ -40,7 +40,7 @@ function gitIn(cwd, ...args) {
   return result.stdout.trim();
 }
 
-function attestation(headSha, verdict = "pass", extra = "") {
+function attestation(headSha, verdict = "pass", extra = "", current = {}) {
   return `---
 kind: review-attestation
 pr: "1"
@@ -48,8 +48,8 @@ head_sha: ${headSha}
 verdict: ${verdict}
 reviewer: independent-reviewer
 independent: true
-plan_hash: plan-version
-ticket_updated: "2026-08-22T07:00:00.000Z"
+plan_hash: ${current.planHash ?? "plan-version"}
+ticket_updated: "${current.ticketUpdated ?? "2026-08-22T07:00:00.000Z"}"
 findings: []
 ${extra}---
 Review body
@@ -245,6 +245,9 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
     const free = { type: "ticket", profile: "custom", requires: {}, status: "implementing" };
     const tickets = [];
     for (const title of ["A", "B", "C"]) tickets.push(await store.createItem({ ...free, title }));
+    for (const ticket of tickets) {
+      await store.setDoc(ticket.id, "plan", `# Plan — ${ticket.id}\n`);
+    }
     await store.takeTicket(tickets[0].id, {
       branch: "batch-pr",
       worktree: ".worktrees/batch-pr",
@@ -253,14 +256,32 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
       batch: "batch-pr",
       batchMembers: tickets.map((ticket) => ticket.id),
     });
+    for (const ticket of tickets.slice(1)) {
+      await store.takeTicket(ticket.id, {
+        branch: "batch-pr",
+        worktree: ".worktrees/batch-pr",
+        actor: "batch-controller",
+        controllerRun: "batch-controller-run",
+        batch: "batch-pr",
+      });
+    }
     const head = "a".repeat(40);
-    for (const ticket of tickets) {
-      await store.moveItem(ticket.id, { status: "review" });
-      await store.setDoc(
-        ticket.id,
-        "scratch/review",
-        attestation(head).replace('pr: "1"', 'pr: "https://github.com/collisionengineers/kanmer/pull/1"'),
+    const writeMemberReview = async (ticket, overrides = {}) => {
+      const current = await store.getItem(ticket.id);
+      const plan = await store.getDocWithVersion(ticket.id, "plan");
+      const body = attestation(head, "pass", "", {
+        ticketUpdated: overrides.ticketUpdated ?? current.updated,
+        planHash: overrides.planHash ?? plan.version,
+      }).replace(
+        'pr: "1"',
+        `pr: "${overrides.pr ?? "https://github.com/collisionengineers/kanmer/pull/1"}"`,
       );
+      await store.setDoc(ticket.id, "scratch/review", body);
+    };
+    for (const ticket of tickets) {
+      await store.updateItem(ticket.id, { prs: ["1"] });
+      await store.moveItem(ticket.id, { status: "review" });
+      await writeMemberReview(ticket);
     }
     const event = path.join(board, "event.json");
     const body = tickets.map((ticket) => `Kanmer: ${ticket.id}`).join("\n");
@@ -282,6 +303,42 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
     assert.equal(result.batchId, "batch-pr");
     assert.deepEqual(result.ticketIds, tickets.map((ticket) => ticket.id).sort());
     assert.equal(result.findings.length, 0);
+
+    await writeMemberReview(tickets[1], { ticketUpdated: "2026-01-01T00:00:00.000Z" });
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const staleTicket = runWithEnv(env, board, event);
+      assert.equal(staleTicket.status, 1, staleTicket.stderr);
+      const finding = JSON.parse(staleTicket.stdout).findings.find((entry) =>
+        entry.code === "STALE_REVIEW" && entry.details.ticketId === tickets[1].id
+      );
+      assert.equal(finding?.level, "error");
+      assert.equal(finding?.details.attestedTicketUpdated, "2026-01-01T00:00:00.000Z");
+    }
+    await writeMemberReview(tickets[1]);
+
+    await store.setDoc(tickets[1].id, "plan", `# Plan — ${tickets[1].id}\n\nChanged after review.\n`);
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const stalePlan = runWithEnv(env, board, event);
+      assert.equal(stalePlan.status, 1, stalePlan.stderr);
+      const finding = JSON.parse(stalePlan.stdout).findings.find((entry) =>
+        entry.code === "STALE_REVIEW" && entry.details.ticketId === tickets[1].id
+      );
+      assert.equal(finding?.level, "error");
+      assert.notEqual(finding?.details.attestedPlanHash, finding?.details.planVersion);
+    }
+    await writeMemberReview(tickets[1]);
+
+    await store.updateItem(tickets[1].id, { prs: ["2"] });
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const wrongMemberPr = runWithEnv(env, board, event);
+      assert.equal(wrongMemberPr.status, 1, wrongMemberPr.stderr);
+      const findings = JSON.parse(wrongMemberPr.stdout).findings;
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0].code, "BATCH_ROSTER");
+      assert.deepEqual(findings[0].details.missingPrTrace, [tickets[1].id]);
+    }
+    await store.updateItem(tickets[1].id, { prs: ["1"] });
+    await writeMemberReview(tickets[1]);
 
     await fs.writeFile(
       event,

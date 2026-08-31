@@ -2619,6 +2619,55 @@ Second proof attempt passed; the first failure is retained.
         frozenSibling.lease_batch_frozen_at === first.taken_at && !frozenSibling.taken_at && !frozenSibling.lease_id,
       JSON.stringify({ first: first.lease_batch, sibling: frozenSibling.lease_batch, siblingTaken: frozenSibling.taken_at ?? null }),
     );
+    const untakenBatchPlan = [
+      "# Plan — untaken frozen batch member",
+      "",
+      "## Expected files",
+      "| Action | Repo-root-relative path | Responsibility |",
+      "|---|---|---|",
+      "| Modify | `src/batch.ts` | bounded batch fixture |",
+      "",
+      "## Ordered steps",
+      "",
+      "### Step 1 — Execute the bounded batch change",
+      "- Files: `src/batch.ts`",
+      "- Change: apply the bounded batch fixture change.",
+      "- Tests: `src/batch.test.ts`",
+      "- Commands: `npm test`",
+      "- Done when: `npm test` passes.",
+      "",
+      "## Acceptance checks",
+      "- `npm test` passes.",
+      "",
+      "## Stop condition",
+      "Stop after this step.",
+      "",
+    ].join("\n");
+    await client.callTool({ name: "set_ticket_doc", arguments: { id: m2, doc: "plan", content: untakenBatchPlan } });
+    const untakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m2, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    check(
+      "an untaken frozen member receives the immutable batch workspace before take without being reported as taken",
+      untakenBatchPacket.ready === true && untakenBatchPacket.ticket?.taken === null &&
+        untakenBatchPacket.ticket?.workspace?.branch === batchTake.branch &&
+        untakenBatchPacket.ticket?.workspace?.worktree === batchTake.worktree &&
+        untakenBatchPacket.claim?.workspace === first.lease_workspace &&
+        untakenBatchPacket.claim?.batch?.branch === batchTake.branch &&
+        untakenBatchPacket.claim?.batch?.workspace === first.lease_workspace &&
+        untakenBatchPacket.step?.workspace?.branch === batchTake.branch &&
+        untakenBatchPacket.step?.workspace?.worktree === batchTake.worktree,
+      JSON.stringify({
+        ready: untakenBatchPacket.ready,
+        taken: untakenBatchPacket.ticket?.taken,
+        ticketWorkspace: untakenBatchPacket.ticket?.workspace,
+        claimWorkspace: untakenBatchPacket.claim?.workspace,
+        batch: untakenBatchPacket.claim?.batch,
+        stepWorkspace: untakenBatchPacket.step?.workspace,
+        reason: untakenBatchPacket.reason,
+      }),
+    );
     const replayedFirst = JSON.parse(textOf(await client.callTool({
       name: "take_ticket",
       arguments: { id: m1, ...batchTake, batch: "smoke-batch", batch_members: [m1, m2, m3] },
@@ -2729,7 +2778,16 @@ Second proof attempt passed; the first failure is retained.
     } finally {
       await foreignBatchClient.close();
     }
-    const second = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: m2, ...batchTake, batch: "smoke-batch" } })));
+    const second = JSON.parse(textOf(await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: m2,
+        ...batchTake,
+        branch: untakenBatchPacket.ticket.workspace.branch,
+        worktree: untakenBatchPacket.ticket.workspace.worktree,
+        batch: "smoke-batch",
+      },
+    })));
     check(
       "a frozen member takes the batch's worktree and branch and gets its own lease on the shared workspace",
       second.lease_workspace === first.lease_workspace && second.lease_id && second.lease_id !== first.lease_id && second.lease_batch === "smoke-batch",

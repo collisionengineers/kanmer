@@ -173,6 +173,10 @@ async function main() {
       id,
       parseReviewEvidence(await store.getDoc(id, "scratch/review")),
     ])));
+    const planVersions = new Map(await Promise.all(existingIds.map(async (id) => [
+      id,
+      (await store.getDocWithVersion(id, "plan")).version,
+    ])));
     const questions = new Map(await Promise.all(existingIds.map(async (id) => [
       id,
       await store.getOpenQuestionCount(id),
@@ -213,6 +217,7 @@ async function main() {
         members.push({
           ticketId: id,
           item,
+          planVersion: planVersions.get(id) ?? null,
           questions: questions.get(id) ?? null,
           evidence: item
             ? phase2Evidence(snapshot, pr, id, strict, review, commitBySha, await boardFor(review))

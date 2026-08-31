@@ -80,6 +80,12 @@ export interface ExecutionPacketTicket {
    * controller compares before dispatching another step.
    */
   revision: string | null;
+  /**
+   * Workspace this packet authorises. An untaken frozen batch member receives
+   * the immutable manifest branch/worktree here before it acquires its own
+   * lease; `taken` remains null until that acquisition actually happens.
+   */
+  workspace: { branch: string | null; worktree: string | null };
   taken: {
     taken_at: string;
     assignee: string | null;
@@ -123,7 +129,15 @@ export interface ExecutionPacketClaim {
    * one worktree, branch and PR/head attestation; each keeps its own proof.
    * `pending` are the members not yet Done or archived — cleanup waits for them.
    */
-  batch: { id: string; frozenAt: string | null; workspace: string | null; members: string[]; pending: string[] } | null;
+  batch: {
+    id: string;
+    frozenAt: string | null;
+    /** Immutable manifest branch shared by every member. */
+    branch: string | null;
+    workspace: string | null;
+    members: string[];
+    pending: string[];
+  } | null;
 }
 
 /**
@@ -281,8 +295,13 @@ function compactTicket(item: Item, profile: string): ExecutionPacketCompactTicke
   };
 }
 
-function fullTicket(item: Item, profile: string, revision: string | null): ExecutionPacketTicket {
-  return { ...compactTicket(item, profile), body: item.body, revision };
+function fullTicket(
+  item: Item,
+  profile: string,
+  revision: string | null,
+  workspace: ExecutionPacketTicket["workspace"],
+): ExecutionPacketTicket {
+  return { ...compactTicket(item, profile), body: item.body, revision, workspace };
 }
 
 function takenDetails(item: Item): ExecutionPacketTicket["taken"] {
@@ -294,6 +313,20 @@ function takenDetails(item: Item): ExecutionPacketTicket["taken"] {
         worktree: item.worktree ?? null,
       }
     : null;
+}
+
+function packetWorkspace(
+  item: Item,
+  batch: Awaited<ReturnType<KanmerStore["batchState"]>>,
+): ExecutionPacketTicket["workspace"] {
+  if (item.taken_at || !batch) {
+    return { branch: item.branch ?? null, worktree: item.worktree ?? null };
+  }
+  const prefix = "worktree:";
+  const worktree = batch.workspace?.startsWith(prefix)
+    ? batch.workspace.slice(prefix.length) || null
+    : null;
+  return { branch: batch.branch, worktree };
 }
 
 function isWindowsAbsolute(input: string): boolean {
@@ -691,6 +724,7 @@ export async function getExecutionPacket(input: {
       gates,
     );
   }
+  const workspace = packetWorkspace(item, batch);
 
   // MCP client names are not durable agent identities. A later session must
   // deliberately name the exact branch and worktree already recorded before
@@ -710,7 +744,7 @@ export async function getExecutionPacket(input: {
     leaseId: item.lease_id ?? null,
     leaseRevision: item.lease_revision ?? null,
     phase: item.lease_phase ?? null,
-    workspace: item.lease_workspace ?? null,
+    workspace: item.lease_workspace ?? batch?.workspace ?? null,
     heartbeatAt: item.lease_heartbeat_at ?? null,
     legacy: lease.legacy,
     heartbeatMinutes: timing.heartbeatMinutes,
@@ -722,6 +756,7 @@ export async function getExecutionPacket(input: {
     claim.batch = {
       id: batch.id,
       frozenAt: batch.frozenAt,
+      branch: batch.branch,
       workspace: batch.workspace,
       members: batch.members.map((m) => m.id),
       pending: batch.members.filter((m) => !m.terminal).map((m) => m.id),
@@ -801,7 +836,7 @@ export async function getExecutionPacket(input: {
       },
       ticket: { id: item.id, revision },
       batch: claim.batch?.id ?? null,
-      workspace: { branch: item.branch ?? null, worktree: item.worktree ?? null },
+      workspace,
       evidence,
       checklist,
       select: step,
@@ -821,7 +856,7 @@ export async function getExecutionPacket(input: {
   return {
     ready: true,
     project,
-    ticket: fullTicket(item, gates.profile, revision),
+    ticket: fullTicket(item, gates.profile, revision, workspace),
     claim,
     delivery,
     groupContexts: contexts,

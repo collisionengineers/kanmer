@@ -92,6 +92,10 @@ the exact pair of the actual MCP actor and a nonempty durable controller-run id
 that survives reconnects; every declaration, recovery, member take, heartbeat
 and execution packet must match both. A modern batch heartbeat also names its
 current lease id and revision. Supplied owner labels cannot take the batch over.
+Before an untaken sibling acquires its own lease, its packet keeps it truthfully
+untaken while exposing the manifest branch and portable worktree in the ticket,
+claim and compiled-step workspace fields; the sibling takes that existing
+location rather than creating another worktree.
 The manifest records its worktree relative to the repository plus the branch,
 so a copied or relocated checkout retains the same authority; absolute paths
 are only local collision evidence. Dependencies between exact roster members
@@ -99,10 +103,12 @@ order work within the shared pull request, while external or dangling blockers
 still block it.
 While the manifest remains active or releasing, listings show its state,
 complete roster, workspace and branch even if ticket-local fields have already
-been cleared. The pull request must name every member, each member keeps its own
-exact-head review attestation and merged proof, and only after every member is
-terminal may any fresh closeout agent complete the actor-neutral release and
-remove the shared worktree and branch.
+been cleared. The pull request must name every member; every member must have
+actually taken the shared workspace, record that pull request on its ticket,
+and keep an independent-pass exact-head review bound to its current ticket
+timestamp and plan version. Each member then keeps its own merged proof, and
+only after every member is terminal may any fresh closeout agent complete the
+actor-neutral release and remove the shared worktree and branch.
 
 **Profile** — how much evidence a ticket owes. `fix` is the default; `chore`,
 `feature`, `spike` and `custom` are the others.

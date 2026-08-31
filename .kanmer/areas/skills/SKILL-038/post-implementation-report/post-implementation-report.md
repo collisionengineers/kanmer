@@ -4,7 +4,7 @@
 
 PR #304 is based on exact green main
 `add0da7fc17968796f43b3035065de400a4db2d4` and represented by one truthful
-final commit, `6130dd123460f06926347e0264628848960e51d2`.
+final commit, `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc`.
 
 The controller contract now:
 
@@ -236,3 +236,27 @@ Focused proof passed with 47/47 mutation tests and 155/155 script tests,
 discovery 13/13, AGENTS 31/31, typecheck, documentation, headless smoke, MCPB,
 skills, and byte-identical plugin synchronization. The source worktree and
 verification checkout were tracked-clean at that SHA.
+
+---
+
+## Exact-head cycle-boundary amendment — F-027
+
+The automated review at `6130dd123460f06926347e0264628848960e51d2` found that the cycle graph still admitted
+an incoming edge whose dependent was terminal `target-reached`. An apparent
+`A -> B -> A` could therefore still classify A as a cycle member and replace
+the terminal evidence, despite the broader needs-advancement rule.
+
+At exact head `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc`, graph construction filters each live edge by its
+dependent. Only a nonterminal member in the needs-advancement set may receive
+an edge. A terminal target-reached member may remain a blocker source, but it
+cannot receive an incoming dependency edge, enter a cyclic component, or
+receive a downstream cycle disposition. Cycle-affected closure likewise
+contains only nonterminal needs-advancement dependents. The skill gives the
+explicit target-reached A / unsatisfied B negative case, root `AGENTS.md`
+mirrors it, and isolated skill plus AGENTS mutations independently guard it.
+
+Focused validator, 47/47 mutation tests, 155/155 script tests,
+`verify:skills`, `git diff --check`, zero-bare-`rmSync`, six-file scope,
+and the unchanged mandatory-section hash all passed. One complete clean Windows
+`npm run verify` rail also passed at the exact detached SHA with canonical
+GitHub origin; both the source and verification checkout were tracked-clean.

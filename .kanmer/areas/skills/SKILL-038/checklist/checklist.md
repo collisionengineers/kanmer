@@ -172,3 +172,27 @@
 - [x] Force-with-lease publish exact head `6130dd123460f06926347e0264628848960e51d2` against prior remote
   `a7acf99b5ae669ddee0d7782f188fac5ebc959d0` and confirm GitHub requires
   fresh `verify` and `kanmer-gate`.
+
+## Exact-head cycle-boundary correction F-027
+
+- [x] Build cycle membership only from live edges whose dependent is a
+  nonterminal member of the needs-advancement set.
+- [x] Keep terminal `target-reached` members as blocker sources only; admit
+  no incoming dependency edge that could make them a cycle member or affected
+  recipient.
+- [x] Limit downstream cycle dispositions to nonterminal needs-advancement
+  dependents and preserve terminal evidence.
+- [x] Mirror and independently mutation-pin the boundary in root `AGENTS.md`,
+  the canonical validator, skill fixtures, and AGENTS fixtures.
+- [x] Run focused validation at exact head `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc`: validator PASS,
+  mutation suite 47/47, scripts 155/155, `verify:skills` PASS,
+  `git diff --check` PASS, zero bare `rmSync(`, and the unchanged
+  1,877-byte mandatory section SHA-256
+  `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
+- [x] Run one complete clean Windows `npm run verify` rail at exact head
+  `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc`: PASS, including core 562/562, GUI 524/524,
+  MCP HTTP 144/144, scripts 155/155, MCP smoke 338/338, protocol 50/50,
+  discovery 13/13, AGENTS 31/31, typecheck, documentation, headless smoke,
+  MCPB, skills, and byte-identical plugin synchronization.
+- [x] Force-with-lease publish exact head `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc` against prior remote
+  `6130dd123460f06926347e0264628848960e51d2` and confirm fresh required checks were created.

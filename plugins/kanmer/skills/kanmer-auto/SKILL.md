@@ -42,14 +42,75 @@ silently replaced. Validate its schema, group, project fingerprint, controller
 ownership, and referenced history path. A different controller owning a
 `running` record is a stop predicate.
 
-The current run-record schema is **`schema: 2`**, the version that carries
-`scope`, `scope_selector`, `authority` and `delivery_target`. A record still at
-`schema: 1` predates all four, so resuming it would restore a run with no frozen
-selector, no recorded authority and no resolved delivery target — exactly the
-state the rest of this skill assumes cannot exist. A schema-1 record is
-therefore **not** resumed as-is: stop, report it, and let the operator either
-complete those four fields and stamp `schema: 2`, or start a new run. An
-unknown or absent `schema` is the same stop.
+The current run-record schema is **`schema: 3`**. Schema 2 introduced `scope`,
+`scope_selector`, `authority` and `delivery_target`; schema 3 is the first
+schema that carries `transient_retry_limit` and the ledger's durable
+`Transient` count. Only a schema-3 active record may be resumed under this
+contract.
+
+An active `schema: 1` or `schema: 2` record is not resumed or normalized into
+schema 3, and is **never rewritten in place** with a new schema number or
+schema-3 fields. Before superseding one, reconcile every legacy lane and worker
+from the complete ledger against current board, claim, workspace, Git, GitHub,
+CI and recorded worker-result evidence. Every legacy worker must be proven
+inactive; a returned terminal result is evidence, while silence or an unknown
+dispatch state is not.
+
+If any legacy worker is still active or its state is uncertain, preserve the
+old ledger and `automation/current.md` pointer byte-for-byte, create no
+successor, and stop with the exact worker, lane and evidence plus one operator
+handoff. Never close the old run merely to make a successor possible. Only a
+fully quiescent legacy run may be superseded.
+
+After proving quiescence, derive one deterministic successor `run_id` from the
+legacy identity. Before preparing its intent, resolve every successor value
+that the legacy schema did not record and make the source of each value
+auditable. Copy fields the legacy record does contain and record `legacy-field`
+as their source. Schema 1 was group-only, so derive only `scope: group` and
+`scope_selector: <legacy group>` from that published schema and record
+`schema-1-group-contract` as their source. For authority and delivery absent
+from schema 1, and the retry limit and each per-ticket `Transient` count absent
+from schema 1/2, use an exact value already supplied by the operator or obtain
+one bounded operator decision before mutation. Resolve delivery against the
+live project policy and require the operator-authorised target; a project
+fingerprint mismatch is still a stop. Reconstruct each transient count from
+retained attempts when possible. When it is not provable, the only fail-closed
+normalization is the chosen retry limit (budget exhausted), with the operator
+decision and evidence gap recorded; never silently initialize an unknown count
+to zero.
+
+Before closing anything, append a `successor-prepared` event under the legacy
+schema and read the ledger back. That durable intent names the successor id,
+project fingerprint, scope and selector, authority, delivery target, lane and
+retry limits, and the exact ordered roster with every current run disposition.
+It also carries a `field_resolution` entry for every successor field that was
+absent from the legacy record, naming the resolved value, source, evidence or
+operator decision, and reason. Missing or conflicting field-resolution
+evidence makes the intent malformed and stops the handoff. By default the
+successor preserves that exact legacy roster and those dispositions. A fresh
+selection is permitted only when explicit operator authority for fresh
+selection is recorded in the prepared intent; a normal resume never silently
+absorbs later tickets.
+
+After the intent is durable, close the legacy run under its own schema with a
+terminal status that schema already allows, normally `aborted`, and record the
+exact reason plus prepared successor id in its existing `stop_reason` and event
+log. Create the distinct schema-3 successor at the exact prepared id if it is
+absent, or validate an already-present successor against the complete intent;
+write and read back its complete history record, then update
+`automation/current.md` last.
+
+Startup rolls this transition forward idempotently whenever the pointer names
+an active or terminal legacy record with a `successor-prepared` event. For an
+active record, re-prove quiescence before closing it; for a terminal record,
+create the exact successor if absent or validate it if present. If a handoff
+has begun but the intent is absent or malformed, its id conflicts, or the
+present successor differs from it, stop without changing the pointer and never
+choose an alternate id. A schema-1 record still lacks all four schema-2 fields,
+while a schema-2 record lacks the schema-3 retry budget and count; neither
+absence may be silently defaulted or accepted without the durable
+`field_resolution` above. An unknown or absent `schema` is a stop because it
+supplies no safe contract under which to resume or terminally close the record.
 
 ### Preflight before the first mutation
 
@@ -87,12 +148,14 @@ Durable state belongs in the group's documents, never in a ticket:
 
 For a new run, create a path-safe unique UTC id (adding a numeric suffix on
 collision), fill `assets/run-state-template.md`, and keep its required
-frontmatter (`kind`, `schema`, `run_id`, `group`, `project_fingerprint`,
-`controller`, `status`, `created_at`, `updated_at`, `lane_limit`,
+frontmatter (`kind`, `schema`, `run_id`, `group`, `scope`, `scope_selector`,
+`authority`, `delivery_target`, `project_fingerprint`, `controller`, `status`,
+`created_at`, `updated_at`, `lane_limit`, `transient_retry_limit`,
 `stop_reason`) and headings (Selection contract, Run invariants, Ticket ledger,
-Event log, Resume instruction). Run status is exactly `running`, `paused`,
-`blocked`, `completed`, or `aborted`; ticket dispositions are exactly `queued`,
-`active`, `waiting`, `blocked`, `finished`, or `skipped`.
+Event log, Resume instruction). Refuse creation when any required field is
+absent or malformed. Run status is exactly `running`, `paused`, `blocked`,
+`completed`, or `aborted`; ticket dispositions are exactly `queued`, `active`,
+`waiting`, `blocked`, `target-reached`, `finished`, or `skipped`.
 
 Write and read it back: the complete history record before writing
 `automation/current.md`; write and read back the pointer before dispatch. Never
@@ -130,36 +193,208 @@ store secrets, full prompts, or large command output.
    the gates-first readiness rules do not vary by scope, and a ticket that
    appears in a later `list_items` answer never joins a roster that is already
    frozen.
-2. Read the run host group's shared context. Drop archived or blocked tickets,
-   and drop **quick captures** — a summary with `capture: true` (profile
+   Parse the requested target **before resolving dependency feasibility**:
+   “up to review” stops each ticket after its PR is open and its ticket is in
+   Review; the default is closeout, subject to the human merge boundary. Resolve
+   stage names with `list_board`, and record both the requested target and the
+   board's final stage in the Selection contract. Dependency selection below
+   uses one explicit predicate: the target **reaches the board's final stage**
+   when it is `closeout` or resolves to that final stage itself; every other
+   target is earlier. Do not compare the literal word `closeout` with a stage id
+   or assume that every target closes a live `blocks` edge.
+
+2. Read the run host group's shared context. **Before resolving any dependency
+   edge, apply every ordinary exclusion.** Drop archived tickets, and drop
+   **quick captures** — a summary with `capture: true` (profile
    `capture`) is a recorded observation, not selected work, and promoting one is
    an operator decision this skill never makes. Report them in the exclusions
    rather than silently omitting them; the server refuses to move, take or
    packet one (`CAPTURE_NOT_PROMOTED`), so a capture that reaches selection is a
-   bug in the roster, not a ticket to unblock. A ticket taken by another actor
-   is handled by its claim state, never by `force`:
+   bug in the roster, not a ticket to unblock.
+
+   Claim classification is part of those ordinary exclusions and therefore
+   happens before outside-blocker closure or cycle detection. A ticket taken by
+   another actor is handled by its claim state, never by `force`:
    - a **live** foreign claim (`claim_expires_at` in the future, or a
-     pause/resume note in its scratch) belongs to that actor — drop it and
-     coordinate;
+      pause/resume note in its scratch) belongs to that actor — exclude it and
+      coordinate;
    - an **expired** foreign claim (`get_execution_packet` refuses with the
-     claim expired, or `claim_expires_at` has passed with no live run record)
-     is transferred, not stopped on: first `append_scratch` a note naming the
-     old controller, this controller, the recorded branch and worktree, then
-     `take_ticket action: "transfer"`. Transfer keeps the branch, worktree and
-     uncommitted work; a `CLAIM_LIVE` refusal means the claim was renewed
-     meanwhile — treat it as live. Never pass `force`, and never `release` a
-     claim that still has a worktree.
-3. Parse the requested target: “up to review” stops each ticket after its PR is
-   open and its ticket is in Review; the default is closeout, subject to the
-   human merge boundary. Resolve stage names with `list_board`.
-4. For every retained ticket, call `get_doc_gates` and use its current stage,
+      claim expired, or `claim_expires_at` has passed with no live run record)
+      is inspected and recorded as assignment-eligible without mutation. Keep
+      its branch, worktree and dirty-state evidence, but do not append scratch,
+      transfer or otherwise write during selection; it must first survive every
+      feasibility rule below. Never pass `force`, and never `release` a claim
+      that still has a worktree.
+
+   After all ordinary exclusions and expired-claim classification, but before
+   outside-roster closure or any dependency pruning, determine exact target
+   satisfaction for every surviving candidate from its current item, gates and
+   every live provider fact that target requires. For **up to review**, require
+   the ticket to be in Review and fetch the ticket's linked current PR: it must
+   be open against the recorded delivery target, and its current head SHA must
+   be known. Record the PR number, target branch, exact head and observation
+   time with the `target-reached` disposition. Stored `prs` metadata, the item
+   and gates alone never prove that target; unavailable or contradictory
+   provider evidence leaves the member nonterminal and `waiting`, not
+   target-reached. An archived or unpromoted quick capture never receives `target-reached`;
+   mandatory exclusions removed it first. A member already at the requested
+   target remains in the frozen roster with a terminal `target-reached` run
+   disposition; remove it only from the set that still needs advancement,
+   never exclude or dependency-block it. Target satisfaction does not erase
+   outgoing blocker evidence: that member remains a live blocker for
+   unsatisfied members until its actual board state clears the edge. A
+   target-reached member whose expired claim was classified is never
+   transferred.
+
+   **A `blocked` flag is a fact about the board, not about this run.**
+   `list_items` reports `blocked: true` whenever *any* live ticket anywhere
+   declares a `blocks` edge to it, so the flag on its own never says whether the
+   blocker is one this run is about to freeze in. Dropping on the flag alone
+   would contradict section 2, which orders a blocker before its dependent — an
+   ordering that can never happen for a dependent already dropped. Resolve it
+   instead: read the blocked ticket's `blockedBy` with `get_links`, then judge
+   each blocker's liveness from that blocker's own item — its `archived` flag
+   and its stage against the board's last stage — because `blockedBy` is derived
+   from the `blocks` edges alone and is not filtered by liveness.
+
+   Resolve outside-roster exclusions to a fixed point **after** all ordinary
+   exclusions and target classification. Apply that fixed point only to
+   nonterminal members in the set that still needs advancement. A terminal
+   `target-reached` member is never an exclusion candidate or the dependent
+   receiving a dependency disposition, although its outgoing live edges remain
+   blocker evidence for unsatisfied members. For each member still needing
+   advancement, read every live blocker. If any blocker is outside the current
+   candidate set, exclude the dependent, name the blocking ids and where they
+   sit, then repeat: a blocker excluded on one pass is an outside-roster blocker
+   for its dependents on the next. Stop only when one complete pass removes
+   nothing. With `A -> B -> A` and A live-foreign-claimed, exclude A for its
+   claim before graph construction, then exclude B with A named during the
+   fixed point; record no cycle for that excluded pair.
+
+   Only after ordinary exclusions and that external-blocker fixed point,
+   **before retaining any dependent under the in-roster rule below**, build the
+   directed graph from the remaining live in-roster edges, but admit an edge
+   only when its dependent is a nonterminal member in the needs-advancement
+   set. Filter by the dependent, not the blocker: a terminal
+   `target-reached` member may remain a blocker source, but no incoming
+   dependency edge is admitted for it. Detect every cyclic strongly connected
+   component in that filtered graph, including a
+   one-ticket self-loop. For each component, record an exact ordered witness
+   path (`A -> B -> A`) and
+   its complete member set in the Selection contract, ticket ledger, event log
+   and report.
+
+   The component's **cycle-affected set** is every cycle member (necessarily
+   nonterminal and needing advancement) plus every transitive nonterminal
+   dependent reachable from it along those same filtered
+   blocker-to-dependent edges. Give every affected ticket a terminal
+   run-ledger disposition of `blocked`, name the originating cycle path and
+   members in its reason, and dispatch none of them. With `A -> B -> A`,
+   `B -> C`, and `C -> E`, all of A, B, C and E are terminally blocked; C and E
+   never wait behind a blocker that cannot finish. If A is already terminal
+   `target-reached` in the apparent `A -> B -> A`, omit `B -> A` because A is
+   not an eligible dependent: A stays `target-reached` as a blocker source,
+   and only B proceeds to the later feasibility rule. Record every component
+   separately, including multiple components and self-loops. A cycle is an
+   explicit blocking disposition, never a queue that waits for one member to
+   precede another. Only safe acyclic internal edges reach the
+   target-feasibility rule.
+
+   **Only a target that reaches the board's final stage clears a live blocker
+   edge.** When the requested target does not reach that final stage, terminally
+   block each dependent on a remaining acyclic live edge and every transitive downstream
+   dependent in the run ledger; keep all of them in the frozen roster, name the
+   blocker, requested target and final stage in the reason, and dispatch none
+   of the affected dependents. The blocker and every unrelated safe lane still
+   proceed to the requested target. For up-to-review `A -> B`, A reaches Review
+   while B and B's downstream dependents are terminally blocked, because A is
+   still a live blocker there. For closeout `A -> B`, retain and serially order
+   both because closeout reaches the final stage and can clear A's edge; an
+   explicit Done target has the same result. An already-Done A creates no live
+   edge and therefore does not affect B.
+
+   After that target-feasibility closure, apply the retention rule:
+
+   - **Every live blocker is inside the roster being frozen and the requested
+     target reaches the board's final stage** — keep the dependent. It is queued
+     work, not an exclusion: section 2 puts it in one serial lane behind its
+     blockers, so the run orders its own dependency chain instead of silently
+     shedding it.
+   - **Any live blocker is outside the roster being frozen** — exclude the
+     dependent during the fixed point above, and say so in the exclusions,
+     naming the blocking ids and where they sit. Nothing in this run will clear
+     them.
+
+   Keep the run `running` while any unaffected safe lane can proceed; neither
+   cycle members nor target-affected dependents cancel or pause an independent
+   lane. Only after every safe lane has a terminal disposition and no lane is
+   active or waiting, set the run to `blocked` with a `stop_reason` naming every
+   cyclic component, target-blocking edge and affected member. For `A -> B -> A`
+   plus independent D, D reaches its target before the run becomes blocked. A
+   run with any cycle-affected or target-affected ticket is never reported
+   `completed`.
+
+   Freeze a dependency-safety snapshot with the roster: exact live blocker
+   edges, blocker liveness, target bindings, claim classification, and the
+   relevant run dispositions. Before every assignment and after every worker
+   result or timeout, compare live state with that snapshot.
+
+   Target binding has one revalidation procedure and it runs before dependency
+   feasibility. When a snapshot comparison observes any changed target fact or
+   outgoing blocker liveness for a `target-reached` member, first revalidate
+   that terminal blocker source even though it is outside the
+   needs-advancement set. Immediately before any terminal run-status transition
+   or final report, run the same procedure for every `target-reached` member.
+   Re-gather the current item, gates and target-specific live provider facts
+   and compare them with the recorded target binding. No dependent that relies
+   on that source is assigned until this pass has a durable result.
+
+   The revalidation outcomes are disjoint:
+
+   - **Valid.** Refresh the exact binding and observation time, then continue
+     dependency feasibility.
+   - **Affirmatively stale or contradictory.** Any available required fact
+     that disproves the binding makes this outcome authoritative even when
+     some other provider is unavailable. Preserve the old binding and every
+     current fact, then replace `target-reached` with a terminal `blocked`
+     disposition whose reason starts `target evidence stale:`. This is a
+     terminal-to-terminal correction: never reopen or dispatch the member, and
+     propagate its terminal non-success before dependency feasibility. Never
+     report the run `completed` or the member at target from stale evidence.
+   - **Unavailable or unknown.** Only the absence of a required live fact, with
+     no available fact disproving the binding, earns this outcome. Preserve
+     `target-reached` and its last valid binding; record the unavailable fact,
+     provider, observation time and exact resume action in the run, keep every
+     dependent relying on it `waiting`, and dispatch none of those dependents.
+     Unrelated safe lanes continue. When none remains ready, set the run
+     `paused` with a stop reason starting `target evidence unavailable:`.
+     Resume only after provider capability changes or an explicit resume, then
+     run this same revalidation again. Unavailability never consumes the
+     verification retry budget, becomes terminal `blocked`, or permits
+     `completed`.
+
+   Only after every implicated terminal source is valid or affirmatively
+   corrected does a changed snapshot re-run outside-roster closure,
+   cyclic-component and target-feasibility rules for nonterminal frozen members
+   that still need advancement. A change never changes membership. Map a
+   post-freeze exclusion to a terminal `blocked` disposition instead of dropping
+   the member. Persist and read back the replacement snapshot and every target
+   revalidation result or resulting disposition before any next dispatch.
+
+   If a frozen in-roster blocker reaches a terminal non-success disposition
+   while its edge is still live, it cannot clear that edge. Give every
+   transitive unsatisfied dependent a terminal `blocked` disposition naming the
+   blocker and failure; unrelated safe lanes continue. A removed edge may make
+   a still-nonterminal queued member eligible, but no graph change reopens a
+   terminal run disposition.
+3. For every retained ticket, call `get_doc_gates` and use its current stage,
    reachable stages, and first unmet next-boundary requirement as the routing
    table. Do not restate profile-to-document mappings in this skill.
-5. Advance one gated boundary per move. Set `docs_todo` only when a governing
+4. Advance one gated boundary per move. Set `docs_todo` only when a governing
    document genuinely needs to be written; do not create optional documents to
    normalize the roster. A ticket with no currently required preparation phase
    routes to its next applicable action.
-6. A user-only question at any phase parks that ticket as `waiting`, quotes the
+5. A user-only question at any phase parks that ticket as `waiting`, quotes the
    question and recommendation in the event log, and pauses that lane. Never
    guess an operator answer.
 
@@ -180,10 +415,21 @@ verification rails running at once is a documented cause of host timing
 failures, so hold the second rail rather than reading its flake as a regression.
 
 Before assigning a ticket, re-read its item, links/dependencies, taken state,
-required document versions, activity, and `get_doc_gates`. Record the lane as
-`active` with worker, branch/worktree when known, attempt, timestamp, action,
-and stop condition; append a `lane-assigned` event; write/read back the full
-run record; only then dispatch.
+required document versions, activity, and `get_doc_gates`, then perform the
+dependency-snapshot comparison above. For an expired foreign claim, transfer
+only now, immediately before the member's first assignment and only after it
+survived feasibility: re-read the claim and collect the branch, worktree and
+dirty-work evidence into the run record, then call `take_ticket action: "transfer"` directly.
+Do not append ticket scratch before transfer. The transfer
+path re-collects recovery evidence and rechecks lease liveness under the write
+lock; only a successful transfer records its preserved-work summary in ticket
+scratch. Never transfer a terminal, excluded, target-reached or otherwise no-longer-advancing member.
+A `CLAIM_LIVE` refusal means it was renewed and the
+ticket remains byte-for-byte unchanged; retain the frozen member with a
+terminal `blocked` live-claim disposition and dispatch nothing for it. Record
+the lane as `active` with worker, branch/worktree when known, attempt,
+timestamp, action, and stop condition; append a `lane-assigned` event;
+write/read back the full run record; only then dispatch.
 
 Each lane uses its own `.worktrees/<id>` worktree and branch. The one
 exception is a deliberate batch lane (FRD-030): two or more small related
@@ -217,11 +463,13 @@ On every result or timeout, the controller:
 1. stops conflicting dispatch while the result is uncertain;
 2. re-reads the live item, links/dependencies, documents and versions, activity,
    Git/PR state where applicable, and `get_doc_gates`;
-3. compares actual mutations, stage, gate, checklist, branch/worktree, commit,
+3. compares the live dependency state with the frozen snapshot and applies the
+   post-result revalidation and downstream-failure propagation above;
+4. compares actual mutations, stage, gate, checklist, branch/worktree, commit,
    PR and error evidence with the approved scope;
-4. records the worker result, reconciliation, discrepancy, and one next action
+5. records the worker result, reconciliation, discrepancy, and one next action
    in the ledger/event log; and
-5. writes and reads back the run record before selecting another action.
+6. writes and reads back the run record before selecting another action.
 
 After anything merges to the run's recorded `delivery_target`, lanes still in
 flight rebase onto that same target before opening a PR, with absolute paths and
@@ -249,6 +497,47 @@ Two results are routed rather than stopped on:
   Implementing, `plan` returns it to Preparing — each by one `move_item` with
   a reason quoting the proof. A proof without a class is `inconclusive` until
   the verifier classifies it.
+
+### The transient retry budget
+
+`transient` is the only routing outcome that returns a lane to the stage it came
+from, so it is the only one that can loop. `kanmer-verify` decides *whether* a
+red run earns that class; only a number decides *how often*. The run record
+carries **`transient_retry_limit`**, defaulting to **2** re-runs per ticket per
+run, and the ledger's `Transient` column counts what each ticket has spent. No
+tool enforces this — it is the controller's own budget, which is exactly why it
+is written into the record and counted there rather than remembered.
+
+Both permitted fresh-verifier authorization paths in section 9 spend this one
+budget: the evidence-bootstrap path that can establish the classification
+evidence, and the classified-transient path after an authoritative
+`failure_class: transient`. Every dispatch admitted by either path is one
+**logical verifier attempt**. The bootstrap path may admit at most one
+evidence-establishing attempt per ticket per run; the classified-transient path
+may admit another fresh independent attempt whenever durable budget remains.
+Immediately before its first dispatch, reserve that attempt by incrementing the
+ticket's durable `Transient` count, writing the run record and reading it back.
+A launch proven to have failed before mutation may use section 9's one logged
+transport retry against the same reservation: do not increment it again,
+decrement it or reset it. Unknown launch status dispatches nothing. The default
+of 2 deliberately leaves room for one evidence-bootstrap and one
+classified-transient attempt. Raising the limit adds classified-transient-path
+capacity; it never adds a third authorization path; classification never resets the count.
+
+On the attempt that would exceed the limit the lane does **not** re-run. Set
+that ticket `blocked`, and quote this refusal verbatim in the ledger, the event
+log and the report:
+
+```
+transient budget exhausted: <ticket> spent <n>/<transient_retry_limit> re-runs at <SHA>; last failing check <check>. Not retried again without an operator decision.
+```
+
+Retain every attempt, red and green, in the proof, and continue other safe
+lanes. Raising the limit is an operator action recorded in the run record, never
+a controller one, and it is predicate 15's budget boundary rather than a new
+predicate. A ticket that keeps producing the same red check after its budget is
+gone is telling you about the rail, not about the change, and re-asking is not
+an answer.
 
 ### Push the board before trusting a gate
 
@@ -470,10 +759,38 @@ worker status. For a clearly transient pre-mutation transport failure, record
 it, re-read taken/activity/Git/PR state, and allow at most one logged launch
 retry. If status is unknown, mark the lane waiting/blocked and dispatch nothing
 conflicting. Never automatically retry failed implementation, migration, test,
-build, or verification commands. Never use force takeover as fallback: a dead
-worker's expired claim is transferred as in section 1, and a live one is
-waited on. On resume, reconcile the unknown attempt from live state before
-any new action.
+or build commands. A failed verification command is never rerun directly by the
+controller or by the same verifier. There are exactly two authorization paths
+that may admit logical verification attempts to fresh independent verifiers.
+Every admitted attempt requires room below `transient_retry_limit` and one
+durable `Transient` reservation before its first dispatch:
+
+1. **Evidence bootstrap.** The authoritative prior proof records both
+   `result: FAIL` or `result: INCONCLUSIVE` and
+   `failure_class: inconclusive`, and explicitly requests a re-run of the same
+   failing job at the same SHA. A `FAIL` proof also retains the non-zero failing
+   attempt. Before dispatch, confirm that the failing path is untouched by the
+   diff and record a concrete environmental mechanism hypothesis. A fresh
+   independent verifier performs the re-run. This path may admit at most one
+   evidence-establishing logical attempt per ticket per run. It gathers evidence
+   for `kanmer-verify`; it never lets the controller self-classify the failure
+   as transient.
+2. **Classified transient.** An authoritative exact-SHA proof already records
+   `failure_class: transient`; a fresh independent verifier may perform another
+   bounded re-run whenever the durable budget still has room. Raising the limit
+   adds capacity only to this path and never creates a third authorization path.
+
+Reserve the count once per logical attempt immediately before its first
+dispatch. When that launch is confirmed to have failed before mutation, the
+single logged transport retry permitted above reuses the same reservation and
+does not increment, decrement or reset it. Unknown launch status dispatches no
+replacement. Any proof lacking the allowed result, the exact class, the
+explicit evidence-bootstrap request or, for `FAIL`, the retained non-zero
+attempt never enters the bootstrap route. Implementation or plan failures never
+enter either route, and no launch, test, build or migration retry borrows this
+verification budget. Never use force takeover as fallback: a dead worker's
+expired claim is transferred as in section 1, and a live one is waited on. On
+resume, reconcile the unknown attempt from live state before any new action.
 
 ## 10. Report
 

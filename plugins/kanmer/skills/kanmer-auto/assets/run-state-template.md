@@ -1,6 +1,6 @@
 ---
 kind: auto-run
-schema: 2
+schema: 3
 run_id: <UTC timestamp and controller slug>
 group: <EPIC-000 or HZN-000 — the run host group whose automation/ owns this record>
 scope: group
@@ -13,6 +13,7 @@ status: running
 created_at: <ISO-8601 UTC timestamp>
 updated_at: <ISO-8601 UTC timestamp>
 lane_limit: 3
+transient_retry_limit: 2
 stop_reason:
 ---
 
@@ -35,11 +36,16 @@ stop_reason:
 - The controller never auto-merges a pull request; it dispatches the independent reviewer that holds the merge point.
 - The roster is frozen. A ticket created after the freeze, and any quick capture, is out of this run.
 - The PR target and the verification target come from the recorded `delivery_target`, never from a hardcoded branch name.
+- `transient` re-runs are bounded by `transient_retry_limit` per ticket; a lane that would exceed it blocks with the exact refusal instead of re-running.
 
 ## Ticket ledger
 
-| Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Replan | Last action | Last result | PR | Updated |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+Disposition is exactly one of `queued`, `active`, `waiting`, `blocked`,
+`target-reached`, `finished`, or `skipped`; `target-reached` is terminal and
+records the exact target evidence that established it.
+
+| Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Transient | Replan | Last action | Last result | PR | Updated |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
 ## Event log
 

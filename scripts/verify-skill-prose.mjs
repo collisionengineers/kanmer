@@ -316,6 +316,7 @@ console.log("\n=== 11. gates-first routing regressions stay removed ===");
 // They protect dynamic gate routing, not a profile-to-document table or prose
 // style: both skills must continue to derive the next action at runtime.
 const autoSkill = read(join(skillsDir, "kanmer-auto", "SKILL.md"));
+const agentsGuide = read(agentsPath);
 const planUniversalClaims = [
   /research and files documents\s*[—-]\s*never before them/i,
   /whether or not this ticket'?s profile happens to gate on them/i,
@@ -420,7 +421,7 @@ const stopContract = [
   ],
   [
     "retry and force rules are bounded",
-    /at most one logged launch\s+retry[\s\S]*Never automatically retry failed\s+implementation[\s\S]*Never use force takeover as fallback/i,
+    /at most one logged launch\s+retry[\s\S]*Never automatically retry failed\s+implementation, migration, test,[\s\S]*failed verification command is never rerun directly by the\s+controller or by the same verifier[\s\S]*Never use force takeover as fallback/i,
   ],
 ];
 for (const [name, rule] of stopContract) {
@@ -602,6 +603,30 @@ console.log("\n=== 19. SKILL-036 durable `/goal` orchestration contract ===");
 // run paid for. Each is asserted in the one skill that can act on it, exactly
 // as check 18 does, because a rewrite that drops one silently reverts to the
 // failure it was written from.
+const ordinaryExclusionRuleIndex = autoSkill.search(
+  /\*\*Before resolving any dependency\s+edge, apply every ordinary exclusion\.\*\*/i,
+);
+const targetParseRuleIndex = autoSkill.search(
+  /Parse the requested target \*\*before resolving dependency feasibility\*\*/i,
+);
+const targetSatisfactionRuleIndex = autoSkill.search(
+  /After all ordinary exclusions and expired-claim classification, but before\s+outside-roster closure or any dependency pruning, determine exact target\s+satisfaction for every surviving candidate/i,
+);
+const claimHandlingRuleIndex = autoSkill.indexOf(
+  "Claim classification is part of those ordinary exclusions",
+);
+const externalBlockerRuleIndex = autoSkill.search(
+  /Resolve outside-roster exclusions to a fixed point \*\*after\*\* all ordinary\s+exclusions and target classification/i,
+);
+const dependencyCycleRuleIndex = autoSkill.search(
+  /Only after ordinary exclusions and that external-blocker fixed point,\s+\*\*before retaining any dependent under the in-roster rule below\*\*/i,
+);
+const targetFeasibilityRuleIndex = autoSkill.indexOf(
+  "**Only a target that reaches the board's final stage clears a live blocker",
+);
+const internalDependencyRuleIndex = autoSkill.indexOf(
+  "**Every live blocker is inside the roster being frozen and the requested",
+);
 const goalContract = [
   [
     "kanmer-auto accepts the five goal scopes and freezes its roster",
@@ -613,12 +638,25 @@ const goalContract = [
       /never the project, and never a ticket merely because the\s+ticket exists on the board/i.test(autoSkill),
   ],
   [
+    // N-1 (SKILL-038): this check is NAMED for board health, and pinned that
+    // half with a bare /get_status\.boardWorktree/ — a pattern the
+    // push-the-board section also satisfies through
+    // `get_status.boardWorktree.expectedBranch`. The whole
+    // `- **Board worktree.**` preflight bullet could therefore be deleted with
+    // this check still green, which is the same defect the rest of check 19
+    // exists to prevent: a name that promises more than its regex holds. Both
+    // anchors below occur only inside that bullet — section 2's similar
+    // sentence reads "never a lane, rebase target, or cleanup target", without
+    // the repeated article and without the working directory.
     "kanmer-auto preflights identity, delivery target and board health",
     /### Preflight before the first mutation/.test(autoSkill) &&
       /project_fingerprint/.test(autoSkill) &&
       /never hardcodes `main`/i.test(autoSkill) &&
       /verification target/i.test(autoSkill) &&
-      /get_status\.boardWorktree/.test(autoSkill),
+      /- \*\*Board worktree\.\*\* `get_status\.boardWorktree` must be healthy and on its\s+board branch/.test(
+        autoSkill,
+      ) &&
+      /never a lane, a\s+rebase target, a cleanup target, or a working directory/i.test(autoSkill),
   ],
   [
     "kanmer-auto detects overlap beyond the files document and holds contending rails",
@@ -695,6 +733,297 @@ const goalContract = [
       /un-accepts the risk that was just accepted/i.test(autoSkill) &&
       /secrets-manager listing command/i.test(autoSkill),
   ],
+  // SKILL-038. Section 1 step 2 used to say "Drop archived or blocked tickets"
+  // while section 2 says a `blocks` edge orders the blocker before its
+  // dependent. For a roster holding both those rules contradict, and step 2
+  // wins because it runs before the freeze — so the ordering rule was
+  // unreachable and the run silently shed exactly the work it exists to
+  // sequence. The three checks below are separate on purpose: the flag's
+  // meaning, the retain rule and the exclude rule are three distinct claims,
+  // and folding them into one assertion would let two of them be deleted
+  // behind the third.
+  [
+    "kanmer-auto judges a blocked flag against the frozen roster, not the whole board",
+    /\*\*A `blocked` flag is a fact about the board, not about this run\.\*\*/.test(autoSkill) &&
+      /reports `blocked: true` whenever \*any\* live ticket anywhere/.test(autoSkill) &&
+      /read the blocked ticket's `blockedBy` with `get_links`/.test(autoSkill) &&
+      /is not filtered by liveness/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto orders claims and external-blocker closure before cycle analysis",
+    targetParseRuleIndex >= 0 &&
+      ordinaryExclusionRuleIndex > targetParseRuleIndex &&
+      claimHandlingRuleIndex > ordinaryExclusionRuleIndex &&
+      targetSatisfactionRuleIndex > claimHandlingRuleIndex &&
+      externalBlockerRuleIndex > targetSatisfactionRuleIndex &&
+      dependencyCycleRuleIndex > externalBlockerRuleIndex &&
+      internalDependencyRuleIndex > dependencyCycleRuleIndex &&
+      /Claim classification is part of those ordinary exclusions and therefore\s+happens before outside-blocker closure or cycle detection/i.test(autoSkill) &&
+      autoSkill.includes("a blocker excluded on one pass is an outside-roster blocker") &&
+      autoSkill.includes("for its dependents on the next") &&
+      /a \*\*live\*\* foreign claim[\s\S]{0,180}belongs to that actor — exclude it and\s+coordinate/i.test(
+        autoSkill,
+      ) &&
+      autoSkill.includes("With `A -> B -> A` and A live-foreign-claimed, exclude A for its") &&
+      autoSkill.includes("claim before graph construction, then exclude B with A named during the") &&
+      autoSkill.includes("fixed point; record no cycle for that excluded pair"),
+  ],
+  [
+    "kanmer-auto detects and blocks dependency cycles before retaining internal dependents",
+    dependencyCycleRuleIndex >= 0 &&
+      internalDependencyRuleIndex > dependencyCycleRuleIndex &&
+      /directed graph from the remaining live in-roster edges, but admit an edge\s+only when its dependent is a nonterminal member in the needs-advancement\s+set/i.test(
+        autoSkill,
+      ) &&
+      /Filter by the dependent, not the blocker: a terminal\s+`target-reached` member may remain a blocker source, but no incoming\s+dependency edge is admitted for it/i.test(
+        autoSkill,
+      ) &&
+      /cyclic\s+strongly\s+connected\s+component/i.test(autoSkill) &&
+      /including a\s+one-ticket self-loop/i.test(autoSkill) &&
+      /exact ordered witness\s+path \(`A -> B -> A`\) and\s+its complete member set/i.test(autoSkill) &&
+      /\*\*cycle-affected set\*\*[\s\S]{0,220}every cycle member \(necessarily\s+nonterminal and needing advancement\) plus every transitive nonterminal\s+dependent/i.test(
+        autoSkill,
+      ) &&
+      /Give every affected ticket a terminal\s+run-ledger disposition of `blocked`/.test(autoSkill) &&
+      /name the originating cycle path and\s+members in its reason, and dispatch none\s+of them/i.test(
+        autoSkill,
+      ) &&
+      /Record every component\s+separately, including multiple components and self-loops/i.test(autoSkill) &&
+      /explicit\s+blocking disposition, never a queue that\s+waits/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto resolves the target before dependencies and terminates impossible shallow chains",
+    targetParseRuleIndex >= 0 &&
+      ordinaryExclusionRuleIndex > targetParseRuleIndex &&
+      claimHandlingRuleIndex > ordinaryExclusionRuleIndex &&
+      targetSatisfactionRuleIndex > claimHandlingRuleIndex &&
+      externalBlockerRuleIndex > targetSatisfactionRuleIndex &&
+      targetFeasibilityRuleIndex > dependencyCycleRuleIndex &&
+      internalDependencyRuleIndex > targetFeasibilityRuleIndex &&
+      /record both the requested target and the\s+board's final stage in the Selection contract/i.test(autoSkill) &&
+      /target \*\*reaches the board's final stage\*\*\s+when it is `closeout` or resolves to that final stage itself/i.test(
+        autoSkill,
+      ) &&
+      /Do not compare the literal word `closeout` with a stage id/i.test(autoSkill) &&
+      /archived or unpromoted quick capture never receives `target-reached`;\s+mandatory exclusions removed it first/i.test(autoSkill) &&
+      /determine exact target\s+satisfaction for every surviving candidate from its current item, gates and\s+every live provider fact that target requires/i.test(autoSkill) &&
+      /For \*\*up to review\*\*, require\s+the ticket to be in Review and fetch the ticket's linked current PR: it must\s+be open against the recorded delivery target, and its current head SHA must\s+be known/i.test(autoSkill) &&
+      /Record the PR number, target branch, exact head and observation\s+time with the `target-reached` disposition/i.test(autoSkill) &&
+      /Stored `prs` metadata, the item\s+and gates alone never prove that target; unavailable or contradictory\s+provider evidence leaves the member nonterminal and `waiting`, not\s+target-reached/i.test(autoSkill) &&
+      /member\s+already at the requested\s+target remains in the frozen roster with a terminal\s+`target-reached` run\s+disposition/i.test(autoSkill) &&
+      /remove it only from the set that still\s+needs advancement,\s+never exclude or dependency-block it/i.test(autoSkill) &&
+      /Target satisfaction\s+does not erase\s+outgoing blocker evidence: that member remains a live blocker\s+for\s+unsatisfied members until its actual board state clears the edge/i.test(autoSkill) &&
+      /target-reached member whose expired claim was classified is never\s+transferred/i.test(autoSkill) &&
+      /Only a target that reaches the board's final stage clears a live blocker\s+edge/i.test(autoSkill) &&
+      /requested target does not reach that final stage, terminally\s+block each dependent on a remaining acyclic live edge and every transitive downstream\s+dependent/i.test(
+        autoSkill,
+      ) &&
+      /keep all of them in the frozen roster, name the\s+blocker, requested target and final stage in the reason, and dispatch none/i.test(
+        autoSkill,
+      ) &&
+      /blocker and every unrelated safe lane still\s+proceed to the requested target/i.test(autoSkill) &&
+      /For up-to-review `A -> B`, A reaches Review\s+while B and B's downstream dependents are terminally blocked/i.test(
+        autoSkill,
+      ) &&
+      /For closeout `A -> B`, retain and serially order\s+both because closeout reaches the final stage and can clear A's edge/i.test(autoSkill) &&
+      /explicit Done target has the same result/i.test(autoSkill) &&
+      /An already-Done A creates\s+no live\s+edge and therefore does not affect B/i.test(autoSkill) &&
+      /run with any cycle-affected or target-affected ticket is never reported\s+`completed`/i.test(
+        autoSkill,
+      ),
+  ],
+  [
+    "kanmer-auto exempts target-reached members from dependency pruning",
+    /Apply that fixed point only to\s+nonterminal members in the set that still needs advancement/i.test(
+      autoSkill,
+    ) &&
+      /terminal\s+`target-reached` member is never an exclusion candidate or the dependent\s+receiving a dependency disposition/i.test(
+        autoSkill,
+      ) &&
+      /outgoing live edges remain\s+blocker evidence for unsatisfied members/i.test(autoSkill) &&
+      /admit an edge\s+only when its dependent is a nonterminal member in the needs-advancement\s+set/i.test(
+        autoSkill,
+      ) &&
+      /target-reached` member may remain a blocker source, but no incoming\s+dependency edge is admitted for it/i.test(
+        autoSkill,
+      ) &&
+      /If A is already terminal\s+`target-reached` in the apparent `A -> B -> A`, omit `B -> A` because A is\s+not an eligible dependent/i.test(
+        autoSkill,
+      ),
+  ],
+  [
+    "kanmer-auto defers expired claim transfer until an assignment-ready re-read",
+    /expired\*\* foreign claim[\s\S]{0,240}inspected and recorded as assignment-eligible without mutation/i.test(
+      autoSkill,
+    ) &&
+      /do not append scratch,\s+transfer or otherwise write during selection/i.test(autoSkill) &&
+      /transfer\s+only now, immediately before the member's first assignment and only after it\s+survived feasibility/i.test(
+        autoSkill,
+      ) &&
+      /re-read the claim and collect the branch, worktree and\s+dirty-work evidence into the run record, then call `take_ticket action:\s+"transfer"` directly/i.test(autoSkill) &&
+      /Do not append ticket scratch before transfer/i.test(autoSkill) &&
+      /transfer\s+path re-collects recovery evidence and rechecks lease liveness under the write\s+lock; only a successful transfer records its preserved-work summary in ticket\s+scratch/i.test(autoSkill) &&
+      /Never transfer\s+a terminal, excluded, target-reached or otherwise no-longer-advancing member/i.test(
+        autoSkill,
+      ) &&
+      /`CLAIM_LIVE` refusal means it was renewed and the\s+ticket remains byte-for-byte unchanged; retain the frozen member with a\s+terminal `blocked` live-claim disposition and dispatch nothing/i.test(
+        autoSkill,
+      ),
+  ],
+  [
+    "kanmer-auto revalidates frozen dependency safety before dispatch and after results",
+    /Freeze a dependency-safety snapshot with the roster: exact live blocker\s+edges, blocker liveness, target bindings, claim classification, and the\s+relevant run dispositions/i.test(
+      autoSkill,
+    ) &&
+      /Before every assignment and after every worker\s+result or timeout, compare live state with that snapshot/i.test(autoSkill) &&
+      /Only after every implicated terminal source is valid or affirmatively\s+corrected does a changed snapshot re-run outside-roster closure,\s+cyclic-component and target-feasibility rules for nonterminal frozen members\s+that still need advancement/i.test(
+        autoSkill,
+      ) &&
+      /A change never changes membership/i.test(autoSkill) &&
+      /Map a\s+post-freeze exclusion to a terminal `blocked` disposition\s+instead of dropping\s+the member/i.test(
+        autoSkill,
+      ) &&
+      /Persist and read back the replacement snapshot and every target\s+revalidation result or resulting disposition before any next dispatch/i.test(
+        autoSkill,
+      ) &&
+      /terminal non-success disposition\s+while its edge is still live[\s\S]{0,180}every\s+transitive unsatisfied dependent a terminal `blocked` disposition naming the\s+blocker and failure; unrelated safe lanes continue/i.test(
+        autoSkill,
+      ) &&
+      /removed edge may make\s+a still-nonterminal queued member eligible, but no graph change reopens a\s+terminal run disposition/i.test(
+        autoSkill,
+      ) &&
+      /then perform the\s+dependency-snapshot comparison above/i.test(autoSkill) &&
+      /post-result revalidation and downstream-failure propagation above/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto revalidates target-reached evidence before terminal reporting",
+    /Target binding has one revalidation procedure and it runs before dependency\s+feasibility/i.test(autoSkill) &&
+      /changed target fact or\s+outgoing blocker liveness for a `target-reached` member, first revalidate\s+that terminal blocker source even though it is outside the\s+needs-advancement set/i.test(
+        autoSkill,
+      ) &&
+      /Immediately before any terminal run-status transition\s+or final report, run the same procedure for every `target-reached` member/i.test(
+        autoSkill,
+      ) &&
+      /Re-gather the current item, gates and target-specific live provider facts\s+and compare them with the recorded target binding/i.test(autoSkill) &&
+      /No dependent that relies\s+on that source is assigned until this pass has a durable result/i.test(
+        autoSkill,
+      ) &&
+      /\*\*Valid\.\*\*[\s\S]{0,100}Refresh the exact binding and observation time, then continue\s+dependency feasibility/i.test(
+        autoSkill,
+      ) &&
+      /\*\*Affirmatively stale or contradictory\.\*\*[\s\S]{0,100}Any available required fact\s+that disproves the binding makes this outcome authoritative even when\s+some other provider is unavailable/i.test(
+        autoSkill,
+      ) &&
+      /Preserve the old binding and every\s+current fact, then replace `target-reached` with a terminal `blocked`\s+disposition whose reason starts `target evidence stale:`/i.test(
+        autoSkill,
+      ) &&
+      /terminal-to-terminal correction: never reopen or dispatch the member, and\s+propagate its terminal non-success before dependency feasibility\. Never\s+report the run `completed` or the member at target from stale evidence/i.test(
+        autoSkill,
+      ) &&
+      /\*\*Unavailable or unknown\.\*\* Only the absence of a required live fact, with\s+no available fact disproving the binding, earns this outcome/i.test(
+        autoSkill,
+      ) &&
+      /Preserve\s+`target-reached` and its last valid binding; record the unavailable fact,\s+provider, observation time and exact resume action in the run/i.test(
+        autoSkill,
+      ) &&
+      /keep every\s+dependent relying on it `waiting`, and dispatch none of those dependents/i.test(
+        autoSkill,
+      ) &&
+      /Unrelated safe lanes continue\. When none remains ready, set the run\s+`paused` with a stop reason starting `target evidence unavailable:`/i.test(
+        autoSkill,
+      ) &&
+      /Resume only after provider capability changes or an explicit resume, then\s+run this same revalidation again/i.test(autoSkill) &&
+      /Unavailability never consumes the\s+verification retry budget, becomes terminal `blocked`, or permits\s+`completed`/i.test(
+        autoSkill,
+      ) &&
+      /Only after every implicated terminal source is valid or affirmatively\s+corrected does a changed snapshot re-run outside-roster closure/i.test(
+        autoSkill,
+      ),
+  ],
+  [
+    "kanmer-auto lets independent lanes finish before a cyclic run blocks",
+    /Keep the run `running` while any unaffected safe lane can proceed/i.test(autoSkill) &&
+      /neither\s+cycle members nor target-affected dependents cancel or pause an independent\s+lane/i.test(
+        autoSkill,
+      ) &&
+      /Only after every safe\s+lane has a terminal disposition and no lane is\s+active or waiting, set the run to `blocked`/i.test(
+        autoSkill,
+      ) &&
+      /For `A -> B -> A`\s+plus independent D, D reaches its target before the run becomes blocked/i.test(
+        autoSkill,
+      ) &&
+      /run with any cycle-affected or target-affected ticket is never reported\s+`completed`/i.test(
+        autoSkill,
+      ),
+  ],
+  [
+    "kanmer-auto keeps an acyclic in-roster dependent only for a final-stage target",
+    /\*\*Every live blocker is inside the roster being frozen and the requested\s+target reaches the board's final stage\*\* — keep the dependent/i.test(
+      autoSkill,
+    ) &&
+      /queued\s+work, not an exclusion/i.test(autoSkill) &&
+      /one\s+serial lane behind its\s+blockers/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto excludes only a dependent blocked from outside the roster, with its reason",
+    /\*\*Any live blocker is outside the roster being frozen\*\* — exclude the\s+dependent/i.test(
+      autoSkill,
+    ) && /naming the blocking ids and\s+where they sit/i.test(autoSkill),
+  ],
+  // F-005. `transient` is the one routing outcome that returns a lane to the
+  // stage it came from, and the only bound on it was the verifier's own
+  // judgement. A run that must terminate cannot rest a termination argument on
+  // discipline, so the budget is a number, it lives in the run record, and the
+  // refusal it produces is quoted rather than paraphrased.
+  [
+    "kanmer-auto bounds transient re-runs with a number and blocks with the exact refusal",
+    /### The transient retry budget/.test(autoSkill) &&
+      /\*\*`transient_retry_limit`\*\*, defaulting to \*\*2\*\* re-runs per ticket per\s+run/.test(
+        autoSkill,
+      ) &&
+      /the ledger's `Transient` column counts what each ticket has spent/.test(autoSkill) &&
+      /Both permitted fresh-verifier authorization paths in section 9 spend this one\s+budget/i.test(autoSkill) &&
+      /Every dispatch admitted by either path is one\s+\*\*logical verifier attempt\*\*/i.test(autoSkill) &&
+      /bootstrap path may admit at most one\s+evidence-establishing attempt per ticket per run/i.test(autoSkill) &&
+      /classified-transient path\s+may admit another fresh independent attempt whenever durable budget remains/i.test(autoSkill) &&
+      /Immediately before its first dispatch,\s+reserve that attempt by incrementing the\s+ticket's durable `Transient` count,\s+writing the run record and reading it back/i.test(autoSkill) &&
+      /launch proven to have failed\s+before mutation may use section 9's one logged\s+transport retry against the same\s+reservation: do not increment it again,\s+decrement it or reset it/i.test(autoSkill) &&
+      /Unknown\s+launch status dispatches nothing/i.test(autoSkill) &&
+      /default\s+of 2 deliberately leaves room for one evidence-bootstrap and one\s+classified-transient attempt/i.test(autoSkill) &&
+      /Raising the limit adds classified-transient-path\s+capacity; it never adds a third authorization path/i.test(autoSkill) &&
+      /classification\s+never resets the count/i.test(autoSkill) &&
+      /transient budget exhausted: <ticket> spent <n>\/<transient_retry_limit> re-runs at <SHA>; last failing check <check>\. Not retried again without an operator decision\./.test(
+        autoSkill,
+      ) &&
+      /Raising the limit is an operator action recorded in the run record/i.test(autoSkill),
+  ],
+  [
+    "kanmer-auto permits exactly two verification authorization paths under one counted budget",
+    /There are exactly two authorization paths\s+that may admit logical verification attempts to fresh independent verifiers/i.test(autoSkill) &&
+      /Every admitted attempt requires room below `transient_retry_limit` and one\s+durable `Transient` reservation before its first dispatch/i.test(
+        autoSkill,
+      ) &&
+      /\*\*Evidence bootstrap\.\*\* The authoritative prior proof records both\s+`result: FAIL` or `result: INCONCLUSIVE`/i.test(
+        autoSkill,
+      ) &&
+      /`failure_class: inconclusive`/i.test(autoSkill) &&
+      /A `FAIL` proof also retains the non-zero failing\s+attempt/i.test(autoSkill) &&
+      /explicitly\s+requests a re-run of the same\s+failing job at the same SHA/i.test(autoSkill) &&
+      /failing path is untouched by the\s+diff and record a concrete\s+environmental mechanism hypothesis/i.test(autoSkill) &&
+      /A fresh\s+independent verifier performs\s+the re-run/i.test(autoSkill) &&
+      /This path may admit at most one\s+evidence-establishing logical attempt per ticket per run/i.test(autoSkill) &&
+      /never lets the\s+controller self-classify the failure\s+as\s+transient/i.test(autoSkill) &&
+      /\*\*Classified transient\.\*\* An authoritative exact-SHA proof already records\s+`failure_class: transient`/i.test(
+        autoSkill,
+      ) &&
+      /fresh independent verifier may perform another\s+bounded re-run whenever the durable budget still has room/i.test(autoSkill) &&
+      /Raising the limit\s+adds capacity only to this path and never creates a third authorization path/i.test(autoSkill) &&
+      /Reserve the count once per logical attempt immediately before its first\s+dispatch/i.test(autoSkill) &&
+      /single logged transport retry permitted above reuses the same reservation and\s+does not increment, decrement or reset it/i.test(autoSkill) &&
+      /Unknown launch status dispatches no\s+replacement/i.test(autoSkill) &&
+      /proof lacking the allowed result, the exact class, the\s+explicit evidence-bootstrap request or, for `FAIL`, the retained non-zero\s+attempt never enters the bootstrap route/i.test(autoSkill) &&
+      /Implementation or\s+plan failures never\s+enter either route/i.test(autoSkill),
+  ],
   [
     "kanmer-review binds its gate reading to a pushed board and resolves what it disposes",
     /does not re-run when the board is pushed/i.test(reviewSkill) &&
@@ -741,20 +1070,125 @@ check(
   "one freeze rule, one readiness rule",
 );
 
-// F6: the four fields below arrived with schema 2, so a record left at schema 1
-// resumes without any of them unless the version says so.
+// F6 + SKILL-038. Schema 2 introduced scope/authority/delivery; schema 3 is the
+// first version whose retry budget and counter make transient routing bounded.
+// An older live record may be closed under the vocabulary it already has, but
+// stamping new assumptions onto it would invent history and make the counter
+// unknowable. The successor is a distinct run created from durable intent.
 check(
-  "kanmer-auto requires run-record schema 2 and refuses to resume a schema-1 record",
-  /The current run-record schema is \*\*`schema: 2`\*\*/.test(autoSkill) &&
-    /A record still at\s+`schema: 1`/.test(autoSkill) &&
-    /\*\*not\*\* resumed as-is/i.test(autoSkill),
-  "schema 2 + schema-1 stop",
+  "kanmer-auto requires schema 3 and supersedes schema 1/2 without rewriting them",
+  /The current run-record schema is \*\*`schema: 3`\*\*/.test(autoSkill) &&
+    /schema 3 is the first\s+schema that carries `transient_retry_limit` and the ledger's durable\s+`Transient` count/i.test(
+      autoSkill,
+    ) &&
+    /active `schema: 1` or `schema: 2` record is not resumed or normalized into\s+schema 3/i.test(
+      autoSkill,
+    ) &&
+    /\*\*never rewritten in place\*\*/i.test(autoSkill) &&
+    /close the legacy run under its own schema with a\s+terminal status that schema already allows/i.test(
+      autoSkill,
+    ) &&
+    /reconcile every legacy lane and worker\s+from the complete ledger against current board, claim, workspace, Git, GitHub,\s+CI and recorded worker-result evidence/i.test(
+      autoSkill,
+    ) &&
+    /Every legacy worker must be proven\s+inactive/i.test(autoSkill) &&
+    /If any legacy worker is still active or its state is uncertain, preserve the\s+old ledger and `automation\/current\.md` pointer byte-for-byte, create no\s+successor/i.test(
+      autoSkill,
+    ) &&
+    /Only a\s+fully quiescent legacy run may be superseded/i.test(autoSkill) &&
+    /Create the distinct schema-3 successor at the exact prepared id if it is\s+absent/i.test(autoSkill) &&
+    /unknown or absent `schema` is a stop/i.test(autoSkill),
+  "schema 3 + preserved old record + distinct successor",
+);
+const legacyPreparedIndex = autoSkill.indexOf("Before closing anything, append a `successor-prepared` event");
+const legacyCloseIndex = autoSkill.indexOf("After the intent is durable, close the legacy run", legacyPreparedIndex);
+const legacyCreateIndex = autoSkill.indexOf("Create the distinct schema-3 successor", legacyCloseIndex);
+const legacyPointerIndex = autoSkill.indexOf("`automation/current.md` last", legacyCreateIndex);
+check(
+  "kanmer-auto durably prepares and idempotently rolls forward a legacy successor",
+  /derive one deterministic successor `run_id` from the\s+legacy identity/i.test(autoSkill) &&
+    legacyPreparedIndex >= 0 &&
+    legacyCloseIndex > legacyPreparedIndex &&
+    legacyCreateIndex > legacyCloseIndex &&
+    legacyPointerIndex > legacyCreateIndex &&
+    /That durable intent names the successor id,\s+project fingerprint, scope and selector, authority, delivery target, lane and\s+retry limits, and the exact ordered roster with every current run disposition/i.test(
+      autoSkill,
+    ) &&
+    /By default the\s+successor preserves that exact legacy roster and those dispositions/i.test(autoSkill) &&
+    /fresh\s+selection is permitted only when explicit operator authority for fresh\s+selection is recorded in the prepared intent/i.test(autoSkill) &&
+    /Create the distinct schema-3 successor at the exact prepared id if it is\s+absent, or validate an already-present successor against the complete intent/i.test(
+      autoSkill,
+    ) &&
+    /Startup rolls this transition forward idempotently whenever the pointer names\s+an active or terminal legacy record with a `successor-prepared` event/i.test(
+      autoSkill,
+    ) &&
+    /For an\s+active record, re-prove quiescence before closing it; for a terminal record,\s+create the exact successor if absent or validate it if present/i.test(
+      autoSkill,
+    ) &&
+    /If a handoff\s+has begun but the intent is absent or malformed, its id conflicts, or the\s+present successor differs from it, stop without changing the pointer and never\s+choose an alternate id/i.test(
+      autoSkill,
+    ),
+  "durable intent + exact successor identity + pointer-last roll-forward",
+);
+check(
+  "kanmer-auto resolves every missing legacy successor field before preparing intent",
+  /Before preparing its intent, resolve every successor value\s+that the legacy schema did not record and make the source of each value\s+auditable/i.test(autoSkill) &&
+    /Copy fields the legacy record does contain and record `legacy-field`\s+as their source/i.test(autoSkill) &&
+    /Schema 1 was group-only, so derive only `scope: group` and\s+`scope_selector: <legacy group>` from that published schema and record\s+`schema-1-group-contract` as their source/i.test(autoSkill) &&
+    /For authority and delivery absent\s+from schema 1, and the retry limit and each per-ticket `Transient` count absent\s+from schema 1\/2, use an exact value already supplied by the operator or obtain\s+one bounded operator decision before mutation/i.test(autoSkill) &&
+    /Resolve delivery against the\s+live project policy and require the operator-authorised target; a project\s+fingerprint mismatch is still a stop/i.test(autoSkill) &&
+    /Reconstruct each transient count from\s+retained attempts when possible/i.test(autoSkill) &&
+    /only fail-closed\s+normalization is the chosen retry limit \(budget exhausted\)/i.test(autoSkill) &&
+    /never silently initialize an unknown count\s+to zero/i.test(autoSkill) &&
+    /`field_resolution` entry for every successor field that was\s+absent from the legacy record, naming the resolved value, source, evidence or\s+operator decision, and reason/i.test(autoSkill) &&
+    /Missing or conflicting field-resolution\s+evidence makes the intent malformed and stops the handoff/i.test(autoSkill),
+  "recorded sources + bounded operator decisions + fail-closed retry normalization",
+);
+
+const newRunClauseStart = autoSkill.indexOf("For a new run, create a path-safe unique UTC id");
+const newRunClauseEnd = autoSkill.indexOf("Write and read it back", newRunClauseStart);
+const newRunClause = autoSkill.slice(newRunClauseStart, newRunClauseEnd);
+const schema3RunFields = [
+  "kind",
+  "schema",
+  "run_id",
+  "group",
+  "scope",
+  "scope_selector",
+  "authority",
+  "delivery_target",
+  "project_fingerprint",
+  "controller",
+  "status",
+  "created_at",
+  "updated_at",
+  "lane_limit",
+  "transient_retry_limit",
+  "stop_reason",
+];
+check(
+  "kanmer-auto validates every required schema-3 new-run field",
+  newRunClauseStart >= 0 &&
+    newRunClauseEnd > newRunClauseStart &&
+    schema3RunFields.every((field) => newRunClause.includes(`\`${field}\``)) &&
+    /Refuse creation when any required field is\s+absent or malformed/i.test(newRunClause),
+  schema3RunFields.filter((field) => !newRunClause.includes(`\`${field}\``)).join(", ") ||
+    "all fields + refusal",
 );
 
 // The run record is where a resumed controller learns what it is adopting, so
 // the scope, the granted authority and the resolved delivery target belong in
 // the template rather than in one run's prose.
-for (const field of ["scope:", "scope_selector:", "authority:", "delivery_target:"]) {
+// `transient_retry_limit:` joins them for the same reason (SKILL-038, F-005):
+// a budget the controller keeps in its head is not a budget, and FRD-034
+// already requires the run to record its "retry budget".
+for (const field of [
+  "scope:",
+  "scope_selector:",
+  "authority:",
+  "delivery_target:",
+  "transient_retry_limit:",
+]) {
   check(`run-state template records ${field}`, runStateBody.includes(field), field);
 }
 check(
@@ -762,13 +1196,223 @@ check(
   /\*\*frozen at/.test(runStateBody) && /\| Replan \|/.test(runStateBody),
   "frozen roster + replan column",
 );
+check(
+  "schema-3 run records declare target-reached in the exhaustive disposition vocabulary",
+  /ticket dispositions are exactly `queued`, `active`,\s+`waiting`, `blocked`, `target-reached`, `finished`, or `skipped`/i.test(autoSkill) &&
+    /Disposition is exactly one of `queued`, `active`, `waiting`, `blocked`,\s+`target-reached`, `finished`, or `skipped`; `target-reached` is terminal/i.test(runStateBody),
+  "skill vocabulary + run-state template vocabulary",
+);
+check(
+  "run-state ledger counts transient re-runs per ticket",
+  /\| Transient \|/.test(runStateBody),
+  "transient column",
+);
 for (const [label, body] of [["run-state", runStateBody], ["current-run", currentRunBody]]) {
-  check(`${label} template is stamped schema: 2`, /^schema: 2$/m.test(body), "schema: 2");
+  check(`${label} template is stamped schema: 3`, /^schema: 3$/m.test(body), "schema: 3");
 }
 check(
   "current-run pointer names the scope it is resuming",
   /^scope: /m.test(currentRunBody) && /^scope_selector: /m.test(currentRunBody),
   "scope + selector",
+);
+check(
+  "AGENTS documents the schema-3 dependency and retry controller contract",
+  /kanmer-auto\/\s+# schema-3 \/goal controller: dependency-safe roster, bounded lanes\/retries, review\+verify/.test(
+    agentsGuide,
+  ) &&
+    /A ticket's `blocked` flag is board-wide/.test(agentsGuide) &&
+    /Parse and record the requested target before resolving dependency feasibility/.test(agentsGuide) &&
+    /a target reaches the board's final stage when it is `closeout` or resolves to that final stage itself/.test(
+      agentsGuide,
+    ) &&
+    /Apply ordinary exclusions first: unpromoted quick captures and live foreign claims are excluded, while expired foreign claims are classified without mutation/.test(
+      agentsGuide,
+    ) &&
+    /After those ordinary exclusions but before outside-roster closure or any dependency pruning, determine exact target satisfaction for every surviving candidate/.test(
+      agentsGuide,
+    ) &&
+    /from the current item, gates, and every live provider fact the target requires/.test(agentsGuide) &&
+    /Up to review requires the ticket in Review plus a live linked PR that is open against the recorded delivery target with its current head SHA known/.test(
+      agentsGuide,
+    ) &&
+    /record the PR, target, exact head and observation time, because stored `prs`, item and gates alone are not proof/.test(
+      agentsGuide,
+    ) &&
+    /Unavailable or contradictory provider evidence leaves the member nonterminal and `waiting`/.test(
+      agentsGuide,
+    ) &&
+    /archived or unpromoted quick capture never receives `target-reached`; mandatory exclusions removed it first/.test(
+      agentsGuide,
+    ) &&
+    /already-target member stays in the frozen roster with terminal `target-reached`, leaves only the needs-advancement set, and is never dependency-blocked/.test(
+      agentsGuide,
+    ) &&
+    /its outgoing edge remains live for unsatisfied members until actual board state clears it/.test(
+      agentsGuide,
+    ) &&
+    /target-reached member whose expired claim was classified is never transferred/.test(
+      agentsGuide,
+    ) &&
+    /Only then resolve outside-roster blockers to a fixed point and build the internal dependency graph/.test(
+      agentsGuide,
+    ) &&
+    /Outside-roster closure and every dependency disposition apply only to nonterminal members in the needs-advancement set/.test(
+      agentsGuide,
+    ) &&
+    /target-reached members remain frozen terminal evidence and may supply outgoing live edges, but are never candidates for pruning or replacement by dependency analysis/.test(
+      agentsGuide,
+    ) &&
+    /Build the cycle graph only from live edges whose dependent is a nonterminal needs-advancement member: a target-reached member may be a blocker source, but no incoming edge is admitted for it, so it can never be a cycle member or cycle-affected recipient/.test(
+      agentsGuide,
+    ) &&
+    /Transfer an expired foreign claim only immediately before first assignment after feasibility and a fresh claim read/.test(
+      agentsGuide,
+    ) &&
+    /Record its branch, worktree and dirty-work evidence in the run ledger, then call `take_ticket transfer` directly; never append ticket scratch before transfer/.test(
+      agentsGuide,
+    ) &&
+    /transfer path re-collects evidence, rechecks liveness under the write lock, and writes its preserved-work summary only after success, so `CLAIM_LIVE` leaves the ticket byte-for-byte unchanged/.test(
+      agentsGuide,
+    ) &&
+    /preserve its branch, worktree and dirty work, and never transfer a terminal, excluded or target-reached member/i.test(
+      agentsGuide,
+    ) &&
+    /outside-roster blocker excludes the dependent with named evidence/.test(agentsGuide) &&
+    /safe acyclic in-roster blocker stays queued behind that blocker only when the requested target reaches the board's final stage/.test(
+      agentsGuide,
+    ) &&
+    /directed blocker graph for cyclic components, including self-loops/.test(agentsGuide) &&
+    /name each cycle's ordered path and complete members/.test(agentsGuide) &&
+    /give its members and all transitive nonterminal needs-advancement downstream dependents a terminal `blocked` run disposition and dispatch none/.test(
+      agentsGuide,
+    ) &&
+    /For a target that does not reach the final stage, terminally block each dependent on a remaining live edge and all transitive downstream dependents/.test(
+      agentsGuide,
+    ) &&
+    /naming its blocker, requested target and final stage; keep those members in the frozen ledger and dispatch none/.test(
+      agentsGuide,
+    ) &&
+    /Closeout and an explicit final-stage target both retain and serially order the acyclic chain/.test(
+      agentsGuide,
+    ) &&
+    /an already-Done blocker creates no live edge/.test(
+      agentsGuide,
+    ) &&
+    /Freeze exact blocker edges, liveness, target bindings, claim classifications and relevant dispositions as a dependency-safety snapshot/.test(
+      agentsGuide,
+    ) &&
+    /Before every assignment and after every result, compare live state/.test(
+      agentsGuide,
+    ) &&
+    /When any target fact or outgoing blocker liveness changes, first revalidate each implicated terminal target-reached source even though it is outside the needs-advancement set/.test(
+      agentsGuide,
+    ) &&
+    /run that same procedure for every target-reached member immediately before a terminal run status or final report/.test(
+      agentsGuide,
+    ) &&
+    /Each pass re-gathers the current item, gates and target-specific live provider evidence and compares them with the recorded target binding/.test(
+      agentsGuide,
+    ) &&
+    /assign no dependent relying on it until the result is durable/.test(agentsGuide) &&
+    /Valid evidence refreshes the exact binding and observation time/.test(agentsGuide) &&
+    /Any available required fact that disproves the binding is affirmatively stale or contradictory even if another provider is unavailable/.test(
+      agentsGuide,
+    ) &&
+    /preserve old and current facts, replace `target-reached` with terminal `blocked` reason `target evidence stale:` without reopening or dispatch, and propagate that terminal non-success before dependency feasibility/.test(
+      agentsGuide,
+    ) &&
+    /Mere unavailable or unknown provider evidence, with no available fact disproving the binding, preserves `target-reached` and its last valid binding/.test(
+      agentsGuide,
+    ) &&
+    /record the provider, fact, observation time and exact resume action, keep every dependent relying on it `waiting` and undispatched, let unrelated safe lanes continue, then set the run `paused` with reason `target evidence unavailable:` when none remains ready/.test(
+      agentsGuide,
+    ) &&
+    /Resume only after capability state changes or an explicit resume and run the same revalidation again/.test(
+      agentsGuide,
+    ) &&
+    /unavailability never consumes the verification retry budget, becomes terminal `blocked`, or permits `completed`/.test(
+      agentsGuide,
+    ) &&
+    /Only after implicated terminal sources are valid or affirmatively corrected may graph changes re-run outside-roster closure, cycle detection and target feasibility for nonterminal members still needing advancement/.test(
+      agentsGuide,
+    ) &&
+    /membership remains frozen, and persist\/read back every target result and disposition before dispatch/.test(
+      agentsGuide,
+    ) &&
+    /terminal non-success blocker whose edge stays live terminally blocks every transitive unsatisfied dependent with its reason/.test(
+      agentsGuide,
+    ) &&
+    /unrelated safe lanes continue and terminal dispositions never reopen/.test(agentsGuide) &&
+    /Set the run `blocked` only after every safe lane is terminal, and never complete a run with a cycle-affected or target-affected member/.test(
+      agentsGuide,
+    ) &&
+    /`transient_retry_limit` \(default 2 per ticket per run\)/.test(agentsGuide) &&
+    /failed verification command is never rerun directly by the controller or by the same verifier/i.test(
+      agentsGuide,
+    ) &&
+    /Exactly two authorization paths share that one budget/.test(
+      agentsGuide,
+    ) &&
+    /evidence-bootstrap path may admit at most one evidence-establishing logical attempt per ticket per run/.test(
+      agentsGuide,
+    ) &&
+    /classified-transient path may admit another fresh independent logical attempt whenever durable room remains/.test(
+      agentsGuide,
+    ) &&
+    /Every admitted attempt reserves one durable count before its first dispatch/.test(
+      agentsGuide,
+    ) &&
+    /evidence-bootstrap attempt requires an authoritative proof with `result: FAIL` or `result: INCONCLUSIVE`/.test(
+      agentsGuide,
+    ) &&
+    /`failure_class: inconclusive`/.test(agentsGuide) &&
+    /an explicit request for the same failing job at the same SHA/.test(
+      agentsGuide,
+    ) &&
+    /`FAIL` also retains its non-zero failing attempt/.test(agentsGuide) &&
+    /an untouched failing path and a concrete environmental mechanism hypothesis without controller self-classification/.test(
+      agentsGuide,
+    ) &&
+    /classified-transient attempt requires an authoritative exact-SHA `failure_class: transient`/.test(agentsGuide) &&
+    /Raising the limit adds classified-transient-path capacity, never a third authorization path/.test(agentsGuide) &&
+    /Each logical attempt increments once; a confirmed pre-mutation launch retry reuses that reservation without increment, decrement or reset, while unknown launch status dispatches no replacement/.test(
+      agentsGuide,
+    ) &&
+    /Any proof lacking an allowed bootstrap result, the exact class, explicit request or required retained attempt, and every implementation or plan failure, cannot enter the corresponding route/.test(
+      agentsGuide,
+    ) &&
+    /classification never resets the count/.test(agentsGuide) &&
+    /Schema-3 ticket dispositions are exactly `queued`, `active`, `waiting`, `blocked`, `target-reached`, `finished`, or `skipped`; `target-reached` is terminal/.test(
+      agentsGuide,
+    ) &&
+    /Active schema-1\/schema-2 records are never restamped or supplemented in place with schema-3 frontmatter or counters/.test(agentsGuide) &&
+    /first reconcile every legacy worker and require all to be proven inactive/.test(agentsGuide) &&
+    /active or uncertain worker preserves the old ledger and pointer and permits no successor/.test(
+      agentsGuide,
+    ) &&
+    /append and read back a legacy-schema `successor-prepared` intent containing one deterministic successor id, project, scope, authority, delivery, limits and the exact ordered roster with dispositions/.test(
+      agentsGuide,
+    ) &&
+    /resolve every successor value missing from the legacy schema before mutation/.test(agentsGuide) &&
+    /copy recorded values; derive schema-1 `scope: group` and its selector only from the group-only schema contract; obtain exact operator values for absent authority, delivery and retry limits; reconstruct transient counts from retained attempts or fail closed at the chosen exhausted limit/.test(
+      agentsGuide,
+    ) &&
+    /record every value, source, evidence or operator decision and reason/.test(agentsGuide) &&
+    /complete `field_resolution`; this legacy-valid event append does not change the old schema/.test(
+      agentsGuide,
+    ) &&
+    /Missing or conflicting field-resolution evidence makes the intent malformed/.test(agentsGuide) &&
+    /preserve that roster by default and allow fresh selection only with explicit operator authority in the intent/i.test(
+      agentsGuide,
+    ) &&
+    /Only then may the legacy run close under its own schema/.test(agentsGuide) &&
+    /Startup rolls an active or terminal prepared handoff forward by creating the exact successor if absent or validating it if present, and updates the pointer last/.test(
+      agentsGuide,
+    ) &&
+    /missing, malformed or conflicting intent stops without an alternate id/.test(
+      agentsGuide,
+    ),
+  "inventory + target/claim ordering + dynamic blockers + retry budget + prepared schema transition",
 );
 
 // Two claims that must stay absent. The first is the role boundary that
@@ -801,6 +1445,24 @@ const forbiddenGoalClaims = [
       /budget[- ]exhausted[^.]*\b(?:self-)?replans?\b/i,
       /REMEDIATION_BUDGET_EXHAUSTED[^.]*\breplans?\b/i,
       /\breplans?\b[^.]*\b(?:once|after|when|because)\s+the\s+(?:remediation\s+)?budget is (?:spent|exhausted)/i,
+    ],
+  ],
+  // SKILL-038. The positive checks above pin the in-roster/out-of-roster
+  // distinction; this one pins that the board-wide drop cannot come back under
+  // a different sentence. It is the shape the defect actually shipped in — one
+  // clause in a numbered step, removed once and easy to reinstate while
+  // tidying — so, like its two neighbours, it is backed by every phrasing that
+  // would make the name untrue rather than by the one the history happened to
+  // use. None of these matches the replacement prose, whose exclusion rule is
+  // conditional ("Any live blocker is outside the roster … exclude the
+  // dependent") and never states an unconditional drop.
+  [
+    "roster that drops every blocked ticket board-wide",
+    [
+      /Drop archived or blocked tickets/i,
+      /drop (?:all |every |any )?blocked tickets/i,
+      /blocked tickets are (?:always )?(?:dropped|excluded|skipped)/i,
+      /a blocked ticket is (?:always )?(?:dropped|excluded|skipped) from the roster/i,
     ],
   ],
 ];

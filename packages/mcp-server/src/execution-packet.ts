@@ -700,6 +700,31 @@ export async function getExecutionPacket(input: {
       gates,
     );
   }
+  if (batch && batch.state !== "active") {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, whose authoritative manifest is ${batch.state ?? "missing"}; ` +
+        `only an active batch may issue an execution packet, and releasing must finish first.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  const selectedBatchMember = batch?.members.find((member) => member.id === id);
+  if (batch && (!selectedBatchMember?.exists || selectedBatchMember.archived || selectedBatchMember.terminal)) {
+    const disposition = !selectedBatchMember?.exists
+      ? "missing from its authoritative roster"
+      : selectedBatchMember.archived
+        ? `archived in ${selectedBatchMember.status}`
+        : `terminal in ${selectedBatchMember.status}`;
+    return refuse(
+      project,
+      `Ticket "${id}" is ${disposition} for batch ${batch.id}; terminal or archived members cannot receive another execution packet.`,
+      [],
+      item,
+      gates,
+    );
+  }
   if (batch && !controllerRun?.trim()) {
     return refuse(
       project,

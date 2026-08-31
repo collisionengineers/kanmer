@@ -80,10 +80,12 @@ If the host repo doesn't auto-delete merged branches:
 cleanup action, first call `list_items include_archived: true`. Use the
 summaries' `batch.id` to discover every ticket with the exact same batch id;
 never infer membership from a matching branch, worktree, or only the active
-board. While an authoritative manifest is `active` or `releasing`, both
-`list_items` and `search_items` keep projecting it onto every member until
-manifest unlink — even after a partial release has cleared all ticket-local
-batch fields. Read `batch.state`, the complete `batch.members`,
+board. While an authoritative manifest is `active` or `releasing`,
+`list_items include_archived: true` is the sole complete roster census: it
+keeps projecting the manifest onto every member until manifest unlink — even
+after a partial release has cleared all ticket-local batch fields.
+`search_items` projects batch metadata only onto matching non-archived results
+and is never a complete roster census. Read `batch.state`, the complete `batch.members`,
 `batch.workspace`, and `batch.branch` from that projection. This is the fresh
 closeout discovery path after any interruption; do not depend on remembering a
 member id's old claim fields. Surface listing warnings and refuse a `pending`,

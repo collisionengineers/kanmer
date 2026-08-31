@@ -2934,6 +2934,23 @@ Second proof attempt passed; the first failure is retained.
       textOf(earlyRelease),
     );
     await client.callTool({ name: "update_item", arguments: { id: m3, archived: true } });
+    const beforeArchivedMemberExecution = treeSnapshot(sandbox);
+    const archivedMemberPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m3, controller_run: batchTake.controller_run },
+    })));
+    const archivedMemberTake = await client.callTool({
+      name: "take_ticket",
+      arguments: { id: m3, ...batchTake, batch: "smoke-batch" },
+    });
+    check(
+      "an untaken archived batch member receives no packet or lease and leaves every board byte unchanged",
+      archivedMemberPacket.ready === false && archivedMemberPacket.reason.includes("archived") &&
+        archivedMemberTake.isError === true && textOf(archivedMemberTake).includes("BATCH_ACTIVE") &&
+        archivedMemberTake.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeArchivedMemberExecution),
+      JSON.stringify({ packet: archivedMemberPacket, take: textOf(archivedMemberTake) }),
+    );
     const archivedRoster = JSON.parse(textOf(await client.callTool({ name: "list_items", arguments: { include_archived: true } })))
       .filter((item) => [m1, m2, m3].includes(item.id));
     check(
@@ -3001,6 +3018,69 @@ Second proof attempt passed; the first failure is retained.
       !fs.existsSync(batchManifestFile) && afterRecoveredCloseout.every((item) => item.batch === null),
       JSON.stringify(afterRecoveredCloseout.map((item) => ({ id: item.id, batch: item.batch }))),
     );
+
+    const terminalMember = async (title) => JSON.parse(textOf(await client.callTool({
+      name: "create_item",
+      arguments: { title, status: "implementing", profile: "custom", requires: {} },
+    }))).id;
+    const [terminalFirstId, terminalSecondId] = [
+      await terminalMember("terminal batch member 1"),
+      await terminalMember("terminal batch member 2"),
+    ];
+    const terminalBatchTake = {
+      ...batchTake,
+      batch: "smoke-terminal-batch",
+    };
+    await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: terminalFirstId,
+        ...terminalBatchTake,
+        batch_members: [terminalFirstId, terminalSecondId],
+      },
+    });
+    for (const status of ["review", "verifying", "done"]) {
+      await client.callTool({ name: "move_item", arguments: { id: terminalSecondId, status } });
+    }
+    const beforeDoneMemberExecution = treeSnapshot(sandbox);
+    const doneMemberPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: terminalSecondId, controller_run: terminalBatchTake.controller_run },
+    })));
+    const doneMemberTake = await client.callTool({
+      name: "take_ticket",
+      arguments: { id: terminalSecondId, ...terminalBatchTake },
+    });
+    check(
+      "an untaken Done batch member receives no packet or lease and leaves every board byte unchanged",
+      doneMemberPacket.ready === false && doneMemberPacket.reason.includes("terminal") && doneMemberPacket.reason.includes("done") &&
+        doneMemberTake.isError === true && textOf(doneMemberTake).includes("BATCH_ACTIVE") &&
+        doneMemberTake.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeDoneMemberExecution),
+      JSON.stringify({ packet: doneMemberPacket, take: textOf(doneMemberTake) }),
+    );
+    for (const status of ["review", "verifying", "done"]) {
+      await client.callTool({ name: "move_item", arguments: { id: terminalFirstId, status } });
+    }
+    await client.callTool({ name: "take_ticket", arguments: { id: terminalFirstId, action: "release" } });
+    const beforeReleasingMemberExecution = treeSnapshot(sandbox);
+    const releasingMemberPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: terminalSecondId, controller_run: terminalBatchTake.controller_run },
+    })));
+    const releasingMemberTake = await client.callTool({
+      name: "take_ticket",
+      arguments: { id: terminalSecondId, ...terminalBatchTake },
+    });
+    check(
+      "a releasing batch issues no member packet or lease and leaves every board byte unchanged",
+      releasingMemberPacket.ready === false && releasingMemberPacket.reason.includes("releasing") &&
+        releasingMemberTake.isError === true && textOf(releasingMemberTake).includes("releasing batch smoke-terminal-batch") &&
+        releasingMemberTake.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeReleasingMemberExecution),
+      JSON.stringify({ packet: releasingMemberPacket, take: textOf(releasingMemberTake) }),
+    );
+    await client.callTool({ name: "take_ticket", arguments: { id: terminalSecondId, action: "release" } });
     const isolated = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: stranger, branch: "stranger-branch", assignee: "ctl-batch" } })));
     check("isolated mode stays the default: the stranger takes its own branch with no batch record", Boolean(isolated.taken_at) && !isolated.lease_batch, JSON.stringify({ taken: isolated.taken_at, batch: isolated.lease_batch ?? null }));
   }

@@ -678,7 +678,7 @@ const protectedBatchContract = [
   ],
   [
     "kanmer-closeout retains manifest discovery through unlink and permits a fresh terminal releaser",
-    /authoritative manifest is `active` or `releasing`[\s\S]{0,180}`list_items` and `search_items`[\s\S]{0,160}until\s+manifest unlink[\s\S]{0,300}`batch\.state`[\s\S]{0,120}`batch\.members`[\s\S]{0,120}`batch\.workspace`[\s\S]{0,80}`batch\.branch`/i.test(
+    /authoritative manifest is `active` or `releasing`[\s\S]{0,220}`list_items include_archived: true` is the sole complete roster census[\s\S]{0,220}every member until\s+manifest unlink[\s\S]{0,260}`search_items` projects batch metadata only (?:onto|for) matching\s+non-archived results[\s\S]{0,120}never a complete roster census[\s\S]{0,300}`batch\.state`[\s\S]{0,120}`batch\.members`[\s\S]{0,120}`batch\.workspace`[\s\S]{0,80}`batch\.branch`/i.test(
       closeoutSkill,
     ) &&
       /fresh closeout agent may call[\s\S]{0,100}`take_ticket action: "release"`[\s\S]{0,180}not actor-bound[\s\S]{0,180}does not require the original MCP actor or\s+`controller_run`/i.test(closeoutSkill),
@@ -688,7 +688,7 @@ const protectedBatchContract = [
     /Pending, active and releasing manifests persist the exact pair of the actual MCP request actor and that durable run id[\s\S]{0,260}Declaration, pending recovery, every later member take, batch renew and batch execution packet must exact-match both values/i.test(
       toolReference,
     ) &&
-      /`batch` \(`\{ id, controller, frozenAt, state, members, workspace, branch \}`[\s\S]{0,260}active\/releasing manifest onto every roster member[\s\S]{0,100}until manifest unlink/i.test(toolReference) &&
+      /`batch` \(`\{ id, controller, frozenAt, state, members, workspace, branch \}`[\s\S]{0,420}`list_items include_archived: true` is the sole complete roster census[\s\S]{0,420}`search_items` projects batch metadata only (?:onto|for) matching\s+non-archived results[\s\S]{0,120}(?:not|never) a complete roster census/i.test(toolReference) &&
       /Every modern manifest-backed batch renew supplies its exact `controller_run` and both current `lease_id` and `lease_revision`[\s\S]{0,120}no no-token compatibility fallback/i.test(
         toolReference,
       ) &&

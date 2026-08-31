@@ -785,6 +785,8 @@ export interface BatchState {
   /** Durable controller-run identity paired with the actual actor. */
   controllerRun: string | null;
   frozenAt: string | null;
+  /** Authoritative manifest lifecycle state; null only when no readable manifest exists. */
+  state: "pending" | "active" | "releasing" | null;
   /** Whether the declaration is complete, recoverably pending, or internally inconsistent. */
   declaration: "consistent" | "pending" | "inconsistent";
   /** Immutable source branch recorded by the authoritative batch manifest. */

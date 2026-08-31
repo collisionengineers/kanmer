@@ -43203,6 +43203,7 @@ ${entry}`;
       controller: journal?.controller ?? (controllers.size === 1 ? [...controllers][0] : null),
       controllerRun: journal?.controller_run ?? (controllerRuns.size === 1 ? [...controllerRuns][0] : null),
       frozenAt: journal?.frozen_at ?? (frozen.size === 1 ? [...frozen][0] : null),
+      state: journal?.state ?? null,
       declaration: journal?.state === "pending" ? "pending" : consistent ? "consistent" : "inconsistent",
       branch: journal?.branch ?? taken?.branch ?? null,
       workspace: journal?.workspace ?? (taken?.branch ? this.batchWorkspaceIdentity(taken.worktree, taken.branch).workspace : null),
@@ -43757,6 +43758,16 @@ ${entry}`;
           throw new Error(`BATCH_INCONSISTENT: batch ${effectiveBatch} has no authoritative manifest; no lease was written.`);
         }
         const direct = await this.readManifestMembers(manifest, tickets);
+        const selected = direct.find((member) => member.id === id);
+        if (!selected) {
+          throw new Error(`BATCH_INCONSISTENT: batch ${effectiveBatch}'s authoritative roster does not contain "${id}"; no lease was written.`);
+        }
+        current = selected;
+        if (manifest.state !== "active") {
+          throw new Error(
+            `BATCH_ACTIVE: "${id}" belongs to ${manifest.state} batch ${effectiveBatch}; only an active manifest may issue another member lease, and release must finish first.`
+          );
+        }
         const directById = new Map(direct.map((member) => [member.id, member]));
         const state = this.batchStateOf(
           effectiveBatch,
@@ -43765,6 +43776,12 @@ ${entry}`;
         );
         if (state.declaration !== "consistent") {
           throw new Error(`BATCH_INCONSISTENT: batch ${effectiveBatch}'s membership, controller or frozen timestamp is incomplete; no lease was written.`);
+        }
+        if (selected.archived || isTerminalTicket(selected)) {
+          const disposition = selected.archived ? `archived in ${selected.status}` : `a terminal batch member in ${selected.status}`;
+          throw new Error(
+            `BATCH_ACTIVE: "${id}" is ${disposition} for batch ${effectiveBatch}; terminal or archived members cannot acquire a new implementation lease.`
+          );
         }
         if (state.controller !== batchActor) {
           throw new Error(`BATCH_OWNER_MISMATCH: batch ${effectiveBatch} belongs to ${state.controller ?? "an unknown actor"}; ${batchActor} cannot take a member.`);
@@ -46885,6 +46902,26 @@ async function getExecutionPacket(input) {
     return refuse(
       project,
       `Ticket "${id}" belongs to batch ${batch.id}, whose declaration is ${batch.declaration}; recover or reconcile the complete manifest before execution.`,
+      [],
+      item,
+      gates
+    );
+  }
+  if (batch && batch.state !== "active") {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, whose authoritative manifest is ${batch.state ?? "missing"}; only an active batch may issue an execution packet, and releasing must finish first.`,
+      [],
+      item,
+      gates
+    );
+  }
+  const selectedBatchMember = batch?.members.find((member) => member.id === id);
+  if (batch && (!selectedBatchMember?.exists || selectedBatchMember.archived || selectedBatchMember.terminal)) {
+    const disposition = !selectedBatchMember?.exists ? "missing from its authoritative roster" : selectedBatchMember.archived ? `archived in ${selectedBatchMember.status}` : `terminal in ${selectedBatchMember.status}`;
+    return refuse(
+      project,
+      `Ticket "${id}" is ${disposition} for batch ${batch.id}; terminal or archived members cannot receive another execution packet.`,
       [],
       item,
       gates

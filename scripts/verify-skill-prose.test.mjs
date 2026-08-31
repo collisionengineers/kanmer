@@ -394,8 +394,8 @@ test("skill prose validator rejects batch run, renewal CAS, manifest projection,
       closeout,
       readFileSync(closeout, "utf8")
         .replace(
-          "both\n`list_items` and `search_items` keep projecting it onto every member until\nmanifest unlink",
-          "ticket-local projections may disappear before manifest unlink",
+          "`list_items include_archived: true` is the sole complete roster census",
+          "`search_items` is also a complete roster census",
         )
         .replace(
           "Terminal batch release\nis deliberately not actor-bound",
@@ -404,10 +404,15 @@ test("skill prose validator rejects batch run, renewal CAS, manifest projection,
     );
     writeFileSync(
       toolReference,
-      readFileSync(toolReference, "utf8").replace(
-        "Pending, active and releasing manifests persist the exact pair of the actual MCP request actor and that durable run id.",
-        "The batch stores a display owner.",
-      ),
+      readFileSync(toolReference, "utf8")
+        .replace(
+          "Pending, active and releasing manifests persist the exact pair of the actual MCP request actor and that durable run id.",
+          "The batch stores a display owner.",
+        )
+        .replace(
+          "`list_items include_archived: true` is the sole complete roster census",
+          "`search_items` is a complete roster census",
+        ),
     );
 
     const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });

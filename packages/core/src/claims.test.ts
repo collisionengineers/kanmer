@@ -1661,6 +1661,43 @@ describe("batch workspaces (CORE-124)", () => {
     expect((await store.releaseTicket(a.id)).lease_batch).toBeUndefined();
   });
 
+  it("refuses a fresh take of an untaken Done batch member without changing any board byte", async () => {
+    const { c } = await threeMemberBatch();
+    await walkToDone(c.id);
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(c.id, { ...batchWorkspace, assignee: "ctl-a" })).rejects.toThrow(
+      new RegExp(`^BATCH_ACTIVE:.*"${c.id}".*terminal.*done`, "u"),
+    );
+    expect(await snapshotBoardFiles()).toEqual(before);
+  });
+
+  it("refuses a fresh take of an untaken archived batch member without changing any board byte", async () => {
+    const { c } = await threeMemberBatch();
+    await store.moveItem(c.id, { status: "review" });
+    await store.moveItem(c.id, { status: "verifying" });
+    await store.updateItem(c.id, { archived: true });
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(c.id, { ...batchWorkspace, assignee: "ctl-a" })).rejects.toThrow(
+      new RegExp(`^BATCH_ACTIVE:.*"${c.id}".*archived`, "u"),
+    );
+    expect(await snapshotBoardFiles()).toEqual(before);
+  });
+
+  it("exposes releasing state and refuses a member take without changing any board byte", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    for (const member of [a, b, c]) await walkToDone(member.id);
+    await store.releaseTicket(a.id);
+    expect(await store.batchState(c.id)).toMatchObject({ state: "releasing" });
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(c.id, { ...batchWorkspace, assignee: "ctl-a" })).rejects.toThrow(
+      new RegExp(`^BATCH_ACTIVE:.*"${c.id}".*releasing batch batch-a`, "u"),
+    );
+    expect(await snapshotBoardFiles()).toEqual(before);
+  });
+
   it("serialises the batch record after the lease keys and round-trips it; a v0.3.12 ticket is untouched", async () => {
     const { a, b } = await threeMemberBatch();
     const raw = await fs.readFile(ticketFile(a.id), "utf8");

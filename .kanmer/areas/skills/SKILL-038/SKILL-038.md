@@ -26,12 +26,12 @@ blocks:
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 commits:
-  - 6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc
+  - e7a2569982c6088ffe6ca018196a6f3089275f6c
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/304'
 archived: false
 created: '2026-08-28T06:35:43.709Z'
-updated: '2026-08-31T01:31:25.261Z'
+updated: '2026-08-31T02:06:04.115Z'
 ---
 
 ## What

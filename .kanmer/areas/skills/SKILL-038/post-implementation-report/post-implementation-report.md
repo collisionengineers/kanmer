@@ -260,3 +260,61 @@ Focused validator, 47/47 mutation tests, 155/155 script tests,
 and the unchanged mandatory-section hash all passed. One complete clean Windows
 `npm run verify` rail also passed at the exact detached SHA with canonical
 GitHub origin; both the source and verification checkout were tracked-clean.
+
+---
+
+## Exact-head target-evidence recovery — F-028 and F-029
+
+The automated exact-head review of
+`6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc` exposed one remaining shared
+root cause: terminal target evidence was rechecked only at final reporting, and
+the old outcome collapsed a temporarily unavailable provider into permanent
+staleness. That left a relying dependent eligible under a changed graph before
+its terminal blocker source had been revalidated, and it could permanently
+block a run merely because a provider could not answer.
+
+At exact head `e7a2569982c6088ffe6ca018196a6f3089275f6c` the controller contract now
+uses one target-binding revalidation state machine before dependency
+feasibility and at the final truth boundary:
+
+- a changed target fact or outgoing blocker liveness first revalidates the
+  implicated terminal `target-reached` source, even though it is outside the
+  needs-advancement set; no relying dependent is assigned until the result is
+  durable;
+- an available fact that disproves the binding wins even when another provider
+  is unavailable. The controller preserves old/current evidence, terminally
+  corrects the source to `target evidence stale:`, and propagates the
+  non-success before graph feasibility;
+- provider unavailability with no available disproof preserves
+  `target-reached` and its last valid binding. The run records provider,
+  missing fact, observation time and exact resume action, holds relying
+  dependents, continues unrelated lanes, and pauses when none is ready.
+  Unavailability consumes no verification retry, never becomes terminal
+  `blocked`, and cannot permit `completed`; and
+- graph closure runs only after every implicated terminal source is valid or
+  affirmatively corrected, with roster membership still frozen and every
+  result persisted before dispatch.
+
+Root `AGENTS.md`, the canonical validator, and isolated skill/AGENTS mutation
+fixtures bind the complete three-outcome contract. The diff remains the same
+six declared files, with no `packages/**`, dependency, workflow, or CORE-128
+change.
+
+Exact-head evidence:
+
+- `npm run build:core`: PASS.
+- `node scripts/verify-skill-prose.mjs`: PASS.
+- mutation suite: PASS, 47/47.
+- `npm run test:scripts`: PASS, 155/155.
+- `npm run verify:agents-block`: PASS, 31/31.
+- `git diff --check`: PASS; zero bare `rmSync(`; sections 1–11 intact.
+- Mandatory stop predicates: 1,877 UTF-8 bytes, SHA-256
+  `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
+- One complete clean Windows `npm run verify` rail: PASS from detached
+  standalone checkout
+  `C:\\Users\\Alex\\Documents\\GitHub\\kanmer-verify-skill038-e7a25699`
+  with canonical GitHub origin. It passed core 562/562, GUI 524/524, MCP HTTP
+  144/144, scripts 155/155, MCP smoke 338/338, protocol 50/50, discovery
+  13/13, AGENTS 31/31, typecheck, documentation, headless smoke, MCPB, skills,
+  and byte-identical plugin synchronization. Both source and verification
+  checkouts were tracked-clean at the exact SHA.

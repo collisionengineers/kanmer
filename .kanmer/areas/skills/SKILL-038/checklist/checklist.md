@@ -196,3 +196,38 @@
   MCPB, skills, and byte-identical plugin synchronization.
 - [x] Force-with-lease publish exact head `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc` against prior remote
   `6130dd123460f06926347e0264628848960e51d2` and confirm fresh required checks were created.
+
+## Exact-head target-evidence recovery F-028/F-029
+
+- [x] Revalidate an implicated terminal `target-reached` blocker source before
+  dependency feasibility whenever its target facts or outgoing blocker liveness
+  change.
+- [x] Reuse the same live item, gates, and target-specific provider-evidence
+  procedure immediately before every terminal run transition or final report.
+- [x] Make an available contradiction authoritative even when another provider
+  is unavailable; preserve old/current facts, terminally correct the source,
+  and propagate failure before dependency feasibility.
+- [x] Treat provider unavailability without available disproof as recoverable:
+  preserve the last valid binding, hold relying dependents, continue safe lanes,
+  and pause with an exact resume action instead of consuming retry budget or
+  terminally blocking the run.
+- [x] Mirror and independently mutation-pin the three outcome classes and their
+  ordering in root `AGENTS.md`, the canonical validator, skill fixtures, and
+  AGENTS fixtures.
+- [x] Run exact-head focused validation at
+  `e7a2569982c6088ffe6ca018196a6f3089275f6c`: core build PASS, validator
+  PASS, mutation suite 47/47, scripts 155/155, AGENTS 31/31, and
+  `git diff --check` PASS.
+- [x] Re-prove the exact six-file diff, no `packages/**`, zero bare
+  `rmSync(`, numbered sections 1–11, and the unchanged 1,877-byte mandatory
+  section SHA-256
+  `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
+- [x] Run one complete clean Windows `npm run verify` rail at exact detached
+  head `e7a2569982c6088ffe6ca018196a6f3089275f6c` with canonical GitHub
+  origin: PASS, including core 562/562, GUI 524/524, MCP HTTP 144/144,
+  scripts 155/155, MCP smoke 338/338, protocol 50/50, discovery 13/13,
+  AGENTS 31/31, typecheck, docs, headless smoke, MCPB, skills, and byte-identical
+  plugin synchronization.
+- [x] Force-with-lease publish exact head
+  `e7a2569982c6088ffe6ca018196a6f3089275f6c` against prior remote
+  `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc`.

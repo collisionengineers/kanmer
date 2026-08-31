@@ -671,6 +671,90 @@ describe("phase-2 merge-gate evidence", () => {
     }
   });
 
+  it("blocks open blocker and major findings while allowing dispositioned or advisory findings", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const finding = (severity: string, disposition: string, extra: Record<string, string> = {}) => ({
+      id: "F-031",
+      severity,
+      summary: `${severity} ${disposition}`,
+      disposition,
+      ...extra,
+    });
+    const withFinding = (
+      packet: MergeGateBatchEvidence,
+      reviewFinding: Record<string, string>,
+    ): MergeGateBatchEvidence => updateBatchMember(packet, selectedId, (member) => ({
+      ...member,
+      evidence: {
+        ...member.evidence,
+        review: member.evidence.review.state === "valid"
+          ? {
+              ...member.evidence.review,
+              details: {
+                ...(member.evidence.review.details ?? {}),
+                findings: [reviewFinding],
+              },
+            }
+          : member.evidence.review,
+      },
+    }));
+
+    for (const severity of ["blocker", "major"]) {
+      for (const strict of [false, true]) {
+        const packet = withFinding(setBatchStrict(first.packet, strict), finding(severity, "open"));
+        const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+        expect(result.ok, `${severity}/open/${strict}`).toBe(false);
+        expect(result.findings, `${severity}/open/${strict}`).toContainEqual(expect.objectContaining({
+          code: "STALE_REVIEW",
+          level: "error",
+          outcome: "fail",
+          details: expect.objectContaining({
+            ticketId: selectedId,
+            openFindings: [expect.objectContaining({ severity, disposition: "open" })],
+          }),
+        }));
+      }
+    }
+
+    const eligible = [
+      finding("blocker", "fixed"),
+      finding("major", "rejected-with-reason", { reason: "not reproducible" }),
+      finding("blocker", "accepted-risk", { reason: "bounded residual risk" }),
+      finding("major", "deferred-to-ticket", { ticket: "CORE-999" }),
+      finding("minor", "open"),
+      finding("note", "open"),
+    ];
+    for (const reviewFinding of eligible) {
+      for (const strict of [false, true]) {
+        const packet = withFinding(setBatchStrict(first.packet, strict), reviewFinding);
+        const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+        expect(result.ok, `${reviewFinding.severity}/${reviewFinding.disposition}/${strict}`).toBe(true);
+        expect(result.findings, `${reviewFinding.severity}/${reviewFinding.disposition}/${strict}`).toEqual([]);
+      }
+    }
+
+    const singular = await store.createItem({ type: "ticket", title: "Singular compatibility", status: "review" });
+    for (const strict of [false, true]) {
+      const result = await evaluateMergeGate(store, {
+        number: 78,
+        headSha: head,
+        branch: "singular-compatibility",
+        body: `Kanmer: ${singular.id}`,
+      }, evidence({
+        strict,
+        review: {
+          state: "valid",
+          headSha: head,
+          verdict: "pass",
+          details: { findings: [finding("blocker", "open")] },
+        },
+      }));
+      expect(result.ok, `singular/${strict}`).toBe(true);
+      expect(result.findings, `singular/${strict}`).toEqual([]);
+    }
+  });
+
   it("hard-binds every member review to that member's current ticket and plan in strict and lenient modes", async () => {
     const first = await batchPacket();
     const selectedId = first.tickets[1]!.id;

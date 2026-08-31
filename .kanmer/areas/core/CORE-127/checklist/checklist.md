@@ -10,11 +10,11 @@
 
 ## Root-cause remediation after exact-head review
 
-- [ ] Step 6 — Bound the canonical unique-group census before any group/context I/O in both packet paths; prove over-limit refusal performs zero context reads.
-- [ ] Step 7 — Charge parsing and every literal/wildcard comparison to the aggregate path-match budget; prove exhaustion is INCONCLUSIVE.
-- [ ] Step 8 — Read dirty workspace files through one identity-checked, size-capped handle and reject replacement/growth races.
-- [ ] Step 9 — Reject assume-unchanged and skip-worktree tracked entries with a bounded, non-mutating index-flag census.
-- [ ] Step 10 — Regenerate prose pins/bundle as required and run the complete focused matrix on one clean root-cause commit.
+- [x] Step 6 — Bound the canonical unique-group census before any group/context I/O in both packet paths; prove over-limit refusal performs zero context reads.
+- [x] Step 7 — Charge parsing and every literal/wildcard comparison to the aggregate path-match budget; prove exhaustion is INCONCLUSIVE.
+- [x] Step 8 — Read dirty workspace files through one identity-checked, size-capped handle and reject replacement/growth races.
+- [x] Step 9 — Reject assume-unchanged and skip-worktree tracked entries with a bounded, non-mutating index-flag census.
+- [x] Step 10 — Regenerate prose pins/bundle as required and run the complete focused matrix on one clean root-cause commit.
 
 ## Acceptance census
 
@@ -25,4 +25,4 @@
 - [x] No later packet is issued without PASS for the complete exact prior packet.
 - [x] Board, ticket and activity bytes are unchanged by packet-aware reconciliation.
 - [x] Tool roster remains 41 and no new apply action, workflow stage, board field or dependency appears.
-- [ ] Focused tests, `npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact head. Focused remediation evidence passes at `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7`; fresh authoritative Windows verification, hosted verification and the board-synced gate remain pending at that SHA. The earlier full rail at `fbeab7630d6d287c90f1d59da596890ae507b0be` is retained as historical evidence, not final-head proof.
+- [ ] Focused tests, `npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact head. The complete focused remediation matrix passes at `5302e445dc70714e89762dc19fb96754490e3fa9`; fresh authoritative Windows verification, hosted verification, exact-head automated settlement, independent delta review and the board-synced gate remain pending at that SHA. Full rails at `fbeab7630d6d287c90f1d59da596890ae507b0be` and `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7` are retained as historical evidence, not final-head proof.

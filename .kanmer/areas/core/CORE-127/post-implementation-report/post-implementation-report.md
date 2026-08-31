@@ -17,40 +17,53 @@ Implemented constrained-step reconciliation on exact base `4fda54b4489fa4bc4b6b0
 - Extends the existing read-only `reconcile_ticket` result while preserving the ordinary recommendation.
 - Refuses another constrained packet unless the complete exact prior packet reconciles PASS.
 - Updates AGENTS.md, canonical skills/tool reference, prose guards, tests, and the committed standalone MCP bundle.
+- Bounds one lexical de-duplicated group census before any group/context I/O in both packet paths.
+- Charges raw parsing plus literal and wildcard comparisons to one aggregate matcher budget; exhaustion is INCONCLUSIVE.
+- Reads dirty file evidence through one capped identity-checked handle and rejects replacement, shrink, growth and post-read drift.
+- Hashes a bounded `git ls-files -v -z` census in both samples and refuses assume-unchanged or skip-worktree authority without mutating the index.
 
 ## Commits
 
 - `5a8c5faef89a70b2f4c8b350e1f9314cc6fa62c6` — Enforce constrained step reconciliation.
 - `fbeab7630d6d287c90f1d59da596890ae507b0be` — Prove glob authority with exact containment.
 - `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7` — Harden constrained step packet reconciliation.
+- `5302e445dc70714e89762dc19fb96754490e3fa9` — Harden constrained execution evidence.
 
 Pull request: #307.
 
 ## Verification
 
-The earlier authoritative clean Windows rail passed at `fbeab7630d6d287c90f1d59da596890ae507b0be` from 2026-08-31T19:42:03.9968632Z through 2026-08-31T19:53:22.8472351Z on Windows, Node v24.15.0 and npm 11.14.1. Because source changed afterward, it is historical evidence only; a fresh full rail is required at `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7`.
+The clean Windows `npm run verify` rail passed at exact prior head `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7` from 2026-08-31T20:58:44.5293965Z through 2026-08-31T21:10:01.7598092Z on Windows, Node v24.15.0 and npm 11.14.1. Hosted `verify` also passed there in Actions run 33438698598. Because source changed afterward, both are historical evidence only.
 
-Focused remediation evidence at exact head `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7`, all exit 0:
+Final focused remediation evidence at exact head `5302e445dc70714e89762dc19fb96754490e3fa9`, all exit 0:
 
-- Core plan + packet: 106/106 PASS.
-- Workspace/document collector: 19/19 PASS, including a real linked worktree nested under a dedicated board.
+- Core plan + packet: 108/108 PASS.
+- Workspace/document collector: 27/27 PASS.
 - Reconciliation: 37/37 PASS.
 - MCP smoke: 380/380 PASS.
 - Protocol: 50/50 PASS.
-- Skill-prose mutation suite: 53/53 PASS; canonical skill verification PASS.
 - Script tests: 161/161 PASS.
 - AGENTS block: 31/31 PASS.
-- Core/MCP builds and all-workspace typecheck: PASS.
-- Plugin roster and byte identity: 41 tools, 12 skill frontmatters, isolated handshake PASS.
+- Core/MCP builds, all-workspace typecheck and canonical skill verification: PASS.
+- Plugin build/check: 41-tool roster, byte identity and isolated handshake PASS.
 - `git diff --check`: PASS; worktree clean.
 
-Failed-first evidence is retained: the first core run was 94/95 because the old null-checklist fixture expected issuance; the first smoke run exposed batch fixtures with no mapped checklist marker and a downstream dereference; and the first skill verification exposed two overly narrow new prose pins. Each was corrected within the authorized assertions/fixtures/prose and the complete implicated command then passed. A mistaken invocation of a nonexistent workspace smoke script exited before running tests; the documented direct smoke command subsequently ran 380/380.
+Failed-first evidence is retained for the new remediation: literal-budget tests first failed twice; the group/index collector first accepted two unsafe cases; one parser-message expectation and one unused-import typecheck failure were corrected; and the first final scripts run was 160/161 because a prose fixture anchor crossed a wrapped line. The implicated suites were rerun and passed completely. Earlier failed-first evidence for F-001 through F-005 remains recorded at its original commits.
+
+A fresh clean Windows `npm run verify`, hosted `verify`, exact-head automated review settlement, independent delta review and board-synced `kanmer-gate` are controller work and remain pending at this final head.
 
 ## Review disposition
 
-The prior exact-head automated and independent review at `fbeab7630d6d287c90f1d59da596890ae507b0be` produced five current findings: recursive path-matching exhaustion, constrained issuance without a checklist marker, newline normalization accepting rewritten checklists, duplicate group evidence, and a dedicated-board descendant worktree bypass. They were addressed together in commit `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7`. Exact-head automated settlement and one bounded independent delta review are pending.
+F-001 through F-005 remain fixed in `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7`. The four exact-head majors from the next review are addressed together in `5302e445dc70714e89762dc19fb96754490e3fa9`:
 
-An earlier major containment issue was already fixed in `fbeab7630d6d287c90f1d59da596890ae507b0be` by replacing constructive subset proof with exact bounded whole-path language containment/intersection. Its independent symbolic oracle covered 17,295 containment relations without mismatch.
+- F-006: one pre-I/O counted-document plus unique-group bound is shared by whole-ticket and constrained paths.
+- F-007: literal parsing/equality and wildcard work consume the same aggregate budget before work.
+- F-008: path and handle identity/size/type/mode/link facts bracket a capped handle read.
+- F-009: a bounded non-mutating index-flag census refuses hidden tracked authority and detects drift.
+
+All nine GitHub threads remain open until the final exact-head automated and independent delta reviews settle. Their durable public dispositions and resolution are controller work; no finding is silently closed.
+
+An earlier major containment issue was fixed in `fbeab7630d6d287c90f1d59da596890ae507b0be` by replacing constructive subset proof with exact bounded whole-path language containment/intersection. Its independent symbolic oracle covered 17,295 containment relations without mismatch.
 
 A resource bound remains intentional: automaton proof exhaustion produces `PLAN_GLOB_COMPLEXITY` and refuses authority. Runtime path-membership exhaustion is separately surfaced as INCONCLUSIVE. Neither can silently authorize a path.
 

@@ -245,7 +245,10 @@ describe("phase-2 merge-gate evidence", () => {
         headSha: head,
         branch: "batch-gate",
         body: tickets.map((ticket) => `Kanmer: ${ticket.id}`).join("\n"),
+        baseRef: "main",
         url: "https://github.com/collisionengineers/kanmer/pull/77",
+        repository: "collisionengineers/kanmer",
+        headRepository: "collisionengineers/kanmer",
       },
       packet: {
         kind: "batch" as const,
@@ -357,6 +360,82 @@ describe("phase-2 merge-gate evidence", () => {
           }),
         }),
       ]);
+    }
+  });
+
+  it("hard-binds a plural PR base to the one common resolved target in strict and lenient modes", async () => {
+    const first = await batchPacket();
+    const { baseRef: _baseRef, ...missingBase } = first.pr;
+
+    for (const strict of [false, true]) {
+      const packet = setBatchStrict(first.packet, strict);
+      expect((await evaluateMergeGate({} as KanmerStore, first.pr, packet)).ok, `matching/${strict}`).toBe(true);
+
+      for (const testCase of [
+        { name: "missing", pr: missingBase, baseRef: null },
+        { name: "wrong", pr: { ...first.pr, baseRef: "dev" }, baseRef: "dev" },
+      ]) {
+        const result = await evaluateMergeGate({} as KanmerStore, testCase.pr, packet);
+        expect(result.ok, `${testCase.name}/${strict}`).toBe(false);
+        expect(result.findings).toEqual([
+          expect.objectContaining({
+            code: "BATCH_ROSTER",
+            level: "error",
+            outcome: "fail",
+            details: expect.objectContaining({
+              batchId: "batch-gate",
+              expectedTarget: "main",
+              baseRef: testCase.baseRef,
+            }),
+          }),
+        ]);
+      }
+    }
+  });
+
+  it("hard-binds a plural PR head repository to its source repository in strict and lenient modes", async () => {
+    const first = await batchPacket();
+    const { repository: _repository, ...missingRepository } = first.pr;
+    const { headRepository: _headRepository, ...missingHeadRepository } = first.pr;
+
+    for (const strict of [false, true]) {
+      const packet = setBatchStrict(first.packet, strict);
+      const caseVariant = await evaluateMergeGate(
+        {} as KanmerStore,
+        {
+          ...first.pr,
+          repository: "collisionengineers/kanmer",
+          headRepository: "COLLISIONENGINEERS/KANMER",
+        },
+        packet,
+      );
+      expect(caseVariant.ok, `case variant/${strict}`).toBe(true);
+
+      for (const testCase of [
+        { name: "missing source", pr: missingRepository, repository: null, headRepository: "collisionengineers/kanmer" },
+        { name: "missing head", pr: missingHeadRepository, repository: "collisionengineers/kanmer", headRepository: null },
+        {
+          name: "different head",
+          pr: { ...first.pr, headRepository: "foreign/fork" },
+          repository: "collisionengineers/kanmer",
+          headRepository: "foreign/fork",
+        },
+      ]) {
+        const result = await evaluateMergeGate({} as KanmerStore, testCase.pr, packet);
+        expect(result.ok, `${testCase.name}/${strict}`).toBe(false);
+        expect(result.findings).toEqual([
+          expect.objectContaining({
+            code: "BATCH_ROSTER",
+            level: "error",
+            outcome: "fail",
+            details: expect.objectContaining({
+              batchId: "batch-gate",
+              repository: testCase.repository,
+              headRepository: testCase.headRepository,
+            }),
+          }),
+        ]);
+      }
     }
   });
 
@@ -726,6 +805,32 @@ describe("phase-2 merge-gate evidence", () => {
     );
     expect(result.ok).toBe(true);
     expect(result.findings).toEqual([]);
+  });
+
+  it("preserves singular lenient target and fork compatibility", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "singular fork", status: "review" });
+    const pr = {
+      number: 89,
+      headSha: head,
+      branch: "singular-fork",
+      body: `Kanmer: ${ticket.id}`,
+      repository: "collisionengineers/kanmer",
+      headRepository: "contributor/fork",
+    };
+
+    const missingBase = await evaluateMergeGate(store, pr, evidence());
+    expect(missingBase.ok).toBe(true);
+    expect(missingBase.checks?.find((check) => check.code === "WRONG_TARGET")).toMatchObject({
+      level: "warning",
+      outcome: "skipped",
+    });
+
+    const wrongBase = await evaluateMergeGate(store, { ...pr, baseRef: "dev" }, evidence());
+    expect(wrongBase.ok).toBe(true);
+    expect(wrongBase.checks?.find((check) => check.code === "WRONG_TARGET")).toMatchObject({
+      level: "warning",
+      outcome: "warn",
+    });
   });
 
   it("applies strict-versus-lenient reachability and board-freshness behavior per member", async () => {

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { KanmerStore } from "../../core/dist/index.js";
 import { assertGitRepository, collectCommitReachability } from "./git-reachability.mjs";
-import { parseReviewEvidence, readStrictFlag } from "./check-pr.mjs";
+import { parseReviewEvidence, readPrEvent, readStrictFlag } from "./check-pr.mjs";
 import { removeTreeWithRetry } from "@kanmer/core";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -57,15 +57,20 @@ Review body
 }
 
 function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40), identity = {}) {
+  const baseRef = Object.hasOwn(identity, "baseRef") ? identity.baseRef : "main";
   const base = {
     sha: baseSha,
-    ref: "main",
+    ...(baseRef ? { ref: baseRef } : {}),
     ...(identity.repository ? { repo: { full_name: identity.repository } } : {}),
   };
   const pull_request = {
     number,
     body,
-    head: { sha: headSha, ref },
+    head: {
+      sha: headSha,
+      ref,
+      ...(identity.headRepository ? { repo: { full_name: identity.headRepository } } : {}),
+    },
     base,
     ...(identity.url ? { html_url: identity.url } : {}),
   };
@@ -74,6 +79,25 @@ function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40), 
     ...(identity.repository ? { repository: { full_name: identity.repository } } : {}),
   };
 }
+
+test("pull-request repository evidence stays available without changing legacy emitted PR JSON", () => {
+  const event = pullRequestEvent(7, "Kanmer: CORE-126", "a".repeat(40), "batch-pr", "b".repeat(40), {
+    repository: "collisionengineers/kanmer",
+    headRepository: "contributor/kanmer",
+  });
+  const pr = readPrEvent(event);
+  assert.equal(pr.repository, "collisionengineers/kanmer");
+  assert.equal(pr.headRepository, "contributor/kanmer");
+  assert.equal(Object.prototype.propertyIsEnumerable.call(pr, "headRepository"), false);
+  assert.deepEqual(JSON.parse(JSON.stringify(pr)), {
+    number: 7,
+    headSha: "a".repeat(40),
+    baseSha: "b".repeat(40),
+    branch: "batch-pr",
+    body: "Kanmer: CORE-126",
+    baseRef: "main",
+  });
+});
 
 test("review attestation parsing requires the complete machine schema", () => {
   const complete = `---
@@ -291,7 +315,7 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
       head,
       "batch-pr",
       "b".repeat(40),
-      { repository: "collisionengineers/kanmer" },
+      { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer" },
     );
     await fs.writeFile(event, JSON.stringify(repositoryEvent));
     const lenientPass = run(board, event);
@@ -303,6 +327,76 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
     assert.equal(result.batchId, "batch-pr");
     assert.deepEqual(result.ticketIds, tickets.map((ticket) => ticket.id).sort());
     assert.equal(result.findings.length, 0);
+
+    const assertBatchProvenanceFailure = async (identity, expected) => {
+      await fs.writeFile(event, JSON.stringify(pullRequestEvent(
+        1,
+        body,
+        head,
+        "batch-pr",
+        "b".repeat(40),
+        identity,
+      )));
+      for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+        const adverse = runWithEnv(env, board, event);
+        assert.equal(adverse.status, 1, adverse.stderr);
+        const findings = JSON.parse(adverse.stdout).findings;
+        assert.equal(findings.length, 1);
+        assert.deepEqual(
+          {
+            code: findings[0].code,
+            level: findings[0].level,
+            outcome: findings[0].outcome,
+            batchId: findings[0].details.batchId,
+            ...Object.fromEntries(Object.keys(expected).map((key) => [key, findings[0].details[key]])),
+          },
+          {
+            code: "BATCH_ROSTER",
+            level: "error",
+            outcome: "fail",
+            batchId: "batch-pr",
+            ...expected,
+          },
+        );
+      }
+    };
+
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer", baseRef: null },
+      { expectedTarget: "main", baseRef: null },
+    );
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer", baseRef: "dev" },
+      { expectedTarget: "main", baseRef: "dev" },
+    );
+    await assertBatchProvenanceFailure(
+      { headRepository: "collisionengineers/kanmer" },
+      { repository: null, headRepository: "collisionengineers/kanmer" },
+    );
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer" },
+      { repository: "collisionengineers/kanmer", headRepository: null },
+    );
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer", headRepository: "foreign/fork" },
+      { repository: "collisionengineers/kanmer", headRepository: "foreign/fork" },
+    );
+
+    const caseVariantEvent = pullRequestEvent(
+      1,
+      body,
+      head,
+      "batch-pr",
+      "b".repeat(40),
+      { repository: "collisionengineers/kanmer", headRepository: "COLLISIONENGINEERS/KANMER" },
+    );
+    await fs.writeFile(event, JSON.stringify(caseVariantEvent));
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const caseVariant = runWithEnv(env, board, event);
+      assert.equal(caseVariant.status, 0, caseVariant.stderr);
+    }
+
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
 
     await writeMemberReview(tickets[1], { ticketUpdated: "2026-01-01T00:00:00.000Z" });
     for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
@@ -348,7 +442,7 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
         head,
         "different-source-branch",
         "b".repeat(40),
-        { repository: "collisionengineers/kanmer" },
+        { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer" },
       )),
     );
     const wrongBranch = run(board, event);
@@ -421,7 +515,7 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
         head,
         "batch-pr",
         "b".repeat(40),
-        { repository: "collisionengineers/kanmer" },
+        { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer" },
       )),
     );
     const incomplete = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);

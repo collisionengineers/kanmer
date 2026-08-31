@@ -32,8 +32,10 @@ export interface MergeGatePrInput {
   baseRef?: string;
   /** Canonical GitHub PR URL when the event supplies it. */
   url?: string;
-  /** Canonical owner/repository identity when the event supplies it. */
+  /** Canonical base/source owner/repository identity when the event supplies it. */
   repository?: string;
+  /** Canonical head owner/repository identity when the event supplies it. */
+  headRepository?: string;
 }
 
 /** A result that is useful to operators as well as the annotation adapter. */
@@ -692,6 +694,45 @@ async function evaluateBatch(
       { batchId, targets },
       evidence,
     );
+  }
+
+  // A plural phase-2 verdict represents one protected merge, so its PR must
+  // carry enough immutable event provenance to prove every member shares the
+  // resolved delivery target and originates in that protected repository.
+  // Singular and legacy phase-1 calls retain their compatibility behavior.
+  if (evidence) {
+    const expectedTarget = targets[0]!.prTarget;
+    const baseRef = pr.baseRef || null;
+    if (baseRef !== expectedTarget) {
+      return batchRosterFailure(
+        pr,
+        ticketIds,
+        source,
+        baseRef === null
+          ? `pull request base branch is missing; frozen batch ${batchId} requires common resolved target "${expectedTarget}"`
+          : `pull request targets "${baseRef}"; frozen batch ${batchId} requires common resolved target "${expectedTarget}"`,
+        { batchId, expectedTarget, baseRef, targets },
+        evidence,
+      );
+    }
+
+    const repository = pr.repository?.trim() || null;
+    const headRepository = pr.headRepository?.trim() || null;
+    if (
+      repository === null || headRepository === null ||
+      repository.toLowerCase() !== headRepository.toLowerCase()
+    ) {
+      return batchRosterFailure(
+        pr,
+        ticketIds,
+        source,
+        repository === null || headRepository === null
+          ? `pull request repository provenance is incomplete for frozen batch ${batchId}`
+          : `pull request head repository "${headRepository}" does not match source repository "${repository}" for frozen batch ${batchId}`,
+        { batchId, repository, headRepository },
+        evidence,
+      );
+    }
   }
 
   if (questions.some((count) => count === null)) {

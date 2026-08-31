@@ -46,6 +46,9 @@ function readPrEvent(value) {
   const repository = typeof base.repo?.full_name === "string" && base.repo.full_name
     ? base.repo.full_name
     : (typeof value?.repository?.full_name === "string" ? value.repository.full_name : undefined);
+  const headRepository = typeof head.repo?.full_name === "string" && head.repo.full_name
+    ? head.repo.full_name
+    : undefined;
   const result = {
     number: pr.number,
     headSha: head.sha,
@@ -59,6 +62,7 @@ function readPrEvent(value) {
   // to review matching while JSON output stays byte-shape compatible.
   if (url) Object.defineProperty(result, "url", { value: url });
   if (repository) Object.defineProperty(result, "repository", { value: repository });
+  if (headRepository) Object.defineProperty(result, "headRepository", { value: headRepository });
   return result;
 }
 

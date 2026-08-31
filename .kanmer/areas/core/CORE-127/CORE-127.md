@@ -4,13 +4,14 @@ type: ticket
 title: >-
   Detect forbidden-file changes, stale evidence and plan deviation before the
   next step packet
-status: review
+status: implementing
 area: core
 assignee: codex-release-controller
 profile: feature
 stageEntered:
   preparing: '2026-08-31T15:53:50.295Z'
   review: '2026-08-31T19:55:04.505Z'
+  implementing: '2026-08-31T20:20:05.964Z'
 taken_at: '2026-08-31T17:37:10.569Z'
 branch: core-127-constrained-step-reconciliation
 worktree: .worktrees/core-127
@@ -28,7 +29,7 @@ prs:
   - '307'
 archived: false
 created: '2026-08-27T23:06:18.794Z'
-updated: '2026-08-31T19:55:04.505Z'
+updated: '2026-08-31T20:20:05.964Z'
 ---
 
 ## What

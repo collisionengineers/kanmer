@@ -273,6 +273,8 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
       { repository: "collisionengineers/kanmer" },
     );
     await fs.writeFile(event, JSON.stringify(repositoryEvent));
+    const lenientPass = run(board, event);
+    assert.equal(lenientPass.status, 0, lenientPass.stderr);
     const pass = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
     assert.equal(pass.status, 0, pass.stderr);
     const result = JSON.parse(pass.stdout);
@@ -280,6 +282,79 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
     assert.equal(result.batchId, "batch-pr");
     assert.deepEqual(result.ticketIds, tickets.map((ticket) => ticket.id).sort());
     assert.equal(result.findings.length, 0);
+
+    await fs.writeFile(
+      event,
+      JSON.stringify(pullRequestEvent(
+        1,
+        body,
+        head,
+        "different-source-branch",
+        "b".repeat(40),
+        { repository: "collisionengineers/kanmer" },
+      )),
+    );
+    const wrongBranch = run(board, event);
+    assert.equal(wrongBranch.status, 1);
+    assert.match(wrongBranch.stderr, /::error title=kanmer\/gate \[BATCH_ROSTER\]::/);
+    const wrongBranchFinding = JSON.parse(wrongBranch.stdout).findings;
+    assert.equal(wrongBranchFinding.length, 1);
+    assert.deepEqual(
+      {
+        code: wrongBranchFinding[0].code,
+        level: wrongBranchFinding[0].level,
+        outcome: wrongBranchFinding[0].outcome,
+        batchId: wrongBranchFinding[0].details.batchId,
+        batchBranch: wrongBranchFinding[0].details.batchBranch,
+        prBranch: wrongBranchFinding[0].details.prBranch,
+      },
+      {
+        code: "BATCH_ROSTER",
+        level: "error",
+        outcome: "fail",
+        batchId: "batch-pr",
+        batchBranch: "batch-pr",
+        prBranch: "different-source-branch",
+      },
+    );
+
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
+    await store.updateBoard((boardConfig) => ({
+      ...boardConfig,
+      delivery: {
+        integrationBranch: "dev",
+        releaseBranch: "main",
+        releaseCandidatePattern: "release/*",
+        hotfixBackport: true,
+      },
+    }));
+    await store.updateItem(tickets[1].id, { delivery_branch: "main" });
+    const mixedTargets = run(board, event);
+    assert.equal(mixedTargets.status, 1);
+    assert.match(mixedTargets.stderr, /::error title=kanmer\/gate \[BATCH_ROSTER\]::/);
+    const mixedTargetFindings = JSON.parse(mixedTargets.stdout).findings;
+    assert.equal(mixedTargetFindings.length, 1);
+    assert.deepEqual(
+      {
+        code: mixedTargetFindings[0].code,
+        level: mixedTargetFindings[0].level,
+        outcome: mixedTargetFindings[0].outcome,
+        batchId: mixedTargetFindings[0].details.batchId,
+        targets: mixedTargetFindings[0].details.targets,
+      },
+      {
+        code: "BATCH_ROSTER",
+        level: "error",
+        outcome: "fail",
+        batchId: "batch-pr",
+        targets: tickets.map((ticket, index) => ({
+          ticketId: ticket.id,
+          prTarget: index === 1 ? "main" : "dev",
+        })).sort((a, b) => a.ticketId.localeCompare(b.ticketId)),
+      },
+    );
+    await store.updateItem(tickets[1].id, { delivery_branch: "" });
+    await store.updateBoard(({ delivery: _delivery, ...boardConfig }) => boardConfig);
 
     await fs.writeFile(
       event,
@@ -307,6 +382,12 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
     assert.equal(fail.status, 1);
     const adverse = JSON.parse(fail.stdout);
     assert.deepEqual(adverse.findings.map((finding) => [finding.code, finding.details.ticketId]), [
+      ["STALE_REVIEW", tickets[1].id],
+    ]);
+    const failLenient = run(board, event);
+    assert.equal(failLenient.status, 1);
+    assert.match(failLenient.stderr, /::error title=kanmer\/gate \[STALE_REVIEW\]::/);
+    assert.deepEqual(JSON.parse(failLenient.stdout).findings.map((finding) => [finding.code, finding.details.ticketId]), [
       ["STALE_REVIEW", tickets[1].id],
     ]);
   } finally {

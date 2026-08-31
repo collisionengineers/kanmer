@@ -268,6 +268,70 @@ describe("phase-2 merge-gate evidence", () => {
     expect(result.findings).toEqual([]);
     expect(result.checks?.[0]).toMatchObject({ code: "BATCH_ROSTER", outcome: "pass" });
     expect(result.checks?.slice(1).every((check) => typeof check.details?.ticketId === "string")).toBe(true);
+    expect(packet.batch?.branch).toBe(pr.branch);
+  });
+
+  it("hard-binds the PR head branch to the frozen manifest in strict and lenient modes", async () => {
+    const first = await batchPacket();
+    for (const strict of [false, true]) {
+      const packet = setBatchStrict(first.packet, strict);
+      const exact = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+      expect(exact.ok, `exact/${strict}`).toBe(true);
+
+      const mismatch = await evaluateMergeGate(
+        {} as KanmerStore,
+        { ...first.pr, branch: "different-source-branch" },
+        packet,
+      );
+      expect(mismatch.ok, `mismatch/${strict}`).toBe(false);
+      expect(mismatch.findings).toEqual([
+        expect.objectContaining({
+          code: "BATCH_ROSTER",
+          level: "error",
+          outcome: "fail",
+          details: expect.objectContaining({
+            batchId: "batch-gate",
+            batchBranch: "batch-gate",
+            prBranch: "different-source-branch",
+          }),
+        }),
+      ]);
+    }
+  });
+
+  it("hard-fails incompatible member PR targets in strict and lenient modes", async () => {
+    const first = await batchPacket();
+    const hotfixId = first.tickets[1]!.id;
+    const mixedPolicy = {
+      integrationBranch: "dev",
+      releaseBranch: "main",
+      releaseCandidatePattern: "release/*",
+      hotfixBackport: true,
+    } as const;
+    const mixed = updateBatchMember(
+      { ...first.packet, policy: mixedPolicy },
+      hotfixId,
+      (member) => ({ ...member, item: { ...member.item!, delivery_branch: "main" } }),
+    );
+
+    for (const strict of [false, true]) {
+      const result = await evaluateMergeGate({} as KanmerStore, first.pr, setBatchStrict(mixed, strict));
+      expect(result.ok, String(strict)).toBe(false);
+      expect(result.findings).toEqual([
+        expect.objectContaining({
+          code: "BATCH_ROSTER",
+          level: "error",
+          outcome: "fail",
+          details: expect.objectContaining({
+            batchId: "batch-gate",
+            targets: expect.arrayContaining([
+              { ticketId: hotfixId, prTarget: "main" },
+              expect.objectContaining({ prTarget: "dev" }),
+            ]),
+          }),
+        }),
+      ]);
+    }
   });
 
   it("hard-fails superset, mixed-batch, and unbatched explicit rosters", async () => {
@@ -484,18 +548,21 @@ describe("phase-2 merge-gate evidence", () => {
     ];
 
     for (const testCase of cases) {
-      const packet = updateBatchMember(first.packet, selectedId, (member) => ({
-        ...member,
-        evidence: { ...member.evidence, review: testCase.review },
-      }));
-      const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
-      expect(result.ok, testCase.name).toBe(false);
-      expect(result.findings, testCase.name).toContainEqual(expect.objectContaining({
-        code: testCase.code,
-        level: "error",
-        outcome: "fail",
-        details: expect.objectContaining({ ticketId: selectedId }),
-      }));
+      for (const strict of [false, true]) {
+        const base = setBatchStrict(first.packet, strict);
+        const packet = updateBatchMember(base, selectedId, (member) => ({
+          ...member,
+          evidence: { ...member.evidence, review: testCase.review },
+        }));
+        const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+        expect(result.ok, `${testCase.name}/${strict}`).toBe(false);
+        expect(result.findings, `${testCase.name}/${strict}`).toContainEqual(expect.objectContaining({
+          code: testCase.code,
+          level: "error",
+          outcome: "fail",
+          details: expect.objectContaining({ ticketId: selectedId }),
+        }));
+      }
     }
   });
 
@@ -572,6 +639,7 @@ describe("phase-2 merge-gate evidence", () => {
       listItemsWithWarnings: async () => ({ items: census, warnings: [] }),
       getOpenQuestionCount: store.getOpenQuestionCount.bind(store),
       batchStateFromSnapshot: store.batchStateFromSnapshot.bind(store),
+      getBoard: store.getBoard.bind(store),
     } as unknown as KanmerStore;
 
     const result = await evaluateMergeGate(phase1Store, first.pr);

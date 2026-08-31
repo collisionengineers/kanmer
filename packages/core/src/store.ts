@@ -1768,6 +1768,7 @@ export class KanmerStore {
       controllerRun: journal?.controller_run ?? (controllerRuns.size === 1 ? [...controllerRuns][0]! : null),
       frozenAt: journal?.frozen_at ?? (frozen.size === 1 ? [...frozen][0]! : null),
       declaration: journal?.state === "pending" ? "pending" : (consistent ? "consistent" : "inconsistent"),
+      branch: journal?.branch ?? taken?.branch ?? null,
       workspace: journal?.workspace ?? (taken?.branch
         ? this.batchWorkspaceIdentity(taken.worktree, taken.branch).workspace
         : null),
@@ -1865,7 +1866,13 @@ export class KanmerStore {
    * other batch; and the batch id must not already be frozen. Returns the
    * sibling items to stamp. Refuses before anything is written.
    */
-  private static validateBatchDeclaration(id: string, batchId: string, memberIds: string[], tickets: Item[]): Item[] {
+  private static validateBatchDeclaration(
+    id: string,
+    batchId: string,
+    memberIds: string[],
+    tickets: Item[],
+    policy: DeliveryPolicy,
+  ): Item[] {
     const ids = Array.from(new Set(memberIds.map((m) => m.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
     if (ids.length < 2) {
       throw new Error(`BATCH_INVALID: batch ${batchId} needs two or more distinct member ids (got ${ids.length}); isolated mode needs no batch.`);
@@ -1890,6 +1897,17 @@ export class KanmerStore {
         throw new Error(`BATCH_INVALID: "${memberId}" has residual claim, workspace, lease or batch ownership fields; reconcile it before declaring a batch.`);
       }
       members.push(member);
+    }
+    const targets = members.map((member) => ({
+      ticketId: member.id,
+      prTarget: deliveryTargets(policy, member).prTarget,
+    }));
+    if (new Set(targets.map((target) => target.prTarget)).size !== 1) {
+      throw new Error(
+        `BATCH_INVALID: batch ${batchId} resolves to incompatible PR targets ` +
+          `(${targets.map((target) => `${target.ticketId}: ${target.prTarget}`).join(", ")}); ` +
+          "one frozen batch must share one PR target.",
+      );
     }
     return members;
   }
@@ -2172,7 +2190,13 @@ export class KanmerStore {
       throw new Error(`BATCH_INCONSISTENT: batch ${batchId} has ticket stamps but no authoritative manifest; no declaration bytes were changed.`);
     }
 
-    const members = KanmerStore.validateBatchDeclaration(id, batchId, requested, tickets);
+    const members = KanmerStore.validateBatchDeclaration(
+      id,
+      batchId,
+      requested,
+      tickets,
+      resolveDelivery(await this.getBoard()),
+    );
     const frozenAt = nowIso();
     const leaseId = randomUUID();
     const claimExpiresAt = new Date(Date.parse(frozenAt) + expiryMinutes * 60_000).toISOString();
@@ -2993,7 +3017,10 @@ export class KanmerStore {
       if (legacy && !next.claim_controller && ownerActor) next.claim_controller = ownerActor;
       const workspace = batch?.workspace ?? current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
       if (workspace) next.lease_workspace = workspace;
-      KanmerStore.applyRunIdentity(next, request, true);
+      KanmerStore.applyRunIdentity(next, {
+        ...request,
+        ...(batch && controllerRun ? { controllerRun } : {}),
+      }, true);
       await writeFileAtomic(loc.file, serialiseItem(next));
       await appendActivity(this.paths, [
         this.activity(id, "update", { field: "claim_expires_at", from: current.claim_expires_at ?? null, to: next.claim_expires_at }),

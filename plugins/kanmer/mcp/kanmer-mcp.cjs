@@ -43204,6 +43204,7 @@ ${entry}`;
       controllerRun: journal?.controller_run ?? (controllerRuns.size === 1 ? [...controllerRuns][0] : null),
       frozenAt: journal?.frozen_at ?? (frozen.size === 1 ? [...frozen][0] : null),
       declaration: journal?.state === "pending" ? "pending" : consistent ? "consistent" : "inconsistent",
+      branch: journal?.branch ?? taken?.branch ?? null,
       workspace: journal?.workspace ?? (taken?.branch ? this.batchWorkspaceIdentity(taken.worktree, taken.branch).workspace : null),
       members: memberIds.map((id, index) => {
         const member = members[index];
@@ -43294,7 +43295,7 @@ ${entry}`;
    * other batch; and the batch id must not already be frozen. Returns the
    * sibling items to stamp. Refuses before anything is written.
    */
-  static validateBatchDeclaration(id, batchId, memberIds, tickets) {
+  static validateBatchDeclaration(id, batchId, memberIds, tickets, policy) {
     const ids = Array.from(new Set(memberIds.map((m) => m.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
     if (ids.length < 2) {
       throw new Error(`BATCH_INVALID: batch ${batchId} needs two or more distinct member ids (got ${ids.length}); isolated mode needs no batch.`);
@@ -43319,6 +43320,15 @@ ${entry}`;
         throw new Error(`BATCH_INVALID: "${memberId}" has residual claim, workspace, lease or batch ownership fields; reconcile it before declaring a batch.`);
       }
       members.push(member);
+    }
+    const targets = members.map((member) => ({
+      ticketId: member.id,
+      prTarget: deliveryTargets(policy, member).prTarget
+    }));
+    if (new Set(targets.map((target) => target.prTarget)).size !== 1) {
+      throw new Error(
+        `BATCH_INVALID: batch ${batchId} resolves to incompatible PR targets (${targets.map((target) => `${target.ticketId}: ${target.prTarget}`).join(", ")}); one frozen batch must share one PR target.`
+      );
     }
     return members;
   }
@@ -43545,7 +43555,13 @@ ${entry}`;
     if (frozen.length > 0) {
       throw new Error(`BATCH_INCONSISTENT: batch ${batchId} has ticket stamps but no authoritative manifest; no declaration bytes were changed.`);
     }
-    const members = _KanmerStore.validateBatchDeclaration(id, batchId, requested, tickets);
+    const members = _KanmerStore.validateBatchDeclaration(
+      id,
+      batchId,
+      requested,
+      tickets,
+      resolveDelivery(await this.getBoard())
+    );
     const frozenAt = nowIso();
     const leaseId = (0, import_crypto7.randomUUID)();
     const claimExpiresAt = new Date(Date.parse(frozenAt) + expiryMinutes * 6e4).toISOString();
@@ -44253,7 +44269,10 @@ ${entry}`;
       if (legacy && !next.claim_controller && ownerActor) next.claim_controller = ownerActor;
       const workspace = batch?.workspace ?? current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
       if (workspace) next.lease_workspace = workspace;
-      _KanmerStore.applyRunIdentity(next, request, true);
+      _KanmerStore.applyRunIdentity(next, {
+        ...request,
+        ...batch && controllerRun ? { controllerRun } : {}
+      }, true);
       await writeFileAtomic(loc.file, serialiseItem(next));
       await appendActivity(this.paths, [
         this.activity(id, "update", { field: "claim_expires_at", from: current.claim_expires_at ?? null, to: next.claim_expires_at }),
@@ -47016,7 +47035,7 @@ var RELEASE_CONFLICT_PREFIXES = [
   "RELEASE_TRANSACTION_INVALID:",
   "RELEASE_CHANNEL_CASE_COLLISION:"
 ];
-var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_RUN_REQUIRED:", "BATCH_OWNER_MISMATCH:", "BATCH_INCONSISTENT:", "BATCH_TRANSACTION_CONFLICT:", "BATCH_TRANSACTION_PENDING:", "BATCH_TRANSACTION_INVALID:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
+var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_RUN_REQUIRED:", "BATCH_OWNER_MISMATCH:", "BATCH_INCONSISTENT:", "BATCH_TRANSACTION_CONFLICT:", "BATCH_TRANSACTION_PENDING:", "BATCH_TRANSACTION_INVALID:", "BATCH_WORKSPACE_INVALID:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
 var KanmerError = class extends Error {
   constructor(code, message) {
     super(message);

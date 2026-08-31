@@ -890,6 +890,28 @@ describe("batch workspaces (CORE-124)", () => {
     expect(await fs.readFile(ticketFile(b.id), "utf8")).toBe(before);
   });
 
+  it("persists the canonical controller run after a padded renewal and keeps the batch operable", async () => {
+    const { a, b, c, first } = await threeMemberBatch();
+    const renewed = await store.renewTicket(a.id, {
+      actor: " test-actor ",
+      controllerRun: " controller-run ",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    });
+
+    expect(renewed.lease_controller_run).toBe("controller-run");
+    expect((await store.batchState(a.id))?.declaration).toBe("consistent");
+    await expect(store.takeTicket(b.id, {
+      ...batchWorkspace,
+      assignee: "ctl-a",
+      batch: "batch-a",
+    })).resolves.toMatchObject({ lease_controller_run: "controller-run" });
+
+    for (const id of [a.id, b.id, c.id]) await walkToDone(id);
+    for (const id of [a.id, b.id, c.id]) await store.releaseTicket(id);
+    expect(await store.batchState(a.id)).toBeNull();
+  });
+
   it("requires a durable controller run before writing a batch declaration", async () => {
     const a = await store.createItem({ ...free, title: "A" });
     const b = await store.createItem({ ...free, title: "B" });
@@ -1022,6 +1044,35 @@ describe("batch workspaces (CORE-124)", () => {
       batch: "outside-batch",
       batchMembers: [a.id, b.id],
     })).rejects.toThrow(/^BATCH_WORKSPACE_INVALID:.*outside this repository/u);
+
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("rejects a mixed delivery-target roster before writing a manifest or ticket", async () => {
+    await store.updateBoard((board) => ({
+      ...board,
+      delivery: {
+        integrationBranch: "dev",
+        releaseBranch: "main",
+        releaseCandidatePattern: "release/*",
+        hotfixBackport: true,
+      },
+    }));
+    const ordinary = await store.createItem({ ...free, title: "Ordinary" });
+    const hotfix = await store.createItem({ ...free, title: "Hotfix" });
+    await store.updateItem(hotfix.id, { delivery_branch: "main" });
+    const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(ordinary.id, {
+      branch: "mixed-target-batch",
+      worktree: ".worktrees/mixed-target-batch",
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "mixed-target-batch",
+      batchMembers: [ordinary.id, hotfix.id],
+    })).rejects.toThrow(/^BATCH_INVALID:.*incompatible PR targets.*dev.*main.*one frozen batch must share one PR target/su);
 
     expect(await snapshotBoardFiles()).toEqual(before);
     await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });

@@ -106,7 +106,9 @@ export interface MergeGatePhase2Evidence {
   /**
    * `KANMER_GATE_STRICT`: promote the compatibility-period warnings
    * (NO_REVIEW_RECORD, STALE_REVIEW, COMMITS_UNREACHABLE, SYNC_REQUIRED) to
-   * blocking errors. Defaults to false so existing repos keep today's levels.
+   * blocking errors. Defaults to false so existing singular repos keep today's
+   * levels; an explicit plural roster always requires exact independent PASS
+   * evidence for every member.
    */
   strict?: boolean;
   /** Board-tip evidence gathered by the CLI; omitted means the check is skipped. */
@@ -275,15 +277,20 @@ function reviewChecks(
   const review = evidence.review;
   const strict = evidence.strict === true;
   const soft = levelFor("STALE_REVIEW", strict);
+  // A plural footer is an explicit protected-merge declaration, not a
+  // compatibility observation. Every member must own an independent PASS
+  // attestation for this exact PR/head even when the repository has not opted
+  // into strict handling for the older singular evidence checks.
+  const reviewLevel: MergeGateFindingLevel = requireRosterIdentity ? "error" : soft;
 
   if (review.state === "absent") {
-    const finding = fail("NO_REVIEW_RECORD", soft, "no scratch/review.md review attestation was recorded");
+    const finding = fail("NO_REVIEW_RECORD", reviewLevel, "no scratch/review.md review attestation was recorded");
     checks.push(finding);
     findings.push(finding);
-    checks.push({ code: "STALE_REVIEW", level: soft, outcome: "skipped", message: "skipped because no review attestation was recorded" });
+    checks.push({ code: "STALE_REVIEW", level: reviewLevel, outcome: "skipped", message: "skipped because no review attestation was recorded" });
   } else if (review.state === "invalid") {
-    checks.push(pass("NO_REVIEW_RECORD", soft, "a review record is present"));
-    const finding = fail("STALE_REVIEW", soft, `review attestation is invalid: ${review.reason}`, { reason: review.reason });
+    checks.push(pass("NO_REVIEW_RECORD", reviewLevel, "a review record is present"));
+    const finding = fail("STALE_REVIEW", reviewLevel, `review attestation is invalid: ${review.reason}`, { reason: review.reason });
     checks.push(finding);
     findings.push(finding);
   } else {
@@ -291,13 +298,13 @@ function reviewChecks(
     const expected = normalizeSha(pr.headSha);
     const attestedPr = review.pr?.trim() ?? (typeof review.details?.pr === "string" ? review.details.pr.trim() : "");
     const independent = review.independent ?? review.details?.independent === true;
-    checks.push(pass("NO_REVIEW_RECORD", soft, "review attestation is present"));
+    checks.push(pass("NO_REVIEW_RECORD", reviewLevel, "review attestation is present"));
     if (!FULL_SHA_RE.test(actual) || !FULL_SHA_RE.test(expected) || actual !== expected) {
-      const finding = fail("STALE_REVIEW", soft, `review attestation head ${actual || "(missing)"} does not match PR head ${expected || "(missing)"}`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
+      const finding = fail("STALE_REVIEW", reviewLevel, `review attestation head ${actual || "(missing)"} does not match PR head ${expected || "(missing)"}`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
       checks.push(finding);
       findings.push(finding);
     } else if (requireRosterIdentity && !reviewPrMatches(attestedPr, pr)) {
-      const finding = fail("STALE_REVIEW", soft, `review attestation names PR ${attestedPr || "(missing)"}, not current PR ${pr.number}`, {
+      const finding = fail("STALE_REVIEW", reviewLevel, `review attestation names PR ${attestedPr || "(missing)"}, not current PR ${pr.number}`, {
         attestedHeadSha: actual,
         attestedPr: attestedPr || null,
         pr: pr.number,
@@ -307,7 +314,7 @@ function reviewChecks(
       checks.push(finding);
       findings.push(finding);
     } else if (requireRosterIdentity && !independent) {
-      const finding = fail("STALE_REVIEW", soft, "review attestation is not an independent review", {
+      const finding = fail("STALE_REVIEW", reviewLevel, "review attestation is not an independent review", {
         attestedHeadSha: actual,
         attestedPr,
         pr: pr.number,
@@ -317,11 +324,11 @@ function reviewChecks(
       checks.push(finding);
       findings.push(finding);
     } else if (review.verdict?.toLowerCase() === "needs-changes" || (requireRosterIdentity && review.verdict?.toLowerCase() !== "pass")) {
-      const finding = fail("STALE_REVIEW", soft, `review attestation has verdict ${review.verdict ?? "(missing)"}; batch members require pass`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
+      const finding = fail("STALE_REVIEW", reviewLevel, `review attestation has verdict ${review.verdict ?? "(missing)"}; batch members require pass`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
       checks.push(finding);
       findings.push(finding);
     } else {
-      checks.push(pass("STALE_REVIEW", soft, "review attestation head matches the PR head", { attestedHeadSha: actual, verdict: review.verdict }));
+      checks.push(pass("STALE_REVIEW", reviewLevel, "review attestation head matches the PR head", { attestedHeadSha: actual, verdict: review.verdict }));
     }
   }
 
@@ -559,6 +566,7 @@ async function evaluateBatch(
     items = ticketIds.map((id) => byId.get(id));
     questions = await Promise.all(ticketIds.map((id) => store.getOpenQuestionCount(id)));
     state = null;
+    policy = resolveDelivery(await store.getBoard());
   }
 
   const missing = ticketIds.filter((_, index) => !items[index] || items[index]?.type !== "ticket");
@@ -601,6 +609,31 @@ async function evaluateBatch(
         controller: state?.controller ?? null,
         frozenAt: state?.frozenAt ?? null,
       },
+      evidence,
+    );
+  }
+  if (!state.branch || state.branch !== pr.branch) {
+    return batchRosterFailure(
+      pr,
+      ticketIds,
+      source,
+      `pull request branch "${pr.branch}" does not match frozen batch ${batchId} branch "${state.branch ?? "(missing)"}"`,
+      { batchId, batchBranch: state.branch, prBranch: pr.branch },
+      evidence,
+    );
+  }
+
+  const targets = ticketIds.map((ticketId, index) => ({
+    ticketId,
+    prTarget: deliveryTargets(policy!, items[index]!).prTarget,
+  }));
+  if (new Set(targets.map((target) => target.prTarget)).size !== 1) {
+    return batchRosterFailure(
+      pr,
+      ticketIds,
+      source,
+      `frozen batch ${batchId} resolves to incompatible PR targets; one batch cannot be merged by one PR`,
+      { batchId, targets },
       evidence,
     );
   }

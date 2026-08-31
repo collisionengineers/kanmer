@@ -787,6 +787,8 @@ export interface BatchState {
   frozenAt: string | null;
   /** Whether the declaration is complete, recoverably pending, or internally inconsistent. */
   declaration: "consistent" | "pending" | "inconsistent";
+  /** Immutable source branch recorded by the authoritative batch manifest. */
+  branch: string | null;
   /** The workspace the batch occupies (first taken member's lease workspace), null before any member is taken. */
   workspace: string | null;
   members: BatchMemberState[];

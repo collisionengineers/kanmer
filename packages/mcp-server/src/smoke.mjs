@@ -2575,6 +2575,24 @@ Second proof attempt passed; the first failure is retained.
       controller: "ctl-batch-label",
       controller_run: "smoke-controller-run",
     };
+    const beforeOutsideBatch = treeSnapshot(sandbox);
+    const outsideBatch = await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: m1,
+        ...batchTake,
+        worktree: path.resolve(sandbox, "..", `${path.basename(sandbox)}-outside`, "batch"),
+        batch: "outside-smoke-batch",
+        batch_members: [m1, m2],
+      },
+    });
+    check(
+      "an out-of-repository batch workspace is a structured LEASE_CONFLICT and writes no board bytes",
+      outsideBatch.isError === true && textOf(outsideBatch).includes("BATCH_WORKSPACE_INVALID") &&
+        outsideBatch.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeOutsideBatch),
+      textOf(outsideBatch),
+    );
     const missingRun = await client.callTool({
       name: "take_ticket",
       arguments: {
@@ -2627,6 +2645,26 @@ Second proof attempt passed; the first failure is retained.
         noCasRenew.structuredContent?.error?.code === "LEASE_CONFLICT" &&
         afterNoCasRenew.lease_revision === beforeNoCasRenew.lease_revision,
       textOf(noCasRenew),
+    );
+
+    const paddedRenew = JSON.parse(textOf(await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: m1,
+        action: "renew",
+        controller_run: ` ${batchTake.controller_run} `,
+        lease_id: afterNoCasRenew.lease_id,
+        lease_revision: afterNoCasRenew.lease_revision,
+      },
+    })));
+    const afterPaddedRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+    check(
+      "a padded matching controller_run renews once and persists its canonical batch identity",
+      paddedRenew.lease_revision === afterNoCasRenew.lease_revision + 1 &&
+        paddedRenew.lease_controller_run === batchTake.controller_run &&
+        afterPaddedRenew.lease_controller_run === batchTake.controller_run &&
+        afterPaddedRenew.lease_revision === paddedRenew.lease_revision,
+      JSON.stringify({ renewed: paddedRenew.lease_revision, run: afterPaddedRenew.lease_controller_run }),
     );
 
     // CORE-126: caller-supplied owner labels are observable state, not

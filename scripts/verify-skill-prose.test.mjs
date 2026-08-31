@@ -300,6 +300,133 @@ test("skill prose validator rejects a review flow that parks needs-changes in Re
   }
 });
 
+test("skill prose validator rejects incomplete protected-batch execution, review, and closeout contracts", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-protected-batch-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    const review = join(fixture, "plugins", "kanmer", "skills", "kanmer-review", "SKILL.md");
+    const closeout = join(fixture, "plugins", "kanmer", "skills", "kanmer-closeout", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8").replace(
+        "one standalone `Kanmer: <ID>` footer\nfor every member in the complete frozen roster",
+        "one leader-only Kanmer footer",
+      ),
+    );
+    writeFileSync(
+      review,
+      readFileSync(review, "utf8").replace(
+        "a separate, member-owned whole-file `scratch/review.md` attestation\nfor every member in the complete frozen roster",
+        "one shared review record for the batch leader",
+      ),
+    );
+    writeFileSync(
+      closeout,
+      readFileSync(closeout, "utf8")
+        .replace("first call `list_items include_archived: true`", "inspect only the active board")
+        .replace(
+          "After that all-terminal check, keep the manifest linked and do not release any\nmember yet.",
+          "After that all-terminal check, release every member before shared Git cleanup.",
+        ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-execute emits the complete frozen batch footer roster/);
+    assert.match(result.stdout, /FAIL {2}kanmer-review writes one member-owned exact-head pass attestation per roster ticket/);
+    assert.match(result.stdout, /FAIL {2}kanmer-closeout discovers archived batch members by exact batch id/);
+    assert.match(result.stdout, /FAIL {2}kanmer-closeout retains the all-terminal manifest through shared Git cleanup before member release/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("skill prose validator rejects batch run, renewal CAS, manifest projection, and fresh closeout regressions", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-protected-batch-remediation-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    const review = join(fixture, "plugins", "kanmer", "skills", "kanmer-review", "SKILL.md");
+    const closeout = join(fixture, "plugins", "kanmer", "skills", "kanmer-closeout", "SKILL.md");
+    const toolReference = join(
+      fixture,
+      "plugins",
+      "kanmer",
+      "skills",
+      "kanmer-tickets",
+      "references",
+      "tool-reference.md",
+    );
+
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8")
+        .replace(
+          "Retain that nonempty `controller_run` in the controller's durable run record",
+          "Trust the caller's visible controller label",
+        )
+        .replace(
+          "A modern batch renewal always requires both current `lease_id` and\n`lease_revision` plus that exact run id; it never enters the no-token owner\ncompatibility lane.",
+          "A modern batch renewal may omit its lease tokens and use owner compatibility.",
+        ),
+    );
+    writeFileSync(
+      review,
+      readFileSync(review, "utf8").replace(
+        "call `list_items include_archived: true` and read the authoritative",
+        "inspect one remembered active member and assume the",
+      ),
+    );
+    writeFileSync(
+      closeout,
+      readFileSync(closeout, "utf8")
+        .replace(
+          "`list_items include_archived: true` is the sole complete roster census",
+          "`search_items` is also a complete roster census",
+        )
+        .replace(
+          "Terminal batch release\nis deliberately not actor-bound",
+          "Terminal batch release remains bound to the implementation actor",
+        ),
+    );
+    writeFileSync(
+      toolReference,
+      readFileSync(toolReference, "utf8")
+        .replace(
+          "Pending, active and releasing manifests persist the exact pair of the actual MCP request actor and that durable run id.",
+          "The batch stores a display owner.",
+        )
+        .replace(
+          "`list_items include_archived: true` is the sole complete roster census",
+          "`search_items` is a complete roster census",
+        ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-review reads the complete active manifest projection before batch attestation/);
+    assert.match(result.stdout, /FAIL {2}kanmer-execute binds all batch work authority to actor plus durable controller_run/);
+    assert.match(result.stdout, /FAIL {2}kanmer-execute requires current CAS tokens on every modern batch renew/);
+    assert.match(result.stdout, /FAIL {2}kanmer-closeout retains manifest discovery through unlink and permits a fresh terminal releaser/);
+    assert.match(result.stdout, /FAIL {2}tool reference exposes the durable batch authority, summary, CAS, and closeout contract/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
 test("skill prose validator rejects a resumed flow without reference inputs or an implementation boundary", () => {
   const fixture = mkdtempSync(join(tmpdir(), "kanmer-resume-stage-reference-contract-"));
   try {
@@ -452,6 +579,57 @@ const expectFail = (stdout, name) =>
 const expectPass = (stdout, name) =>
   assert.ok(stdout.includes(`PASS  ${name}`), `expected PASS for check: ${name}\n${stdout}`);
 const runOn = (fixture) => spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+
+test("protected batch validator independently rejects replacing the automation run_id authority", () => {
+  const fixture = goalFixture("kanmer-batch-run-id-contract-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-auto"),
+      "automation ledger's immutable schema-3 `run_id` as the\nbatch `controller_run`",
+      "current controller label as the batch owner",
+    );
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto maps its immutable run_id to every batch controller_run call");
+    expectPass(result.stdout, "kanmer-execute binds all batch work authority to actor plus durable controller_run");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("protected batch validator independently rejects allowing every member to create a PR", () => {
+  const fixture = goalFixture("kanmer-batch-single-pr-contract-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-execute"),
+      "The first batch member alone is the sole PR creator.",
+      "Every batch member may create a PR.",
+    );
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-execute creates or recovers exactly one shared batch PR");
+    expectPass(result.stdout, "kanmer-execute emits the complete frozen batch footer roster");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("protected batch validator independently rejects a non-idempotent merged-roster handoff", () => {
+  const fixture = goalFixture("kanmer-batch-review-handoff-contract-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-review"),
+      "If it is already Verifying, that is the\nidempotent no-op for an interrupted prior scan.",
+      "If it is already Verifying, move it again.",
+    );
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-review advances the complete merged batch roster idempotently");
+    expectPass(result.stdout, "kanmer-review writes one member-owned exact-head pass attestation per roster ticket");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
 
 // F1: each declared scope must lose its own named check when its resolution
 // step goes, and must not be propped up by a neighbouring scope's step.

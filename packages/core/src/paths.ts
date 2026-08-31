@@ -84,6 +84,10 @@ export function resolvePaths(projectRoot: string, repoRoot?: string) {
      * so the next locked mutation can finish the exact intended write set.
      */
     releaseTransactionsDir: path.join(kanmer, "releases", "transactions"),
+    /** Recoverable write-ahead declarations for explicit batch workspaces. */
+    batchesRoot: path.join(kanmer, "batches"),
+    /** Pending WAL then durable active/releasing manifest per canonical trimmed batch id (SHA-256 filename). */
+    batchTransactionsDir: path.join(kanmer, "batches", "transactions"),
     tickets: path.join(kanmer, TYPE_DIRS.ticket),
     plans: path.join(kanmer, TYPE_DIRS.plan),
     research: path.join(kanmer, TYPE_DIRS.research),

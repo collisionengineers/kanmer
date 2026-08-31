@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { KanmerStore } from "../../core/dist/index.js";
 import { assertGitRepository, collectCommitReachability } from "./git-reachability.mjs";
-import { parseReviewEvidence, readStrictFlag } from "./check-pr.mjs";
+import { parseReviewEvidence, readPrEvent, readStrictFlag } from "./check-pr.mjs";
 import { removeTreeWithRetry } from "@kanmer/core";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -40,7 +40,7 @@ function gitIn(cwd, ...args) {
   return result.stdout.trim();
 }
 
-function attestation(headSha, verdict = "pass", extra = "") {
+function attestation(headSha, verdict = "pass", extra = "", current = {}) {
   return `---
 kind: review-attestation
 pr: "1"
@@ -48,17 +48,56 @@ head_sha: ${headSha}
 verdict: ${verdict}
 reviewer: independent-reviewer
 independent: true
-plan_hash: plan-version
-ticket_updated: "2026-08-22T07:00:00.000Z"
+plan_hash: ${current.planHash ?? "plan-version"}
+ticket_updated: "${current.ticketUpdated ?? "2026-08-22T07:00:00.000Z"}"
 findings: []
 ${extra}---
 Review body
 `;
 }
 
-function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40)) {
-  return { pull_request: { number, body, head: { sha: headSha, ref }, base: { sha: baseSha, ref: "main" } } };
+function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40), identity = {}) {
+  const baseRef = Object.hasOwn(identity, "baseRef") ? identity.baseRef : "main";
+  const base = {
+    sha: baseSha,
+    ...(baseRef ? { ref: baseRef } : {}),
+    ...(identity.repository ? { repo: { full_name: identity.repository } } : {}),
+  };
+  const pull_request = {
+    number,
+    body,
+    head: {
+      sha: headSha,
+      ref,
+      ...(identity.headRepository ? { repo: { full_name: identity.headRepository } } : {}),
+    },
+    base,
+    ...(identity.url ? { html_url: identity.url } : {}),
+  };
+  return {
+    pull_request,
+    ...(identity.repository ? { repository: { full_name: identity.repository } } : {}),
+  };
 }
+
+test("pull-request repository evidence stays available without changing legacy emitted PR JSON", () => {
+  const event = pullRequestEvent(7, "Kanmer: CORE-126", "a".repeat(40), "batch-pr", "b".repeat(40), {
+    repository: "collisionengineers/kanmer",
+    headRepository: "contributor/kanmer",
+  });
+  const pr = readPrEvent(event);
+  assert.equal(pr.repository, "collisionengineers/kanmer");
+  assert.equal(pr.headRepository, "contributor/kanmer");
+  assert.equal(Object.prototype.propertyIsEnumerable.call(pr, "headRepository"), false);
+  assert.deepEqual(JSON.parse(JSON.stringify(pr)), {
+    number: 7,
+    headSha: "a".repeat(40),
+    baseSha: "b".repeat(40),
+    branch: "batch-pr",
+    body: "Kanmer: CORE-126",
+    baseRef: "main",
+  });
+});
 
 test("review attestation parsing requires the complete machine schema", () => {
   const complete = `---
@@ -87,10 +126,30 @@ Review body
 test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
   const { board, store, ticket, event } = await fixture();
   try {
-    await fs.writeFile(event, JSON.stringify(pullRequestEvent(1, `Kanmer: ${ticket.id}`, "a".repeat(40), "wrong-branch")));
+    const realEvent = pullRequestEvent(
+      1,
+      `Kanmer: ${ticket.id}`,
+      "a".repeat(40),
+      "wrong-branch",
+      "b".repeat(40),
+      {
+        repository: "collisionengineers/kanmer",
+        url: "https://github.com/collisionengineers/kanmer/pull/1",
+      },
+    );
+    await fs.writeFile(event, JSON.stringify(realEvent));
     const pass = run(board, event);
     assert.equal(pass.status, 0);
-    assert.equal(JSON.parse(pass.stdout).ok, true);
+    const passResult = JSON.parse(pass.stdout);
+    assert.equal(passResult.ok, true);
+    assert.deepEqual(passResult.pr, {
+      number: 1,
+      headSha: "a".repeat(40),
+      baseSha: "b".repeat(40),
+      branch: "wrong-branch",
+      body: `Kanmer: ${ticket.id}`,
+      baseRef: "main",
+    });
     assert.equal(pass.stdout.trim().split("\n").length, 1);
     assert.match(pass.stderr, /::warning title=kanmer\/gate \[NO_REVIEW_RECORD\]::/);
 
@@ -197,6 +256,291 @@ test("attestation checks warn by default and block under KANMER_GATE_STRICT", as
       details: { state: "unrecorded", boardSha: null, diagnostic: passResult.checks.find((check) => check.code === "SYNC_REQUIRED").details.diagnostic },
     });
     assert.equal(passResult.checks.at(-1).code, "SYNC_REQUIRED");
+  } finally {
+    await removeTreeWithRetry(board);
+  }
+});
+
+test("strict check-pr accepts only the complete frozen batch with per-member PR/head attestations", async () => {
+  const board = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-check-pr-batch-"));
+  try {
+    const store = new KanmerStore(board, { actor: "batch-controller" });
+    await store.init();
+    const free = { type: "ticket", profile: "custom", requires: {}, status: "implementing" };
+    const tickets = [];
+    for (const title of ["A", "B", "C"]) tickets.push(await store.createItem({ ...free, title }));
+    for (const ticket of tickets) {
+      await store.setDoc(ticket.id, "plan", `# Plan — ${ticket.id}\n`);
+    }
+    await store.takeTicket(tickets[0].id, {
+      branch: "batch-pr",
+      worktree: ".worktrees/batch-pr",
+      actor: "batch-controller",
+      controllerRun: "batch-controller-run",
+      batch: "batch-pr",
+      batchMembers: tickets.map((ticket) => ticket.id),
+    });
+    for (const ticket of tickets.slice(1)) {
+      await store.takeTicket(ticket.id, {
+        branch: "batch-pr",
+        worktree: ".worktrees/batch-pr",
+        actor: "batch-controller",
+        controllerRun: "batch-controller-run",
+        batch: "batch-pr",
+      });
+    }
+    const head = "a".repeat(40);
+    const writeMemberReview = async (ticket, overrides = {}) => {
+      const current = await store.getItem(ticket.id);
+      const plan = await store.getDocWithVersion(ticket.id, "plan");
+      const body = attestation(head, "pass", "", {
+        ticketUpdated: overrides.ticketUpdated ?? current.updated,
+        planHash: overrides.planHash ?? plan.version,
+      }).replace(
+        'pr: "1"',
+        `pr: "${overrides.pr ?? "https://github.com/collisionengineers/kanmer/pull/1"}"`,
+      );
+      await store.setDoc(ticket.id, "scratch/review", body);
+    };
+    for (const ticket of tickets) {
+      await store.updateItem(ticket.id, { prs: ["1"] });
+      await store.moveItem(ticket.id, { status: "review" });
+      await writeMemberReview(ticket);
+    }
+    const event = path.join(board, "event.json");
+    const body = tickets.map((ticket) => `Kanmer: ${ticket.id}`).join("\n");
+    const repositoryEvent = pullRequestEvent(
+      1,
+      body,
+      head,
+      "batch-pr",
+      "b".repeat(40),
+      { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer" },
+    );
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
+    const lenientPass = run(board, event);
+    assert.equal(lenientPass.status, 0, lenientPass.stderr);
+    const pass = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(pass.status, 0, pass.stderr);
+    const result = JSON.parse(pass.stdout);
+    assert.equal(result.ticketId, null);
+    assert.equal(result.batchId, "batch-pr");
+    assert.deepEqual(result.ticketIds, tickets.map((ticket) => ticket.id).sort());
+    assert.equal(result.findings.length, 0);
+
+    const assertBatchProvenanceFailure = async (identity, expected) => {
+      await fs.writeFile(event, JSON.stringify(pullRequestEvent(
+        1,
+        body,
+        head,
+        "batch-pr",
+        "b".repeat(40),
+        identity,
+      )));
+      for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+        const adverse = runWithEnv(env, board, event);
+        assert.equal(adverse.status, 1, adverse.stderr);
+        const findings = JSON.parse(adverse.stdout).findings;
+        assert.equal(findings.length, 1);
+        assert.deepEqual(
+          {
+            code: findings[0].code,
+            level: findings[0].level,
+            outcome: findings[0].outcome,
+            batchId: findings[0].details.batchId,
+            ...Object.fromEntries(Object.keys(expected).map((key) => [key, findings[0].details[key]])),
+          },
+          {
+            code: "BATCH_ROSTER",
+            level: "error",
+            outcome: "fail",
+            batchId: "batch-pr",
+            ...expected,
+          },
+        );
+      }
+    };
+
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer", baseRef: null },
+      { expectedTarget: "main", baseRef: null },
+    );
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer", baseRef: "dev" },
+      { expectedTarget: "main", baseRef: "dev" },
+    );
+    await assertBatchProvenanceFailure(
+      { headRepository: "collisionengineers/kanmer" },
+      { repository: null, headRepository: "collisionengineers/kanmer" },
+    );
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer" },
+      { repository: "collisionengineers/kanmer", headRepository: null },
+    );
+    await assertBatchProvenanceFailure(
+      { repository: "collisionengineers/kanmer", headRepository: "foreign/fork" },
+      { repository: "collisionengineers/kanmer", headRepository: "foreign/fork" },
+    );
+
+    const caseVariantEvent = pullRequestEvent(
+      1,
+      body,
+      head,
+      "batch-pr",
+      "b".repeat(40),
+      { repository: "collisionengineers/kanmer", headRepository: "COLLISIONENGINEERS/KANMER" },
+    );
+    await fs.writeFile(event, JSON.stringify(caseVariantEvent));
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const caseVariant = runWithEnv(env, board, event);
+      assert.equal(caseVariant.status, 0, caseVariant.stderr);
+    }
+
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
+
+    await writeMemberReview(tickets[1], { ticketUpdated: "2026-01-01T00:00:00.000Z" });
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const staleTicket = runWithEnv(env, board, event);
+      assert.equal(staleTicket.status, 1, staleTicket.stderr);
+      const finding = JSON.parse(staleTicket.stdout).findings.find((entry) =>
+        entry.code === "STALE_REVIEW" && entry.details.ticketId === tickets[1].id
+      );
+      assert.equal(finding?.level, "error");
+      assert.equal(finding?.details.attestedTicketUpdated, "2026-01-01T00:00:00.000Z");
+    }
+    await writeMemberReview(tickets[1]);
+
+    await store.setDoc(tickets[1].id, "plan", `# Plan — ${tickets[1].id}\n\nChanged after review.\n`);
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const stalePlan = runWithEnv(env, board, event);
+      assert.equal(stalePlan.status, 1, stalePlan.stderr);
+      const finding = JSON.parse(stalePlan.stdout).findings.find((entry) =>
+        entry.code === "STALE_REVIEW" && entry.details.ticketId === tickets[1].id
+      );
+      assert.equal(finding?.level, "error");
+      assert.notEqual(finding?.details.attestedPlanHash, finding?.details.planVersion);
+    }
+    await writeMemberReview(tickets[1]);
+
+    await store.updateItem(tickets[1].id, { prs: ["2"] });
+    for (const env of [{}, { KANMER_GATE_STRICT: "1" }]) {
+      const wrongMemberPr = runWithEnv(env, board, event);
+      assert.equal(wrongMemberPr.status, 1, wrongMemberPr.stderr);
+      const findings = JSON.parse(wrongMemberPr.stdout).findings;
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0].code, "BATCH_ROSTER");
+      assert.deepEqual(findings[0].details.missingPrTrace, [tickets[1].id]);
+    }
+    await store.updateItem(tickets[1].id, { prs: ["1"] });
+    await writeMemberReview(tickets[1]);
+
+    await fs.writeFile(
+      event,
+      JSON.stringify(pullRequestEvent(
+        1,
+        body,
+        head,
+        "different-source-branch",
+        "b".repeat(40),
+        { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer" },
+      )),
+    );
+    const wrongBranch = run(board, event);
+    assert.equal(wrongBranch.status, 1);
+    assert.match(wrongBranch.stderr, /::error title=kanmer\/gate \[BATCH_ROSTER\]::/);
+    const wrongBranchFinding = JSON.parse(wrongBranch.stdout).findings;
+    assert.equal(wrongBranchFinding.length, 1);
+    assert.deepEqual(
+      {
+        code: wrongBranchFinding[0].code,
+        level: wrongBranchFinding[0].level,
+        outcome: wrongBranchFinding[0].outcome,
+        batchId: wrongBranchFinding[0].details.batchId,
+        batchBranch: wrongBranchFinding[0].details.batchBranch,
+        prBranch: wrongBranchFinding[0].details.prBranch,
+      },
+      {
+        code: "BATCH_ROSTER",
+        level: "error",
+        outcome: "fail",
+        batchId: "batch-pr",
+        batchBranch: "batch-pr",
+        prBranch: "different-source-branch",
+      },
+    );
+
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
+    await store.updateBoard((boardConfig) => ({
+      ...boardConfig,
+      delivery: {
+        integrationBranch: "dev",
+        releaseBranch: "main",
+        releaseCandidatePattern: "release/*",
+        hotfixBackport: true,
+      },
+    }));
+    await store.updateItem(tickets[1].id, { delivery_branch: "main" });
+    const mixedTargets = run(board, event);
+    assert.equal(mixedTargets.status, 1);
+    assert.match(mixedTargets.stderr, /::error title=kanmer\/gate \[BATCH_ROSTER\]::/);
+    const mixedTargetFindings = JSON.parse(mixedTargets.stdout).findings;
+    assert.equal(mixedTargetFindings.length, 1);
+    assert.deepEqual(
+      {
+        code: mixedTargetFindings[0].code,
+        level: mixedTargetFindings[0].level,
+        outcome: mixedTargetFindings[0].outcome,
+        batchId: mixedTargetFindings[0].details.batchId,
+        targets: mixedTargetFindings[0].details.targets,
+      },
+      {
+        code: "BATCH_ROSTER",
+        level: "error",
+        outcome: "fail",
+        batchId: "batch-pr",
+        targets: tickets.map((ticket, index) => ({
+          ticketId: ticket.id,
+          prTarget: index === 1 ? "main" : "dev",
+        })).sort((a, b) => a.ticketId.localeCompare(b.ticketId)),
+      },
+    );
+    await store.updateItem(tickets[1].id, { delivery_branch: "" });
+    await store.updateBoard(({ delivery: _delivery, ...boardConfig }) => boardConfig);
+
+    await fs.writeFile(
+      event,
+      JSON.stringify(pullRequestEvent(
+        1,
+        `Kanmer: ${tickets[0].id}`,
+        head,
+        "batch-pr",
+        "b".repeat(40),
+        { repository: "collisionengineers/kanmer", headRepository: "collisionengineers/kanmer" },
+      )),
+    );
+    const incomplete = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(incomplete.status, 1);
+    assert.deepEqual(JSON.parse(incomplete.stdout).findings.map((finding) => finding.code), ["BATCH_ROSTER"]);
+
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
+
+    await store.setDoc(
+      tickets[1].id,
+      "scratch/review",
+      attestation(head).replace('pr: "1"', 'pr: "https://github.com/foreign/repository/pull/1"'),
+    );
+    const fail = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(fail.status, 1);
+    const adverse = JSON.parse(fail.stdout);
+    assert.deepEqual(adverse.findings.map((finding) => [finding.code, finding.details.ticketId]), [
+      ["STALE_REVIEW", tickets[1].id],
+    ]);
+    const failLenient = run(board, event);
+    assert.equal(failLenient.status, 1);
+    assert.match(failLenient.stderr, /::error title=kanmer\/gate \[STALE_REVIEW\]::/);
+    assert.deepEqual(JSON.parse(failLenient.stdout).findings.map((finding) => [finding.code, finding.details.ticketId]), [
+      ["STALE_REVIEW", tickets[1].id],
+    ]);
   } finally {
     await removeTreeWithRetry(board);
   }

@@ -41,6 +41,7 @@ import {
   leaseConfig,
   LEASE_PHASES,
   watchKanmer,
+  type BatchSummaryProjection,
   type Item,
   type RootSource,
   type WatchHandle,
@@ -349,8 +350,8 @@ function actorName(requestServer: McpServer, extra?: unknown): string {
     (meta?.["io.modelcontextprotocol/client"] as { name?: string } | undefined)?.name,
     (meta?.["clientInfo"] as { name?: string } | undefined)?.name,
   ];
-  for (const c of candidates) if (typeof c === "string" && c) return c;
-  return requestServer.server.getClientVersion()?.name ?? "agent";
+  for (const c of candidates) if (typeof c === "string" && c.trim()) return c.trim();
+  return requestServer.server.getClientVersion()?.name?.trim() || "agent";
 }
 
 /**
@@ -385,7 +386,11 @@ async function confirmDestructive(requestServer: McpServer, message: string): Pr
  * "not reported": docs/checklist are null for legacy-layout items, taken is
  * null when the ticket isn't taken, order/refs/deployment are null when unset.
  */
-async function summarise(item: Item, blockedIds: Set<string>) {
+async function summarise(
+  item: Item,
+  blockedIds: Set<string>,
+  manifestBatch?: BatchSummaryProjection,
+) {
   const info = item.type === "ticket" ? await store.getTicketDocsInfo(item.id) : null;
   return {
     id: item.id,
@@ -404,6 +409,29 @@ async function summarise(item: Item, blockedIds: Set<string>) {
     // ticket is an unpromoted observation rather than selectable work.
     capture: isCaptureItem(item),
     capture_disposition: item.capture_disposition ?? null,
+    // Always present so archived members remain discoverable during batch
+    // closeout without opening every ticket file.
+    batch: manifestBatch
+      ? {
+          id: manifestBatch.id,
+          controller: manifestBatch.controller,
+          frozenAt: manifestBatch.frozenAt,
+          state: manifestBatch.state,
+          members: manifestBatch.members,
+          workspace: manifestBatch.workspace,
+          branch: manifestBatch.branch,
+        }
+      : item.lease_batch
+      ? {
+          id: item.lease_batch,
+          controller: item.lease_batch_controller ?? null,
+          frozenAt: item.lease_batch_frozen_at ?? null,
+          state: "inconsistent",
+          members: [item.id],
+          workspace: item.lease_workspace ?? null,
+          branch: item.branch ?? null,
+        }
+      : null,
     deployment: item.deployment ?? null,
     // FRD-031: how far the change has travelled, independent of the stage.
     // Only emitted when something was actually recorded, so an untouched
@@ -870,7 +898,7 @@ server.registerTool(
   {
     title: "List items",
     description:
-      "List items as summaries (no body). Filter by type, status (workflow stage), area, label, group, or updated_since (ISO timestamp — only items changed after it). Filters combine with AND, so group + status narrows to one stage of one group. Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken), `profile`, and `docs`/`checklist` (pipeline document presence and checklist progress) — which is why this, rather than get_group, is how you build a roster from a group: get_group's derived members carry only id/title/stage. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
+      "List items as summaries (no body). Filter by type, status (workflow stage), area, label, group, or updated_since (ISO timestamp — only items changed after it). Filters combine with AND, so group + status narrows to one stage of one group. Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken), `profile`, and `docs`/`checklist` (pipeline document presence and checklist progress) — which is why this, rather than get_group, is how you build a roster from a group: get_group's derived members carry only id/title/stage. A manifest-backed batch summary retains its state, complete member roster, workspace and branch even during recoverable final cleanup after ticket projections have been cleared. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
     inputSchema: {
       type: itemTypeEnum.optional().describe("Restrict to one item type"),
       status: z.string().optional().describe("Filter by status id (workflow stage)"),
@@ -917,8 +945,8 @@ server.registerTool(
         selected = [...selected].sort((a, b) => (a.updated < b.updated ? 1 : -1));
       }
       if (limit !== undefined) selected = selected.slice(0, limit);
-      const blocked = await blockedSet();
-      const summaries = await Promise.all(selected.map((i) => summarise(i, blocked)));
+      const [blocked, batches] = await Promise.all([blockedSet(), store.batchSummaryProjections()]);
+      const summaries = await Promise.all(selected.map((i) => summarise(i, blocked, batches.get(i.id))));
       return ok(warnings.length ? { items: summaries, warnings } : summaries);
     },
   ),
@@ -1099,17 +1127,19 @@ server.registerTool(
   {
     title: "Get an execution packet",
     description:
-      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, occupancy by another actor, then — only when `step` is supplied — a plan that cannot be compiled into a bounded step. An occupied ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or \"next\") additionally compiles one versioned step packet limiting the worker to that step's allowed files and symbols, with its exact tests, commands, expected output and stop condition — and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.",
+      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, incomplete or unsafe ownership evidence, occupancy by another actor, then — only when `step` is supplied — a plan that cannot be compiled into a bounded step. An occupied isolated ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A batch additionally requires a complete consistent manifest plus both the actual MCP request actor and the exact durable controller_run that declared it; copied owner labels or an exact resume path never authorize another controller run. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or \"next\") additionally compiles one versioned step packet limiting the worker to that step's allowed files and symbols, with its exact tests, commands, expected output and stop condition — and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       resume: z.object({ branch: z.string(), worktree: z.string() }).optional()
-        .describe("Exact recorded branch/worktree required to resume an occupied ticket from a different MCP client identity"),
+        .describe("Exact recorded branch/worktree required to resume an occupied isolated ticket; it cannot transfer batch authority"),
+      controller_run: z.string().optional()
+        .describe("Durable controller run identity; required and exact-matched for a batch packet"),
       step: z.union([z.number().int().positive(), z.literal("next")]).optional()
         .describe("Compile one bounded step packet: a 1-based ordered-step index, or \"next\" for the first unfinished step"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ id, resume, step }, extra) => {
+  guard(async ({ id, resume, controller_run, step }, extra) => {
     const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
     // FRD-029: the packet names the logical project, and reads the ticket's
     // document-inclusive revision itself so a worker's first write can be
@@ -1118,6 +1148,7 @@ server.registerTool(
       store,
       id,
       actor: actorName(server, extra),
+      controllerRun: controller_run,
       project,
       resume,
       logical,
@@ -1292,10 +1323,10 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guard(async ({ query, type, profile }) => {
-    const blocked = await blockedSet();
+    const [blocked, batches] = await Promise.all([blockedSet(), store.batchSummaryProjections()]);
     return ok(
       await Promise.all(
-        (await store.searchItems(query, { type, profile })).map((i) => summarise(i, blocked)),
+        (await store.searchItems(query, { type, profile })).map((i) => summarise(i, blocked, batches.get(i.id))),
       ),
     );
   }),
@@ -1754,12 +1785,12 @@ server.registerTool(
   {
     title: "Take, release, transfer or renew a ticket workspace lease",
     description:
-      "Acquire a ticket's workspace lease before working it (FRD-030): records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), stamps the lease expiry (board `claimExpiryMinutes`, default 30) and mints the lease record — lease_id, lease_revision, lease_workspace, lease_phase, lease_heartbeat_at, plus controller_run/worker_run/provider when given — and moves the ticket to the working stage (default `implementing`). One live writer per workspace: a worktree or branch recorded on another taken ticket refuses with WORKSPACE_OCCUPIED (force does not bypass it); an already-taken ticket refuses with LEASE_LIVE unless force is true. Batch mode is the one deliberate exception: the first member's take passes batch (an id) plus batch_members (the complete list of two or more small related ticket ids, including itself) — that declares AND freezes the batch in one locked write (BATCH_INVALID for an unknown, archived, done, already-taken or otherwise-batched member; BATCH_FROZEN if the batch already started), and later members take the same worktree and branch with batch: <id> (any other workspace is BATCH_WORKSPACE_MISMATCH; a non-member is still WORKSPACE_OCCUPIED). Members share one PR and one review head; each keeps its own review mapping and proof; release refuses BATCH_ACTIVE until every member is Done or archived. action: \"renew\" is the heartbeat (renew at least every get_status.leases.heartbeatMinutes): pass the lease_id and lease_revision from your packet or last take — a non-current lease_id refuses with LEASE_EXPIRED (the lease was reclaimed; stop), a stale lease_revision with REVISION_CONFLICT, and nothing is written on refusal; an expired lease nobody reclaimed still renews for its holder. Optional phase (implementing | running-command | review | verifying | closeout); phase \"running-command\" with extend_minutes is the explicit long-command state, bounded by board `leaseCommandMaxMinutes` (default 120). A renew that names no lease falls back to the owner check (CLAIM_NOT_OWNED) and migrates a legacy claim into a lease. action: \"transfer\" reclaims an EXPIRED lease for the caller (or another assignee): it first re-reads worktree, branch, PR, commit and proof evidence, records it with the old and new controller in scratch/execution.md, preserves the recorded branch/worktree and any dirty work, and refuses with RECOVERY_REFUSED for a board, foreign-repository or branch-mismatched workspace; a live lease refuses with CLAIM_LIVE unless reason begins \"operator:\". action: \"release\" clears the claim, lease and batch fields when the work ends (closeout). Never use force to recover a dead controller's ticket; transfer it.",
+      "Acquire a ticket's workspace lease before working it (FRD-030): records taken_at, the branch (required) and a worktree that is optional for an isolated take but required and nonblank on the first batch declaration, sets the assignee (defaults to the calling client's name), stamps the lease expiry (board `claimExpiryMinutes`, default 30) and mints the lease record — lease_id, lease_revision, lease_workspace, lease_phase, lease_heartbeat_at, plus controller_run/worker_run/provider when given — and moves the ticket to the working stage (default `implementing`). A missing or blank declaration worktree is BATCH_WORKSPACE_INVALID, surfaced as structured LEASE_CONFLICT, before any declaration sidecar or ticket write. One live writer per workspace: a worktree or branch recorded on another taken ticket refuses with WORKSPACE_OCCUPIED (force does not bypass it); an already-taken ticket refuses with LEASE_LIVE unless force is true. Batch mode is the one deliberate exception: the first member passes batch plus the complete batch_members roster and a nonempty durable controller_run. Kanmer writes a recoverable pending declaration before member changes, then retains the immutable roster as active and later releasing. The actual MCP request actor together with that exact controller_run owns declaration recovery, later member take and renewal; copied assignee/controller labels do not authorize them. Later members use the same actor, controller_run and exact shared worktree/branch; other actors, runs, workspaces, rosters and per-member transfer are refused. Members share one PR/head but retain member-owned review attestations and proofs. Release refuses BATCH_ACTIVE until every immutable-roster member is Done or archived, then clears members idempotently through releasing. action: \"renew\" is the heartbeat (renew at least every get_status.leases.heartbeatMinutes): a modern manifest-backed batch must pass controller_run plus both lease_id and lease_revision from the packet or last take; omission is refused. A non-current lease_id refuses with LEASE_EXPIRED (the lease was reclaimed; stop), a stale lease_revision with REVISION_CONFLICT, and nothing is written on refusal; an expired lease nobody reclaimed still renews for its holder. Optional phase (implementing | running-command | review | verifying | closeout); phase \"running-command\" with extend_minutes is the explicit long-command state, bounded by board `leaseCommandMaxMinutes` (default 120). An isolated compatibility renewal may omit lease tokens and falls back to the owner check (CLAIM_NOT_OWNED); a legacy isolated claim then migrates into a lease. action: \"transfer\" reclaims an EXPIRED isolated lease for the caller (or another assignee): it first re-reads worktree, branch, PR, commit and proof evidence, records it with the old and new controller in scratch/execution.md, preserves the recorded branch/worktree and any dirty work, and refuses with RECOVERY_REFUSED for a board, foreign-repository or branch-mismatched workspace; a live lease refuses with CLAIM_LIVE unless reason begins \"operator:\". action: \"release\" clears an isolated claim or advances recoverable batch cleanup. Never use force to recover a dead controller's ticket; transfer only an isolated lease.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       action: z.enum(["take", "release", "transfer", "renew"]).default("take"),
       branch: z.string().optional().describe("Branch the work happens on (required for take)"),
-      worktree: z.string().optional().describe("Worktree path, when working in one"),
+      worktree: z.string().optional().describe("Worktree path; optional for isolated takes, required and nonblank on the first batch declaration"),
       stage: z.string().optional().describe("Stage to move to (default: implementing)"),
       assignee: z.string().optional().describe("Defaults to the calling client's name"),
       controller: z.string().optional().describe("Durable controller identity behind the claim (defaults to assignee)"),
@@ -1770,7 +1801,7 @@ server.registerTool(
       lease_revision: z.number().int().positive().optional().describe("renew: the lease_revision you last read; stale ⇒ REVISION_CONFLICT"),
       phase: z.enum(LEASE_PHASES).optional().describe("take/renew: lease phase; running-command is the explicit long-command state"),
       extend_minutes: z.number().positive().optional().describe("renew in phase running-command: extend the lease by up to leaseCommandMaxMinutes"),
-      controller_run: z.string().optional().describe("Durable controller run identity behind the lease"),
+      controller_run: z.string().optional().describe("Durable controller run identity behind the lease; required for batch declaration, recovery, member take and renewal"),
       worker_run: z.string().optional().describe("Worker run identity doing the work"),
       provider: z.string().optional().describe("Provider behind the worker (e.g. claude-code, codex)"),
       batch: z.string().min(1).optional().describe("take: the batch workspace this ticket belongs to (FRD-030 batch mode)"),
@@ -1784,7 +1815,8 @@ server.registerTool(
     if (action === "renew") {
       return ok(
         await store.renewTicket(id, {
-          actor: assignee ?? actorName(server, extra),
+          actor: actorName(server, extra),
+          owner: assignee,
           leaseId: lease_id,
           leaseRevision: lease_revision,
           phase,
@@ -1818,6 +1850,7 @@ server.registerTool(
         stage,
         assignee: assignee ?? actorName(server, extra),
         controller,
+        actor: actorName(server, extra),
         force,
         expectedRevision: expected_revision,
         phase,

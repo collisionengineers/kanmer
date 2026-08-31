@@ -592,11 +592,117 @@ for (const [name, ok] of remediationContract) {
   check(name, ok, ok ? "contract present" : "SKILL-037 remediation-loop wording missing");
 }
 
-console.log("\n=== 19. SKILL-036 durable `/goal` orchestration contract ===");
+console.log("\n=== 19. CORE-126 protected batch workflow contract ===");
+const toolReference = read(join(skillsDir, "kanmer-tickets", "references", "tool-reference.md"));
+const protectedBatchContract = [
+  [
+    "kanmer-execute emits the complete frozen batch footer roster",
+    /one standalone `Kanmer: <ID>` footer\s+for every member in the complete frozen roster[\s\S]{0,120}no omission or extra/i.test(
+      executeSkill,
+    ),
+  ],
+  [
+    "kanmer-review writes one member-owned exact-head pass attestation per roster ticket",
+    /one fresh independent review of the shared PR at its\s+exact full head SHA[\s\S]{0,1200}member-owned whole-file `scratch\/review\.md` attestation\s+for every member in the complete frozen roster[\s\S]{0,500}`independent: true`[\s\S]{0,80}`verdict: pass`[\s\S]{0,120}exact shared `pr` and full\s+`head_sha`/i.test(
+      reviewSkill,
+    ),
+  ],
+  [
+    "kanmer-review reads the complete active manifest projection before batch attestation",
+    /call `list_items include_archived: true`[\s\S]{0,180}`batch\.state` must be `active`[\s\S]{0,180}`batch\.members` is the complete frozen roster[\s\S]{0,180}`batch\.workspace` plus[\s\S]{0,80}`batch\.branch`/i.test(
+      reviewSkill,
+    ),
+  ],
+  [
+    "kanmer-closeout discovers archived batch members by exact batch id",
+    /Before any batch\s+cleanup action, first call `list_items include_archived: true`[\s\S]{0,220}`batch\.id`[\s\S]{0,120}exact same batch id/i.test(
+      closeoutSkill,
+    ),
+  ],
+  [
+    "kanmer-closeout retains the all-terminal manifest through shared Git cleanup before member release",
+    /require every immutable-roster member to be terminal[\s\S]{0,700}keep the manifest linked and do not release any\s+member yet[\s\S]{0,700}remove the\s+one shared worktree and delete the shared branch[\s\S]{0,500}If any shared Git cleanup step fails[\s\S]{0,180}do not (?:call|issue)[\s\S]{0,80}release/i.test(closeoutSkill) &&
+      /Only after (?:that )?shared Git cleanup succeeds[\s\S]{0,220}`take_ticket action: "release"` for every roster member[\s\S]{0,380}idempotent[\s\S]{0,300}final release unlinks the manifest/i.test(closeoutSkill),
+  ],
+  [
+    "kanmer-execute binds all batch work authority to actor plus durable controller_run",
+    /Retain that nonempty `controller_run` in the controller's durable run record[\s\S]{0,220}actual\s+MCP request actor[\s\S]{0,120}durable run id/i.test(executeSkill) &&
+      /Declaration, pending recovery, every later member take, batch renew, and every\s+batch execution packet exact-match that actor\/run pair/i.test(executeSkill),
+  ],
+  [
+    "kanmer-execute requires current CAS tokens on every modern batch renew",
+    /modern batch renewal always requires both current `lease_id` and\s+`lease_revision` plus that exact run id[\s\S]{0,180}never enters the no-token owner\s+compatibility lane/i.test(
+      executeSkill,
+    ),
+  ],
+  [
+    "kanmer-auto maps its immutable run_id to every batch controller_run call",
+    /automation ledger's immutable schema-3 `run_id` as the\s+batch `controller_run`/i.test(autoSkill) &&
+      /never a worker id, session id, reconnect id, or\s+per-call id/i.test(autoSkill) &&
+      /first batch declaration/i.test(autoSkill) &&
+      /pending-declaration recovery/i.test(autoSkill) &&
+      /every packet-first `get_execution_packet`/i.test(autoSkill) &&
+      /every\s+later member `take_ticket`/i.test(autoSkill) &&
+      /every `take_ticket action: "renew"`/i.test(autoSkill) &&
+      /current `lease_id` and `lease_revision` CAS pair/i.test(autoSkill),
+  ],
+  [
+    "kanmer-execute creates or recovers exactly one shared batch PR",
+    /first batch member alone is the sole PR creator/i.test(executeSkill) &&
+      /zero matching open PRs means create\s+the one shared PR/i.test(executeSkill) &&
+      /exactly one\s+match means validate and reuse it/i.test(executeSkill) &&
+      /more than one match is ambiguous and must stop/i.test(executeSkill) &&
+      /later member pushes the same\s+manifest branch and never calls `gh pr create`/i.test(executeSkill) &&
+      /resolved source\s+repository for both base and head/i.test(executeSkill) &&
+      /base `delivery\.prTarget`/i.test(executeSkill) &&
+      /head branch `claim\.batch\.branch`/i.test(executeSkill) &&
+      /current pushed head SHA/i.test(executeSkill) &&
+      /exact complete frozen footer roster/i.test(executeSkill) &&
+      /current member's\s+own `prs\[\]`/i.test(executeSkill),
+  ],
+  [
+    "kanmer-review advances the complete merged batch roster idempotently",
+    /After a confirmed shared batch merge/i.test(reviewSkill) &&
+      /re-read `list_items include_archived:\s+true`/i.test(reviewSkill) &&
+      /active manifest projection/i.test(reviewSkill) &&
+      /immutable\s+manifest order/i.test(reviewSkill) &&
+      /member\s+is in Review, call its `get_doc_gates`/i.test(reviewSkill) &&
+      /move exactly Review → Verifying/i.test(reviewSkill) &&
+      /current `expected_updated`/i.test(reviewSkill) &&
+      /already Verifying[\s\S]{0,80}idempotent no-op/i.test(reviewSkill) &&
+      /Any other stage[\s\S]{0,100}is a stop/i.test(reviewSkill) &&
+      /re-read the complete roster/i.test(reviewSkill) &&
+      /every member is Verifying/i.test(reviewSkill) &&
+      /Review must never write\s+proof/i.test(reviewSkill),
+  ],
+  [
+    "kanmer-closeout retains manifest discovery through unlink and permits a fresh terminal releaser",
+    /authoritative manifest is `active` or `releasing`[\s\S]{0,220}`list_items include_archived: true` is the sole complete roster census[\s\S]{0,220}every member until\s+manifest unlink[\s\S]{0,260}`search_items` projects batch metadata only (?:onto|for) matching\s+non-archived results[\s\S]{0,120}never a complete roster census[\s\S]{0,300}`batch\.state`[\s\S]{0,120}`batch\.members`[\s\S]{0,120}`batch\.workspace`[\s\S]{0,80}`batch\.branch`/i.test(
+      closeoutSkill,
+    ) &&
+      /fresh closeout agent may call[\s\S]{0,100}`take_ticket action: "release"`[\s\S]{0,180}not actor-bound[\s\S]{0,180}does not require the original MCP actor or\s+`controller_run`/i.test(closeoutSkill),
+  ],
+  [
+    "tool reference exposes the durable batch authority, summary, CAS, and closeout contract",
+    /Pending, active and releasing manifests persist the exact pair of the actual MCP request actor and that durable run id[\s\S]{0,260}Declaration, pending recovery, every later member take, batch renew and batch execution packet must exact-match both values/i.test(
+      toolReference,
+    ) &&
+      /`batch` \(`\{ id, controller, frozenAt, state, members, workspace, branch \}`[\s\S]{0,420}`list_items include_archived: true` is the sole complete roster census[\s\S]{0,420}`search_items` projects batch metadata only (?:onto|for) matching\s+non-archived results[\s\S]{0,120}(?:not|never) a complete roster census/i.test(toolReference) &&
+      /Every modern manifest-backed batch renew supplies its exact `controller_run` and both current `lease_id` and `lease_revision`[\s\S]{0,120}no no-token compatibility fallback/i.test(
+        toolReference,
+      ) &&
+      /terminal release is deliberately not actor-bound[\s\S]{0,160}fresh closeout agent/i.test(toolReference),
+  ],
+];
+for (const [name, ok] of protectedBatchContract) {
+  check(name, ok, ok ? "contract present" : "CORE-126 protected-batch wording missing");
+}
+
+console.log("\n=== 20. SKILL-036 durable `/goal` orchestration contract ===");
 // FRD-034's controller is `kanmer-auto` extended, not a second orchestrator: the
 // durable run record, the status vocabulary, the reconciliation loop and the
 // stop predicates are already checks 13 and 14's, and forking them was the
-// explicit non-goal. What check 19 adds is the part FRD-034 asks for that no
+// explicit non-goal. What check 20 adds is the part FRD-034 asks for that no
 // tool reports and check 13 cannot see — the frozen roster, the preflight, the
 // overlap breadth, the sync-before-gate rule, the escalation boundary, the
 // active-stage invariants, and the evidence rules a two-day multi-controller

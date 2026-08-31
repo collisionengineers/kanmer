@@ -85,9 +85,41 @@ predecessor/successor rather than relying on wall-clock timestamps.
 
 **Batch workspace** — a deliberate exception to "one ticket, one workspace":
 two or more small related tickets that share one branch, worktree and pull
-request. The batch is frozen when its first member is taken, no other ticket
-can join it or use its workspace, each member still gets its own review and
-proof, and cleanup waits until every member is finished.
+request. Its first take records the complete roster in a hash-bound manifest:
+`pending` can roll an interrupted declaration forward, `active` protects that
+immutable roster, and `releasing` makes cleanup resumable. That declaration
+must name a real shared worktree; a missing or blank path is refused before the
+manifest or any ticket is written, while an isolated ticket may still record
+only a branch. Work authority is
+the exact pair of the actual MCP actor and a nonempty durable controller-run id
+that survives reconnects; every declaration, recovery, member take, heartbeat
+and execution packet must match both. A modern batch heartbeat also names its
+current lease id and revision. Supplied owner labels cannot take the batch over.
+For an automated goal, the automation ledger's immutable run id is that
+controller-run id; worker, session and reconnect identities never replace it.
+Before an untaken sibling acquires its own lease, its packet keeps it truthfully
+untaken while exposing the manifest branch and portable worktree in the ticket,
+claim and compiled-step workspace fields; the sibling takes that existing
+location rather than creating another worktree.
+The manifest records its worktree relative to the repository plus the branch,
+so a copied or relocated checkout retains the same authority; absolute paths
+are only local collision evidence. Dependencies between exact roster members
+order work within the shared pull request, while external or dangling blockers
+still block it.
+While the manifest remains active or releasing, listings show its state,
+complete roster, workspace and branch even if ticket-local fields have already
+been cleared. The first member alone creates the shared pull request with every
+roster footer. Later members push the same branch, require exactly one open
+pull request with the right repository, base, head and roster, and record that
+same request on their own ticket; they never create another. Every member must
+have actually taken the shared workspace and keep an independent-pass
+exact-head review bound to its current ticket timestamp and plan version. Once
+the shared request merges, review advances the complete roster from Review to
+Verifying in manifest order, safely skipping members already advanced by an
+interrupted attempt and stopping on any other state. Each member then keeps its
+own merged proof, and only after every member is terminal may any fresh
+closeout agent complete the actor-neutral release and remove the shared
+worktree and branch.
 
 **Profile** — how much evidence a ticket owes. `fix` is the default; `chore`,
 `feature`, `spike` and `custom` are the others.

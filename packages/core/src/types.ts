@@ -503,6 +503,8 @@ export const ItemFrontmatterSchema = z
      * batch) remains the default.
      */
     lease_batch: z.string().min(1).optional(),
+    /** Actual controller actor that declared the frozen batch; never caller-supplied display ownership. */
+    lease_batch_controller: z.string().min(1).optional(),
     lease_batch_frozen_at: TimestampSchema.optional(),
     /** Optional fractional sort key; unordered items sort after ordered ones. */
     order: z.number().optional(),
@@ -716,13 +718,20 @@ export type MovePosition = "top" | "bottom" | { after: string };
 export interface TakeTicketInput {
   /** The branch the work happens on (required — it's the point of taking). */
   branch: string;
-  /** Worktree path, when working in one. */
+  /** Worktree path; optional for isolated takes, required and nonblank on a batch declaration. */
   worktree?: string;
   /** Stage to move to; defaults to the board's `implementing` stage if it has one. */
   stage?: string;
   assignee?: string;
   /** Durable controller identity; defaults to `assignee`. */
   controller?: string;
+  /**
+   * Transport-observed calling actor at the MCP boundary. Batch ownership is
+   * bound to this value, never to the observable/caller-supplied controller or
+   * assignee labels. Direct store callers fall back to the store's configured
+   * actor identity (for example `gui`).
+   */
+  actor?: string;
   /** Take over a ticket that is already taken. */
   force?: boolean;
   /** Document-inclusive revision CAS (FRD-029); see `SetDocOptions.expectedRevision`. */
@@ -761,6 +770,7 @@ export function isTerminalTicket(item: Pick<Item, "status" | "archived">): boole
 /** One member of a batch workspace as `KanmerStore.batchState` reports it. */
 export interface BatchMemberState {
   id: string;
+  exists: boolean;
   status: string;
   archived: boolean;
   terminal: boolean;
@@ -770,7 +780,17 @@ export interface BatchMemberState {
 /** The frozen batch a ticket belongs to (CORE-124): members, their terminal-ness and the shared workspace. */
 export interface BatchState {
   id: string;
+  /** Actual actor that declared the batch, or null for an inconsistent legacy record. */
+  controller: string | null;
+  /** Durable controller-run identity paired with the actual actor. */
+  controllerRun: string | null;
   frozenAt: string | null;
+  /** Authoritative manifest lifecycle state; null only when no readable manifest exists. */
+  state: "pending" | "active" | "releasing" | null;
+  /** Whether the declaration is complete, recoverably pending, or internally inconsistent. */
+  declaration: "consistent" | "pending" | "inconsistent";
+  /** Immutable source branch recorded by the authoritative batch manifest. */
+  branch: string | null;
   /** The workspace the batch occupies (first taken member's lease workspace), null before any member is taken. */
   workspace: string | null;
   members: BatchMemberState[];
@@ -778,10 +798,23 @@ export interface BatchState {
   allTerminal: boolean;
 }
 
+/** Manifest-backed batch identity projected into list/search summaries during closeout. */
+export interface BatchSummaryProjection {
+  id: string;
+  controller: string;
+  frozenAt: string;
+  state: "pending" | "active" | "releasing";
+  members: string[];
+  workspace: string;
+  branch: string;
+}
+
 /** Input for renewTicket (CORE-115): the caller's own lease, named by id and revision. */
 export interface RenewTicketInput {
-  /** The renewing actor (MCP client name or controller identity). */
+  /** Transport-observed renewing actor; authoritative for batch ownership. */
   actor: string;
+  /** Compatibility display owner for isolated claims; never authorizes a batch. */
+  owner?: string;
   /** The lease the caller holds; required once the ticket carries a lease. */
   leaseId?: string;
   /** The lease revision the caller last read; refused with `Conflict:` when stale. */

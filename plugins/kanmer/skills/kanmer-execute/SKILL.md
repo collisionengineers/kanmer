@@ -18,7 +18,9 @@ run and stop when the packet says to stop.
    when `identity` is `logical`, else the legacy `project.fingerprint`) and the
    server's `compat.expectedProject` / `compat.expectedRevision` capabilities.
 2. Make `get_execution_packet <id>` the **first ticket-specific data call**.
-   A refusal is a normal result, not an invitation to reconstruct the packet.
+   For a known frozen batch, include the same nonempty `controller_run` from
+   the controller's durable run record. A refusal is a normal result, not an
+   invitation to reconstruct the packet or mint a new run identity.
 3. If `ready: false`, return its exact `code`, `reason`, and `missing` values
    in the external hand-off and stop without mutating the ticket, except for the deliberately resumable occupancy case:
    when the refusal names an existing branch and worktree, retry this one call
@@ -29,8 +31,9 @@ run and stop when the packet says to stop.
    ticket: validate and reuse that exact recorded worktree and branch; do not
    create another worktree or call `take_ticket` to take it again — renew the
    lease instead (`take_ticket action: "renew"` with the packet's
-   `claim.leaseId` / `claim.leaseRevision`). Otherwise create and validate
-   a fresh worktree and take the ticket. Send `expected_project` only when the
+   `claim.leaseId` / `claim.leaseRevision`). Otherwise acquire the packet's
+   workspace: an untaken frozen batch member reuses `ticket.workspace`, while
+   an isolated ticket creates and validates a fresh worktree before take. Send `expected_project` only when the
    preceding status call advertised `compat.expectedProject: "optional"`.
 5. Work only the packet's files and checklist, and record progress with
    version-aware MCP writes. Renew the claim before any long command.
@@ -51,6 +54,19 @@ merges its own PR and never starts another ticket.
 ```
 get_execution_packet id: <ID>
 ```
+
+For a ticket in a declared batch, the call is instead:
+
+```
+get_execution_packet id: <ID>, controller_run: "<durable-controller-run>"
+```
+
+Retain that nonempty `controller_run` in the controller's durable run record
+across reconnects and restarts. Batch authority is the exact pair of the actual
+MCP request actor observed by the server and that durable run id; an
+`assignee`, `controller`, copied owner label, exact resume path, or a newly
+minted per-call id is not authority. Omission or mismatch is a normal
+`GATE_BLOCKED` refusal and is not a reason to reconstruct the packet.
 
 The packet is read-only and does not take, move, write, dispatch, or create a
 worktree. It is ordered to refuse unsafe execution: a non-ticket/legacy item,
@@ -78,8 +94,11 @@ human edit; re-read the packet and re-plan if a version conflict occurs. A
 warning never authorizes a repair outside this ticket; retain it for the
 external hand-off.
 
-`ticket.taken` selects the execution lane. A missing value means fresh work;
-create the recorded worktree and then take the ticket. A present value means
+`ticket.taken` selects the execution lane. A missing value means a fresh
+lease, not necessarily a new Git worktree: when `claim.batch` is present,
+`ticket.workspace` carries that manifest's immutable branch and portable
+worktree and the member must take those exact values without creating another
+worktree. In isolated mode, create the ticket worktree and then take it. A present value means
 resume the exact already-recorded branch and worktree. It is not permission to
 create another worktree, retake the ticket, clear its ownership, or replace its
 uncommitted work.
@@ -100,6 +119,10 @@ it back to `kanmer-plan` rather than guessing the missing fields. Without
 `step` the packet is unchanged and its `validation` report is advisory only.
 
 ## Project capability and worktree
+
+`ticket.taken` selects the execution lane: a missing value means fresh work
+authority, either on the projected frozen-batch workspace or on a new isolated
+workspace; a present value means resume the exact already-recorded branch and worktree.
 
 Before the first mutating call, retain the project identity from
 `get_status`: `project.project_id` when `project.identity` is `logical`,
@@ -152,6 +175,12 @@ ticket is alive again, naming the lease the packet reported:
 take_ticket id: <ID>, action: "renew", lease_id: <claim.leaseId>, lease_revision: <claim.leaseRevision>
 ```
 
+For a manifest-backed batch, add
+`controller_run: "<durable-controller-run>"` from the same durable run record.
+A modern batch renewal always requires both current `lease_id` and
+`lease_revision` plus that exact run id; it never enters the no-token owner
+compatibility lane. Missing either CAS token or the run id is a stop.
+
 Every successful renew returns the next `lease_revision`; keep it for the next
 heartbeat. Renew refuses `LEASE_EXPIRED` when the lease is no longer current
 (it was reclaimed by another controller) and `CLAIM_NOT_OWNED` when a legacy
@@ -202,6 +231,16 @@ repository root after the packet is ready. **Branch from the packet's
 work integrates into, and assuming `main` is how a `dev`-integrating project
 silently builds on the wrong base:
 
+An untaken frozen batch member is the exception to worktree creation. Its
+packet has `claim.batch`, and `ticket.workspace`, `claim.workspace`,
+`claim.batch.branch` / `claim.batch.workspace`, and any compiled
+`step.workspace` all name the already-created shared location. Validate that
+location and call `take_ticket` with those exact branch/worktree values plus
+the same `controller_run`; keep `ticket.taken: null` as proof that this member
+still needs its own lease. Never create `.worktrees/<member-id>` for it.
+
+For an isolated ticket, create the worktree:
+
 ```sh
 git fetch origin
 git worktree add .worktrees/<id-lowercase> -b <id>-<slug> origin/<delivery.baseBranch>
@@ -238,15 +277,63 @@ sequence.
 Isolated mode above is the default. Only when the operator or controller has
 explicitly named two or more small related tickets as one batch, the first
 member's take declares and freezes the membership in one call —
-`take_ticket id: <first>, branch: "<batch>-<slug>", worktree: ".worktrees/<batch>", batch: "<batch>", batch_members: [<every member id>]`
+`take_ticket id: <first>, branch: "<batch>-<slug>", worktree: ".worktrees/<batch>", batch: "<batch>", batch_members: [<every member id>], controller_run: "<durable-controller-run>"`
 — and every later member is taken on that exact recorded worktree and branch
-with `batch: "<batch>"` (any other workspace is `BATCH_WORKSPACE_MISMATCH`;
-adding a ticket later is `BATCH_FROZEN`). The packet's `claim.batch` lists the
-members and which are still pending. A batch ships one PR whose body carries a
-`Kanmer: <ID>` line for every member, and review binds one attestation head;
-each member still writes its own post-implementation report, review mapping
-and proof. Never `release` a member while `claim.batch.pending` names a
-sibling — the shared workspace is still theirs.
+with `batch: "<batch>"` and the same `controller_run` (any other workspace is
+`BATCH_WORKSPACE_MISMATCH`; adding a ticket later is `BATCH_FROZEN`). The
+packet's `claim.batch` lists the complete frozen roster, immutable branch and
+workspace, and which members are still non-terminal. Before a later member is
+taken, the same branch and portable worktree are also projected through
+`ticket.workspace` and a compiled `step.workspace` so packet-first execution
+can acquire the existing shared location without guessing it.
+
+Before the first packet or take, the controller reads one nonempty
+`controller_run` from its durable run record and keeps it unchanged across
+reconnects, restarts, workers, and every member operation. Pending, active and
+releasing manifests persist both that run id and the actual MCP request actor.
+Declaration, pending recovery, every later member take, batch renew, and every
+batch execution packet exact-match that actor/run pair. Another actor, run id,
+member list, declaring ticket, branch, or worktree is refused; after activation
+nobody may add a member, and per-member transfer or a caller-supplied
+`assignee`/`controller` label is not a recovery path.
+
+The manifest's worktree identity is canonical and repository-relative, with
+the branch recorded separately. After a checkout is copied or relocated, pass
+the equivalent worktree under the new repository root; a persisted absolute
+host path is never batch authority.
+
+Every modern batch heartbeat calls `take_ticket action: "renew"` with the
+current `lease_id`, current `lease_revision`, and that same `controller_run`.
+The isolated/legacy no-token compatibility lane never applies to a
+manifest-backed batch. Terminal release is different: after every immutable
+roster member is terminal, a fresh `kanmer-closeout` actor may release the
+batch without matching the implementation actor or `controller_run`.
+
+A batch ships one PR whose body contains one standalone `Kanmer: <ID>` footer
+for every member in the complete frozen roster, with no omission or extra
+ticket. Each member still writes its own post-implementation report, exact-head
+review attestation, review mapping, and proof. Never `release` a member while
+`claim.batch.pending` names a non-terminal sibling — the shared workspace is
+still theirs.
+
+The first batch member alone is the sole PR creator. After pushing the shared
+manifest branch, query open PRs in the resolved source repository for that
+branch. For the designated first member, zero matching open PRs means create
+the one shared PR with the exact complete frozen footer roster; exactly one
+match means validate and reuse it after an interrupted create or lost response;
+more than one match is ambiguous and must stop. A later member pushes the same
+manifest branch and never calls `gh pr create`: zero matches is missing and
+must stop, exactly one is validated and reused, and more than one must stop.
+
+Validation is fail-closed. The live PR must belong to the resolved source
+repository for both base and head, be open, have base `delivery.prTarget`, have
+head branch `claim.batch.branch`, expose a current pushed head SHA matching the
+shared branch, and contain the exact complete frozen footer roster with no
+omission or extra. A repository, state, base, head, SHA, or roster mismatch
+stops in Implementing. Record the validated shared PR in the current member's
+own `prs[]` and record the head in its execute report/scratch before moving it
+to Review; every later member repeats that validation and records the same PR,
+but never creates a second one.
 
 ## Work only the packet
 
@@ -274,10 +361,12 @@ sibling — the shared workspace is still theirs.
    follow-ups, and tell `kanmer-verify` which checks belong on the merged
    result. `proof.md` is not an execution document and is written only after a
    review merge.
-2. Record the reachable implementation commit(s) and PR with `update_item`
-   (`commits`, and the PR number or URL in `prs`). The `prs` entry is what lets
-   a later `needs-changes` attestation return this ticket to Implementing on
-   the same PR; a ticket without it cannot take the sanctioned return.
+2. Record the reachable implementation commit(s) with `update_item`. Immediately
+   after step 3 creates, resolves or validates the PR, record its number or URL
+   in this ticket's `prs[]` (every batch member records the same shared PR in
+   its own array). The `prs` entry is what lets a later `needs-changes`
+   attestation return this ticket to Implementing on the same PR; a ticket
+   without it cannot take the sanctioned return.
    Link governing docs only when the packet authorizes the link; do not invent
    refs. Keep all writes project-bound when the capability was advertised.
 3. Push the ticket branch and open the PR with the ticket title and
@@ -292,7 +381,9 @@ sibling — the shared workspace is still theirs.
    `--base` is not optional: without it `gh` falls back to the repository's
    default branch, which is the integration branch only by coincidence. The
    merge gate reports `WRONG_TARGET` when a pull request misses the configured
-   target.
+   target. The batch lane above replaces this generic creation command: only
+   its first member may create the shared PR, while every later member must
+   resolve, validate, reuse and record that one PR.
 
 4. Read `get_doc_gates <id>` immediately before `move_item`. Move one gated
    boundary only, from `implementing` to `review`, and record the PR URL in

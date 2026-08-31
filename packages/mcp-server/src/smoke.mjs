@@ -1093,6 +1093,7 @@ try {
     "archived",
     "area",
     "assignee",
+    "batch",
     "blocked",
     "capture",
     "capture_disposition",
@@ -2564,10 +2565,78 @@ Second proof attempt passed; the first failure is retained.
     ).id;
     const [m1, m2, m3, stranger] = [await member("batch member 1"), await member("batch member 2"), await member("batch member 3"), await member("batch stranger")];
     for (const id of [m1, m2, m3, stranger]) await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: "# Batch" } });
-    execFileSync("git", ["worktree", "add", "-b", "batch-branch", path.join(sandbox, ".worktrees", "batch"), expectedBoardBranch], {
+    const batchWorktree = path.join(sandbox, ".worktrees", "batch");
+    execFileSync("git", ["worktree", "add", "-b", "batch-branch", batchWorktree, expectedBoardBranch], {
       cwd: sandbox, windowsHide: true, stdio: "ignore",
     });
-    const batchTake = { branch: "batch-branch", worktree: ".worktrees/batch", assignee: "ctl-batch" };
+    const batchTake = {
+      branch: "batch-branch",
+      worktree: ".worktrees/batch",
+      assignee: "ctl-batch",
+      controller: "ctl-batch-label",
+      controller_run: "smoke-controller-run",
+    };
+    const missingWorktreeA = await member("batch missing worktree 1");
+    const missingWorktreeB = await member("batch missing worktree 2");
+    for (const id of [missingWorktreeA, missingWorktreeB]) {
+      await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: "# Missing worktree batch" } });
+    }
+    const beforeMissingWorktreeBatch = treeSnapshot(sandbox);
+    const missingWorktreeBatch = await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: missingWorktreeA,
+        branch: "batch-missing-worktree",
+        assignee: batchTake.assignee,
+        controller: batchTake.controller,
+        controller_run: batchTake.controller_run,
+        batch: "smoke-batch-missing-worktree",
+        batch_members: [missingWorktreeA, missingWorktreeB],
+      },
+    });
+    check(
+      "a missing batch worktree is a structured LEASE_CONFLICT and leaves the complete board tree unchanged",
+      missingWorktreeBatch.isError === true && textOf(missingWorktreeBatch).includes("BATCH_WORKSPACE_INVALID") &&
+        missingWorktreeBatch.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeMissingWorktreeBatch),
+      textOf(missingWorktreeBatch),
+    );
+    const beforeOutsideBatch = treeSnapshot(sandbox);
+    const outsideBatch = await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: m1,
+        ...batchTake,
+        worktree: path.resolve(sandbox, "..", `${path.basename(sandbox)}-outside`, "batch"),
+        batch: "outside-smoke-batch",
+        batch_members: [m1, m2],
+      },
+    });
+    check(
+      "an out-of-repository batch workspace is a structured LEASE_CONFLICT and writes no board bytes",
+      outsideBatch.isError === true && textOf(outsideBatch).includes("BATCH_WORKSPACE_INVALID") &&
+        outsideBatch.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeOutsideBatch),
+      textOf(outsideBatch),
+    );
+    const missingRun = await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: m1,
+        branch: batchTake.branch,
+        worktree: batchTake.worktree,
+        assignee: batchTake.assignee,
+        controller: batchTake.controller,
+        batch: "smoke-batch",
+        batch_members: [m1, m2, m3],
+      },
+    });
+    check(
+      "a batch declaration requires a nonempty durable controller_run before writing",
+      missingRun.isError === true && textOf(missingRun).includes("BATCH_RUN_REQUIRED") &&
+        missingRun.structuredContent?.error?.code === "LEASE_CONFLICT",
+      textOf(missingRun),
+    );
     const first = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: m1, ...batchTake, batch: "smoke-batch", batch_members: [m1, m2, m3] } })));
     const frozenSibling = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m3 } })));
     check(
@@ -2576,13 +2645,263 @@ Second proof attempt passed; the first failure is retained.
         frozenSibling.lease_batch_frozen_at === first.taken_at && !frozenSibling.taken_at && !frozenSibling.lease_id,
       JSON.stringify({ first: first.lease_batch, sibling: frozenSibling.lease_batch, siblingTaken: frozenSibling.taken_at ?? null }),
     );
-    const second = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: m2, ...batchTake, batch: "smoke-batch" } })));
+    const untakenBatchPlan = [
+      "# Plan — untaken frozen batch member",
+      "",
+      "## Expected files",
+      "| Action | Repo-root-relative path | Responsibility |",
+      "|---|---|---|",
+      "| Modify | `src/batch.ts` | bounded batch fixture |",
+      "",
+      "## Ordered steps",
+      "",
+      "### Step 1 — Execute the bounded batch change",
+      "- Files: `src/batch.ts`",
+      "- Change: apply the bounded batch fixture change.",
+      "- Tests: `src/batch.test.ts`",
+      "- Commands: `npm test`",
+      "- Done when: `npm test` passes.",
+      "",
+      "## Acceptance checks",
+      "- `npm test` passes.",
+      "",
+      "## Stop condition",
+      "Stop after this step.",
+      "",
+    ].join("\n");
+    for (const id of [m1, m2]) {
+      await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: untakenBatchPlan } });
+    }
+    const authorizedTakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m1, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    check(
+      "an exactly authorized batch controller obtains a taken member packet despite non-authoritative display-owner labels",
+      authorizedTakenBatchPacket.ready === true && authorizedTakenBatchPacket.ticket?.taken?.assignee === batchTake.assignee &&
+        authorizedTakenBatchPacket.claim?.controller === batchTake.controller,
+      JSON.stringify({ ready: authorizedTakenBatchPacket.ready, reason: authorizedTakenBatchPacket.reason, taken: authorizedTakenBatchPacket.ticket?.taken, claim: authorizedTakenBatchPacket.claim }),
+    );
+
+    const movedBatchWorktree = path.join(sandbox, ".worktrees", "batch-moved");
+    execFileSync("git", ["worktree", "move", batchWorktree, movedBatchWorktree], {
+      cwd: sandbox, windowsHide: true, stdio: "ignore",
+    });
+    const refusedMovedUntakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m2, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    const siblingAfterMovedRefusal = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } })));
+    check(
+      "an untaken frozen member refuses a moved projected worktree without acquiring a lease",
+      refusedMovedUntakenBatchPacket.ready === false &&
+        refusedMovedUntakenBatchPacket.reason.includes("cannot be resolved on disk") &&
+        !siblingAfterMovedRefusal.taken_at && !siblingAfterMovedRefusal.lease_id,
+      JSON.stringify({ packet: refusedMovedUntakenBatchPacket, sibling: siblingAfterMovedRefusal }),
+    );
+    execFileSync("git", ["worktree", "move", movedBatchWorktree, batchWorktree], {
+      cwd: sandbox, windowsHide: true, stdio: "ignore",
+    });
+
+    const wrongProjectedBranch = "batch-projected-wrong-branch";
+    execFileSync("git", ["-C", batchWorktree, "checkout", "-b", wrongProjectedBranch], {
+      windowsHide: true, stdio: "ignore",
+    });
+    const refusedWrongBranchUntakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m2, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    const siblingAfterWrongBranchRefusal = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } })));
+    check(
+      "an untaken frozen member refuses a wrong-branch projected worktree without acquiring a lease",
+      refusedWrongBranchUntakenBatchPacket.ready === false &&
+        refusedWrongBranchUntakenBatchPacket.reason.includes(batchTake.branch) &&
+        refusedWrongBranchUntakenBatchPacket.reason.includes(wrongProjectedBranch) &&
+        !siblingAfterWrongBranchRefusal.taken_at && !siblingAfterWrongBranchRefusal.lease_id,
+      JSON.stringify({ packet: refusedWrongBranchUntakenBatchPacket, sibling: siblingAfterWrongBranchRefusal }),
+    );
+    execFileSync("git", ["-C", batchWorktree, "checkout", batchTake.branch], {
+      windowsHide: true, stdio: "ignore",
+    });
+    execFileSync("git", ["branch", "-D", wrongProjectedBranch], {
+      cwd: sandbox, windowsHide: true, stdio: "ignore",
+    });
+
+    const untakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m2, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    check(
+      "an untaken frozen member receives the immutable batch workspace before take without being reported as taken",
+      untakenBatchPacket.ready === true && untakenBatchPacket.ticket?.taken === null &&
+        untakenBatchPacket.ticket?.workspace?.branch === batchTake.branch &&
+        untakenBatchPacket.ticket?.workspace?.worktree === batchTake.worktree &&
+        untakenBatchPacket.claim?.workspace === first.lease_workspace &&
+        untakenBatchPacket.claim?.batch?.branch === batchTake.branch &&
+        untakenBatchPacket.claim?.batch?.workspace === first.lease_workspace &&
+        untakenBatchPacket.step?.workspace?.branch === batchTake.branch &&
+        untakenBatchPacket.step?.workspace?.worktree === batchTake.worktree,
+      JSON.stringify({
+        ready: untakenBatchPacket.ready,
+        taken: untakenBatchPacket.ticket?.taken,
+        ticketWorkspace: untakenBatchPacket.ticket?.workspace,
+        claimWorkspace: untakenBatchPacket.claim?.workspace,
+        batch: untakenBatchPacket.claim?.batch,
+        stepWorkspace: untakenBatchPacket.step?.workspace,
+        reason: untakenBatchPacket.reason,
+      }),
+    );
+    const replayedFirst = JSON.parse(textOf(await client.callTool({
+      name: "take_ticket",
+      arguments: { id: m1, ...batchTake, batch: "smoke-batch", batch_members: [m1, m2, m3] },
+    })));
+    check(
+      "an exact first-take replay is response-loss idempotent and returns the original lease",
+      replayedFirst.taken_at === first.taken_at && replayedFirst.lease_id === first.lease_id &&
+        replayedFirst.lease_revision === first.lease_revision,
+      JSON.stringify({
+        first: { taken_at: first.taken_at, lease_id: first.lease_id, lease_revision: first.lease_revision },
+        replay: { taken_at: replayedFirst.taken_at, lease_id: replayedFirst.lease_id, lease_revision: replayedFirst.lease_revision },
+      }),
+    );
+
+    const beforeNoCasRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+    const noCasRenew = await client.callTool({
+      name: "take_ticket",
+      arguments: { id: m1, action: "renew", controller_run: batchTake.controller_run },
+    });
+    const afterNoCasRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+    check(
+      "a modern batch renewal cannot use the isolated no-token compatibility lane",
+      noCasRenew.isError === true && textOf(noCasRenew).includes("LEASE_ID_REQUIRED") &&
+        noCasRenew.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        afterNoCasRenew.lease_revision === beforeNoCasRenew.lease_revision,
+      textOf(noCasRenew),
+    );
+
+    const paddedRenew = JSON.parse(textOf(await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: m1,
+        action: "renew",
+        controller_run: ` ${batchTake.controller_run} `,
+        lease_id: afterNoCasRenew.lease_id,
+        lease_revision: afterNoCasRenew.lease_revision,
+      },
+    })));
+    const afterPaddedRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+    check(
+      "a padded matching controller_run renews once and persists its canonical batch identity",
+      paddedRenew.lease_revision === afterNoCasRenew.lease_revision + 1 &&
+        paddedRenew.lease_controller_run === batchTake.controller_run &&
+        afterPaddedRenew.lease_controller_run === batchTake.controller_run &&
+        afterPaddedRenew.lease_revision === paddedRenew.lease_revision,
+      JSON.stringify({ renewed: paddedRenew.lease_revision, run: afterPaddedRenew.lease_controller_run }),
+    );
+
+    // CORE-126: caller-supplied owner labels are observable state, not
+    // authority. A second MCP process using the same client product name still
+    // cannot cross the durable controller-run boundary.
+    const foreignBatchTransport = new StdioClientTransport({
+      command: runner,
+      args: [serverEntry, "--root", sandbox],
+      env: runnerEnv,
+    });
+    const foreignBatchClient = new Client({ name: "smoke", version: "0.0.0" });
+    try {
+      await foreignBatchClient.connect(foreignBatchTransport);
+      const secondBeforeForeignTake = textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } }));
+      const foreignTake = await foreignBatchClient.callTool({
+        name: "take_ticket",
+        arguments: { id: m2, ...batchTake, controller_run: "foreign-controller-run", batch: "smoke-batch" },
+      });
+      const secondAfterForeignTake = textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } }));
+      check(
+        "a same-product competing controller run cannot take a batch member by copying visible labels and workspace",
+        foreignTake.isError === true && textOf(foreignTake).includes("BATCH_OWNER_MISMATCH") &&
+          foreignTake.structuredContent?.error?.code === "LEASE_CONFLICT" && secondAfterForeignTake === secondBeforeForeignTake,
+        textOf(foreignTake),
+      );
+
+      const firstBeforeForeignRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+      const foreignRenew = await foreignBatchClient.callTool({
+        name: "take_ticket",
+        arguments: {
+          id: m1,
+          action: "renew",
+          assignee: batchTake.assignee,
+          controller_run: "foreign-controller-run",
+          lease_id: firstBeforeForeignRenew.lease_id,
+          lease_revision: firstBeforeForeignRenew.lease_revision,
+        },
+      });
+      const firstAfterForeignRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+      check(
+        "a same-product competing controller run cannot renew a batch lease with copied exact CAS tokens",
+        foreignRenew.isError === true && textOf(foreignRenew).includes("BATCH_OWNER_MISMATCH") &&
+          foreignRenew.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+          firstAfterForeignRenew.lease_revision === firstBeforeForeignRenew.lease_revision,
+        textOf(foreignRenew),
+      );
+
+      const foreignPacket = JSON.parse(textOf(await foreignBatchClient.callTool({
+        name: "get_execution_packet",
+        arguments: {
+          id: m1,
+          controller_run: "foreign-controller-run",
+          resume: { branch: batchTake.branch, worktree: batchTake.worktree },
+        },
+      })));
+      check(
+        "get_execution_packet refuses an exact batch resume from a competing run of the same MCP product",
+        foreignPacket.ready === false && foreignPacket.reason.includes("controlled by run smoke-controller-run") &&
+          foreignPacket.reason.includes("foreign-controller-run cannot obtain"),
+        foreignPacket.reason,
+      );
+    } finally {
+      await foreignBatchClient.close();
+    }
+    const foreignActorTransport = new StdioClientTransport({
+      command: runner,
+      args: [serverEntry, "--root", sandbox],
+      env: runnerEnv,
+    });
+    const foreignActorClient = new Client({ name: "foreign-batch-actor", version: "0.0.0" });
+    try {
+      await foreignActorClient.connect(foreignActorTransport);
+      const foreignActorPacket = JSON.parse(textOf(await foreignActorClient.callTool({
+        name: "get_execution_packet",
+        arguments: {
+          id: m1,
+          controller_run: batchTake.controller_run,
+          resume: { branch: batchTake.branch, worktree: batchTake.worktree },
+        },
+      })));
+      check(
+        "get_execution_packet refuses the correct batch run from a wrong actor even with an exact resume",
+        foreignActorPacket.ready === false && foreignActorPacket.reason.includes("controlled by smoke") &&
+          foreignActorPacket.reason.includes("foreign-batch-actor cannot obtain"),
+        foreignActorPacket.reason,
+      );
+    } finally {
+      await foreignActorClient.close();
+    }
+    const second = JSON.parse(textOf(await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: m2,
+        ...batchTake,
+        branch: untakenBatchPacket.ticket.workspace.branch,
+        worktree: untakenBatchPacket.ticket.workspace.worktree,
+        batch: "smoke-batch",
+      },
+    })));
     check(
       "a frozen member takes the batch's worktree and branch and gets its own lease on the shared workspace",
       second.lease_workspace === first.lease_workspace && second.lease_id && second.lease_id !== first.lease_id && second.lease_batch === "smoke-batch",
       JSON.stringify({ workspace: second.lease_workspace, lease: second.lease_id }),
     );
-    const mismatch = await client.callTool({ name: "take_ticket", arguments: { id: m3, branch: "batch-branch", worktree: ".worktrees/elsewhere", assignee: "ctl-batch" } });
+    const mismatch = await client.callTool({ name: "take_ticket", arguments: { id: m3, branch: "batch-branch", worktree: ".worktrees/elsewhere", assignee: "ctl-batch", controller_run: batchTake.controller_run } });
     check(
       "a member on any other worktree is BATCH_WORKSPACE_MISMATCH (LEASE_CONFLICT): a batch owns one workspace",
       mismatch.isError === true && textOf(mismatch).includes("BATCH_WORKSPACE_MISMATCH") && mismatch.structuredContent?.error?.code === "LEASE_CONFLICT",
@@ -2598,7 +2917,7 @@ Second proof attempt passed; the first failure is retained.
         !strangerAfter.taken_at && !strangerAfter.lease_batch,
       JSON.stringify([textOf(joinAttempt), textOf(shareAttempt)]),
     );
-    const batchPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: m2, resume: { branch: "batch-branch", worktree: ".worktrees/batch" } } })));
+    const batchPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: m2, controller_run: batchTake.controller_run, resume: { branch: "batch-branch", worktree: ".worktrees/batch" } } })));
     check(
       "get_execution_packet is ready for a member on the shared batch worktree and its claim block reports the batch (members, pending, workspace)",
       batchPacket.ready === true && batchPacket.claim?.batch?.id === "smoke-batch" && JSON.stringify(batchPacket.claim.batch.members) === JSON.stringify([m1, m2, m3]) &&
@@ -2614,6 +2933,154 @@ Second proof attempt passed; the first failure is retained.
         earlyRelease.structuredContent?.error?.code === "LEASE_CONFLICT" && stillTaken.taken_at === first.taken_at && stillTaken.lease_batch === "smoke-batch",
       textOf(earlyRelease),
     );
+    await client.callTool({ name: "update_item", arguments: { id: m3, archived: true } });
+    const beforeArchivedMemberExecution = treeSnapshot(sandbox);
+    const archivedMemberPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m3, controller_run: batchTake.controller_run },
+    })));
+    const archivedMemberTake = await client.callTool({
+      name: "take_ticket",
+      arguments: { id: m3, ...batchTake, batch: "smoke-batch" },
+    });
+    check(
+      "an untaken archived batch member receives no packet or lease and leaves every board byte unchanged",
+      archivedMemberPacket.ready === false && archivedMemberPacket.reason.includes("archived") &&
+        archivedMemberTake.isError === true && textOf(archivedMemberTake).includes("BATCH_ACTIVE") &&
+        archivedMemberTake.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeArchivedMemberExecution),
+      JSON.stringify({ packet: archivedMemberPacket, take: textOf(archivedMemberTake) }),
+    );
+    const archivedRoster = JSON.parse(textOf(await client.callTool({ name: "list_items", arguments: { include_archived: true } })))
+      .filter((item) => [m1, m2, m3].includes(item.id));
+    check(
+      "list_items include_archived discovers every frozen member with the compact batch identity used by closeout",
+      archivedRoster.length === 3 && archivedRoster.every((item) =>
+        item.batch?.id === "smoke-batch" && item.batch.controller && item.batch.frozenAt === first.taken_at &&
+          item.batch.state === "active" && item.batch.branch === "batch-branch" &&
+          item.batch.workspace === first.lease_workspace &&
+          JSON.stringify(item.batch.members) === JSON.stringify([m1, m2, m3])
+      ),
+      JSON.stringify(archivedRoster.map((item) => ({ id: item.id, archived: item.archived, batch: item.batch }))),
+    );
+    const malformedDir = path.join(sandbox, ".kanmer", "areas", "_none", "BROKEN-999");
+    fs.mkdirSync(malformedDir, { recursive: true });
+    fs.writeFileSync(path.join(malformedDir, "BROKEN-999.md"), "---\nid: BROKEN-999\ntype: ticket\nstatus: [\n---\n", "utf8");
+    const warnedListing = JSON.parse(textOf(await client.callTool({ name: "list_items", arguments: { include_archived: true } })));
+    check(
+      "list_items preserves its valid summaries and warnings when an unrelated item is malformed",
+      Array.isArray(warnedListing.items) && warnedListing.items.some((item) => item.id === m1 && item.batch?.id === "smoke-batch") &&
+        warnedListing.warnings?.some((warning) => String(warning.file).includes("BROKEN-999")),
+      JSON.stringify({ items: warnedListing.items?.length, warnings: warnedListing.warnings }),
+    );
+    fs.rmSync(malformedDir, { recursive: true, force: true });
+    await client.callTool({ name: "update_item", arguments: { id: m1, archived: true } });
+    await client.callTool({ name: "update_item", arguments: { id: m2, archived: true } });
+    const batchManifestFile = path.join(
+      sandbox,
+      ".kanmer",
+      "batches",
+      "transactions",
+      `${createHash("sha256").update("smoke-batch").digest("hex")}.json`,
+    );
+    await client.callTool({ name: "take_ticket", arguments: { id: m1, action: "release" } });
+    const releasingManifest = fs.readFileSync(batchManifestFile, "utf8");
+    await client.callTool({ name: "take_ticket", arguments: { id: m2, action: "release" } });
+    await client.callTool({ name: "take_ticket", arguments: { id: m3, action: "release" } });
+    check(
+      "ordinary final batch release removes its authoritative manifest",
+      !fs.existsSync(batchManifestFile),
+      batchManifestFile,
+    );
+    // Recreate exactly the durable crash boundary: every ticket projection is
+    // clear, but the final releasing manifest unlink did not persist.
+    fs.writeFileSync(batchManifestFile, releasingManifest, "utf8");
+    const freshCloseoutRoster = JSON.parse(textOf(await client.callTool({
+      name: "list_items",
+      arguments: { include_archived: true },
+    }))).filter((item) => [m1, m2, m3].includes(item.id));
+    check(
+      "a fresh closeout discovers the complete releasing roster and shared Git path after every ticket projection cleared",
+      freshCloseoutRoster.length === 3 && freshCloseoutRoster.every((item) =>
+        item.batch?.id === "smoke-batch" && item.batch.state === "releasing" &&
+          item.batch.branch === "batch-branch" && item.batch.workspace === first.lease_workspace &&
+          JSON.stringify(item.batch.members) === JSON.stringify([m1, m2, m3])
+      ),
+      JSON.stringify(freshCloseoutRoster.map((item) => ({ id: item.id, batch: item.batch }))),
+    );
+    await client.callTool({ name: "take_ticket", arguments: { id: freshCloseoutRoster[0].id, action: "release" } });
+    const afterRecoveredCloseout = JSON.parse(textOf(await client.callTool({
+      name: "list_items",
+      arguments: { include_archived: true },
+    }))).filter((item) => [m1, m2, m3].includes(item.id));
+    check(
+      "a fresh release retry unlinks the final manifest and leaves all terminal tickets clear",
+      !fs.existsSync(batchManifestFile) && afterRecoveredCloseout.every((item) => item.batch === null),
+      JSON.stringify(afterRecoveredCloseout.map((item) => ({ id: item.id, batch: item.batch }))),
+    );
+
+    const terminalMember = async (title) => JSON.parse(textOf(await client.callTool({
+      name: "create_item",
+      arguments: { title, status: "implementing", profile: "custom", requires: {} },
+    }))).id;
+    const [terminalFirstId, terminalSecondId] = [
+      await terminalMember("terminal batch member 1"),
+      await terminalMember("terminal batch member 2"),
+    ];
+    const terminalBatchTake = {
+      ...batchTake,
+      batch: "smoke-terminal-batch",
+    };
+    await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: terminalFirstId,
+        ...terminalBatchTake,
+        batch_members: [terminalFirstId, terminalSecondId],
+      },
+    });
+    for (const status of ["review", "verifying", "done"]) {
+      await client.callTool({ name: "move_item", arguments: { id: terminalSecondId, status } });
+    }
+    const beforeDoneMemberExecution = treeSnapshot(sandbox);
+    const doneMemberPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: terminalSecondId, controller_run: terminalBatchTake.controller_run },
+    })));
+    const doneMemberTake = await client.callTool({
+      name: "take_ticket",
+      arguments: { id: terminalSecondId, ...terminalBatchTake },
+    });
+    check(
+      "an untaken Done batch member receives no packet or lease and leaves every board byte unchanged",
+      doneMemberPacket.ready === false && doneMemberPacket.reason.includes("terminal") && doneMemberPacket.reason.includes("done") &&
+        doneMemberTake.isError === true && textOf(doneMemberTake).includes("BATCH_ACTIVE") &&
+        doneMemberTake.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeDoneMemberExecution),
+      JSON.stringify({ packet: doneMemberPacket, take: textOf(doneMemberTake) }),
+    );
+    for (const status of ["review", "verifying", "done"]) {
+      await client.callTool({ name: "move_item", arguments: { id: terminalFirstId, status } });
+    }
+    await client.callTool({ name: "take_ticket", arguments: { id: terminalFirstId, action: "release" } });
+    const beforeReleasingMemberExecution = treeSnapshot(sandbox);
+    const releasingMemberPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: terminalSecondId, controller_run: terminalBatchTake.controller_run },
+    })));
+    const releasingMemberTake = await client.callTool({
+      name: "take_ticket",
+      arguments: { id: terminalSecondId, ...terminalBatchTake },
+    });
+    check(
+      "a releasing batch issues no member packet or lease and leaves every board byte unchanged",
+      releasingMemberPacket.ready === false && releasingMemberPacket.reason.includes("releasing") &&
+        releasingMemberTake.isError === true && textOf(releasingMemberTake).includes("releasing batch smoke-terminal-batch") &&
+        releasingMemberTake.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeReleasingMemberExecution),
+      JSON.stringify({ packet: releasingMemberPacket, take: textOf(releasingMemberTake) }),
+    );
+    await client.callTool({ name: "take_ticket", arguments: { id: terminalSecondId, action: "release" } });
     const isolated = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: stranger, branch: "stranger-branch", assignee: "ctl-batch" } })));
     check("isolated mode stays the default: the stranger takes its own branch with no batch record", Boolean(isolated.taken_at) && !isolated.lease_batch, JSON.stringify({ taken: isolated.taken_at, batch: isolated.lease_batch ?? null }));
   }

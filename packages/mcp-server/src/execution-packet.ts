@@ -80,6 +80,12 @@ export interface ExecutionPacketTicket {
    * controller compares before dispatching another step.
    */
   revision: string | null;
+  /**
+   * Workspace this packet authorises. An untaken frozen batch member receives
+   * the immutable manifest branch/worktree here before it acquires its own
+   * lease; `taken` remains null until that acquisition actually happens.
+   */
+  workspace: { branch: string | null; worktree: string | null };
   taken: {
     taken_at: string;
     assignee: string | null;
@@ -123,7 +129,15 @@ export interface ExecutionPacketClaim {
    * one worktree, branch and PR/head attestation; each keeps its own proof.
    * `pending` are the members not yet Done or archived — cleanup waits for them.
    */
-  batch: { id: string; frozenAt: string | null; workspace: string | null; members: string[]; pending: string[] } | null;
+  batch: {
+    id: string;
+    frozenAt: string | null;
+    /** Immutable manifest branch shared by every member. */
+    branch: string | null;
+    workspace: string | null;
+    members: string[];
+    pending: string[];
+  } | null;
 }
 
 /**
@@ -281,8 +295,13 @@ function compactTicket(item: Item, profile: string): ExecutionPacketCompactTicke
   };
 }
 
-function fullTicket(item: Item, profile: string, revision: string | null): ExecutionPacketTicket {
-  return { ...compactTicket(item, profile), body: item.body, revision };
+function fullTicket(
+  item: Item,
+  profile: string,
+  revision: string | null,
+  workspace: ExecutionPacketTicket["workspace"],
+): ExecutionPacketTicket {
+  return { ...compactTicket(item, profile), body: item.body, revision, workspace };
 }
 
 function takenDetails(item: Item): ExecutionPacketTicket["taken"] {
@@ -294,6 +313,20 @@ function takenDetails(item: Item): ExecutionPacketTicket["taken"] {
         worktree: item.worktree ?? null,
       }
     : null;
+}
+
+function packetWorkspace(
+  item: Item,
+  batch: Awaited<ReturnType<KanmerStore["batchState"]>>,
+): ExecutionPacketTicket["workspace"] {
+  if (item.taken_at || !batch) {
+    return { branch: item.branch ?? null, worktree: item.worktree ?? null };
+  }
+  const prefix = "worktree:";
+  const worktree = batch.workspace?.startsWith(prefix)
+    ? batch.workspace.slice(prefix.length) || null
+    : null;
+  return { branch: batch.branch, worktree };
 }
 
 function isWindowsAbsolute(input: string): boolean {
@@ -315,7 +348,7 @@ export function sameWorktreePath(left: string, right: string): boolean {
 
 export type ResolvedPath = { ok: true; path: string } | { ok: false; detail: string };
 
-interface ResumeWorktreeSafety {
+interface ExecutionWorktreeSafety {
   refusal: string | null;
   warnings: string[];
 }
@@ -378,13 +411,21 @@ async function checkedOutBranch(directory: string): Promise<{ ok: true; branch: 
   }
 }
 
-async function unsafeTakenWorktree(
+async function unsafeExecutionWorktree(
   store: KanmerStore,
   project: ProjectIdentity,
   item: Item,
-): Promise<ResumeWorktreeSafety> {
-  if (!item.taken_at || !item.worktree) return { refusal: null, warnings: [] };
-  const candidateLocation = await physicalExistingPath(canonicalWorktreePath(project, item.worktree));
+  workspace: ExecutionPacketTicket["workspace"],
+  batchId: string | null,
+): Promise<ExecutionWorktreeSafety> {
+  if (!item.taken_at && !batchId) return { refusal: null, warnings: [] };
+  if (!workspace.branch || !workspace.worktree) {
+    return {
+      refusal: `Ticket "${item.id}" has incomplete execution-workspace evidence; both branch and worktree are required before issuing an execution packet.`,
+      warnings: [],
+    };
+  }
+  const candidateLocation = await physicalExistingPath(canonicalWorktreePath(project, workspace.worktree));
   if (!candidateLocation.ok) {
     return {
       refusal: `Ticket "${item.id}" records a worktree that cannot be resolved on disk: ${candidateLocation.detail}`,
@@ -435,7 +476,7 @@ async function unsafeTakenWorktree(
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
     // A frozen member of the same batch shares this worktree by design
     // (CORE-124); every other active ticket's worktree remains a refusal.
-    if (item.lease_batch !== undefined && other.lease_batch === item.lease_batch) continue;
+    if (batchId !== null && other.lease_batch === batchId) continue;
     const otherLocation = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
     if (!otherLocation.ok) {
       warnings.push(`Active ticket "${other.id}" has an unresolved recorded worktree: ${otherLocation.detail}`);
@@ -482,9 +523,9 @@ async function unsafeTakenWorktree(
       warnings,
     };
   }
-  if (branch.branch !== item.branch) {
+  if (branch.branch !== workspace.branch) {
     return {
-      refusal: `Ticket "${item.id}" records branch "${item.branch}", but its worktree currently has "${branch.branch}" checked out; this is not a resumable ticket worktree.`,
+      refusal: `Ticket "${item.id}" records branch "${workspace.branch}", but its worktree currently has "${branch.branch}" checked out; this is not a resumable ticket worktree.`,
       warnings,
     };
   }
@@ -576,6 +617,8 @@ export async function getExecutionPacket(input: {
   store: KanmerStore;
   id: string;
   actor: string;
+  /** Durable run identity required to exercise a batch controller's authority. */
+  controllerRun?: string;
   project: ProjectIdentity;
   resume?: { branch: string; worktree: string };
   /** Logical project identity (FRD-029), carried into a compiled step packet. */
@@ -587,7 +630,7 @@ export async function getExecutionPacket(input: {
    */
   step?: number | "next";
 }): Promise<ExecutionPacket> {
-  const { store, id, actor, project, resume, logical, step } = input;
+  const { store, id, actor, controllerRun, project, resume, logical, step } = input;
   const item = await store.getItem(id);
   if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
   if (item.type !== "ticket") {
@@ -636,7 +679,83 @@ export async function getExecutionPacket(input: {
       gates,
     );
   }
-  const worktreeSafety = await unsafeTakenWorktree(store, project, item);
+  let batch: Awaited<ReturnType<KanmerStore["batchState"]>>;
+  try {
+    batch = await store.batchState(id);
+  } catch (error) {
+    return refuse(
+      project,
+      `Ticket "${id}" has unreadable batch ownership evidence: ${error instanceof Error ? error.message : String(error)}`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && batch.declaration !== "consistent") {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, whose declaration is ${batch.declaration}; recover or reconcile the complete manifest before execution.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && batch.state !== "active") {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, whose authoritative manifest is ${batch.state ?? "missing"}; ` +
+        `only an active batch may issue an execution packet, and releasing must finish first.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  const selectedBatchMember = batch?.members.find((member) => member.id === id);
+  if (batch && (!selectedBatchMember?.exists || selectedBatchMember.archived || selectedBatchMember.terminal)) {
+    const disposition = !selectedBatchMember?.exists
+      ? "missing from its authoritative roster"
+      : selectedBatchMember.archived
+        ? `archived in ${selectedBatchMember.status}`
+        : `terminal in ${selectedBatchMember.status}`;
+    return refuse(
+      project,
+      `Ticket "${id}" is ${disposition} for batch ${batch.id}; terminal or archived members cannot receive another execution packet.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && !controllerRun?.trim()) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}; controller_run is required to obtain its execution packet.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && batch.controller !== actor) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, controlled by ${batch.controller ?? "an unknown actor"}; ` +
+        `${actor} cannot obtain its execution packet even with an exact branch/worktree resume.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && batch.controllerRun !== controllerRun?.trim()) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, controlled by run ${batch.controllerRun ?? "an unknown run"}; ` +
+        `${controllerRun?.trim() ?? "an unknown run"} cannot obtain its execution packet even with an exact branch/worktree resume.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  const workspace = packetWorkspace(item, batch);
+  const worktreeSafety = await unsafeExecutionWorktree(store, project, item, workspace, batch?.id ?? null);
   if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
 
   // MCP client names are not durable agent identities. A later session must
@@ -657,7 +776,7 @@ export async function getExecutionPacket(input: {
     leaseId: item.lease_id ?? null,
     leaseRevision: item.lease_revision ?? null,
     phase: item.lease_phase ?? null,
-    workspace: item.lease_workspace ?? null,
+    workspace: item.lease_workspace ?? batch?.workspace ?? null,
     heartbeatAt: item.lease_heartbeat_at ?? null,
     legacy: lease.legacy,
     heartbeatMinutes: timing.heartbeatMinutes,
@@ -665,17 +784,21 @@ export async function getExecutionPacket(input: {
     commandMaxMinutes: timing.commandMaxMinutes,
     batch: null,
   };
-  const batch = await store.batchState(id);
   if (batch) {
     claim.batch = {
       id: batch.id,
       frozenAt: batch.frozenAt,
+      branch: batch.branch,
       workspace: batch.workspace,
       members: batch.members.map((m) => m.id),
       pending: batch.members.filter((m) => !m.terminal).map((m) => m.id),
     };
   }
-  if (item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
+  // A consistent batch manifest's actor/controller-run pair is the authority;
+  // assignee and claim_controller remain display projections only. All batch
+  // actor/run and physical-worktree checks have already passed above. The
+  // ordinary isolated occupancy contract remains unchanged.
+  if (!batch && item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
     const location = [item.branch && `branch ${item.branch}`, item.worktree && `worktree ${item.worktree}`]
       .filter(Boolean)
@@ -749,7 +872,7 @@ export async function getExecutionPacket(input: {
       },
       ticket: { id: item.id, revision },
       batch: claim.batch?.id ?? null,
-      workspace: { branch: item.branch ?? null, worktree: item.worktree ?? null },
+      workspace,
       evidence,
       checklist,
       select: step,
@@ -769,7 +892,7 @@ export async function getExecutionPacket(input: {
   return {
     ready: true,
     project,
-    ticket: fullTicket(item, gates.profile, revision),
+    ticket: fullTicket(item, gates.profile, revision, workspace),
     claim,
     delivery,
     groupContexts: contexts,

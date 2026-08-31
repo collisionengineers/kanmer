@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
+import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { removeTreeWithRetry } from "./io.js";
@@ -672,7 +673,11 @@ describe("non-lease writers share the lease lock (CORE-125)", () => {
 describe("batch workspaces (CORE-124)", () => {
   /** Gate-free tickets so the fixture can walk every stage without pipeline documents. */
   const free = { type: "ticket" as const, profile: "custom", requires: {}, status: "implementing" };
-  const batchWorkspace = { branch: "batch-a", worktree: ".worktrees/batch-a" };
+  const batchWorkspace = {
+    branch: "batch-a",
+    worktree: ".worktrees/batch-a",
+    controllerRun: "controller-run",
+  };
   const HEAD = "b".repeat(40);
   const sharedAttestation = (pr: string) => attestation(pr, "pass").replace(`head_sha: "${"a".repeat(40)}"`, `head_sha: "${HEAD}"`);
 
@@ -687,6 +692,937 @@ describe("batch workspaces (CORE-124)", () => {
     const first = await store.takeTicket(a.id, { ...batchWorkspace, assignee: "ctl-a", batch: "batch-a", batchMembers: [a.id, b.id, c.id] });
     return { a, b, c, first };
   }
+
+  async function onlyManifestFile(): Promise<string> {
+    const dir = path.join(root, ".kanmer", "batches", "transactions");
+    const files = (await fs.readdir(dir)).filter((name) => name.endsWith(".json"));
+    expect(files).toHaveLength(1);
+    return path.join(dir, files[0]!);
+  }
+
+  async function retryFirstTake(a: { id: string }, b: { id: string }, c: { id: string }) {
+    return store.takeTicket(a.id, {
+      ...batchWorkspace,
+      assignee: "ctl-a",
+      batch: "batch-a",
+      batchMembers: [a.id, b.id, c.id],
+    });
+  }
+
+  const digest = (value: string): string => createHash("sha256").update(value, "utf8").digest("hex");
+  const batchManifestFile = (batchId: string): string => path.join(
+    root,
+    ".kanmer",
+    "batches",
+    "transactions",
+    `${digest(batchId)}.json`,
+  );
+
+  async function snapshotBoardFiles(): Promise<Record<string, string>> {
+    const base = path.join(root, ".kanmer");
+    const out: Record<string, string> = {};
+    const walk = async (dir: string): Promise<void> => {
+      for (const entry of (await fs.readdir(dir, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+        const file = path.join(dir, entry.name);
+        if (entry.isDirectory()) await walk(file);
+        else out[path.relative(base, file).replaceAll("\\", "/")] = await fs.readFile(file, "utf8");
+      }
+    };
+    await walk(base);
+    return out;
+  }
+
+  /**
+   * Derive a strict pending-WAL fixture from bytes produced by the real
+   * declaration once, then restore the exact pre-declaration board. The WAL
+   * retains only hashes and the frozen take fingerprint, never ticket bodies.
+   */
+  async function manualPendingFixture(batchId: string, worktree = `.worktrees/${batchId}`) {
+    const a = await store.createItem({ ...free, title: `${batchId} A` });
+    const b = await store.createItem({ ...free, title: `${batchId} B` });
+    const c = await store.createItem({ ...free, title: `${batchId} C` });
+    const ids = [a.id, b.id, c.id];
+    const before = new Map(await Promise.all(ids.map(async (id) => [id, await fs.readFile(ticketFile(id), "utf8")] as const)));
+    const activityFile = path.join(root, ".kanmer", "data", "activity.jsonl");
+    const activityBefore = await fs.readFile(activityFile, "utf8");
+    const take = {
+      branch: `${batchId}-branch`,
+      worktree,
+      assignee: "ctl-a",
+      controller: "visible-controller",
+      controllerRun: "controller-run",
+      workerRun: "worker-run",
+      provider: "test-provider",
+      phase: "implementing" as const,
+      batch: batchId,
+      batchMembers: [c.id, a.id, b.id],
+    };
+    await store.takeTicket(a.id, take);
+    const manifestFile = batchManifestFile(batchId);
+    const active = JSON.parse(await fs.readFile(manifestFile, "utf8"));
+    const after = new Map(await Promise.all(active.members.map(async (id: string) => [id, await fs.readFile(ticketFile(id), "utf8")] as const)));
+    const declaring = parseItem(after.get(a.id)!);
+    const pending = {
+      schema: 1,
+      state: "pending",
+      transaction_id: "00000000-0000-4000-8000-000000000001",
+      request_sha256: active.request_sha256,
+      batch_id: active.batch_id,
+      controller: active.controller,
+      controller_run: active.controller_run,
+      frozen_at: active.frozen_at,
+      members: active.members,
+      workspace: active.workspace,
+      branch: active.branch,
+      take: {
+        ticket_id: a.id,
+        branch: take.branch,
+        worktree: declaring.worktree ?? null,
+        stage: "implementing",
+        from_stage: "implementing",
+        assignee: take.assignee,
+        controller_label: take.controller,
+        controller_run: take.controllerRun,
+        worker_run: take.workerRun,
+        provider: take.provider,
+        phase: take.phase,
+        expected_revision: null,
+        force: false,
+      },
+      lease_id: declaring.lease_id,
+      claim_expires_at: declaring.claim_expires_at,
+      documents_sha256: digest(JSON.stringify([])),
+      writes: active.members.map((id: string) => ({
+        id,
+        before_sha256: digest(before.get(id)!),
+        after_sha256: digest(after.get(id)!),
+      })),
+    };
+    for (const id of active.members) await fs.writeFile(ticketFile(id), before.get(id)!, "utf8");
+    await fs.writeFile(activityFile, activityBefore, "utf8");
+    await fs.writeFile(manifestFile, `${JSON.stringify(pending, null, 2)}\n`, "utf8");
+    return {
+      a, b, c, ids: active.members as string[], before, after, pending, manifestFile,
+      take: { ...take, batchMembers: active.members as string[] },
+    };
+  }
+
+  async function retryPending(fixture: Awaited<ReturnType<typeof manualPendingFixture>>) {
+    return store.takeTicket(fixture.a.id, fixture.take);
+  }
+
+  it("binds admission, renewal and transfer to the observed batch actor", async () => {
+    const { a, b, first } = await threeMemberBatch();
+    const foreign = new KanmerStore(root, { actor: "foreign-actor" });
+    const competingRun = new KanmerStore(root, { actor: "test-actor" });
+    const before = await fs.readFile(ticketFile(b.id), "utf8");
+    await expect(foreign.takeTicket(b.id, {
+      ...batchWorkspace,
+      actor: "foreign-actor",
+      assignee: "ctl-a",
+      controller: "test-actor",
+    })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*belongs to test-actor/u);
+    await expect(competingRun.takeTicket(b.id, {
+      ...batchWorkspace,
+      controllerRun: "competing-controller-run",
+      assignee: "ctl-a",
+      controller: "test-actor",
+    })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*belongs to controller run controller-run/u);
+    await expect(competingRun.takeTicket(b.id, {
+      branch: batchWorkspace.branch,
+      worktree: batchWorkspace.worktree,
+      assignee: "ctl-a",
+    })).rejects.toThrow(/^BATCH_RUN_REQUIRED:/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "ctl-a",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*belongs to test-actor/u);
+    const batchCas = {
+      actor: " test-actor ",
+      controllerRun: "controller-run",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    };
+    const firstBeforeRenew = await fs.readFile(ticketFile(a.id), "utf8");
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^BATCH_RUN_REQUIRED:/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "competing-controller-run",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*controller run controller-run/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+    })).rejects.toThrow(/^LEASE_ID_REQUIRED:.*modern batch lease/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseId: first.lease_id,
+    })).rejects.toThrow(/^LEASE_REVISION_REQUIRED:/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^LEASE_ID_REQUIRED:/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseId: "not-current",
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^LEASE_EXPIRED:/u);
+    expect(await fs.readFile(ticketFile(a.id), "utf8")).toBe(firstBeforeRenew);
+    const raced = await Promise.allSettled([
+      store.renewTicket(a.id, batchCas),
+      store.renewTicket(a.id, batchCas),
+    ]);
+    expect(raced.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(raced.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect((raced.find((result) => result.status === "rejected") as PromiseRejectedResult).reason.message)
+      .toMatch(/^Conflict:/u);
+    expect((await store.getItem(a.id))!.lease_revision).toBe(2);
+    await expect(store.transferTicket(a.id, { assignee: "test-actor" })).rejects.toThrow(/^BATCH_INVALID:.*per-member transfer/u);
+    expect(await fs.readFile(ticketFile(b.id), "utf8")).toBe(before);
+  });
+
+  it("persists the canonical controller run after a padded renewal and keeps the batch operable", async () => {
+    const { a, b, c, first } = await threeMemberBatch();
+    const renewed = await store.renewTicket(a.id, {
+      actor: " test-actor ",
+      controllerRun: " controller-run ",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    });
+
+    expect(renewed.lease_controller_run).toBe("controller-run");
+    expect((await store.batchState(a.id))?.declaration).toBe("consistent");
+    await expect(store.takeTicket(b.id, {
+      ...batchWorkspace,
+      assignee: "ctl-a",
+      batch: "batch-a",
+    })).resolves.toMatchObject({ lease_controller_run: "controller-run" });
+
+    for (const id of [a.id, b.id, c.id]) await walkToDone(id);
+    for (const id of [a.id, b.id, c.id]) await store.releaseTicket(id);
+    expect(await store.batchState(a.id)).toBeNull();
+  });
+
+  it("requires a durable controller run before writing a batch declaration", async () => {
+    const a = await store.createItem({ ...free, title: "A" });
+    const b = await store.createItem({ ...free, title: "B" });
+    const before = await snapshotBoardFiles();
+    await expect(store.takeTicket(a.id, {
+      branch: "batch-no-run",
+      worktree: ".worktrees/batch-no-run",
+      assignee: "ctl-a",
+      batch: "batch-no-run",
+      batchMembers: [a.id, b.id],
+    })).rejects.toThrow(/^BATCH_RUN_REQUIRED:/u);
+    expect(await snapshotBoardFiles()).toEqual(before);
+  });
+
+  it("requires a concrete batch worktree before any declaration write while preserving isolated branch-only takes", async () => {
+    const a = await store.createItem({ ...free, title: "Missing worktree A" });
+    const b = await store.createItem({ ...free, title: "Missing worktree B" });
+    const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
+    const before = await snapshotBoardFiles();
+    const declaration = {
+      branch: "batch-missing-worktree",
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "batch-missing-worktree",
+      batchMembers: [a.id, b.id],
+    };
+
+    await expect(store.takeTicket(a.id, declaration)).rejects.toThrow(/^BATCH_WORKSPACE_INVALID:/u);
+    await expect(store.takeTicket(a.id, { ...declaration, worktree: "   " })).rejects.toThrow(/^BATCH_WORKSPACE_INVALID:/u);
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+
+    const isolated = await store.createItem({ ...free, title: "Isolated branch-only" });
+    const isolatedTake = await store.takeTicket(isolated.id, {
+      branch: "isolated-branch-only",
+      assignee: "ctl-isolated",
+    });
+    expect(isolatedTake.branch).toBe("isolated-branch-only");
+    expect(isolatedTake.worktree).toBeUndefined();
+    expect(isolatedTake.lease_batch).toBeUndefined();
+  });
+
+  it.each([
+    {
+      collision: "branch",
+      holder: { branch: "occupied-declaration-branch", worktree: ".worktrees/declaration-branch-holder" },
+      requested: { branch: "occupied-declaration-branch", worktree: ".worktrees/declaration-branch-batch" },
+    },
+    {
+      collision: "worktree",
+      holder: { branch: "declaration-worktree-holder", worktree: ".worktrees/occupied-declaration-worktree" },
+      requested: { branch: "declaration-worktree-batch", worktree: ".worktrees/occupied-declaration-worktree" },
+    },
+  ])("refuses a fresh batch declaration when an unrelated live claim owns the requested $collision", async ({ collision, holder, requested }) => {
+    const unrelated = await store.createItem({ ...free, title: `${collision} holder` });
+    await store.takeTicket(unrelated.id, { ...holder, assignee: "other-controller" });
+    const a = await store.createItem({ ...free, title: `${collision} batch A` });
+    const b = await store.createItem({ ...free, title: `${collision} batch B` });
+    const batchId = `declaration-${collision}-collision`;
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(a.id, {
+      ...requested,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: batchId,
+      batchMembers: [a.id, b.id],
+    })).rejects.toThrow(new RegExp(`^WORKSPACE_OCCUPIED:.*${collision}`, "u"));
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(batchManifestFile(batchId))).rejects.toMatchObject({ code: "ENOENT" });
+
+    await expect(store.takeTicket(a.id, {
+      branch: `${batchId}-free`,
+      worktree: `.worktrees/${batchId}-free`,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: batchId,
+      batchMembers: [a.id, b.id],
+    })).resolves.toMatchObject({ lease_batch: batchId });
+  });
+
+  it.each([
+    { collision: "branch", branch: null, worktree: ".worktrees/pending-branch-outsider" },
+    { collision: "worktree", branch: "pending-worktree-outsider", worktree: null },
+  ])("a pending WAL reserves its $collision from unrelated isolated takes and remains recoverable", async ({ collision, branch, worktree }) => {
+    const fixture = await manualPendingFixture(`pending-${collision}-reservation`);
+    const unrelated = await store.createItem({ ...free, title: `${collision} pending outsider` });
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(unrelated.id, {
+      branch: branch ?? fixture.take.branch,
+      worktree: worktree ?? fixture.take.worktree,
+      assignee: "other-controller",
+    })).rejects.toThrow(new RegExp(`^WORKSPACE_OCCUPIED:.*${collision}.*pending batch ${fixture.pending.batch_id}`, "u"));
+    expect(await snapshotBoardFiles()).toEqual(before);
+
+    await expect(retryPending(fixture)).resolves.toMatchObject({
+      id: fixture.a.id,
+      lease_batch: fixture.pending.batch_id,
+    });
+  });
+
+  it("rechecks workspace occupancy before a pending WAL recovery writes any member", async () => {
+    const fixture = await manualPendingFixture("pending-recovery-occupied");
+    const pendingRaw = await fs.readFile(fixture.manifestFile, "utf8");
+    await fs.rm(fixture.manifestFile);
+    const unrelated = await store.createItem({ ...free, title: "pre-existing recovery holder" });
+    await store.takeTicket(unrelated.id, {
+      branch: fixture.take.branch,
+      worktree: ".worktrees/pre-existing-recovery-holder",
+      assignee: "other-controller",
+    });
+    await fs.writeFile(fixture.manifestFile, pendingRaw, "utf8");
+    const before = await snapshotBoardFiles();
+
+    await expect(retryPending(fixture)).rejects.toThrow(new RegExp(
+      `^WORKSPACE_OCCUPIED:.*branch.*recorded on "${unrelated.id}"`,
+      "u",
+    ));
+    expect(await snapshotBoardFiles()).toEqual(before);
+    expect(await fs.readFile(fixture.manifestFile, "utf8")).toBe(pendingRaw);
+  });
+
+  it("retains only a compact authoritative manifest and includes the caller in the all-terminal release gate", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    const manifestDir = path.join(root, ".kanmer", "batches", "transactions");
+    const files = (await fs.readdir(manifestDir)).filter((name) => name.endsWith(".json"));
+    expect(files).toHaveLength(1);
+    const manifest = JSON.parse(await fs.readFile(path.join(manifestDir, files[0]!), "utf8"));
+    expect(Object.keys(manifest).sort()).toEqual([
+      "batch_id", "branch", "controller", "controller_run", "declaring_ticket", "frozen_at", "members",
+      "request_sha256", "schema", "state", "workspace",
+    ].sort());
+    expect(manifest).toMatchObject({ state: "active", batch_id: "batch-a", controller: "test-actor", declaring_ticket: a.id });
+    await expect(store.releaseTicket(a.id)).rejects.toThrow(
+      new RegExp(`^BATCH_ACTIVE:.*"${a.id}" [(]implementing[)].*"${b.id}" [(]implementing[)].*"${c.id}" [(]implementing[)]`, "u"),
+    );
+  });
+
+  it("an active response-loss retry validates every direct roster endpoint and refuses a contradictory member without writing", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    const manifestFile = await onlyManifestFile();
+    const broken = parseItem(await fs.readFile(ticketFile(b.id), "utf8"));
+    broken.lease_batch_controller = "different-controller";
+    await fs.writeFile(ticketFile(b.id), serialiseItem(broken), "utf8");
+    const paths = [ticketFile(a.id), ticketFile(b.id), ticketFile(c.id), manifestFile];
+    const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
+
+    await expect(retryFirstTake(a, b, c)).rejects.toThrow(/^BATCH_INCONSISTENT:.*complete roster/u);
+    expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
+  });
+
+  it("an active response-loss retry refuses a missing member and retains every surviving byte", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    const manifestFile = await onlyManifestFile();
+    await fs.rm(path.dirname(ticketFile(c.id)), { recursive: true, force: true });
+    const paths = [ticketFile(a.id), ticketFile(b.id), manifestFile];
+    const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
+
+    await expect(retryFirstTake(a, b, c)).rejects.toThrow(new RegExp(`^BATCH_INCONSISTENT:.*"${c.id}" is missing`, "u"));
+    expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
+  });
+
+  it("an active response-loss retry refuses an extra stamped member and retains all bytes", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    const manifestFile = await onlyManifestFile();
+    const outsider = await store.createItem({ ...free, title: "Outsider" });
+    const extra = parseItem(await fs.readFile(ticketFile(outsider.id), "utf8"));
+    extra.lease_batch = "batch-a";
+    extra.lease_batch_controller = "test-actor";
+    extra.lease_batch_frozen_at = (await store.getItem(a.id))!.lease_batch_frozen_at;
+    await fs.writeFile(ticketFile(outsider.id), serialiseItem(extra), "utf8");
+    const paths = [ticketFile(a.id), ticketFile(b.id), ticketFile(c.id), ticketFile(outsider.id), manifestFile];
+    const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
+
+    await expect(retryFirstTake(a, b, c)).rejects.toThrow(/^BATCH_INCONSISTENT:.*extra stamped member/u);
+    expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
+  });
+
+  it("an active response-loss retry fails closed on a census warning without writing", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    const manifestFile = await onlyManifestFile();
+    const badDir = path.join(root, ".kanmer", "areas", "_none", "BROKEN-001");
+    const badFile = path.join(badDir, "BROKEN-001.md");
+    await fs.mkdir(badDir, { recursive: true });
+    await fs.writeFile(badFile, "---\nid: BROKEN-001\ntype: ticket\nstatus: [\n---\n", "utf8");
+    const paths = [ticketFile(a.id), ticketFile(b.id), ticketFile(c.id), manifestFile, badFile];
+    const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
+
+    await expect(retryFirstTake(a, b, c)).rejects.toThrow(/^BATCH_INCONSISTENT: complete ticket census has 1 unreadable item file/u);
+    expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
+  });
+
+  it("rejects padded workspace inputs and an invalid in-memory pending journal before creating the WAL", async () => {
+    const a = await store.createItem({ ...free, title: "A" });
+    const b = await store.createItem({ ...free, title: "B" });
+    const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
+    const paths = [ticketFile(a.id), ticketFile(b.id)];
+    const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
+    const declaration = {
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "batch-a",
+      batchMembers: [a.id, b.id],
+    };
+
+    await expect(store.takeTicket(a.id, {
+      ...declaration,
+      branch: " batch-a ",
+      worktree: ".worktrees/batch-a",
+    })).rejects.toThrow(/^WORKSPACE_INVALID: branch/u);
+    await expect(store.takeTicket(a.id, {
+      ...declaration,
+      branch: "batch-a",
+      worktree: " .worktrees/batch-a ",
+    })).rejects.toThrow(/^WORKSPACE_INVALID: worktree/u);
+    const invalidActorStore = new KanmerStore(root, { actor: "   " });
+    await expect(invalidActorStore.takeTicket(a.id, {
+      ...declaration,
+      branch: "batch-a",
+      worktree: ".worktrees/batch-a",
+    })).rejects.toThrow(/^BATCH_TRANSACTION_INVALID: derived declaration journal/u);
+
+    expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
+    await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("rejects an out-of-repository batch worktree before writing a manifest or ticket", async () => {
+    const a = await store.createItem({ ...free, title: "Outside A" });
+    const b = await store.createItem({ ...free, title: "Outside B" });
+    const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(a.id, {
+      branch: "outside-batch",
+      worktree: path.resolve(root, "..", `${path.basename(root)}-outside`, "batch"),
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "outside-batch",
+      batchMembers: [a.id, b.id],
+    })).rejects.toThrow(/^BATCH_WORKSPACE_INVALID:.*outside this repository/u);
+
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("rejects a mixed delivery-target roster before writing a manifest or ticket", async () => {
+    await store.updateBoard((board) => ({
+      ...board,
+      delivery: {
+        integrationBranch: "dev",
+        releaseBranch: "main",
+        releaseCandidatePattern: "release/*",
+        hotfixBackport: true,
+      },
+    }));
+    const ordinary = await store.createItem({ ...free, title: "Ordinary" });
+    const hotfix = await store.createItem({ ...free, title: "Hotfix" });
+    await store.updateItem(hotfix.id, { delivery_branch: "main" });
+    const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(ordinary.id, {
+      branch: "mixed-target-batch",
+      worktree: ".worktrees/mixed-target-batch",
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "mixed-target-batch",
+      batchMembers: [ordinary.id, hotfix.id],
+    })).rejects.toThrow(/^BATCH_INVALID:.*incompatible PR targets.*dev.*main.*one frozen batch must share one PR target/su);
+
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("keeps an active batch portable across a repository copy and accepts an absolute local retry and later member take", async () => {
+    const a = await store.createItem({ ...free, title: "Portable active A" });
+    const b = await store.createItem({ ...free, title: "Portable active B" });
+    const c = await store.createItem({ ...free, title: "Portable active C" });
+    const portableWorktree = ".worktrees/portable-active";
+    const declaration = {
+      branch: "portable-active",
+      worktree: path.join(root, ".worktrees", "portable-active"),
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "portable-active",
+      batchMembers: [a.id, b.id, c.id],
+    };
+    const first = await store.takeTicket(a.id, declaration);
+    const originalManifest = JSON.parse(await fs.readFile(batchManifestFile("portable-active"), "utf8"));
+    expect(originalManifest.workspace).toBe(`worktree:${portableWorktree}`);
+    expect(first).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+
+    const relocated = path.join(root, "relocated-active");
+    await fs.mkdir(relocated, { recursive: true });
+    await fs.cp(path.join(root, ".kanmer"), path.join(relocated, ".kanmer"), { recursive: true });
+    const relocatedStore = new KanmerStore(relocated, { actor: "test-actor" });
+    const relocatedWorktree = path.join(relocated, ".worktrees", "portable-active");
+    const retried = await relocatedStore.takeTicket(a.id, { ...declaration, worktree: relocatedWorktree });
+    expect(retried).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+
+    const second = await relocatedStore.takeTicket(b.id, {
+      branch: declaration.branch,
+      worktree: relocatedWorktree,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: declaration.batch,
+    });
+    expect(second).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+    expect((await relocatedStore.batchState(c.id))?.declaration).toBe("consistent");
+    const relocatedManifest = JSON.parse(await fs.readFile(
+      path.join(relocated, ".kanmer", "batches", "transactions", path.basename(batchManifestFile("portable-active"))),
+      "utf8",
+    ));
+    expect(relocatedManifest).toMatchObject({
+      workspace: `worktree:${portableWorktree}`,
+      request_sha256: originalManifest.request_sha256,
+    });
+  });
+
+  it.skipIf(process.platform !== "win32")("case-folds equivalent Windows batch paths into one portable identity and request fingerprint", async () => {
+    const a = await store.createItem({ ...free, title: "Case A" });
+    const b = await store.createItem({ ...free, title: "Case B" });
+    const declaration = {
+      branch: "case-batch",
+      worktree: path.join(root, ".WORKTREES", "CASE-BATCH").toUpperCase(),
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "case-batch",
+      batchMembers: [a.id, b.id],
+    };
+    const first = await store.takeTicket(a.id, declaration);
+    const manifestBefore = JSON.parse(await fs.readFile(batchManifestFile("case-batch"), "utf8"));
+    expect(first).toMatchObject({
+      worktree: ".worktrees/case-batch",
+      lease_workspace: "worktree:.worktrees/case-batch",
+    });
+
+    await expect(store.takeTicket(a.id, {
+      ...declaration,
+      worktree: path.join(root, ".worktrees", "case-batch").toLowerCase(),
+    })).resolves.toMatchObject({ id: a.id, worktree: ".worktrees/case-batch" });
+    const manifestAfter = JSON.parse(await fs.readFile(batchManifestFile("case-batch"), "utf8"));
+    expect(manifestAfter.request_sha256).toBe(manifestBefore.request_sha256);
+  });
+
+  it("uses canonical worktree plus branch as manifest authority when a ticket-local lease_workspace is absolute", async () => {
+    const { a, b, c, first } = await threeMemberBatch();
+    const absoluteLeaseWorkspace = `worktree:${path.join(root, ".worktrees", "batch-a")}`;
+    const changed = parseItem(await fs.readFile(ticketFile(a.id), "utf8"));
+    changed.lease_workspace = absoluteLeaseWorkspace;
+    await fs.writeFile(ticketFile(a.id), serialiseItem(changed), "utf8");
+
+    expect((await store.batchState(a.id))?.declaration).toBe("consistent");
+    await expect(retryFirstTake(a, b, c)).resolves.toMatchObject({
+      id: a.id,
+      lease_workspace: absoluteLeaseWorkspace,
+    });
+    const renewed = await store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    });
+    expect(renewed.lease_workspace).toBe("worktree:.worktrees/batch-a");
+  });
+
+  it("recovers a pending declaration after a repository copy and retains its canonical request fingerprint", async () => {
+    const fixture = await manualPendingFixture(
+      "portable-pending",
+      path.join(root, ".worktrees", "portable-pending"),
+    );
+    const portableWorktree = ".worktrees/portable-pending";
+    expect(fixture.pending).toMatchObject({
+      workspace: `worktree:${portableWorktree}`,
+      take: { worktree: portableWorktree },
+    });
+
+    const relocated = path.join(root, "relocated-pending");
+    await fs.mkdir(relocated, { recursive: true });
+    await fs.cp(path.join(root, ".kanmer"), path.join(relocated, ".kanmer"), { recursive: true });
+    const relocatedStore = new KanmerStore(relocated, { actor: "test-actor" });
+    const relocatedWorktree = path.join(relocated, ".worktrees", "portable-pending");
+    const recovered = await relocatedStore.takeTicket(fixture.a.id, {
+      ...fixture.take,
+      worktree: relocatedWorktree,
+    });
+    expect(recovered).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+
+    const second = await relocatedStore.takeTicket(fixture.b.id, {
+      branch: fixture.take.branch,
+      worktree: relocatedWorktree,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "portable-pending",
+    });
+    expect(second).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+    const relocatedManifest = JSON.parse(await fs.readFile(
+      path.join(relocated, ".kanmer", "batches", "transactions", path.basename(fixture.manifestFile)),
+      "utf8",
+    ));
+    expect(relocatedManifest).toMatchObject({
+      state: "active",
+      workspace: `worktree:${portableWorktree}`,
+      request_sha256: fixture.pending.request_sha256,
+    });
+  });
+
+  it("rolls a hash-only pending declaration forward from the WAL and every sorted member boundary", async () => {
+    for (const applied of [0, 1, 2, 3]) {
+      const fixture = await manualPendingFixture(`recover-${applied}`);
+      for (const id of fixture.ids.slice(0, applied)) {
+        await fs.writeFile(ticketFile(id), fixture.after.get(id)!, "utf8");
+      }
+
+      const recovered = await retryPending(fixture);
+      expect(recovered.id).toBe(fixture.a.id);
+      expect(recovered.lease_batch).toBe(`recover-${applied}`);
+      expect(await Promise.all(fixture.ids.map((id) => fs.readFile(ticketFile(id), "utf8"))))
+        .toEqual(fixture.ids.map((id) => fixture.after.get(id)!));
+      const active = JSON.parse(await fs.readFile(fixture.manifestFile, "utf8"));
+      expect(active).toMatchObject({
+        schema: 1,
+        state: "active",
+        batch_id: `recover-${applied}`,
+        declaring_ticket: fixture.a.id,
+        members: fixture.ids,
+      });
+      expect(Object.keys(active).sort()).toEqual([
+        "batch_id", "branch", "controller", "controller_run", "declaring_ticket", "frozen_at", "members",
+        "request_sha256", "schema", "state", "workspace",
+      ].sort());
+      const matching = [];
+      for (const entry of await fs.readdir(path.dirname(fixture.manifestFile))) {
+        if (!entry.endsWith(".json")) continue;
+        const candidate = JSON.parse(await fs.readFile(path.join(path.dirname(fixture.manifestFile), entry), "utf8"));
+        if (candidate.batch_id === `recover-${applied}`) matching.push(candidate);
+      }
+      expect(matching).toHaveLength(1);
+    }
+  });
+
+  it("retains the pending WAL and every endpoint when actor, roster, workspace or first-take intent changes", async () => {
+    const fixture = await manualPendingFixture("intent-conflict");
+    const foreign = new KanmerStore(root, { actor: "foreign-actor" });
+    const attempts: Array<{ name: string; run: () => Promise<unknown>; error: RegExp }> = [
+      {
+        name: "actor",
+        run: () => foreign.takeTicket(fixture.a.id, fixture.take),
+        error: /^BATCH_OWNER_MISMATCH:/u,
+      },
+      {
+        name: "roster",
+        run: () => store.takeTicket(fixture.a.id, { ...fixture.take, batchMembers: [fixture.a.id, fixture.b.id] }),
+        error: /^BATCH_TRANSACTION_CONFLICT:/u,
+      },
+      {
+        name: "workspace",
+        run: () => store.takeTicket(fixture.a.id, { ...fixture.take, worktree: ".worktrees/other" }),
+        error: /^BATCH_TRANSACTION_CONFLICT:/u,
+      },
+      {
+        name: "first-take intent",
+        run: () => store.takeTicket(fixture.a.id, { ...fixture.take, controllerRun: "different-controller-run" }),
+        error: /^BATCH_OWNER_MISMATCH:/u,
+      },
+    ];
+    const retained = await snapshotBoardFiles();
+    for (const attempt of attempts) {
+      await expect(attempt.run(), attempt.name).rejects.toThrow(attempt.error);
+      expect(await snapshotBoardFiles(), attempt.name).toEqual(retained);
+    }
+    expect(JSON.parse(await fs.readFile(fixture.manifestFile, "utf8"))).toEqual(fixture.pending);
+  });
+
+  it("blocks every ticket mutation surface while its batch declaration is pending", async () => {
+    const fixture = await manualPendingFixture("mutation-guard");
+    const mutations: Array<{ name: string; run: () => Promise<unknown> }> = [
+      { name: "update", run: () => store.updateItem(fixture.a.id, { priority: "high" }) },
+      { name: "move", run: () => store.moveItem(fixture.a.id, { status: "review" }) },
+      { name: "take", run: () => store.takeTicket(fixture.a.id, { branch: "isolated" }) },
+      { name: "renew", run: () => store.renewTicket(fixture.a.id, { actor: "test-actor" }) },
+      { name: "transfer", run: () => store.transferTicket(fixture.a.id, { assignee: "new-owner" }) },
+      {
+        name: "applyReconciliation",
+        run: () => store.applyReconciliation(fixture.a.id, {
+          action: "MOVE_TO_VERIFYING",
+          targetStatus: "verifying",
+          expectedRevision: "0".repeat(64),
+        }),
+      },
+      { name: "setDoc", run: () => store.setDoc(fixture.a.id, "plan", "# Changed") },
+      { name: "appendScratch", run: () => store.appendScratch(fixture.a.id, "execution", "changed") },
+      { name: "delete", run: () => store.deleteItem(fixture.a.id) },
+    ];
+    const retained = await snapshotBoardFiles();
+    for (const mutation of mutations) {
+      await expect(mutation.run(), mutation.name).rejects.toThrow(/^(?:BATCH_TRANSACTION_PENDING|BATCH_ACTIVE|BATCH_INVALID):/u);
+      expect(await snapshotBoardFiles(), mutation.name).toEqual(retained);
+    }
+  });
+
+  it("fails closed and retains a malformed pending manifest", async () => {
+    const fixture = await manualPendingFixture("malformed-wal");
+    const malformed = `${JSON.stringify({ ...fixture.pending, unexpected: true }, null, 2)}\n`;
+    await fs.writeFile(fixture.manifestFile, malformed, "utf8");
+    const retained = await snapshotBoardFiles();
+    await expect(retryPending(fixture)).rejects.toThrow(/^BATCH_TRANSACTION_INVALID:/u);
+    expect(await snapshotBoardFiles()).toEqual(retained);
+    expect(await fs.readFile(fixture.manifestFile, "utf8")).toBe(malformed);
+  });
+
+  it("fails closed and retains an unexpected transaction-directory entry", async () => {
+    const fixture = await manualPendingFixture("unexpected-entry");
+    const unexpected = path.join(path.dirname(fixture.manifestFile), "operator-note.txt");
+    await fs.writeFile(unexpected, "retain me\n", "utf8");
+    const retained = await snapshotBoardFiles();
+    await expect(retryPending(fixture)).rejects.toThrow(/^BATCH_TRANSACTION_INVALID: unexpected batch declaration manifest operator-note\.txt was retained/u);
+    expect(await snapshotBoardFiles()).toEqual(retained);
+  });
+
+  it("preflights all members and retains an unexpected ticket byte without rolling any member forward", async () => {
+    const fixture = await manualPendingFixture("unexpected-member");
+    const unexpected = `${fixture.before.get(fixture.b.id)!}\n`;
+    await fs.writeFile(ticketFile(fixture.b.id), unexpected, "utf8");
+    const retained = await snapshotBoardFiles();
+    await expect(retryPending(fixture)).rejects.toThrow(new RegExp(
+      `^BATCH_TRANSACTION_CONFLICT: member "${fixture.b.id}" differs from both the observed and intended bytes`,
+      "u",
+    ));
+    expect(await snapshotBoardFiles()).toEqual(retained);
+    expect(await fs.readFile(ticketFile(fixture.a.id), "utf8")).toBe(fixture.before.get(fixture.a.id));
+  });
+
+  it("retains the pending WAL and a declaring-document drift without writing any member", async () => {
+    const fixture = await manualPendingFixture("document-drift");
+    const planDir = path.join(path.dirname(ticketFile(fixture.a.id)), "plan");
+    const planFile = path.join(planDir, "main.md");
+    await fs.mkdir(planDir, { recursive: true });
+    await fs.writeFile(planFile, "# Concurrent plan\n", "utf8");
+    const retained = await snapshotBoardFiles();
+    await expect(retryPending(fixture)).rejects.toThrow(/^BATCH_TRANSACTION_CONFLICT: document-inclusive evidence/u);
+    expect(await snapshotBoardFiles()).toEqual(retained);
+    expect(await fs.readFile(planFile, "utf8")).toBe("# Concurrent plan\n");
+  });
+
+  it("retains both authoritative records when two batch manifests overlap", async () => {
+    const a = await store.createItem({ ...free, title: "Overlap A" });
+    const b = await store.createItem({ ...free, title: "Overlap B" });
+    const c = await store.createItem({ ...free, title: "Overlap C" });
+    const d = await store.createItem({ ...free, title: "Overlap D" });
+    await store.takeTicket(a.id, {
+      branch: "overlap-a", worktree: ".worktrees/overlap-a", assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "overlap-a", batchMembers: [a.id, b.id],
+    });
+    await store.takeTicket(c.id, {
+      branch: "overlap-b", worktree: ".worktrees/overlap-b", assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "overlap-b", batchMembers: [c.id, d.id],
+    });
+    const firstFile = batchManifestFile("overlap-a");
+    const secondFile = batchManifestFile("overlap-b");
+    const second = JSON.parse(await fs.readFile(secondFile, "utf8"));
+    second.members = [b.id, c.id, d.id].sort((left, right) => left.localeCompare(right));
+    await fs.writeFile(secondFile, `${JSON.stringify(second, null, 2)}\n`, "utf8");
+    const retained = await snapshotBoardFiles();
+
+    await expect(store.batchState(a.id)).rejects.toThrow(/^BATCH_TRANSACTION_INVALID:.*overlapping batch manifests/u);
+    expect(await snapshotBoardFiles()).toEqual(retained);
+    expect(await fs.readFile(firstFile, "utf8")).toBe(retained[path.relative(path.join(root, ".kanmer"), firstFile).replaceAll("\\", "/")]);
+    expect(await fs.readFile(secondFile, "utf8")).toBe(retained[path.relative(path.join(root, ".kanmer"), secondFile).replaceAll("\\", "/")]);
+  });
+
+  it("release retries retain first-mutation CAS and recover after intermediate and final clears", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    await walkToDone(a.id);
+    await walkToDone(b.id);
+    await walkToDone(c.id);
+    const revisionA = (await store.getRevision(a.id))!.revision;
+    const revisionB = (await store.getRevision(b.id))!.revision;
+    const revisionC = (await store.getRevision(c.id))!.revision;
+    const manifestFile = await onlyManifestFile();
+    const activeManifest = await fs.readFile(manifestFile, "utf8");
+    const activeA = await fs.readFile(ticketFile(a.id), "utf8");
+    expect(JSON.parse(activeManifest).state).toBe("active");
+    for (const id of [a.id, b.id, c.id]) {
+      expect(await fs.readFile(ticketFile(id), "utf8")).toMatch(/^lease_batch: batch-a$/mu);
+    }
+
+    await expect(store.releaseTicket(a.id, { expectedRevision: "0".repeat(64) })).rejects.toThrow(/^Conflict:/u);
+    expect(await fs.readFile(ticketFile(a.id), "utf8")).toBe(activeA);
+    expect(await fs.readFile(manifestFile, "utf8")).toBe(activeManifest);
+
+    await store.releaseTicket(a.id, { expectedRevision: revisionA });
+    const clearedA = await fs.readFile(ticketFile(a.id), "utf8");
+    const releasingManifest = await fs.readFile(manifestFile, "utf8");
+    expect(JSON.parse(releasingManifest)).toMatchObject({ state: "releasing", batch_id: "batch-a" });
+    await store.releaseTicket(a.id, { expectedRevision: revisionA });
+    expect(await fs.readFile(ticketFile(a.id), "utf8")).toBe(clearedA);
+    expect(await fs.readFile(manifestFile, "utf8")).toBe(releasingManifest);
+
+    await store.releaseTicket(b.id, { expectedRevision: revisionB });
+    expect(await fs.readFile(manifestFile, "utf8")).toBe(releasingManifest);
+    expect(await fs.readFile(ticketFile(a.id), "utf8")).not.toMatch(/^lease_batch:/mu);
+    expect(await fs.readFile(ticketFile(b.id), "utf8")).not.toMatch(/^lease_batch:/mu);
+    expect(await fs.readFile(ticketFile(c.id), "utf8")).toMatch(/^lease_batch: batch-a$/mu);
+
+    // Let the ordinary last clear remove the manifest, then restore only that
+    // exact releasing record: this is the crash boundary after the ticket
+    // rename committed but before the manifest unlink became durable.
+    await store.releaseTicket(c.id, { expectedRevision: revisionC });
+    const clearedC = await fs.readFile(ticketFile(c.id), "utf8");
+    await expect(fs.stat(manifestFile)).rejects.toMatchObject({ code: "ENOENT" });
+    await fs.writeFile(manifestFile, releasingManifest, "utf8");
+    const projections = await store.batchSummaryProjections();
+    for (const id of [a.id, b.id, c.id]) {
+      expect(projections.get(id)).toMatchObject({
+        id: "batch-a",
+        state: "releasing",
+        members: [a.id, b.id, c.id],
+        workspace: expect.stringContaining(".worktrees"),
+        branch: "batch-a",
+      });
+    }
+    await store.releaseTicket(c.id, { expectedRevision: revisionC });
+    expect(await fs.readFile(ticketFile(c.id), "utf8")).toBe(clearedC);
+    await expect(fs.stat(manifestFile)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("release reports the caller when it is the only nonterminal batch member", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    await walkToDone(b.id);
+    await walkToDone(c.id);
+    let message = "";
+    try {
+      await store.releaseTicket(a.id);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toMatch(new RegExp(`^BATCH_ACTIVE:.*"${a.id}" [(]implementing[)]`, "u"));
+    expect(message).not.toContain(`"${b.id}" (done)`);
+    expect(message).not.toContain(`"${c.id}" (done)`);
+  });
+
+  it("delete preflights a releasing batch referrer before removing the target", async () => {
+    const target = await store.createItem({ ...free, title: "Target" });
+    const { a, b, c } = await threeMemberBatch();
+    await store.updateItem(b.id, { links: [target.id], blocks: [target.id] });
+    await walkToDone(a.id);
+    await walkToDone(b.id);
+    await walkToDone(c.id);
+    await store.releaseTicket(a.id);
+    const manifestFile = await onlyManifestFile();
+    const paths = [ticketFile(target.id), ticketFile(a.id), ticketFile(b.id), ticketFile(c.id), manifestFile];
+    const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
+
+    await expect(store.deleteItem(target.id)).rejects.toThrow(new RegExp(`^BATCH_ACTIVE:.*"${b.id}" belongs to releasing batch batch-a`, "u"));
+    expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
+  });
+
+  it("delete preflights a pending batch referrer before removing the target", async () => {
+    const target = await store.createItem({ ...free, title: "Target" });
+    const { a, b, c } = await threeMemberBatch();
+    await store.updateItem(b.id, { links: [target.id] });
+    const manifestFile = await onlyManifestFile();
+    const active = JSON.parse(await fs.readFile(manifestFile, "utf8"));
+    const declaring = (await store.getItem(a.id))!;
+    const pending = {
+      schema: 1,
+      state: "pending",
+      transaction_id: "00000000-0000-4000-8000-000000000001",
+      request_sha256: active.request_sha256,
+      batch_id: active.batch_id,
+      controller: active.controller,
+      controller_run: active.controller_run,
+      frozen_at: active.frozen_at,
+      members: active.members,
+      workspace: active.workspace,
+      branch: active.branch,
+      take: {
+        ticket_id: a.id,
+        branch: batchWorkspace.branch,
+        worktree: batchWorkspace.worktree,
+        stage: "implementing",
+        from_stage: "implementing",
+        assignee: "ctl-a",
+        controller_label: null,
+        controller_run: active.controller_run,
+        worker_run: null,
+        provider: null,
+        phase: "implementing",
+        expected_revision: null,
+        force: false,
+      },
+      lease_id: declaring.lease_id,
+      claim_expires_at: declaring.claim_expires_at,
+      documents_sha256: "0".repeat(64),
+      writes: active.members.map((member: string) => ({
+        id: member,
+        before_sha256: "0".repeat(64),
+        after_sha256: "0".repeat(64),
+      })),
+    };
+    await fs.writeFile(manifestFile, `${JSON.stringify(pending, null, 2)}\n`, "utf8");
+    const paths = [ticketFile(target.id), ticketFile(a.id), ticketFile(b.id), ticketFile(c.id), manifestFile];
+    const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
+
+    await expect(store.deleteItem(target.id)).rejects.toThrow(new RegExp(`^BATCH_TRANSACTION_PENDING:.*"${b.id}" belongs to pending batch batch-a`, "u"));
+    expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
+  });
 
   it("AC4: three related tickets complete in one frozen batch workspace with one PR/head attestation and three proofs", async () => {
     const { a, b, c, first } = await threeMemberBatch();
@@ -758,8 +1694,8 @@ describe("batch workspaces (CORE-124)", () => {
   it("a member occupies only the batch workspace: another worktree or branch is BATCH_WORKSPACE_MISMATCH", async () => {
     const { b } = await threeMemberBatch();
     const before = await fs.readFile(ticketFile(b.id), "utf8");
-    await expect(store.takeTicket(b.id, { branch: "batch-a", worktree: ".worktrees/other", assignee: "ctl-a" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:.*worktree \.worktrees\/batch-a on branch batch-a/u);
-    await expect(store.takeTicket(b.id, { branch: "other", worktree: ".worktrees/batch-a", assignee: "ctl-a" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:/u);
+    await expect(store.takeTicket(b.id, { branch: "batch-a", worktree: ".worktrees/other", assignee: "ctl-a", controllerRun: "controller-run" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:.*worktree \.worktrees\/batch-a on branch batch-a/u);
+    await expect(store.takeTicket(b.id, { branch: "other", worktree: ".worktrees/batch-a", assignee: "ctl-a", controllerRun: "controller-run" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:/u);
     await expect(store.takeTicket(b.id, { ...batchWorkspace, assignee: "ctl-a", batch: "batch-z" })).rejects.toThrow(/^BATCH_INVALID:.*frozen member of batch batch-a, not batch-z/u);
     expect(await fs.readFile(ticketFile(b.id), "utf8")).toBe(before);
   });
@@ -772,7 +1708,7 @@ describe("batch workspaces (CORE-124)", () => {
     const done = await store.createItem({ ...free, title: "D", status: "done" });
     const other = await store.createItem({ ...free, title: "O" });
     const other2 = await store.createItem({ ...free, title: "O2" });
-    await store.takeTicket(other.id, { branch: "o", worktree: ".worktrees/o", assignee: "ctl-c", batch: "batch-o", batchMembers: [other.id, other2.id] });
+    await store.takeTicket(other.id, { branch: "o", worktree: ".worktrees/o", assignee: "ctl-c", controllerRun: "controller-run", batch: "batch-o", batchMembers: [other.id, other2.id] });
     const before = await fs.readFile(ticketFile(a.id), "utf8");
     const attempt = (members: string[], batch = "batch-a") => store.takeTicket(a.id, { ...batchWorkspace, assignee: "ctl-a", batch, batchMembers: members });
     await expect(attempt([a.id])).rejects.toThrow(/^BATCH_INVALID:.*two or more distinct member ids/u);
@@ -804,6 +1740,43 @@ describe("batch workspaces (CORE-124)", () => {
     expect(state.members.find((m) => m.id === c.id)).toMatchObject({ archived: true, terminal: true, status: "verifying" });
     expect(state.allTerminal).toBe(true);
     expect((await store.releaseTicket(a.id)).lease_batch).toBeUndefined();
+  });
+
+  it("refuses a fresh take of an untaken Done batch member without changing any board byte", async () => {
+    const { c } = await threeMemberBatch();
+    await walkToDone(c.id);
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(c.id, { ...batchWorkspace, assignee: "ctl-a" })).rejects.toThrow(
+      new RegExp(`^BATCH_ACTIVE:.*"${c.id}".*terminal.*done`, "u"),
+    );
+    expect(await snapshotBoardFiles()).toEqual(before);
+  });
+
+  it("refuses a fresh take of an untaken archived batch member without changing any board byte", async () => {
+    const { c } = await threeMemberBatch();
+    await store.moveItem(c.id, { status: "review" });
+    await store.moveItem(c.id, { status: "verifying" });
+    await store.updateItem(c.id, { archived: true });
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(c.id, { ...batchWorkspace, assignee: "ctl-a" })).rejects.toThrow(
+      new RegExp(`^BATCH_ACTIVE:.*"${c.id}".*archived`, "u"),
+    );
+    expect(await snapshotBoardFiles()).toEqual(before);
+  });
+
+  it("exposes releasing state and refuses a member take without changing any board byte", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    for (const member of [a, b, c]) await walkToDone(member.id);
+    await store.releaseTicket(a.id);
+    expect(await store.batchState(c.id)).toMatchObject({ state: "releasing" });
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(c.id, { ...batchWorkspace, assignee: "ctl-a" })).rejects.toThrow(
+      new RegExp(`^BATCH_ACTIVE:.*"${c.id}".*releasing batch batch-a`, "u"),
+    );
+    expect(await snapshotBoardFiles()).toEqual(before);
   });
 
   it("serialises the batch record after the lease keys and round-trips it; a v0.3.12 ticket is untouched", async () => {

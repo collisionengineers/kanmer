@@ -30,6 +30,7 @@ const KEY_ORDER = [
   "lease_heartbeat_at",
   "lease_reclaimed_from",
   "lease_batch",
+  "lease_batch_controller",
   "lease_batch_frozen_at",
   "labels",
   "groups",

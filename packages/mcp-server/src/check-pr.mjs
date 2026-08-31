@@ -8,6 +8,7 @@ import {
   boardStages,
   buildLinkIndex,
   lastStageId,
+  resolveDelivery,
   evaluateMergeGate,
   parseReviewAttestation,
   resolveMergeGateTicket,
@@ -41,7 +42,14 @@ function readPrEvent(value) {
   // an event without one skips the target check rather than being rejected or
   // silently assumed to mean `main`.
   const baseRef = typeof base.ref === "string" && base.ref ? base.ref : undefined;
-  return {
+  const url = typeof pr.html_url === "string" && pr.html_url ? pr.html_url : undefined;
+  const repository = typeof base.repo?.full_name === "string" && base.repo.full_name
+    ? base.repo.full_name
+    : (typeof value?.repository?.full_name === "string" ? value.repository.full_name : undefined);
+  const headRepository = typeof head.repo?.full_name === "string" && head.repo.full_name
+    ? head.repo.full_name
+    : undefined;
+  const result = {
     number: pr.number,
     headSha: head.sha,
     baseSha: base.sha,
@@ -49,6 +57,13 @@ function readPrEvent(value) {
     body: pr.body ?? null,
     ...(baseRef ? { baseRef } : {}),
   };
+  // Canonical GitHub identity is gate evidence, not part of the CLI's legacy
+  // emitted `result.pr` contract. Non-enumerable properties remain available
+  // to review matching while JSON output stays byte-shape compatible.
+  if (url) Object.defineProperty(result, "url", { value: url });
+  if (repository) Object.defineProperty(result, "repository", { value: repository });
+  if (headRepository) Object.defineProperty(result, "headRepository", { value: headRepository });
+  return result;
 }
 
 function escapeCommandData(value) {
@@ -68,11 +83,13 @@ function escapeCommandData(value) {
 function parseReviewEvidence(raw) {
   const parsed = parseReviewAttestation(raw);
   if (parsed.state !== "valid") return parsed;
-  const { state, headSha, verdict, boardSha, ...details } = parsed;
+  const { state, headSha, verdict, pr, independent, boardSha, ...details } = parsed;
   return {
     state,
     headSha,
     verdict,
+    pr,
+    independent,
     ...(boardSha ? { boardSha } : {}),
     details: { ...details, ...(boardSha ? { boardSha } : {}) },
   };
@@ -84,7 +101,7 @@ function readStrictFlag(env = process.env) {
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
-async function phase2Evidence(store, pr, ticketId, boardRoot, strict) {
+async function boardSnapshot(store) {
   const board = await store.getBoard();
   const reviewStageId = boardStages().find((stage) => stage.name.toLowerCase() === "review")?.id;
   if (!reviewStageId) throw new Error("board has no semantic review stage");
@@ -96,8 +113,12 @@ async function phase2Evidence(store, pr, ticketId, boardRoot, strict) {
   }
   const all = listed.items;
   const byId = new Map(all.map((item) => [item.id, item]));
-  const graph = buildLinkIndex(all).get(ticketId) ?? { id: ticketId, links: [], backlinks: [], blocks: [], blockedBy: [] };
-  const item = byId.get(ticketId) ?? await store.getItem(ticketId);
+  return { board, reviewStageId, finalStageId, all, byId, links: buildLinkIndex(all) };
+}
+
+function phase2Evidence(snapshot, pr, ticketId, strict, review, commitBySha, board) {
+  const graph = snapshot.links.get(ticketId) ?? { id: ticketId, links: [], backlinks: [], blocks: [], blockedBy: [] };
+  const item = snapshot.byId.get(ticketId);
   if (!item) throw new Error(`Kanmer ticket ${ticketId} disappeared while gathering evidence`);
   // Valid prerequisites come only from the derived blockedBy direction; the
   // target's outgoing blocks[] is not treated as a prerequisite list. A
@@ -108,29 +129,21 @@ async function phase2Evidence(store, pr, ticketId, boardRoot, strict) {
   // blockers so a deleted prerequisite cannot make the gate pass merely
   // because its target file disappeared.
   for (const target of item.blocks ?? []) {
-    if (!byId.has(target)) blockerIds.add(target);
+    if (!snapshot.byId.has(target)) blockerIds.add(target);
   }
   const blockers = [...blockerIds].sort().map((id) => {
-    const blocker = byId.get(id);
+    const blocker = snapshot.byId.get(id);
     return blocker
       ? { id, exists: true, status: blocker.status, archived: blocker.archived }
       : { id, exists: false };
   });
-  const review = parseReviewEvidence(await store.getDoc(ticketId, "scratch/review"));
   const commits = item.commits ?? [];
-  const commitEvidence = commits.length === 0
-    ? []
-    : (await assertGitRepository({ cwd: process.cwd() }), await collectCommitReachability({ commits, headSha: pr.headSha, baseSha: pr.baseSha, cwd: process.cwd() }));
-  const boardEvidence = await collectBoardEvidence({ boardRoot, attestedSha: review.state === "valid" ? review.boardSha : undefined });
-  return { reviewStageId, finalStageId, blockers, review, commits: commitEvidence, strict, board: boardEvidence };
+  const commitEvidence = commits.map((sha) => commitBySha.get(String(sha).trim().toLowerCase())).filter(Boolean);
+  return { reviewStageId: snapshot.reviewStageId, finalStageId: snapshot.finalStageId, blockers, review, commits: commitEvidence, strict, board };
 }
 
-async function emptyPhase2Evidence(store, boardRoot, strict) {
-  const board = await store.getBoard();
-  const reviewStageId = boardStages().find((stage) => stage.name.toLowerCase() === "review")?.id;
-  if (!reviewStageId) throw new Error("board has no semantic review stage");
-  const boardEvidence = await collectBoardEvidence({ boardRoot });
-  return { reviewStageId, finalStageId: lastStageId(board), blockers: [], review: { state: "absent" }, commits: [], strict, board: boardEvidence };
+function emptyPhase2Evidence(snapshot, strict, board) {
+  return { reviewStageId: snapshot.reviewStageId, finalStageId: snapshot.finalStageId, blockers: [], review: { state: "absent" }, commits: [], strict, board };
 }
 
 function emitInfra(message) {
@@ -156,10 +169,82 @@ async function main() {
     const store = new KanmerStore(boardRoot);
     const strict = readStrictFlag();
     const resolved = resolveMergeGateTicket(pr.body, pr.branch);
-    const resolvedItem = resolved.ticketId ? await store.getItem(resolved.ticketId) : null;
-    const evidence = resolvedItem
-      ? await phase2Evidence(store, pr, resolved.ticketId, boardRoot, strict)
-      : await emptyPhase2Evidence(store, boardRoot, strict);
+    const snapshot = await boardSnapshot(store);
+    const capturedBoard = await collectBoardEvidence({ boardRoot });
+    const requested = resolved.ticketIds ?? (resolved.ticketId ? [resolved.ticketId] : []);
+    const existingIds = requested.filter((id) => snapshot.byId.get(id)?.type === "ticket");
+    const reviews = new Map(await Promise.all(existingIds.map(async (id) => [
+      id,
+      parseReviewEvidence(await store.getDoc(id, "scratch/review")),
+    ])));
+    const planVersions = new Map(await Promise.all(existingIds.map(async (id) => [
+      id,
+      (await store.getDocWithVersion(id, "plan")).version,
+    ])));
+    const questions = new Map(await Promise.all(existingIds.map(async (id) => [
+      id,
+      await store.getOpenQuestionCount(id),
+    ])));
+    const commits = [...new Set(existingIds.flatMap((id) => snapshot.byId.get(id)?.commits ?? []).map((sha) => String(sha).trim().toLowerCase()))].sort();
+    let commitEvidence = [];
+    if (commits.length > 0) {
+      await assertGitRepository({ cwd: process.cwd() });
+      commitEvidence = await collectCommitReachability({ commits, headSha: pr.headSha, baseSha: pr.baseSha, cwd: process.cwd() });
+    }
+    const commitBySha = new Map(commitEvidence.map((entry) => [entry.sha, entry]));
+    const boardByAttestation = new Map();
+    const boardFor = async (review) => {
+      const attested = review?.state === "valid" ? review.boardSha : undefined;
+      if (!attested) return capturedBoard;
+      if (!boardByAttestation.has(attested)) {
+        const checked = await collectBoardEvidence({ boardRoot, attestedSha: attested, capturedSha: capturedBoard.sha });
+        boardByAttestation.set(attested, checked);
+      }
+      return boardByAttestation.get(attested);
+    };
+    let evidence;
+    const requestedItem = requested.length === 1 ? snapshot.byId.get(requested[0]) : null;
+    let batch = null;
+    let batchError;
+    if (requested.length > 0) {
+      try {
+        batch = await store.batchStateFromSnapshot(requested[0], snapshot.all);
+      } catch (error) {
+        batchError = error instanceof Error ? error.message : "batch manifest could not be read";
+      }
+    }
+    if (requested.length > 1 || requestedItem?.lease_batch || batch || batchError) {
+      const members = [];
+      for (const id of requested) {
+        const item = snapshot.byId.get(id) ?? null;
+        const review = reviews.get(id);
+        members.push({
+          ticketId: id,
+          item,
+          planVersion: planVersions.get(id) ?? null,
+          questions: questions.get(id) ?? null,
+          evidence: item
+            ? phase2Evidence(snapshot, pr, id, strict, review, commitBySha, await boardFor(review))
+            : emptyPhase2Evidence(snapshot, strict, capturedBoard),
+        });
+      }
+      evidence = {
+        kind: "batch",
+        reviewStageId: snapshot.reviewStageId,
+        finalStageId: snapshot.finalStageId,
+        strict,
+        policy: resolveDelivery(snapshot.board),
+        batch,
+        ...(batchError ? { batchError } : {}),
+        members,
+      };
+    } else if (existingIds.length === 1) {
+      const id = existingIds[0];
+      const review = reviews.get(id);
+      evidence = phase2Evidence(snapshot, pr, id, strict, review, commitBySha, await boardFor(review));
+    } else {
+      evidence = emptyPhase2Evidence(snapshot, strict, capturedBoard);
+    }
     const result = await evaluateMergeGate(store, pr, evidence);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     for (const finding of result.findings) {

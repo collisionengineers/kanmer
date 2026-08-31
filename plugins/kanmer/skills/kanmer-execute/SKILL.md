@@ -113,7 +113,10 @@ step may touch, the files it must not, its exact tests, commands, expected
 output, done condition, deviation stop, and a stop condition that ends the work
 after that one step. Issuance requires at least one mapped unchecked checklist
 marker for the selected ordered step; a plan-only or unrelated checklist
-refuses normally while the whole-ticket setup packet remains available.
+refuses normally while the whole-ticket setup packet remains available. Both
+routes use one lexical, de-duplicated group census: counted ticket documents
+plus unique group ids are capped at 256 before any group or context read, and a
+missing or conflicting resolved identity refuses.
 Execute exactly that step, then stop and report so the
 controller can reconcile the actual changes before another packet is issued.
 The controller, not the worker, retains the exact full `step-packet/2` object
@@ -129,16 +132,23 @@ Kanmer derives the actual HEAD, index, worktree and pre-dirty deltas itself;
 caller-supplied changed-path summaries are not proof. Missing, unreadable,
 unstable, escaped, symlinked or hard-linked workspace evidence is `INCONCLUSIVE`; a
 forbidden or undeclared path is FAIL. The path matcher is iterative and
-explicitly bounded; budget exhaustion is `INCONCLUSIVE`, never authorization or
-an undeclared-path claim. The only permitted ticket-document change is the
+explicitly bounded; its shared budget is charged before raw path parsing and
+before every literal or wildcard comparison. Exhaustion is `INCONCLUSIVE`,
+never authorization or an undeclared-path claim. Dirty regular-file bytes are
+read once through one capped handle whose pre-open, handle-before/after and
+post-path device, inode, type, mode, link-count and size facts must agree; the
+handle closes on every result. The only permitted ticket-document change is the
 selected checklist marker from unchecked to checked: every other raw line body,
 CRLF/CR/LF terminator, final-newline state, ticket authority field and counted
 document remains bound.
 This Git evidence covers tracked, staged, unstaged and untracked paths plus both
-rename endpoints. Ignored paths and `.git` / common-directory metadata are
-outside it; a constrained worker must never mutate them. Any need or attempt is
-a deviation stop and the controller records `INCONCLUSIVE` — an absent path is
-not proof that an ignored or Git-metadata write was safe.
+rename endpoints. Every sample also hashes one bounded NUL `git ls-files -v -z`
+index-flag census: assume-unchanged or skip-worktree entries refuse without
+clearing them, and flag drift between samples is `INCONCLUSIVE`.
+Ignored paths and `.git` / common-directory metadata are outside it; a
+constrained worker must never mutate them. Any need or attempt is a deviation
+stop and the controller records `INCONCLUSIVE` — an absent path is not proof
+that an ignored or Git-metadata write was safe.
 Only PASS may authorize the next step, by sending the complete exact prior
 packet as `prior_step_packet`; a short packet id, reconstruction, numeric skip
 or worker summary cannot advance. Write `post-implementation-report` only

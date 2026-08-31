@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createPlanPathMatchBudget,
   extractAtxSection,
   parsePlanPath,
   parseAtxSections,
@@ -523,6 +524,16 @@ describe("repository-relative plan paths", () => {
     const boundedObserved = Array.from({ length: 300 }, () => "x").join("/");
     expect(planPathMatch(boundedPattern, boundedObserved)).toBeNull();
     expect(planPathMatches(boundedPattern, boundedObserved)).toBe(false);
+  });
+
+  it("charges raw parsing and literal equality before work and rejects overlong raw values", () => {
+    const oneOperation = createPlanPathMatchBudget(1);
+    expect(planPathMatch("a", "a", oneOperation)).toBeNull();
+    expect(oneOperation.remaining).toBe(0);
+
+    const exactLimit = "a".repeat(65_536);
+    expect(planPathMatch(exactLimit, exactLimit)).toBe(true);
+    expect(planPathMatch(`${exactLimit}a`, `${exactLimit}a`)).toBeNull();
   });
 
   it("retains invalid plan authority as a typed blocking finding", () => {

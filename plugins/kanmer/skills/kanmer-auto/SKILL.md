@@ -477,7 +477,10 @@ worker text or current board/Git state. A successor step is issued only after
 the exact retained predecessor reconciles PASS and is supplied whole as
 `prior_step_packet`. Initial issuance likewise requires at least one mapped
 unchecked checklist marker for the selected ordered step; a plan-only or
-unrelated checklist cannot become worker authority.
+unrelated checklist cannot become worker authority. Whole-ticket and
+constrained issuance share one lexical, de-duplicated group census: counted
+ticket documents plus unique group ids are capped at 256 before any group or
+context read, and missing or conflicting resolved identity refuses.
 
 On every result or timeout, the controller:
 
@@ -490,18 +493,25 @@ On every result or timeout, the controller:
    bounded actual HEAD/index/worktree deltas, stage, gate, exact checklist,
    counted ticket documents, branch/worktree, commit, PR and error evidence
    with the approved scope; missing or unreadable evidence is `INCONCLUSIVE`,
-   while undeclared or forbidden changes are FAIL. Iterative path-match budget
-   exhaustion is also `INCONCLUSIVE`; checklist reconciliation preserves every
-   raw CRLF/CR/LF terminator and final-newline state outside the selected marker;
+   while undeclared or forbidden changes are FAIL. The shared iterative
+   path-match budget is charged before raw path parsing and before every literal
+   or wildcard comparison; exhaustion is `INCONCLUSIVE`. Dirty regular-file
+   bytes are read once through one capped handle whose pre-open,
+   handle-before/after and post-path device, inode, type, mode, link-count and
+   size facts must agree, and the handle closes on every result. Checklist
+   reconciliation preserves every raw CRLF/CR/LF terminator and final-newline
+   state outside the selected marker;
 5. records the worker result, reconciliation, discrepancy, and one next action
    in the ledger/event log; and
 6. writes and reads back the run record before selecting another action.
 
 The constrained Git census covers tracked, staged, unstaged and untracked
-paths plus both rename endpoints. Ignored paths and `.git` / common-directory
-metadata are outside it and constrained workers must never mutate them. Any
-need or attempt is a deviation stop recorded as `INCONCLUSIVE`; absence from the
-census never authorizes such a write.
+paths plus both rename endpoints. Every sample also hashes one bounded NUL
+`git ls-files -v -z` index-flag census: assume-unchanged or skip-worktree
+entries refuse without being cleared, and flag drift is `INCONCLUSIVE`.
+Ignored paths and `.git` / common-directory metadata are outside it and
+constrained workers must never mutate them. Any need or attempt is a deviation stop
+recorded as `INCONCLUSIVE`; absence from the census never authorizes such a write.
 
 After anything merges to the run's recorded `delivery_target`, lanes still in
 flight rebase onto that same target before opening a PR, with absolute paths and

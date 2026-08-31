@@ -255,7 +255,7 @@ export function createPlanPathMatchBudget(maxOperations = PLAN_PATH_MATCH_MAX_OP
 }
 
 function consumePlanPathMatchBudget(budget: PlanPathMatchBudget, amount = 1): boolean {
-  if (amount < 0 || budget.remaining < amount) {
+  if (!Number.isSafeInteger(amount) || amount < 0 || budget.remaining < amount) {
     budget.remaining = 0;
     return false;
   }
@@ -267,9 +267,16 @@ type BoundedMatch = boolean | null;
 
 function codePointsWithinBudget(value: string, budget: PlanPathMatchBudget): string[] | null {
   if (value.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  if (!consumePlanPathMatchBudget(budget, Math.max(1, value.length))) return null;
   const points = Array.from(value);
-  if (points.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || !consumePlanPathMatchBudget(budget, points.length)) return null;
+  if (points.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
   return points;
+}
+
+function literalEquals(left: string, right: string, budget: PlanPathMatchBudget): BoundedMatch {
+  const cost = left.length === right.length ? Math.max(1, left.length) : 1;
+  if (!consumePlanPathMatchBudget(budget, cost)) return null;
+  return left === right;
 }
 
 function exactAt(value: readonly string[], literal: readonly string[], offset: number, budget: PlanPathMatchBudget): BoundedMatch {
@@ -318,7 +325,8 @@ function findLiteralChunk(
 
 /** Linear match for the supported within-segment `*` language. */
 function segmentMatches(pattern: string, value: string, budget: PlanPathMatchBudget): BoundedMatch {
-  if (!pattern.includes("*")) return pattern === value;
+  if (!consumePlanPathMatchBudget(budget, Math.max(1, pattern.length))) return null;
+  if (!pattern.includes("*")) return literalEquals(pattern, value, budget);
   const valuePoints = codePointsWithinBudget(value, budget);
   if (!valuePoints) return null;
   const chunks: string[][] = [];
@@ -378,11 +386,16 @@ export function planPathMatch(
   pathValue: string,
   budget: PlanPathMatchBudget = createPlanPathMatchBudget(),
 ): BoundedMatch {
+  if (budget.remaining <= 0) return null;
+  if (patternValue.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || pathValue.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  const parseCost = Math.max(1, patternValue.length) + Math.max(1, pathValue.length);
+  if (!consumePlanPathMatchBudget(budget, parseCost)) return null;
   const pattern = parsePlanPath(patternValue, { allowPattern: true });
   const observed = parsePlanPath(pathValue, { observed: true });
   if (!pattern.ok || !observed.ok) return false;
-  if (!pattern.pattern) return pattern.path === observed.path;
-  if (pattern.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || observed.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  if (!pattern.pattern) return literalEquals(pattern.path, observed.path, budget);
+  const splitCost = Math.max(1, pattern.path.length) + Math.max(1, observed.path.length);
+  if (!consumePlanPathMatchBudget(budget, splitCost)) return null;
   const patterns = pattern.path.split("/").filter(
     (segment, index, all) => segment !== "**" || all[index - 1] !== "**",
   );

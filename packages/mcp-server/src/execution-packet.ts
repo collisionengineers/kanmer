@@ -15,7 +15,6 @@ import type {
 import {
   CAPTURE_PROFILE_ID,
   compileStepPacket,
-  contentVersion,
   deliveryPolicySource,
   deliveryTargets,
   extractAtxSection,
@@ -41,6 +40,7 @@ import type { ProjectIdentity } from "./project-identity.js";
 import { canonicalProjectPath } from "./project-identity.js";
 import { readTicketDocuments } from "./ticket-docs.js";
 import {
+  collectCanonicalGroupContexts,
   collectStepDocumentSnapshot,
   collectWorkspaceSnapshot,
   isProtectedBoardExecutionWorktree,
@@ -584,34 +584,19 @@ function unresolvedQuestion(gates: GateReport): boolean {
   return requirements.some((requirement) => requirement.type === "questions-resolved" && !requirement.satisfied);
 }
 
-async function groupContexts(store: KanmerStore, item: Item): Promise<ExecutionPacketGroupContext[]> {
-  const groups = [...new Set(item.groups ?? [])];
-  return Promise.all(
-    groups.map(async (id) => {
-      const group = await store.getGroup(id);
-      if (!group) {
-        return {
-          id,
-          kind: null,
-          title: null,
-          body: null,
-          context: null,
-          version: null,
-          warning: `Group "${id}" is missing from the board.`,
-        };
-      }
-      const context = await store.getGroupDoc(id, "context.md");
-      return {
-        id,
-        kind: group.kind,
-        title: group.title,
-        body: group.body,
-        context,
-        version: context === null ? null : contentVersion(context),
-        ...(context === null ? { warning: `Group "${id}" has no context.md.` } : {}),
-      };
-    }),
-  );
+async function groupContexts(
+  store: KanmerStore,
+  item: Item,
+  countedDocumentCount: number,
+): Promise<{ ids: string[]; contexts: ExecutionPacketGroupContext[] }> {
+  const census = await collectCanonicalGroupContexts(store, item.groups, countedDocumentCount);
+  return {
+    ids: census.ids,
+    contexts: census.groups.map((group) => ({
+      ...group,
+      ...(group.context === null ? { warning: `Group "${group.id}" has no context.md.` } : {}),
+    })),
+  };
 }
 
 function indexDocuments(results: TicketDocumentWithVersion[]): Record<"plan" | "checklist" | "files", ExecutionPacketDocument> {
@@ -882,8 +867,9 @@ export async function getExecutionPacket(input: {
     .map((doc) => ({ path: doc.doc, version: doc.version! }))
     .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
 
-  const contexts = stable?.ok
-    ? stable.snapshot.groups.map((context) => ({
+  let contexts: ExecutionPacketGroupContext[];
+  if (stable?.ok) {
+    contexts = stable.snapshot.groups.map((context) => ({
         id: context.id,
         kind: context.kind,
         title: context.title,
@@ -891,8 +877,22 @@ export async function getExecutionPacket(input: {
         context: context.context,
         version: context.version,
         ...(context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}),
-      }))
-    : await groupContexts(store, item);
+      }));
+  } else {
+    try {
+      const census = await groupContexts(store, item, ticketDocuments.length);
+      item = item.groups === undefined ? item : { ...item, groups: census.ids };
+      contexts = census.contexts;
+    } catch (error) {
+      return refuse(
+        project,
+        `Ticket "${id}" has invalid or unbounded group authority: ${error instanceof Error ? error.message : String(error)}`,
+        [],
+        item,
+        gates,
+      );
+    }
+  }
   // FRD-033's two evidence layers: shared group research, and this ticket's own
   // impact research. Both carry the exact content version they were read at, so
   // a later reconciliation can tell whether the packet went stale.

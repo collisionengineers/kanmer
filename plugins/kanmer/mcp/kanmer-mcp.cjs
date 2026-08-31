@@ -10187,12 +10187,12 @@ var require_stringify = __commonJS({
         throw new TypeError('expected "' + language + '.stringify" to be a function');
       }
       data = Object.assign({}, file.data, data);
-      const open = opts.delimiters[0];
+      const open2 = opts.delimiters[0];
       const close = opts.delimiters[1];
       const matter5 = engine.stringify(data, options2).trim();
       let buf = "";
       if (matter5 !== "{}") {
-        buf = newline(open) + newline(matter5) + newline(close);
+        buf = newline(open2) + newline(matter5) + newline(close);
       }
       if (typeof file.excerpt === "string" && file.excerpt !== "") {
         if (str2.indexOf(file.excerpt.trim()) === -1) {
@@ -10316,18 +10316,18 @@ var require_gray_matter = __commonJS({
     }
     function parseMatter(file, options2) {
       const opts = defaults(options2);
-      const open = opts.delimiters[0];
+      const open2 = opts.delimiters[0];
       const close = "\n" + opts.delimiters[1];
       let str2 = file.content;
       if (opts.language) {
         file.language = opts.language;
       }
-      const openLen = open.length;
-      if (!utils.startsWith(str2, open, openLen)) {
+      const openLen = open2.length;
+      if (!utils.startsWith(str2, open2, openLen)) {
         excerpt(file, opts);
         return file;
       }
-      if (str2.charAt(openLen) === open.slice(-1)) {
+      if (str2.charAt(openLen) === open2.slice(-1)) {
         return file;
       }
       str2 = str2.slice(openLen);
@@ -10383,9 +10383,9 @@ var require_gray_matter = __commonJS({
     };
     matter5.language = function(str2, options2) {
       const opts = defaults(options2);
-      const open = opts.delimiters[0];
+      const open2 = opts.delimiters[0];
       if (matter5.test(str2)) {
-        str2 = str2.slice(open.length);
+        str2 = str2.slice(open2.length);
       }
       const language = str2.slice(0, str2.search(/\r?\n/));
       return {
@@ -18701,16 +18701,16 @@ var require_parse2 = __commonJS({
         const analysis = analyzeRepeatedExtglob(body, opts);
         if ((token.type === "plus" || token.type === "star") && analysis.risky) {
           const safeOutput = analysis.safeOutput ? (token.output ? "" : ONE_CHAR) + (opts.capture ? `(${analysis.safeOutput})` : analysis.safeOutput) : void 0;
-          const open = tokens[token.tokensIndex];
-          open.type = "text";
-          open.value = literal2;
-          open.output = safeOutput || utils.escapeRegex(literal2);
+          const open2 = tokens[token.tokensIndex];
+          open2.type = "text";
+          open2.value = literal2;
+          open2.output = safeOutput || utils.escapeRegex(literal2);
           for (let i = token.tokensIndex + 1; i < tokens.length; i++) {
             tokens[i].value = "";
             tokens[i].output = "";
             delete tokens[i].suffix;
           }
-          state.output = token.output + open.output;
+          state.output = token.output + open2.output;
           state.backtrack = true;
           push({ type: "paren", extglob: true, value, output: "" });
           decrement("parens");
@@ -18930,15 +18930,15 @@ var require_parse2 = __commonJS({
         }
         if (value === "{" && opts.nobrace !== true) {
           increment("braces");
-          const open = {
+          const open2 = {
             type: "brace",
             value,
             output: "(",
             outputIndex: state.output.length,
             tokensIndex: state.tokens.length
           };
-          braces.push(open);
-          push(open);
+          braces.push(open2);
+          push(open2);
           continue;
         }
         if (value === "}") {
@@ -19884,9 +19884,9 @@ var require_is_glob = __commonJS({
           }
         }
         if (str2[index] === "\\") {
-          var open = str2[index + 1];
+          var open2 = str2[index + 1];
           index += 2;
-          var close = chars[open];
+          var close = chars[open2];
           if (close) {
             var n = str2.indexOf(close, index);
             if (n !== -1) {
@@ -19912,9 +19912,9 @@ var require_is_glob = __commonJS({
           return true;
         }
         if (str2[index] === "\\") {
-          var open = str2[index + 1];
+          var open2 = str2[index + 1];
           index += 2;
-          var close = chars[open];
+          var close = chars[open2];
           if (close) {
             var n = str2.indexOf(close, index);
             if (n !== -1) {
@@ -20878,7 +20878,7 @@ var require_parse3 = __commonJS({
           continue;
         }
         if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-          const open = value;
+          const open2 = value;
           let next;
           if (options2.keepQuotes !== true) {
             value = "";
@@ -20888,7 +20888,7 @@ var require_parse3 = __commonJS({
               value += next + advance();
               continue;
             }
-            if (next === open) {
+            if (next === open2) {
               if (options2.keepQuotes === true) value += next;
               break;
             }
@@ -20931,8 +20931,8 @@ var require_parse3 = __commonJS({
         if (value === CHAR_COMMA && depth > 0) {
           if (block.ranges > 0) {
             block.ranges = 0;
-            const open = block.nodes.shift();
-            block.nodes = [open, { type: "text", value: stringify(block) }];
+            const open2 = block.nodes.shift();
+            block.nodes = [open2, { type: "text", value: stringify(block) }];
           }
           push({ type: "comma", value });
           block.commas++;
@@ -21436,7 +21436,7 @@ var require_nodefs_handler = __commonJS({
       STAR
     } = require_constants3();
     var THROTTLE_MODE_WATCH = "watch";
-    var open = promisify6(fs14.open);
+    var open2 = promisify6(fs14.open);
     var stat = promisify6(fs14.stat);
     var lstat3 = promisify6(fs14.lstat);
     var close = promisify6(fs14.close);
@@ -21532,7 +21532,7 @@ var require_nodefs_handler = __commonJS({
           cont.watcherUnusable = true;
           if (isWindows && error2.code === "EPERM") {
             try {
-              const fd = await open(path23, "r");
+              const fd = await open2(path23, "r");
               await close(fd);
               broadcastErr(error2);
             } catch (err) {
@@ -39486,7 +39486,7 @@ function createPlanPathMatchBudget(maxOperations = PLAN_PATH_MATCH_MAX_OPERATION
   return { remaining: Number.isFinite(maxOperations) && maxOperations > 0 ? Math.floor(maxOperations) : 0 };
 }
 function consumePlanPathMatchBudget(budget, amount = 1) {
-  if (amount < 0 || budget.remaining < amount) {
+  if (!Number.isSafeInteger(amount) || amount < 0 || budget.remaining < amount) {
     budget.remaining = 0;
     return false;
   }
@@ -39495,9 +39495,15 @@ function consumePlanPathMatchBudget(budget, amount = 1) {
 }
 function codePointsWithinBudget(value, budget) {
   if (value.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  if (!consumePlanPathMatchBudget(budget, Math.max(1, value.length))) return null;
   const points = Array.from(value);
-  if (points.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || !consumePlanPathMatchBudget(budget, points.length)) return null;
+  if (points.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
   return points;
+}
+function literalEquals(left, right, budget) {
+  const cost = left.length === right.length ? Math.max(1, left.length) : 1;
+  if (!consumePlanPathMatchBudget(budget, cost)) return null;
+  return left === right;
 }
 function exactAt(value, literal2, offset, budget) {
   if (offset < 0 || offset + literal2.length > value.length) return false;
@@ -39535,7 +39541,8 @@ function findLiteralChunk(value, literal2, start, end, budget) {
   return -1;
 }
 function segmentMatches(pattern, value, budget) {
-  if (!pattern.includes("*")) return pattern === value;
+  if (!consumePlanPathMatchBudget(budget, Math.max(1, pattern.length))) return null;
+  if (!pattern.includes("*")) return literalEquals(pattern, value, budget);
   const valuePoints = codePointsWithinBudget(value, budget);
   if (!valuePoints) return null;
   const chunks = [];
@@ -39583,11 +39590,16 @@ function triOr(left, right) {
   return 0;
 }
 function planPathMatch(patternValue, pathValue, budget = createPlanPathMatchBudget()) {
+  if (budget.remaining <= 0) return null;
+  if (patternValue.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || pathValue.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  const parseCost = Math.max(1, patternValue.length) + Math.max(1, pathValue.length);
+  if (!consumePlanPathMatchBudget(budget, parseCost)) return null;
   const pattern = parsePlanPath(patternValue, { allowPattern: true });
   const observed = parsePlanPath(pathValue, { observed: true });
   if (!pattern.ok || !observed.ok) return false;
-  if (!pattern.pattern) return pattern.path === observed.path;
-  if (pattern.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || observed.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  if (!pattern.pattern) return literalEquals(pattern.path, observed.path, budget);
+  const splitCost = Math.max(1, pattern.path.length) + Math.max(1, observed.path.length);
+  if (!consumePlanPathMatchBudget(budget, splitCost)) return null;
   const patterns = pattern.path.split("/").filter(
     (segment, index, all) => segment !== "**" || all[index - 1] !== "**"
   );
@@ -40736,6 +40748,7 @@ function entryChanges(before, after) {
 function anyPathMatch(patterns, observed, budget) {
   let inconclusive = false;
   for (const pattern of patterns) {
+    if (budget.remaining <= 0) return null;
     const matched = planPathMatch(pattern, observed, budget);
     if (matched === true) return true;
     if (matched === null) inconclusive = true;
@@ -47603,12 +47616,14 @@ function expectedProjectMatches(sent, project) {
 // src/step-reconciliation.ts
 var import_node_child_process = require("child_process");
 var import_node_crypto3 = require("crypto");
+var import_node_fs3 = require("fs");
 var import_promises10 = require("fs/promises");
 var import_node_path5 = __toESM(require("path"), 1);
 var GIT_TIMEOUT_MS = 15e3;
 var WORKSPACE_COLLECTION_TIMEOUT_MS = 3e4;
 var GIT_MAX_BUFFER = 2 * 1024 * 1024;
 var MAX_ENTRIES = 512;
+var MAX_INDEX_FLAG_ENTRIES = 65536;
 var MAX_FILE_BYTES = 2 * 1024 * 1024;
 var MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
 var decoder = new TextDecoder("utf-8", { fatal: true });
@@ -47746,6 +47761,32 @@ function parseNameStatusZ(raw) {
   if (paths.length > MAX_ENTRIES) throw new Error(`HEAD diff has more than ${MAX_ENTRIES} changed paths`);
   return paths;
 }
+function parseIndexFlagCensus(raw) {
+  if (raw.length > GIT_MAX_BUFFER) throw new Error(`git ls-files flag census exceeds ${GIT_MAX_BUFFER} bytes`);
+  const tokens = splitNul(raw, "git ls-files -v -z output");
+  if (tokens.length > MAX_INDEX_FLAG_ENTRIES) {
+    throw new Error(`git ls-files flag census exceeds ${MAX_INDEX_FLAG_ENTRIES} tracked entries`);
+  }
+  const assumeUnchanged = [];
+  const skipWorktree = [];
+  for (const token of tokens) {
+    if (token.length < 2 || token[1] !== 32) throw new Error("git ls-files emitted a malformed flag token");
+    const tag = String.fromCharCode(token[0]);
+    if (!/^[HSMRCK?]$/i.test(tag)) throw new Error(`git ls-files emitted unsupported flag tag ${JSON.stringify(tag)}`);
+    const observed = decode(token.subarray(2));
+    if (!observed) throw new Error("git ls-files emitted an empty tracked path");
+    const parsed = parsePlanPath(observed, { observed: true });
+    if (!parsed.ok || parsed.path !== observed) throw new Error(`git ls-files emitted unsafe tracked path ${JSON.stringify(observed)}`);
+    if (/^[a-z]$/.test(tag)) assumeUnchanged.push(observed);
+    if (tag === "S" || tag === "s") skipWorktree.push(observed);
+  }
+  return {
+    digest: (0, import_node_crypto3.createHash)("sha256").update(raw).digest("hex"),
+    count: tokens.length,
+    assumeUnchanged,
+    skipWorktree
+  };
+}
 function digest2(parts) {
   const hash = (0, import_node_crypto3.createHash)("sha256");
   for (const part of parts) {
@@ -47755,6 +47796,69 @@ function digest2(parts) {
     hash.update(bytes);
   }
   return hash.digest("hex");
+}
+function stableFileFacts(stat) {
+  return {
+    dev: stat.dev,
+    ino: stat.ino,
+    mode: stat.mode,
+    nlink: stat.nlink,
+    size: stat.size,
+    regular: stat.isFile(),
+    symbolicLink: stat.isSymbolicLink()
+  };
+}
+function sameFileFacts(left, right) {
+  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.nlink === right.nlink && left.size === right.size && left.regular === right.regular && left.symbolicLink === right.symbolicLink;
+}
+async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}) {
+  await assertPhysicalContainment(root, absolute);
+  let initialStat;
+  try {
+    initialStat = await (0, import_promises10.lstat)(absolute, { bigint: true });
+  } catch (error2) {
+    if (error2.code === "ENOENT") return null;
+    throw error2;
+  }
+  const initial = stableFileFacts(initialStat);
+  if (initial.symbolicLink) throw new Error("observed workspace path is a symbolic link");
+  if (!initial.regular) throw new Error("observed workspace path is not a regular file");
+  if (initial.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
+  const remainingTotal = MAX_TOTAL_FILE_BYTES - budget.total;
+  const allowed = Math.min(MAX_FILE_BYTES, remainingTotal);
+  if (allowed < 0 || initial.size > BigInt(allowed)) throw new Error("observed content exceeds the bounded snapshot budget");
+  await hooks.beforeOpen?.();
+  const noFollow = typeof import_node_fs3.constants.O_NOFOLLOW === "number" ? import_node_fs3.constants.O_NOFOLLOW : 0;
+  let handle = null;
+  try {
+    handle = await (0, import_promises10.open)(absolute, import_node_fs3.constants.O_RDONLY | noFollow);
+    const handleBefore = stableFileFacts(await handle.stat({ bigint: true }));
+    if (!sameFileFacts(initial, handleBefore)) throw new Error("observed workspace path changed identity before its bounded read");
+    await hooks.afterHandleValidated?.();
+    const expected = Number(initial.size);
+    const bytes = Buffer.alloc(expected + 1);
+    const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
+    if (bytesRead < expected) throw new Error("observed workspace file produced a short bounded read");
+    if (bytesRead > expected) throw new Error("observed workspace file grew during its bounded read");
+    await hooks.afterRead?.();
+    const handleAfter = stableFileFacts(await handle.stat({ bigint: true }));
+    let pathAfterStat;
+    try {
+      pathAfterStat = await (0, import_promises10.lstat)(absolute, { bigint: true });
+    } catch (error2) {
+      throw new Error(`observed workspace path disappeared after its bounded read: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+    const pathAfter = stableFileFacts(pathAfterStat);
+    if (!sameFileFacts(initial, handleAfter) || !sameFileFacts(initial, pathAfter)) {
+      throw new Error("observed workspace path changed identity, type, mode, links or size during its bounded read");
+    }
+    await assertPhysicalContainment(root, absolute);
+    budget.total += expected;
+    return { bytes: bytes.subarray(0, expected), mode: String(initial.mode) };
+  } finally {
+    if (handle) await handle.close();
+    await hooks.afterClose?.();
+  }
 }
 async function fileIdentity(root, observed, run, budget) {
   const parsed = parsePlanPath(observed.path, { observed: true });
@@ -47769,20 +47873,9 @@ async function fileIdentity(root, observed, run, budget) {
     if (mode2 === "120000") throw new Error(`observed path ${parsed.path} is an indexed symbolic link`);
     if (mode2 === "160000") throw new Error(`observed path ${parsed.path} is an unsupported Git link`);
   }
-  let mode = "missing";
-  let worktreeBytes = Buffer.alloc(0);
-  try {
-    const stat = await (0, import_promises10.lstat)(absolute);
-    if (stat.isSymbolicLink()) throw new Error(`observed path ${parsed.path} is a symbolic link`);
-    if (!stat.isFile()) throw new Error(`observed path ${parsed.path} is not a regular file`);
-    if (stat.nlink > 1) throw new Error(`observed path ${parsed.path} is hard-linked outside its single workspace identity`);
-    if (stat.size > MAX_FILE_BYTES || budget.total + stat.size > MAX_TOTAL_FILE_BYTES) throw new Error(`observed content exceeds the bounded snapshot budget`);
-    worktreeBytes = await (0, import_promises10.readFile)(absolute);
-    budget.total += worktreeBytes.length;
-    mode = String(stat.mode);
-  } catch (error2) {
-    if (error2.code !== "ENOENT") throw error2;
-  }
+  const worktree = await readBoundedWorkspaceFile(root, absolute, budget);
+  const mode = worktree?.mode ?? "missing";
+  const worktreeBytes = worktree?.bytes ?? Buffer.alloc(0);
   let indexBytes = Buffer.alloc(0);
   if (![".", "?", "D"].includes(observed.index) && observed.role !== "rename-source") {
     indexBytes = await run(root, ["show", "--no-textconv", `:${parsed.path}`]);
@@ -47792,10 +47885,11 @@ async function fileIdentity(root, observed, run, budget) {
   return digest2([observed.index, observed.worktree, observed.role, mode, indexStageBytes, indexBytes, worktreeBytes]);
 }
 async function captureOnce(root, worktree, run) {
-  const [branchRaw, headRaw, statusRaw] = await Promise.all([
+  const [branchRaw, headRaw, statusRaw, indexFlagsRaw] = await Promise.all([
     run(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]),
     run(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
-    run(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"])
+    run(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"]),
+    run(root, ["ls-files", "-v", "-z", "--full-name", "--"])
   ]);
   const branch = decode(branchRaw).trim();
   const head = decode(headRaw).trim();
@@ -47814,7 +47908,10 @@ async function captureOnce(root, worktree, run) {
     });
   }
   entries.sort((left, right) => lexicalCompare2(left.path, right.path) || lexicalCompare2(left.index, right.index) || lexicalCompare2(left.worktree, right.worktree));
-  return { branch, worktree, head: head.toLowerCase(), entries };
+  return {
+    snapshot: { branch, worktree, head: head.toLowerCase(), entries },
+    indexFlags: parseIndexFlagCensus(indexFlagsRaw)
+  };
 }
 async function collectWorkspaceSnapshot(input) {
   try {
@@ -47850,12 +47947,19 @@ async function collectWorkspaceSnapshot(input) {
     const sourceCommon = await (0, import_promises10.realpath)(import_node_path5.default.resolve(input.repoRoot, decode(sourceCommonRaw).trim()));
     if (canonicalPath(candidateCommon) !== canonicalPath(sourceCommon)) throw new Error("recorded workspace belongs to a foreign repository");
     const first = await captureOnce(physical, input.worktree, run);
+    await input.betweenSamples?.();
     const second = await captureOnce(physical, input.worktree, run);
     if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("workspace changed during the bounded double-sample");
-    if (first.branch !== input.branch) throw new Error(`recorded branch ${input.branch} does not match checked-out branch ${first.branch}`);
+    if (first.indexFlags.assumeUnchanged.length) {
+      throw new Error(`tracked path ${JSON.stringify(first.indexFlags.assumeUnchanged[0])} has assume-unchanged index authority`);
+    }
+    if (first.indexFlags.skipWorktree.length) {
+      throw new Error(`tracked path ${JSON.stringify(first.indexFlags.skipWorktree[0])} has skip-worktree index authority`);
+    }
+    if (first.snapshot.branch !== input.branch) throw new Error(`recorded branch ${input.branch} does not match checked-out branch ${first.snapshot.branch}`);
     let headChanges = [];
-    if (input.baseline && input.baseline.head !== first.head) {
-      const raw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", input.baseline.head, first.head, "--"]);
+    if (input.baseline && input.baseline.head !== first.snapshot.head) {
+      const raw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", input.baseline.head, first.snapshot.head, "--"]);
       headChanges = parseNameStatusZ(raw);
       for (const changed of headChanges) {
         const parsed = parsePlanPath(changed, { observed: true });
@@ -47869,7 +47973,7 @@ async function collectWorkspaceSnapshot(input) {
         } catch (error2) {
           if (error2.code !== "ENOENT") throw error2;
         }
-        for (const tree of [input.baseline.head, first.head]) {
+        for (const tree of [input.baseline.head, first.snapshot.head]) {
           const treeEntry = decode(await run(physical, ["ls-tree", "-z", tree, "--", literalPathspec(parsed.path)]));
           if (/^120000 /.test(treeEntry)) throw new Error(`HEAD-diff path ${parsed.path} is a committed symbolic link`);
           if (/^160000 /.test(treeEntry)) throw new Error(`HEAD-diff path ${parsed.path} is an unsupported Git link`);
@@ -47877,10 +47981,48 @@ async function collectWorkspaceSnapshot(input) {
       }
     }
     if (Date.now() >= deadline) throw new Error("aggregate Git collection deadline exhausted");
-    return { ok: true, snapshot: first, headChanges };
+    return { ok: true, snapshot: first.snapshot, headChanges };
   } catch (error2) {
     return { ok: false, reason: error2 instanceof Error ? error2.message : String(error2) };
   }
+}
+async function collectCanonicalGroupContexts(store2, rawGroupIds, countedDocumentCount) {
+  if (!Number.isSafeInteger(countedDocumentCount) || countedDocumentCount < 0 || countedDocumentCount > STEP_PACKET_LIMITS.maxDocuments) {
+    throw new Error(`counted ticket document census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`);
+  }
+  const ids = [...new Set(rawGroupIds ?? [])].sort(lexicalCompare2);
+  if (countedDocumentCount + ids.length > STEP_PACKET_LIMITS.maxDocuments) {
+    throw new Error(
+      `combined counted-document and unique-group census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`
+    );
+  }
+  const censusBudget = checkStepPacketBudget({ groups: ids });
+  if (!censusBudget.ok) throw new Error(`unique-group census is outside its bounded snapshot: ${censusBudget.reason}`);
+  const resolved = [];
+  const resolvedIds = /* @__PURE__ */ new Set();
+  for (const requestedId of ids) {
+    const group = await store2.getGroup(requestedId);
+    if (!group) throw new Error(`Group "${requestedId}" is missing`);
+    if (group.id !== requestedId) {
+      throw new Error(`Group "${requestedId}" resolved as conflicting identity "${group.id}"`);
+    }
+    if (resolvedIds.has(group.id)) throw new Error(`Group identity "${group.id}" was resolved more than once`);
+    resolvedIds.add(group.id);
+    resolved.push(group);
+  }
+  const groups = [];
+  for (const group of resolved) {
+    const context = await store2.getGroupDoc(group.id, "context.md");
+    groups.push({
+      id: group.id,
+      kind: group.kind,
+      title: group.title,
+      body: group.body,
+      context,
+      version: context === null ? null : contentVersion(context)
+    });
+  }
+  return { ids, groups };
 }
 function stepDocumentSnapshotAuthority(snapshot) {
   return {
@@ -47899,26 +48041,17 @@ async function documentSample(store2, id) {
     store2.getDocGates(id)
   ]);
   if (!gates) throw new Error(`Ticket "${id}" has no document-gate report`);
-  if ((inventory ?? []).filter((document) => revisionCountsDocument(document.doc)).length > 256) {
-    throw new Error("counted ticket document inventory exceeds the bounded snapshot limit");
-  }
-  const groups = [];
-  const resolvedGroups = /* @__PURE__ */ new Set();
-  for (const groupId of [...new Set(item.groups ?? [])]) {
-    const group = await store2.getGroup(groupId);
-    if (!group) throw new Error(`Group "${groupId}" is missing`);
-    if (resolvedGroups.has(group.id)) continue;
-    resolvedGroups.add(group.id);
-    const context = await store2.getGroupDoc(groupId, "context.md");
-    groups.push({ id: group.id, kind: group.kind, title: group.title, body: group.body, context, version: context === null ? null : contentVersion(context) });
-  }
+  const countedDocuments = (inventory ?? []).filter((document) => revisionCountsDocument(document.doc));
+  const groupCensus = await collectCanonicalGroupContexts(store2, item.groups, countedDocuments.length);
+  const canonicalItem = item.groups === void 0 ? item : { ...item, groups: groupCensus.ids };
+  const groups = groupCensus.groups;
   const after = await store2.getRevision(id);
   if (before?.revision !== after?.revision) throw new Error("ticket revision changed during document collection");
   const evidence = [
     ...groups.filter((group) => group.version !== null).map((group) => ({ layer: "group", group: group.id, path: `${group.id}/context.md`, version: group.version })),
     ...(inventory ?? []).filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket", group: null, path: doc.doc, version: doc.version }))
   ];
-  const snapshot = { item, revision: after?.revision ?? null, gates, fixed, inventory: inventory ?? [], evidence, groups, batch, batchId: batch?.id ?? null };
+  const snapshot = { item: canonicalItem, revision: after?.revision ?? null, gates, fixed, inventory: inventory ?? [], evidence, groups, batch, batchId: batch?.id ?? null };
   const authorityBudget = checkStepPacketBudget(stepDocumentSnapshotAuthority(snapshot));
   if (!authorityBudget.ok) throw new Error(`step document authority is outside its bounded snapshot: ${authorityBudget.reason}`);
   return snapshot;
@@ -48202,34 +48335,15 @@ function unresolvedQuestion(gates) {
   const requirements = gates.boundaries.flatMap((boundary) => boundary.requirements);
   return requirements.some((requirement) => requirement.type === "questions-resolved" && !requirement.satisfied);
 }
-async function groupContexts(store2, item) {
-  const groups = [...new Set(item.groups ?? [])];
-  return Promise.all(
-    groups.map(async (id) => {
-      const group = await store2.getGroup(id);
-      if (!group) {
-        return {
-          id,
-          kind: null,
-          title: null,
-          body: null,
-          context: null,
-          version: null,
-          warning: `Group "${id}" is missing from the board.`
-        };
-      }
-      const context = await store2.getGroupDoc(id, "context.md");
-      return {
-        id,
-        kind: group.kind,
-        title: group.title,
-        body: group.body,
-        context,
-        version: context === null ? null : contentVersion(context),
-        ...context === null ? { warning: `Group "${id}" has no context.md.` } : {}
-      };
-    })
-  );
+async function groupContexts(store2, item, countedDocumentCount) {
+  const census = await collectCanonicalGroupContexts(store2, item.groups, countedDocumentCount);
+  return {
+    ids: census.ids,
+    contexts: census.groups.map((group) => ({
+      ...group,
+      ...group.context === null ? { warning: `Group "${group.id}" has no context.md.` } : {}
+    }))
+  };
 }
 function indexDocuments(results) {
   const byDoc = new Map(results.map((result) => [result.doc, result]));
@@ -48433,15 +48547,32 @@ async function getExecutionPacket(input) {
   const checklist = fixed.find((doc) => doc.doc === "checklist")?.content ?? null;
   const extraDocs = (inventory ?? []).filter((doc) => !["plan/plan.md", "checklist/checklist.md", "files/files.md"].includes(doc.doc)).map((doc) => ({ path: doc.doc, version: doc.version }));
   const ticketDocuments = (inventory ?? []).filter((doc) => revisionCountsDocument(doc.doc)).map((doc) => ({ path: doc.doc, version: doc.version })).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
-  const contexts = stable?.ok ? stable.snapshot.groups.map((context) => ({
-    id: context.id,
-    kind: context.kind,
-    title: context.title,
-    body: context.body,
-    context: context.context,
-    version: context.version,
-    ...context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}
-  })) : await groupContexts(store2, item);
+  let contexts;
+  if (stable?.ok) {
+    contexts = stable.snapshot.groups.map((context) => ({
+      id: context.id,
+      kind: context.kind,
+      title: context.title,
+      body: context.body,
+      context: context.context,
+      version: context.version,
+      ...context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}
+    }));
+  } else {
+    try {
+      const census = await groupContexts(store2, item, ticketDocuments.length);
+      item = item.groups === void 0 ? item : { ...item, groups: census.ids };
+      contexts = census.contexts;
+    } catch (error2) {
+      return refuse(
+        project,
+        `Ticket "${id}" has invalid or unbounded group authority: ${error2 instanceof Error ? error2.message : String(error2)}`,
+        [],
+        item,
+        gates
+      );
+    }
+  }
   const evidence = stable?.ok ? stable.snapshot.evidence : [
     ...contexts.filter((context) => context.version !== null).map((context) => ({
       layer: "group",
@@ -48769,10 +48900,10 @@ async function collectPullRequestEvidence(store2, refs, run) {
     }
   }
   const exactly = (state) => observed.filter((entry) => entry.evidence.state === state);
-  const open = exactly("open");
+  const open2 = exactly("open");
   const merged = exactly("merged");
   const closed = exactly("closed-unmerged");
-  const selected = open.length === 1 ? open[0] : open.length > 1 ? void 0 : merged.length === 1 ? merged[0] : merged.length > 1 ? void 0 : closed.length === 1 ? closed[0] : void 0;
+  const selected = open2.length === 1 ? open2[0] : open2.length > 1 ? void 0 : merged.length === 1 ? merged[0] : merged.length > 1 ? void 0 : closed.length === 1 ? closed[0] : void 0;
   if (!selected) return { state: "unavailable", requiredChecks: "unavailable" };
   return pullRequestEvidence(selected.raw, await requiredChecksFor(store2, selected.selector, run));
 }

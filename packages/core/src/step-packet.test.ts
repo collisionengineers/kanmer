@@ -583,6 +583,55 @@ describe("reconcileStepPacket", () => {
     });
   });
 
+  it("charges a literal Cartesian product and keeps an unproved forbidden result ahead of an allowed literal", () => {
+    const base = packet();
+    const reconcile = (allowedFiles: string[], forbiddenFiles: string[], headChanges: string[]) => {
+      const { packetId: _ignored, ...body } = base;
+      const changedBody = { ...body, allowedFiles, forbiddenFiles };
+      const forged = { ...changedBody, packetId: stepPacketDigest(changedBody) };
+      const authority = stepPacketAuthority(parsePlan(PLAN), 1, "Stop when the PR is open.");
+      if (!authority) throw new Error("missing step authority");
+      return reconcileStepPacket(forged, {
+        project: forged.project,
+        ticket: { ...forged.ticket, revision: "rev1:after-checklist" },
+        batch: forged.batch,
+        plan: { ...forged.plan, authority: { ...authority, allowedFiles, forbiddenFiles } },
+        checklist: stepChecklistSnapshot(
+          parsePlan(PLAN),
+          base.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? null,
+          base.checklist.path,
+          "3333333333333333",
+        ),
+        evidence: [...forged.evidence.group, ...forged.evidence.ticket],
+        workspace: { snapshot: forged.workspace, headChanges },
+      });
+    };
+
+    const literals = Array.from(
+      { length: STEP_PACKET_LIMITS.maxArrayEntries },
+      (_, index) => `allowed/${String(index).padStart(3, "0")}-${"x".repeat(680)}.ts`,
+    );
+    const changes = [
+      `changed/${"z".repeat(684)}.ts`,
+      ...Array.from({ length: STEP_PACKET_LIMITS.maxArrayEntries - 1 }, (_, index) => `later/${index}.ts`),
+    ];
+    const cartesian = reconcile(literals, [], changes);
+    expect(cartesian.status).toBe("inconclusive");
+    expect(cartesian.findings.map((finding) => finding.code)).toContain("STEP_PATH_MATCH_INCONCLUSIVE");
+
+    const observed = `allowed/${"z".repeat(700)}.ts`;
+    const forbidden = Array.from(
+      { length: STEP_PACKET_LIMITS.maxArrayEntries },
+      (_, index) => `forbidden/${String(index).padStart(3, "0")}-${"x".repeat(694)}.ts`,
+    );
+    const denyUnknown = reconcile([observed], forbidden, [observed]);
+    expect(denyUnknown).toMatchObject({
+      status: "inconclusive",
+      changedPaths: [{ path: observed, classification: "inconclusive" }],
+    });
+    expect(denyUnknown.findings.map((finding) => finding.code)).toContain("STEP_PATH_MATCH_INCONCLUSIVE");
+  });
+
   it("classifies an exact newline-bearing Git path against a declaration glob", () => {
     const patterned = parsePlan(
       PLAN

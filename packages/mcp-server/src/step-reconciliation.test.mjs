@@ -8,8 +8,10 @@ import { removeTreeWithRetry, STEP_PACKET_LIMITS } from "../../core/dist/index.j
 import {
   collectStepDocumentSnapshot,
   collectWorkspaceSnapshot,
+  parseIndexFlagCensus,
   parseNameStatusZ,
   parsePorcelainV1Z,
+  readBoundedWorkspaceFile,
 } from "../dist/reconciliation.js";
 
 function git(cwd, ...args) {
@@ -46,6 +48,21 @@ test("porcelain and name-status parsers preserve both rename endpoints and rejec
   assert.deepEqual(parseNameStatusZ(Buffer.from("R100\0old name.txt\0renamed ü.txt\0", "utf8")), ["old name.txt", "renamed ü.txt"]);
   assert.throws(() => parsePorcelainV1Z(Buffer.from("?? incomplete", "utf8")), /terminated by NUL/);
   assert.throws(() => parsePorcelainV1Z(Buffer.from([0x3f, 0x3f, 0x20, 0xff, 0])), /encoded data|encoding/i);
+});
+
+test("index-flag census preserves raw NUL paths and rejects malformed or unbounded output", () => {
+  const census = parseIndexFlagCensus(Buffer.from("H normal.txt\0h assumed.txt\0S skipped.txt\0s both\n雪.txt\0", "utf8"));
+  assert.equal(census.count, 4);
+  assert.deepEqual(census.assumeUnchanged, ["assumed.txt", "both\n雪.txt"]);
+  assert.deepEqual(census.skipWorktree, ["skipped.txt", "both\n雪.txt"]);
+  assert.match(census.digest, /^[0-9a-f]{64}$/);
+  assert.throws(() => parseIndexFlagCensus(Buffer.from("H unterminated", "utf8")), /terminated by NUL/);
+  assert.throws(() => parseIndexFlagCensus(Buffer.from("H \0", "utf8")), /empty tracked path/);
+  assert.throws(() => parseIndexFlagCensus(Buffer.alloc(2 * 1024 * 1024 + 1)), /exceeds.*bytes/i);
+  assert.throws(
+    () => parseIndexFlagCensus(Buffer.from(Array.from({ length: 65_537 }, (_, index) => `H p${index}\0`).join(""), "utf8")),
+    /exceeds.*tracked entries/i,
+  );
 });
 
 test("more than 256 revision-exempt scratch/reference docs do not exhaust the authority census", async () => {
@@ -99,6 +116,118 @@ test("stable document collection de-duplicates repeated identical ticket groups"
   assert.equal(result.snapshot.evidence.filter((entry) => entry.layer === "group").length, 1);
 });
 
+test("group authority is bounded on its unique census before any group or context read", async () => {
+  const groupLimit = STEP_PACKET_LIMITS.maxDocuments;
+  const makeStore = (groups) => {
+    let groupReads = 0;
+    let contextReads = 0;
+    const item = {
+      id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
+      labels: [], links: [], groups, body: "",
+      created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
+    };
+    return {
+      reads: () => ({ groupReads, contextReads }),
+      store: {
+        getRevision: async () => ({ revision: "rev1:stable" }),
+        getItem: async () => item,
+        getDocsWithVersions: async () => [],
+        listTicketDocsWithVersions: async () => [],
+        batchState: async () => null,
+        getDocGates: async () => ({ profile: "custom", boundaries: [] }),
+        getGroup: async (id) => {
+          groupReads += 1;
+          return { id, kind: "horizon", title: id, body: "Context body" };
+        },
+        getGroupDoc: async () => {
+          contextReads += 1;
+          return "Frozen context";
+        },
+      },
+    };
+  };
+
+  const atLimit = makeStore(Array.from({ length: groupLimit }, (_, index) => `HZN-${String(index).padStart(3, "0")}`));
+  const accepted = await collectStepDocumentSnapshot(atLimit.store, "TICK-001");
+  assert.equal(accepted.ok, true);
+  assert.deepEqual(atLimit.reads(), { groupReads: groupLimit * 2, contextReads: groupLimit * 2 });
+
+  const overLimit = makeStore(Array.from({ length: groupLimit + 1 }, (_, index) => `HZN-${String(index).padStart(3, "0")}`));
+  const refused = await collectStepDocumentSnapshot(overLimit.store, "TICK-001");
+  assert.equal(refused.ok, false);
+  assert.match(refused.reason, /group.*census|group.*limit|array.*entries/i);
+  assert.deepEqual(overLimit.reads(), { groupReads: 0, contextReads: 0 });
+
+  const duplicates = makeStore(Array.from({ length: groupLimit * 4 }, () => "HZN-001"));
+  const collapsed = await collectStepDocumentSnapshot(duplicates.store, "TICK-001");
+  assert.equal(collapsed.ok, true);
+  assert.deepEqual(duplicates.reads(), { groupReads: 2, contextReads: 2 });
+  if (collapsed.ok) assert.deepEqual(collapsed.snapshot.item.groups, ["HZN-001"]);
+
+  const oneCountedDocument = makeStore(Array.from({ length: groupLimit }, (_, index) => `HZN-${String(index).padStart(3, "0")}`));
+  oneCountedDocument.store.listTicketDocsWithVersions = async () => [{
+    doc: "proof/proof.md", exists: true, content: "proof", version: "a".repeat(16),
+  }];
+  const combinedOverflow = await collectStepDocumentSnapshot(oneCountedDocument.store, "TICK-001");
+  assert.equal(combinedOverflow.ok, false);
+  assert.match(combinedOverflow.reason, /combined counted-document and unique-group census/i);
+  assert.deepEqual(oneCountedDocument.reads(), { groupReads: 0, contextReads: 0 });
+});
+
+test("a missing group after a valid bounded census refuses before a context read", async () => {
+  let groupReads = 0;
+  let contextReads = 0;
+  const store = {
+    getRevision: async () => ({ revision: "rev1:stable" }),
+    getItem: async () => ({
+      id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
+      labels: [], links: [], groups: ["HZN-001"], body: "",
+      created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
+    }),
+    getDocsWithVersions: async () => [],
+    listTicketDocsWithVersions: async () => [],
+    batchState: async () => null,
+    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
+    getGroup: async () => { groupReads += 1; return null; },
+    getGroupDoc: async () => { contextReads += 1; return null; },
+  };
+  const result = await collectStepDocumentSnapshot(store, "TICK-001");
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /group.*missing/i);
+  assert.equal(groupReads, 1);
+  assert.equal(contextReads, 0);
+});
+
+test("a conflicting resolved group identity refuses before a context read", async () => {
+  let groupReads = 0;
+  let contextReads = 0;
+  const store = {
+    getRevision: async () => ({ revision: "rev1:stable" }),
+    getItem: async () => ({
+      id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
+      labels: [], links: [], groups: ["HZN-001"], body: "",
+      created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
+    }),
+    getDocsWithVersions: async () => [],
+    listTicketDocsWithVersions: async () => [],
+    batchState: async () => null,
+    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
+    getGroup: async () => {
+      groupReads += 1;
+      return { id: "HZN-OTHER", kind: "horizon", title: "Wrong group", body: "Conflicting authority" };
+    },
+    getGroupDoc: async () => {
+      contextReads += 1;
+      return "must not be read";
+    },
+  };
+  const result = await collectStepDocumentSnapshot(store, "TICK-001");
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /conflicting identity/i);
+  assert.equal(groupReads, 1);
+  assert.equal(contextReads, 0);
+});
+
 test("oversized counted document authority is refused before packet hashing or Git observation", async () => {
   const inventory = [{
     doc: "proof/proof.md",
@@ -140,6 +269,112 @@ test("workspace snapshot is stable, bounded and does not refresh the Git index",
   assert.match(result.snapshot.head, /^[0-9a-f]{40}$/);
   assert.deepEqual(await fs.readFile(absoluteIndex), beforeBytes);
   assert.equal((await fs.stat(absoluteIndex)).mtimeMs, before.mtimeMs);
+});
+
+test("assume-unchanged and skip-worktree flags refuse hidden tracked evidence without mutating the index", async (t) => {
+  for (const [flag, expected] of [["--assume-unchanged", /assume-unchanged/i], ["--skip-worktree", /skip-worktree/i]]) {
+    const { root, worktree, board } = await fixture(t);
+    git(worktree, "update-index", flag, "tracked.txt");
+    await fs.writeFile(path.join(worktree, "tracked.txt"), `${flag} hidden edit\n`);
+    const indexPath = git(worktree, "rev-parse", "--git-path", "index");
+    const absoluteIndex = path.isAbsolute(indexPath) ? indexPath : path.resolve(worktree, indexPath);
+    const beforeBytes = await fs.readFile(absoluteIndex);
+    const before = await fs.stat(absoluteIndex);
+    const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, expected);
+    assert.deepEqual(await fs.readFile(absoluteIndex), beforeBytes);
+    assert.equal((await fs.stat(absoluteIndex)).mtimeMs, before.mtimeMs);
+  }
+});
+
+test("index-flag addition and removal between samples are snapshot drift", async (t) => {
+  for (const initiallyHidden of [false, true]) {
+    const { root, worktree, board } = await fixture(t);
+    if (initiallyHidden) git(worktree, "update-index", "--assume-unchanged", "tracked.txt");
+    const result = await collectWorkspaceSnapshot({
+      repoRoot: root,
+      boardRoot: board,
+      worktree: ".worktrees/ticket",
+      branch: "ticket-step",
+      betweenSamples: async () => {
+        git(worktree, "update-index", initiallyHidden ? "--no-assume-unchanged" : "--assume-unchanged", "tracked.txt");
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /changed during the bounded double-sample/i);
+  }
+});
+
+test("bounded handle reads reject replacement, short/growing reads and post-read changes and always close", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-handle-read-"));
+  t.after(() => removeTreeWithRetry(root));
+
+  const exercise = async (name, content, hooks, expected) => {
+    const absolute = path.join(root, name);
+    await fs.writeFile(absolute, content);
+    let closes = 0;
+    await assert.rejects(
+      readBoundedWorkspaceFile(root, absolute, { total: 0 }, {
+        ...hooks(absolute),
+        afterClose: () => { closes += 1; },
+      }),
+      expected,
+    );
+    assert.equal(closes, 1);
+    return absolute;
+  };
+
+  const replaced = await exercise("replace.txt", "original\n", (absolute) => {
+    const displaced = path.join(root, "replace.displaced");
+    return {
+      afterHandleValidated: async () => {
+        await fs.rename(absolute, displaced);
+        await fs.writeFile(absolute, "replacement\n");
+      },
+    };
+  }, /changed identity|changed identity, type/i);
+  await fs.rm(replaced, { force: true });
+  await fs.rm(path.join(root, "replace.displaced"), { force: true });
+
+  await exercise("short.txt", "longer content\n", (absolute) => ({
+    afterHandleValidated: () => fs.truncate(absolute, 1),
+  }), /short bounded read|changed identity, type/i);
+  await exercise("growth.txt", "base\n", (absolute) => ({
+    afterHandleValidated: () => fs.appendFile(absolute, "growth beyond the checked size\n"),
+  }), /grew during|changed identity, type/i);
+  await exercise("post-read.txt", "base\n", (absolute) => ({
+    afterRead: () => fs.appendFile(absolute, "changed after read\n"),
+  }), /changed identity, type/i);
+});
+
+test("bounded handle read refuses a symlink substituted after the path sample where supported", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-handle-link-"));
+  t.after(() => removeTreeWithRetry(root));
+  const absolute = path.join(root, "candidate.txt");
+  const target = path.join(root, "target.txt");
+  const probe = path.join(root, "probe-link.txt");
+  await fs.writeFile(absolute, "candidate\n");
+  await fs.writeFile(target, "target\n");
+  try {
+    await fs.symlink(target, probe, "file");
+    await fs.rm(probe);
+  } catch (error) {
+    t.skip(`filesystem cannot create the required file symlink: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+  let closes = 0;
+  await assert.rejects(
+    readBoundedWorkspaceFile(root, absolute, { total: 0 }, {
+      beforeOpen: async () => {
+        await fs.rm(absolute);
+        await fs.symlink(target, absolute, "file");
+      },
+      afterClose: () => { closes += 1; },
+    }),
+    /symbolic link|changed identity|ELOOP|too many levels/i,
+  );
+  assert.ok(closes <= 1);
 });
 
 test("a real linked worktree nested beneath a dedicated board worktree is protected", async (t) => {

@@ -1565,14 +1565,48 @@ check(
 );
 check(
   "path matching and checklist bytes fail closed at explicit bounds",
-  /Path matching is iterative and explicitly bounded; budget exhaustion is `INCONCLUSIVE`/.test(agentsGuide) &&
-    /path matcher is iterative and\s*explicitly bounded; budget exhaustion is `INCONCLUSIVE`/.test(executeSkill) &&
-    /Iterative path-match budget\s*exhaustion is also `INCONCLUSIVE`/.test(autoSkill) &&
+  /Path matching is iterative and explicitly bounded\.[\s\S]{0,220}exhaustion is `INCONCLUSIVE`/.test(agentsGuide) &&
+    /path matcher is iterative and\s*explicitly bounded;[\s\S]{0,220}Exhaustion is `INCONCLUSIVE`/.test(executeSkill) &&
+    /path-match budget[\s\S]{0,220}exhaustion is `INCONCLUSIVE`/.test(autoSkill) &&
     /Iterative path matching has its own aggregate work budget; exhaustion is\s*reported as `INCONCLUSIVE`/.test(toolReference) &&
     [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
       /CRLF\/CR\/LF terminator/.test(body) && /final-newline/.test(body),
     ),
   "matcher exhaustion never authorizes and newline normalization is not a checklist-only transition",
+);
+check(
+  "packet issuance bounds one canonical group census before group I/O",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /lexical, de-duplicated group census/.test(body) &&
+    /counted\s+ticket\s+documents\s+plus\s+unique\s+group\s+ids\s+are\s+capped\s+at\s+256\s+before\s+any\s+group\s+or\s+context\s+read/i.test(body) &&
+    /missing or conflicting\s+resolved identity refuses/i.test(body),
+  ),
+  "whole-ticket and constrained paths share one pre-I/O unique-group authority bound",
+);
+check(
+  "path matching charges parsing and each comparison to one shared budget",
+  [agentsGuide, planSkill, executeSkill, autoSkill, toolReference].every((body) =>
+    /budget\s+is\s+charged\s+before\s+raw\s+path\s+parsing\s+and\s+before\s+every\s+literal\s+or\s+wildcard\s+comparison/i.test(body),
+  ),
+  "literal and wildcard Cartesian work becomes INCONCLUSIVE at the shared bound",
+);
+check(
+  "dirty file bytes stay bound to one capped verified handle",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /read once through one capped handle/.test(body) &&
+    /pre-open,\s+handle-before\/after\s+and\s+post-path\s+device,\s+inode,\s+type,\s+mode,\s+link-count\s+and\s+size/.test(body) &&
+    /handle closes on every result/.test(body),
+  ),
+  "replacement, growth, mode/link drift and close failures cannot become PASS evidence",
+);
+check(
+  "workspace samples bind and refuse hidden index flags",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /bounded\s+NUL\s+`git ls-files -v -z`\s+index-flag\s+census/.test(body) &&
+    /assume-unchanged\s+or\s+skip-worktree\s+entries\s+refuse/.test(body) &&
+    /flag\s+drift(?:\s+between\s+samples)?\s+is\s+`INCONCLUSIVE`/.test(body),
+  ),
+  "hidden tracked changes and index-flag drift fail closed without mutating the index",
 );
 check(
   "constrained workers stop at the ignored and Git-metadata observation boundary",

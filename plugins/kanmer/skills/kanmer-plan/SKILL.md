@@ -67,8 +67,9 @@ resolve time, so its `profiles:` block is not the effective set.
    Expected-files glob may authorize a narrower step literal or pattern, but a
    narrower Expected-files literal never authorizes a broader step glob;
    intersecting Do-not-modify patterns always win. Runtime path matching is
-   iterative and explicitly bounded; proof-budget exhaustion is
-   `INCONCLUSIVE`, never permission or an undeclared-path claim.
+   iterative and explicitly bounded. The one shared budget is charged before
+   raw path parsing and before every literal or wildcard comparison;
+   exhaustion is `INCONCLUSIVE`, never permission or an undeclared-path claim.
    `get_execution_packet` also returns an advisory `validation` report for any
    plan — read its findings, but they remain advisory, not a gate.
 5. **Resolve planner decisions before dispatch.** In Required changes, words

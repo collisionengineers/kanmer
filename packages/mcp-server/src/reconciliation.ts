@@ -28,7 +28,15 @@ import {
 import { KanmerError } from "./errors.js";
 import { EXECUTION_STOP_FALLBACK, gitCommonDirectory, sameWorktreePath, type ResolvedPath } from "./execution-packet.js";
 import { collectStepDocumentSnapshot, collectWorkspaceSnapshot, stepDocumentSnapshotAuthority, type StepGitRun } from "./step-reconciliation.js";
-export { collectStepDocumentSnapshot, collectWorkspaceSnapshot, parseNameStatusZ, parsePorcelainV1Z, stepDocumentSnapshotAuthority } from "./step-reconciliation.js";
+export {
+  collectStepDocumentSnapshot,
+  collectWorkspaceSnapshot,
+  parseIndexFlagCensus,
+  parseNameStatusZ,
+  parsePorcelainV1Z,
+  readBoundedWorkspaceFile,
+  stepDocumentSnapshotAuthority,
+} from "./step-reconciliation.js";
 // This helper also serves the direct check-pr CLI tests. tsup bundles the
 // fixed-argv implementation into this production collector.
 // @ts-expect-error The executable source helper is JavaScript by design.

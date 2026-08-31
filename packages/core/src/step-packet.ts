@@ -722,6 +722,7 @@ function anyPathMatch(
 ): boolean | null {
   let inconclusive = false;
   for (const pattern of patterns) {
+    if (budget.remaining <= 0) return null;
     const matched = planPathMatch(pattern, observed, budget);
     if (matched === true) return true;
     if (matched === null) inconclusive = true;

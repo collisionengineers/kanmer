@@ -1,12 +1,14 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { constants as fsConstants, type BigIntStats } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 import {
   checkStepPacketBudget,
   contentVersion,
   parsePlanPath,
   revisionCountsDocument,
+  STEP_PACKET_LIMITS,
   type Item,
   type KanmerStore,
   type StepPacketEvidence,
@@ -19,6 +21,7 @@ const GIT_TIMEOUT_MS = 15_000;
 const WORKSPACE_COLLECTION_TIMEOUT_MS = 30_000;
 const GIT_MAX_BUFFER = 2 * 1024 * 1024;
 const MAX_ENTRIES = 512;
+const MAX_INDEX_FLAG_ENTRIES = 65_536;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
 const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -186,6 +189,41 @@ export function parseNameStatusZ(raw: Buffer): string[] {
   return paths;
 }
 
+export interface IndexFlagCensus {
+  digest: string;
+  count: number;
+  assumeUnchanged: string[];
+  skipWorktree: string[];
+}
+
+/** Parse the exact raw `git ls-files -v -z` tracked-index census. */
+export function parseIndexFlagCensus(raw: Buffer): IndexFlagCensus {
+  if (raw.length > GIT_MAX_BUFFER) throw new Error(`git ls-files flag census exceeds ${GIT_MAX_BUFFER} bytes`);
+  const tokens = splitNul(raw, "git ls-files -v -z output");
+  if (tokens.length > MAX_INDEX_FLAG_ENTRIES) {
+    throw new Error(`git ls-files flag census exceeds ${MAX_INDEX_FLAG_ENTRIES} tracked entries`);
+  }
+  const assumeUnchanged: string[] = [];
+  const skipWorktree: string[] = [];
+  for (const token of tokens) {
+    if (token.length < 2 || token[1] !== 0x20) throw new Error("git ls-files emitted a malformed flag token");
+    const tag = String.fromCharCode(token[0]);
+    if (!/^[HSMRCK?]$/i.test(tag)) throw new Error(`git ls-files emitted unsupported flag tag ${JSON.stringify(tag)}`);
+    const observed = decode(token.subarray(2));
+    if (!observed) throw new Error("git ls-files emitted an empty tracked path");
+    const parsed = parsePlanPath(observed, { observed: true });
+    if (!parsed.ok || parsed.path !== observed) throw new Error(`git ls-files emitted unsafe tracked path ${JSON.stringify(observed)}`);
+    if (/^[a-z]$/.test(tag)) assumeUnchanged.push(observed);
+    if (tag === "S" || tag === "s") skipWorktree.push(observed);
+  }
+  return {
+    digest: createHash("sha256").update(raw).digest("hex"),
+    count: tokens.length,
+    assumeUnchanged,
+    skipWorktree,
+  };
+}
+
 function digest(parts: readonly (string | Buffer)[]): string {
   const hash = createHash("sha256");
   for (const part of parts) {
@@ -195,6 +233,104 @@ function digest(parts: readonly (string | Buffer)[]): string {
     hash.update(bytes);
   }
   return hash.digest("hex");
+}
+
+interface StableFileFacts {
+  dev: bigint;
+  ino: bigint;
+  mode: bigint;
+  nlink: bigint;
+  size: bigint;
+  regular: boolean;
+  symbolicLink: boolean;
+}
+
+function stableFileFacts(stat: BigIntStats): StableFileFacts {
+  return {
+    dev: stat.dev,
+    ino: stat.ino,
+    mode: stat.mode,
+    nlink: stat.nlink,
+    size: stat.size,
+    regular: stat.isFile(),
+    symbolicLink: stat.isSymbolicLink(),
+  };
+}
+
+function sameFileFacts(left: StableFileFacts, right: StableFileFacts): boolean {
+  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode &&
+    left.nlink === right.nlink && left.size === right.size && left.regular === right.regular &&
+    left.symbolicLink === right.symbolicLink;
+}
+
+export interface WorkspaceFileReadHooks {
+  beforeOpen?: () => void | Promise<void>;
+  afterHandleValidated?: () => void | Promise<void>;
+  afterRead?: () => void | Promise<void>;
+  afterClose?: () => void | Promise<void>;
+}
+
+/**
+ * Read one workspace file through the exact handle whose identity was checked.
+ * `null` means the path was already absent at the initial sample; every later
+ * disappearance, replacement, short read or growth is an inconclusive error.
+ */
+export async function readBoundedWorkspaceFile(
+  root: string,
+  absolute: string,
+  budget: { total: number },
+  hooks: WorkspaceFileReadHooks = {},
+): Promise<{ bytes: Buffer; mode: string } | null> {
+  await assertPhysicalContainment(root, absolute);
+  let initialStat: BigIntStats;
+  try {
+    initialStat = await lstat(absolute, { bigint: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+  const initial = stableFileFacts(initialStat);
+  if (initial.symbolicLink) throw new Error("observed workspace path is a symbolic link");
+  if (!initial.regular) throw new Error("observed workspace path is not a regular file");
+  if (initial.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
+  const remainingTotal = MAX_TOTAL_FILE_BYTES - budget.total;
+  const allowed = Math.min(MAX_FILE_BYTES, remainingTotal);
+  if (allowed < 0 || initial.size > BigInt(allowed)) throw new Error("observed content exceeds the bounded snapshot budget");
+
+  await hooks.beforeOpen?.();
+  const noFollow = typeof fsConstants.O_NOFOLLOW === "number" ? fsConstants.O_NOFOLLOW : 0;
+  let handle: Awaited<ReturnType<typeof open>> | null = null;
+  try {
+    handle = await open(absolute, fsConstants.O_RDONLY | noFollow);
+    const handleBefore = stableFileFacts(await handle.stat({ bigint: true }));
+    if (!sameFileFacts(initial, handleBefore)) throw new Error("observed workspace path changed identity before its bounded read");
+    await hooks.afterHandleValidated?.();
+
+    const expected = Number(initial.size);
+    const bytes = Buffer.alloc(expected + 1);
+    const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
+    if (bytesRead < expected) throw new Error("observed workspace file produced a short bounded read");
+    if (bytesRead > expected) throw new Error("observed workspace file grew during its bounded read");
+    await hooks.afterRead?.();
+
+    const handleAfter = stableFileFacts(await handle.stat({ bigint: true }));
+    let pathAfterStat: BigIntStats;
+    try {
+      pathAfterStat = await lstat(absolute, { bigint: true });
+    } catch (error) {
+      throw new Error(`observed workspace path disappeared after its bounded read: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const pathAfter = stableFileFacts(pathAfterStat);
+    if (!sameFileFacts(initial, handleAfter) || !sameFileFacts(initial, pathAfter)) {
+      throw new Error("observed workspace path changed identity, type, mode, links or size during its bounded read");
+    }
+    await assertPhysicalContainment(root, absolute);
+    budget.total += expected;
+    return { bytes: bytes.subarray(0, expected), mode: String(initial.mode) };
+  } finally {
+    if (handle) await handle.close();
+    await hooks.afterClose?.();
+  }
 }
 
 async function fileIdentity(
@@ -215,20 +351,9 @@ async function fileIdentity(
     if (mode === "120000") throw new Error(`observed path ${parsed.path} is an indexed symbolic link`);
     if (mode === "160000") throw new Error(`observed path ${parsed.path} is an unsupported Git link`);
   }
-  let mode = "missing";
-  let worktreeBytes: Buffer = Buffer.alloc(0);
-  try {
-    const stat = await lstat(absolute);
-    if (stat.isSymbolicLink()) throw new Error(`observed path ${parsed.path} is a symbolic link`);
-    if (!stat.isFile()) throw new Error(`observed path ${parsed.path} is not a regular file`);
-    if (stat.nlink > 1) throw new Error(`observed path ${parsed.path} is hard-linked outside its single workspace identity`);
-    if (stat.size > MAX_FILE_BYTES || budget.total + stat.size > MAX_TOTAL_FILE_BYTES) throw new Error(`observed content exceeds the bounded snapshot budget`);
-    worktreeBytes = await readFile(absolute);
-    budget.total += worktreeBytes.length;
-    mode = String(stat.mode);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
+  const worktree = await readBoundedWorkspaceFile(root, absolute, budget);
+  const mode = worktree?.mode ?? "missing";
+  const worktreeBytes = worktree?.bytes ?? Buffer.alloc(0);
   let indexBytes: Buffer = Buffer.alloc(0);
   if (![".", "?", "D"].includes(observed.index) && observed.role !== "rename-source") {
     indexBytes = await run(root, ["show", "--no-textconv", `:${parsed.path}`]);
@@ -238,11 +363,17 @@ async function fileIdentity(
   return digest([observed.index, observed.worktree, observed.role, mode, indexStageBytes, indexBytes, worktreeBytes]);
 }
 
-async function captureOnce(root: string, worktree: string, run: StepGitRun): Promise<StepPacketWorkspace> {
-  const [branchRaw, headRaw, statusRaw] = await Promise.all([
+interface WorkspaceCapture {
+  snapshot: StepPacketWorkspace;
+  indexFlags: IndexFlagCensus;
+}
+
+async function captureOnce(root: string, worktree: string, run: StepGitRun): Promise<WorkspaceCapture> {
+  const [branchRaw, headRaw, statusRaw, indexFlagsRaw] = await Promise.all([
     run(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]),
     run(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
     run(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"]),
+    run(root, ["ls-files", "-v", "-z", "--full-name", "--"]),
   ]);
   const branch = decode(branchRaw).trim();
   const head = decode(headRaw).trim();
@@ -261,7 +392,10 @@ async function captureOnce(root: string, worktree: string, run: StepGitRun): Pro
     });
   }
   entries.sort((left, right) => lexicalCompare(left.path, right.path) || lexicalCompare(left.index, right.index) || lexicalCompare(left.worktree, right.worktree));
-  return { branch, worktree, head: head.toLowerCase(), entries };
+  return {
+    snapshot: { branch, worktree, head: head.toLowerCase(), entries },
+    indexFlags: parseIndexFlagCensus(indexFlagsRaw),
+  };
 }
 
 export type WorkspaceSnapshotResult =
@@ -282,6 +416,8 @@ export async function collectWorkspaceSnapshot(input: {
   run?: StepGitRun;
   /** Test/internal tightening only; callers cannot extend the production cap. */
   maxDurationMs?: number;
+  /** Test-only deterministic seam for proving index-flag drift between samples. */
+  betweenSamples?: () => void | Promise<void>;
 }): Promise<WorkspaceSnapshotResult> {
   try {
     if (input.maxDurationMs !== undefined && (!Number.isFinite(input.maxDurationMs) || input.maxDurationMs <= 0)) {
@@ -316,12 +452,19 @@ export async function collectWorkspaceSnapshot(input: {
     const sourceCommon = await realpath(path.resolve(input.repoRoot, decode(sourceCommonRaw).trim()));
     if (canonicalPath(candidateCommon) !== canonicalPath(sourceCommon)) throw new Error("recorded workspace belongs to a foreign repository");
     const first = await captureOnce(physical, input.worktree, run);
+    await input.betweenSamples?.();
     const second = await captureOnce(physical, input.worktree, run);
     if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("workspace changed during the bounded double-sample");
-    if (first.branch !== input.branch) throw new Error(`recorded branch ${input.branch} does not match checked-out branch ${first.branch}`);
+    if (first.indexFlags.assumeUnchanged.length) {
+      throw new Error(`tracked path ${JSON.stringify(first.indexFlags.assumeUnchanged[0])} has assume-unchanged index authority`);
+    }
+    if (first.indexFlags.skipWorktree.length) {
+      throw new Error(`tracked path ${JSON.stringify(first.indexFlags.skipWorktree[0])} has skip-worktree index authority`);
+    }
+    if (first.snapshot.branch !== input.branch) throw new Error(`recorded branch ${input.branch} does not match checked-out branch ${first.snapshot.branch}`);
     let headChanges: string[] = [];
-    if (input.baseline && input.baseline.head !== first.head) {
-      const raw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", input.baseline.head!, first.head!, "--"]);
+    if (input.baseline && input.baseline.head !== first.snapshot.head) {
+      const raw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", input.baseline.head!, first.snapshot.head!, "--"]);
       headChanges = parseNameStatusZ(raw);
       for (const changed of headChanges) {
         const parsed = parsePlanPath(changed, { observed: true });
@@ -335,7 +478,7 @@ export async function collectWorkspaceSnapshot(input: {
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         }
-        for (const tree of [input.baseline.head!, first.head!]) {
+        for (const tree of [input.baseline.head!, first.snapshot.head!]) {
           const treeEntry = decode(await run(physical, ["ls-tree", "-z", tree, "--", literalPathspec(parsed.path)]));
           if (/^120000 /.test(treeEntry)) throw new Error(`HEAD-diff path ${parsed.path} is a committed symbolic link`);
           if (/^160000 /.test(treeEntry)) throw new Error(`HEAD-diff path ${parsed.path} is an unsupported Git link`);
@@ -343,7 +486,7 @@ export async function collectWorkspaceSnapshot(input: {
       }
     }
     if (Date.now() >= deadline) throw new Error("aggregate Git collection deadline exhausted");
-    return { ok: true, snapshot: first, headChanges };
+    return { ok: true, snapshot: first.snapshot, headChanges };
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };
   }
@@ -365,6 +508,65 @@ export type StepDocumentSnapshotResult =
   | { ok: true; snapshot: StepDocumentSnapshot }
   | { ok: false; reason: string };
 
+export interface CanonicalGroupContext {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  context: string | null;
+  version: string | null;
+}
+
+/**
+ * Resolve one canonical, bounded group census. The unique-id/document bound is
+ * checked before the first group or context read, and identities are validated
+ * as a complete phase before any context bytes are read.
+ */
+export async function collectCanonicalGroupContexts(
+  store: Pick<KanmerStore, "getGroup" | "getGroupDoc">,
+  rawGroupIds: readonly string[] | undefined,
+  countedDocumentCount: number,
+): Promise<{ ids: string[]; groups: CanonicalGroupContext[] }> {
+  if (!Number.isSafeInteger(countedDocumentCount) || countedDocumentCount < 0 || countedDocumentCount > STEP_PACKET_LIMITS.maxDocuments) {
+    throw new Error(`counted ticket document census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`);
+  }
+  const ids = [...new Set(rawGroupIds ?? [])].sort(lexicalCompare);
+  if (countedDocumentCount + ids.length > STEP_PACKET_LIMITS.maxDocuments) {
+    throw new Error(
+      `combined counted-document and unique-group census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`,
+    );
+  }
+  const censusBudget = checkStepPacketBudget({ groups: ids });
+  if (!censusBudget.ok) throw new Error(`unique-group census is outside its bounded snapshot: ${censusBudget.reason}`);
+
+  const resolved = [] as Array<Awaited<ReturnType<KanmerStore["getGroup"]>> & {}>;
+  const resolvedIds = new Set<string>();
+  for (const requestedId of ids) {
+    const group = await store.getGroup(requestedId);
+    if (!group) throw new Error(`Group "${requestedId}" is missing`);
+    if (group.id !== requestedId) {
+      throw new Error(`Group "${requestedId}" resolved as conflicting identity "${group.id}"`);
+    }
+    if (resolvedIds.has(group.id)) throw new Error(`Group identity "${group.id}" was resolved more than once`);
+    resolvedIds.add(group.id);
+    resolved.push(group);
+  }
+
+  const groups: CanonicalGroupContext[] = [];
+  for (const group of resolved) {
+    const context = await store.getGroupDoc(group.id, "context.md");
+    groups.push({
+      id: group.id,
+      kind: group.kind,
+      title: group.title,
+      body: group.body,
+      context,
+      version: context === null ? null : contentVersion(context),
+    });
+  }
+  return { ids, groups };
+}
+
 /** Authority projection used when bracketing Git; scratch/reference are exempt. */
 export function stepDocumentSnapshotAuthority(snapshot: StepDocumentSnapshot): unknown {
   return {
@@ -384,26 +586,17 @@ async function documentSample(store: KanmerStore, id: string): Promise<StepDocum
     store.getDocGates(id),
   ]);
   if (!gates) throw new Error(`Ticket "${id}" has no document-gate report`);
-  if ((inventory ?? []).filter((document) => revisionCountsDocument(document.doc)).length > 256) {
-    throw new Error("counted ticket document inventory exceeds the bounded snapshot limit");
-  }
-  const groups = [] as StepDocumentSnapshot["groups"];
-  const resolvedGroups = new Set<string>();
-  for (const groupId of [...new Set(item.groups ?? [])]) {
-    const group = await store.getGroup(groupId);
-    if (!group) throw new Error(`Group "${groupId}" is missing`);
-    if (resolvedGroups.has(group.id)) continue;
-    resolvedGroups.add(group.id);
-    const context = await store.getGroupDoc(groupId, "context.md");
-    groups.push({ id: group.id, kind: group.kind, title: group.title, body: group.body, context, version: context === null ? null : contentVersion(context) });
-  }
+  const countedDocuments = (inventory ?? []).filter((document) => revisionCountsDocument(document.doc));
+  const groupCensus = await collectCanonicalGroupContexts(store, item.groups, countedDocuments.length);
+  const canonicalItem = item.groups === undefined ? item : { ...item, groups: groupCensus.ids };
+  const groups = groupCensus.groups;
   const after = await store.getRevision(id);
   if (before?.revision !== after?.revision) throw new Error("ticket revision changed during document collection");
   const evidence: StepPacketEvidence[] = [
     ...groups.filter((group) => group.version !== null).map((group) => ({ layer: "group" as const, group: group.id, path: `${group.id}/context.md`, version: group.version! })),
     ...(inventory ?? []).filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket" as const, group: null, path: doc.doc, version: doc.version! })),
   ];
-  const snapshot = { item, revision: after?.revision ?? null, gates, fixed, inventory: inventory ?? [], evidence, groups, batch, batchId: batch?.id ?? null };
+  const snapshot = { item: canonicalItem, revision: after?.revision ?? null, gates, fixed, inventory: inventory ?? [], evidence, groups, batch, batchId: batch?.id ?? null };
   const authorityBudget = checkStepPacketBudget(stepDocumentSnapshotAuthority(snapshot));
   if (!authorityBudget.ok) throw new Error(`step document authority is outside its bounded snapshot: ${authorityBudget.reason}`);
   return snapshot;

@@ -13,6 +13,7 @@
 | packages/core/src/merge-gate.test.ts | Valid three-member batch and incomplete, superset, mixed, unbatched, pending/corrupt, wrong-stage, archived, open-question, blocker, wrong-PR/head and missing/invalid review cases; unchanged single-ticket behavior. |
 | packages/mcp-server/src/check-pr.mjs | Collect phase-2 evidence for every resolved roster member from one board snapshot and emit one protected verdict. |
 | packages/mcp-server/src/check-pr.test.mjs | Exercise the real CLI with a valid three-member batch and decisive roster/member failures under strict mode. |
+| packages/mcp-server/src/git-reachability.mjs | Reuse one previously captured board tip when checking distinct attested board SHAs, preserving argv-safe ancestry checks without repeated HEAD reads. |
 | packages/mcp-server/src/execution-packet.ts | Refuse pending/inconsistent batch state and any foreign-actor packet, including an exact branch/worktree resume, while leaving isolated resume behavior unchanged. |
 | packages/mcp-server/src/index.ts | Pass the actual request actor into take and renew, expose batch id/controller/frozen timestamp in list_items summaries (including archived results), and keep visible assignee/controller labels non-authoritative. |
 | packages/mcp-server/src/errors.ts | Classify controller and recoverable-transaction batch refusals as LEASE_CONFLICT. |
@@ -37,7 +38,6 @@
 | packages/core/src/io.ts | writeFileAtomic and withExclusiveFileLock semantics; do not add another lock or weaken durability. |
 | packages/core/src/review-attestation.ts | Canonical review schema, including PR and full head identity, which every member evidence record must use. |
 | packages/core/src/links.ts | Derived blockedBy direction; batch evidence must preserve current dependency semantics per member. |
-| packages/mcp-server/src/git-reachability.mjs | Existing argv-safe reachability and board-ancestry collection; aggregate it rather than spawning a new Git implementation. |
 | CORE-124 research, plan, review and proof | Original batch implementation, AC4/AC5 evidence and deferred findings F-005/F-007/F-008/F-009/F-010. |
 | CORE-125 research, plan and review | Board-wide write-lock contract that makes the declaration transaction serializable. |
 | HZN-008 context.md | Stable v0.3.12 remains live; candidate operates only on copied/disposable boards until golden acceptance; no new engine or stage. |

@@ -68,7 +68,7 @@ CORE-126 is the only active shared-core implementation lane; there are no open P
 
 ## Expected files
 
-The authoritative surface is files/files.md version 1210c594b0e918a3. It names every permitted source, test, skill, documentation and generated-artifact path. No file outside that document is authorized without a versioned plan/files correction before editing.
+The authoritative surface is files/files.md version 9cbef350ca9468d0. It names every permitted source, test, skill, documentation and generated-artifact path. No file outside that document is authorized without a versioned plan/files correction before editing.
 
 ## Do not modify
 

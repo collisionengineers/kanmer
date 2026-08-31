@@ -25,12 +25,12 @@ refs:
   - docs/functional/frd/FRD-031-configurable-delivery-and-release-state.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 commits:
-  - 244e9143abffb2066db4e8e9912e4122a3b79b9e
+  - e31f2fdc5f740d3c7dbad8fb5175bc9839f7b041
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/303'
 archived: false
 created: '2026-08-28T03:10:57.878Z'
-updated: '2026-08-31T04:01:15.592Z'
+updated: '2026-08-31T04:22:37.484Z'
 ---
 
 ## What

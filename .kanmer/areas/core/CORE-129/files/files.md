@@ -12,9 +12,14 @@ The implementation starts only after CORE-127 and CORE-133 merge, then rebases o
 | Modify | `packages/core/src/board.test.ts` | Policy defaults/read/write compatibility |
 | Modify | `packages/core/src/gates.ts` | Consume one typed proof probe and surface blocking/report diagnostics |
 | Modify | `packages/core/src/gates.test.ts` | Report-versus-strict gate behavior and warning/reachability cases |
-| Modify | `packages/core/src/store.ts` | Read proof bytes once for the central gate; no proof mutation |
+| Modify | `packages/core/src/profile-matrix.test.ts` | Preserve the full profile/gate matrix under fresh-board strict defaults |
+| Modify | `packages/core/src/store.ts` | Read canonical proof bytes once for the central gate; no proof mutation |
+| Modify | `packages/core/src/store.test.ts` | Strict transition behavior, canonical proof path, and report-mode compatibility |
 | Modify | `packages/core/src/docs.test.ts` | Done transition rejects non-current/non-PASS proof only after strict cutover |
-| Modify | `packages/core/src/migrate.ts` | Read-only proof census in dry run and deliberate policy cutover without rewriting tickets/proofs |
+| Modify | `packages/core/src/claims.test.ts` | Upgrade affected proof fixtures without changing lease/claim semantics |
+| Modify | `packages/core/src/delivery.test.ts` | Upgrade affected proof fixtures without changing delivery-policy semantics |
+| Modify | `packages/core/src/release.test.ts` | Upgrade affected proof fixtures without changing release-attempt semantics |
+| Modify | `packages/core/src/migrate.ts` | Read-only proof census/digest in dry run and digest-bound policy cutover without rewriting tickets/proofs |
 | Modify | `packages/core/src/migrate.test.ts` | Census accuracy, byte preservation, dry-run purity and strict-policy activation |
 | Modify | `packages/core/src/reconciliation.ts` | Consume validated proof state for Done/failure routing |
 | Modify | `packages/core/src/reconciliation.test.ts` | Valid PASS/FAIL/INCONCLUSIVE and inconsistent-state routing |

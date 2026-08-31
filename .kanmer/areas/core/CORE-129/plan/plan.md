@@ -7,9 +7,9 @@ Make the exact proof record—not file existence or free prose—the single auth
 ## Starting state
 
 - Revalidated source base: `4fda54b4489fa4bc4b6b091c2af67715245ffa08`; implementation begins only after CORE-127 and CORE-133 merge and records their exact final base.
-- Research: `research/research.md`@`478f902d251a42fa`.
-- Files: `files/files.md`@`36b576748c023e08`.
-- 298 historical proof files exist; 218 have no attempts, 80 have attempts without an authoritative marker, and 28 show a raw top-level/last-physical-attempt mismatch.
+- Research: `research/research.md`@`3de05b290149753b`.
+- Files: `files/files.md`@`7dbd337039aa471a`.
+- 298 historical proof files exist; 218 have no raw attempts field, 80 have one, two attempt-bearing records are not YAML-parseable, zero use schema 2, and a raw scan finds 30 parseable top-level/last-entry differences. These are census signals only; deterministic parser buckets are the authority.
 - Core gates are existence-only. MCP reconciliation separately trusts the top-level verdict.
 - Existing boards have no proof-validation policy. Stable v0.3.12 must remain able to read the board until candidate promotion.
 
@@ -25,7 +25,8 @@ Make the exact proof record—not file existence or free prose—the single auth
 1. **Create one versioned proof parser**
    - Add `proof-record/2` semantics in core with top-level `schema: 2`, exact kind, merged SHA, verified timestamp, result and non-empty attempts.
    - Each attempt carries timestamp, `PASS | FAIL | INCONCLUSIVE`, `authority: authoritative | supporting`, summary and paired optional command/cwd/exit evidence.
-   - Validate required fields/enums, 40-hex merge SHA, ISO timestamps, integer exit code when present, command/exit pairing, chronological order and at least one authoritative attempt.
+   - Validate required fields/enums, 40-hex merge SHA, ISO timestamps, integer exit code when present, all-or-none command/cwd/exit evidence, strictly increasing attempt timestamps with ties refused, and at least one authoritative attempt.
+   - When an exit is present, PASS requires zero and FAIL requires non-zero. PASS omits `failure_class`; FAIL uses `implementation | plan | transient`; INCONCLUSIVE uses `inconclusive`.
    - The top-level result must equal the latest authoritative attempt. A later authoritative FAIL/INCONCLUSIVE therefore supersedes an earlier PASS; a later supporting command does not.
    - Return typed `valid-pass | valid-fail | valid-inconclusive | legacy | invalid` state plus deterministic diagnostics. Never infer authority from body prose.
 
@@ -38,8 +39,9 @@ Make the exact proof record—not file existence or free prose—the single auth
 
 3. **Census before enabling strict**
    - Extend existing `migrate_board`; do not add a tool.
-   - Dry run scans proof documents and returns counts plus ticket IDs/diagnostics for current-valid, legacy and invalid records without writing any file.
-   - Real migration repeats the census and writes only the board proof policy to strict. It never edits proofs, tickets, stages or activity.
+   - Dry run scans canonical `proof/proof.md` documents and returns deterministic valid/legacy/invalid buckets, ticket diagnostics and a digest over the ordered census without writing any file.
+   - Report-to-strict migration requires the caller's exact dry-run census digest, repeats the census immediately, and refuses without writing on any mismatch.
+   - A successful real migration writes only the board proof policy to strict. It never edits proofs, tickets, stages or activity.
    - Preserve idempotency: an already-strict board reports no policy change and the same read-only census.
    - Record the v0.3.13 live/copy census before running the real cutover.
 
@@ -62,16 +64,16 @@ Make the exact proof record—not file existence or free prose—the single auth
 
 - Files: `packages/core/src/proof-record.ts`, `proof-record.test.ts`, `index.ts`.
 - Symbols: `parseProofRecord`, `ProofRecordState`, schema/attempt types.
-- Negative cases: missing/unknown schema, empty/no-authority attempts, malformed enums/SHA/time/exit pairing/order, top/latest disagreement, PASS→FAIL, PASS→INCONCLUSIVE and supporting-only tails.
+- Negative cases: missing/unknown schema, empty/no-authority attempts, malformed enums/SHA/time/all-or-none command evidence, result/exit contradiction, timestamp tie/reversal, incompatible failure class, top/latest disagreement, PASS→FAIL, PASS→INCONCLUSIVE and supporting-only tails.
 - Preserve: a valid one-attempt authoritative PASS.
 - Commands: focused Vitest for proof-record, core typecheck/build.
 - Done when: no caller needs to inspect raw proof frontmatter independently.
 
 ### Step 2 — Add report/strict central gate policy
 
-- Files: `types.ts`, `board.ts`, board/gates/store/docs tests, `gates.ts`, `store.ts`.
+- Files: `types.ts`, `board.ts`, `gates.ts`, `store.ts`, plus board/gates/profile-matrix/store/docs/claims/delivery/release tests named in `files/files.md`.
 - Symbols: board policy schema/resolver, `EvidenceProbe` proof state, `statusOf`, `gateReport`.
-- Negative cases: absent legacy policy reports; strict legacy/invalid/FAIL/INCONCLUSIVE blocks; strict valid PASS passes; visual advisory unchanged; existing Done creation/backfill remains ungated.
+- Negative cases: absent legacy policy reports; strict legacy/invalid/FAIL/INCONCLUSIVE blocks; strict valid PASS passes; a noncanonical proof Markdown cannot satisfy canonical `proof/proof.md`; visual advisory unchanged; existing Done creation/backfill remains ungated.
 - Commands: focused board/gates/docs/store suites and core typecheck.
 - Done when: GUI and MCP observe one central gate decision.
 
@@ -79,7 +81,7 @@ Make the exact proof record—not file existence or free prose—the single auth
 
 - Files: `migrate.ts`, `migrate.test.ts`, tool description in MCP index.
 - Symbols: `auditProofRecords`, proof-policy migration report, `migrateBoard`.
-- Negative cases: dry run writes nothing; real cutover changes only board policy; malformed/legacy records are listed; repeat is idempotent; old proofs/tickets/activity remain byte-identical.
+- Negative cases: dry run writes nothing; missing or stale census digest refuses with no write; successful cutover changes only board policy; malformed/legacy records are listed; repeat is idempotent; old proofs/tickets/activity remain byte-identical.
 - Commands: focused migration tests and server build.
 - Done when: strict is never enabled for the release board before its durable census is recorded.
 
@@ -102,11 +104,13 @@ Make the exact proof record—not file existence or free prose—the single auth
 
 - A valid schema-2 single authoritative PASS is Done-eligible only at the exact merge SHA.
 - A later authoritative FAIL or INCONCLUSIVE cannot be hidden by top-level PASS.
+- Result/exit contradictions, timestamp ties/reversals and incompatible failure classes are invalid.
+- Only canonical `proof/proof.md` can supply strict proof authority.
 - Legacy/invalid proofs are fully reported before strict cutover and never rewritten.
 - Strict Done refuses legacy, invalid, contradictory, FAIL and INCONCLUSIVE evidence.
 - Reconciliation uses the same parser and cannot recommend Done from those states.
 - Report-mode compatibility and stable-v0.3.12 board readability are preserved before promotion.
-- Census and reconciliation are read-only; real cutover changes only the explicit board policy.
+- Census and reconciliation are read-only; a digest-bound real cutover changes only the explicit board policy.
 - No historical ticket is reopened and no excluded ticket joins the v0.3.13 roster.
 
 ## Deviation rules

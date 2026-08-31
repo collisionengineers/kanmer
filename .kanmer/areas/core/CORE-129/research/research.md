@@ -20,10 +20,11 @@ The live examples still reproduce the unsafe authority boundary:
 
 A read-only census of the live board found 298 `proof/proof.md` files:
 
-- 80 contain an `attempts` field.
-- 218 are legacy records without attempts.
-- 28 have a raw top-level verdict that differs from the last physical attempt; current attempts do not identify which entries are authoritative, so this is a census signal rather than a safe verdict.
-- Five records resemble valid single-attempt PASS records, but none carries the final versioned authority contract.
+- 80 contain a raw `attempts` field; 218 do not.
+- Two attempt-bearing records ([[GUI-133]] and [[GUI-135]]) are not YAML-parseable.
+- Zero records carry schema 2 or the final authority markers.
+- A raw scan finds 30 top-level/last-entry differences among parseable ledgers. The earlier 28 count excluded blank or non-contract verdict shapes; neither number is authority. The implementation must emit deterministic valid/legacy/invalid buckets and a digest from the shared parser.
+- Five records resemble single-attempt PASS candidates, but all remain legacy because none carries the final versioned authority contract.
 
 Historical records must not be rewritten, reopened or silently reclassified. A free-form prose heuristic is not safe enough to convert old bodies into machine authority. CORE-042 and GUI-141 must instead be reported as legacy/unvalidated by the census and refused as new Done authority once strict mode is deliberately enabled.
 
@@ -35,8 +36,9 @@ Add one core parser shared by the gate and reconciliation. A current record is v
 - a non-empty ordered `attempts[]` ledger;
 - per-attempt `attempted_at`, `result`, `authority: authoritative | supporting`, summary, and optional command/cwd/exit fields;
 - at least one authoritative attempt;
-- valid enums, SHA/timestamps, paired command/exit fields and chronological order;
-- top-level result equal to the latest authoritative attempt.
+- valid enums, SHA/timestamps, all-or-none command/cwd/exit evidence, and strictly increasing attempt timestamps with ties refused;
+- exit/result consistency when an exit is present: PASS requires zero and FAIL requires non-zero;
+- top-level result equal to the latest authoritative attempt, with compatible failure-class authority (PASS omits it; FAIL uses implementation, plan or transient; INCONCLUSIVE uses inconclusive).
 
 A later authoritative FAIL or INCONCLUSIVE invalidates an earlier PASS. A later supporting command does not replace the authoritative verdict. A valid current-schema single authoritative PASS remains valid. Consistent FAIL/INCONCLUSIVE records remain writable and stay Verifying.
 
@@ -48,7 +50,8 @@ Use the existing board-upgrade path rather than a second workflow tool or a proc
 
 - Add one optional board proof-validation policy. Fresh boards default to strict; an existing board with the field absent resolves to report mode.
 - Extend the existing `migrate_board` dry run to return the proof census and exact legacy/invalid ticket diagnostics without writing.
-- A real migration enables strict mode only after producing the same census. It writes the policy only; it never rewrites proof documents or item stages.
+- Dry run returns a deterministic digest over the ordered census. A real report-to-strict migration requires that exact digest, repeats the census immediately, and refuses without writing when the digest drifted.
+- A successful real migration writes the policy only; it never rewrites proof documents or item stages.
 - In report mode, legacy/invalid records remain visible with warnings and preserve historical Done state.
 - In strict mode, entering Done requires a valid current-schema PASS. Legacy, invalid, contradictory, FAIL and INCONCLUSIVE records are not satisfied.
 - Existing Done tickets are not re-opened; the gate applies only to a future transition.
@@ -71,7 +74,8 @@ Replace the MCP-only proof decoder with the shared core parser.
 - Current single authoritative PASS is accepted and still requires exact merge-SHA equality.
 - PASS followed by authoritative FAIL or INCONCLUSIVE is not Done-eligible.
 - Top-level result disagreeing with the latest authoritative attempt is invalid.
-- Empty attempts, no authoritative attempt, malformed entry, invalid enum/SHA/timestamp/exit pairing and invalid chronology are refused.
+- Empty attempts, no authoritative attempt, malformed entry, invalid enum/SHA/timestamp/exit pairing, result/exit contradiction, timestamp ties or reversals, and incompatible failure class are refused.
+- Strict authority comes only from canonical `proof/proof.md`; another Markdown file in the proof folder cannot satisfy the gate.
 - A later supporting-only attempt does not replace the authoritative verdict.
 - Consistent FAIL/INCONCLUSIVE remains Verifying and existing failure-class routing remains intact.
 - Legacy CORE-042-like and GUI-141-like records are reported before cutover and cannot authorise a new Done move under strict policy.

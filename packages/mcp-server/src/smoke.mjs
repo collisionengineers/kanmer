@@ -2565,7 +2565,8 @@ Second proof attempt passed; the first failure is retained.
     ).id;
     const [m1, m2, m3, stranger] = [await member("batch member 1"), await member("batch member 2"), await member("batch member 3"), await member("batch stranger")];
     for (const id of [m1, m2, m3, stranger]) await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: "# Batch" } });
-    execFileSync("git", ["worktree", "add", "-b", "batch-branch", path.join(sandbox, ".worktrees", "batch"), expectedBoardBranch], {
+    const batchWorktree = path.join(sandbox, ".worktrees", "batch");
+    execFileSync("git", ["worktree", "add", "-b", "batch-branch", batchWorktree, expectedBoardBranch], {
       cwd: sandbox, windowsHide: true, stdio: "ignore",
     });
     const batchTake = {
@@ -2644,6 +2645,51 @@ Second proof attempt passed; the first failure is retained.
       "",
     ].join("\n");
     await client.callTool({ name: "set_ticket_doc", arguments: { id: m2, doc: "plan", content: untakenBatchPlan } });
+
+    const movedBatchWorktree = path.join(sandbox, ".worktrees", "batch-moved");
+    execFileSync("git", ["worktree", "move", batchWorktree, movedBatchWorktree], {
+      cwd: sandbox, windowsHide: true, stdio: "ignore",
+    });
+    const refusedMovedUntakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m2, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    const siblingAfterMovedRefusal = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } })));
+    check(
+      "an untaken frozen member refuses a moved projected worktree without acquiring a lease",
+      refusedMovedUntakenBatchPacket.ready === false &&
+        refusedMovedUntakenBatchPacket.reason.includes("cannot be resolved on disk") &&
+        !siblingAfterMovedRefusal.taken_at && !siblingAfterMovedRefusal.lease_id,
+      JSON.stringify({ packet: refusedMovedUntakenBatchPacket, sibling: siblingAfterMovedRefusal }),
+    );
+    execFileSync("git", ["worktree", "move", movedBatchWorktree, batchWorktree], {
+      cwd: sandbox, windowsHide: true, stdio: "ignore",
+    });
+
+    const wrongProjectedBranch = "batch-projected-wrong-branch";
+    execFileSync("git", ["-C", batchWorktree, "checkout", "-b", wrongProjectedBranch], {
+      windowsHide: true, stdio: "ignore",
+    });
+    const refusedWrongBranchUntakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m2, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    const siblingAfterWrongBranchRefusal = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } })));
+    check(
+      "an untaken frozen member refuses a wrong-branch projected worktree without acquiring a lease",
+      refusedWrongBranchUntakenBatchPacket.ready === false &&
+        refusedWrongBranchUntakenBatchPacket.reason.includes(batchTake.branch) &&
+        refusedWrongBranchUntakenBatchPacket.reason.includes(wrongProjectedBranch) &&
+        !siblingAfterWrongBranchRefusal.taken_at && !siblingAfterWrongBranchRefusal.lease_id,
+      JSON.stringify({ packet: refusedWrongBranchUntakenBatchPacket, sibling: siblingAfterWrongBranchRefusal }),
+    );
+    execFileSync("git", ["-C", batchWorktree, "checkout", batchTake.branch], {
+      windowsHide: true, stdio: "ignore",
+    });
+    execFileSync("git", ["branch", "-D", wrongProjectedBranch], {
+      cwd: sandbox, windowsHide: true, stdio: "ignore",
+    });
+
     const untakenBatchPacket = JSON.parse(textOf(await client.callTool({
       name: "get_execution_packet",
       arguments: { id: m2, controller_run: batchTake.controller_run, step: 1 },

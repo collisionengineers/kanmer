@@ -348,7 +348,7 @@ export function sameWorktreePath(left: string, right: string): boolean {
 
 export type ResolvedPath = { ok: true; path: string } | { ok: false; detail: string };
 
-interface ResumeWorktreeSafety {
+interface ExecutionWorktreeSafety {
   refusal: string | null;
   warnings: string[];
 }
@@ -411,13 +411,21 @@ async function checkedOutBranch(directory: string): Promise<{ ok: true; branch: 
   }
 }
 
-async function unsafeTakenWorktree(
+async function unsafeExecutionWorktree(
   store: KanmerStore,
   project: ProjectIdentity,
   item: Item,
-): Promise<ResumeWorktreeSafety> {
-  if (!item.taken_at || !item.worktree) return { refusal: null, warnings: [] };
-  const candidateLocation = await physicalExistingPath(canonicalWorktreePath(project, item.worktree));
+  workspace: ExecutionPacketTicket["workspace"],
+  batchId: string | null,
+): Promise<ExecutionWorktreeSafety> {
+  if (!item.taken_at && !batchId) return { refusal: null, warnings: [] };
+  if (!workspace.branch || !workspace.worktree) {
+    return {
+      refusal: `Ticket "${item.id}" has incomplete execution-workspace evidence; both branch and worktree are required before issuing an execution packet.`,
+      warnings: [],
+    };
+  }
+  const candidateLocation = await physicalExistingPath(canonicalWorktreePath(project, workspace.worktree));
   if (!candidateLocation.ok) {
     return {
       refusal: `Ticket "${item.id}" records a worktree that cannot be resolved on disk: ${candidateLocation.detail}`,
@@ -468,7 +476,7 @@ async function unsafeTakenWorktree(
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
     // A frozen member of the same batch shares this worktree by design
     // (CORE-124); every other active ticket's worktree remains a refusal.
-    if (item.lease_batch !== undefined && other.lease_batch === item.lease_batch) continue;
+    if (batchId !== null && other.lease_batch === batchId) continue;
     const otherLocation = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
     if (!otherLocation.ok) {
       warnings.push(`Active ticket "${other.id}" has an unresolved recorded worktree: ${otherLocation.detail}`);
@@ -515,9 +523,9 @@ async function unsafeTakenWorktree(
       warnings,
     };
   }
-  if (branch.branch !== item.branch) {
+  if (branch.branch !== workspace.branch) {
     return {
-      refusal: `Ticket "${item.id}" records branch "${item.branch}", but its worktree currently has "${branch.branch}" checked out; this is not a resumable ticket worktree.`,
+      refusal: `Ticket "${item.id}" records branch "${workspace.branch}", but its worktree currently has "${branch.branch}" checked out; this is not a resumable ticket worktree.`,
       warnings,
     };
   }
@@ -671,9 +679,6 @@ export async function getExecutionPacket(input: {
       gates,
     );
   }
-  const worktreeSafety = await unsafeTakenWorktree(store, project, item);
-  if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
-
   let batch: Awaited<ReturnType<KanmerStore["batchState"]>>;
   try {
     batch = await store.batchState(id);
@@ -725,6 +730,8 @@ export async function getExecutionPacket(input: {
     );
   }
   const workspace = packetWorkspace(item, batch);
+  const worktreeSafety = await unsafeExecutionWorktree(store, project, item, workspace, batch?.id ?? null);
+  if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
 
   // MCP client names are not durable agent identities. A later session must
   // deliberately name the exact branch and worktree already recorded before

@@ -46644,9 +46644,15 @@ async function checkedOutBranch(directory) {
     return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
   }
 }
-async function unsafeTakenWorktree(store2, project, item) {
-  if (!item.taken_at || !item.worktree) return { refusal: null, warnings: [] };
-  const candidateLocation = await physicalExistingPath(canonicalWorktreePath(project, item.worktree));
+async function unsafeExecutionWorktree(store2, project, item, workspace, batchId) {
+  if (!item.taken_at && !batchId) return { refusal: null, warnings: [] };
+  if (!workspace.branch || !workspace.worktree) {
+    return {
+      refusal: `Ticket "${item.id}" has incomplete execution-workspace evidence; both branch and worktree are required before issuing an execution packet.`,
+      warnings: []
+    };
+  }
+  const candidateLocation = await physicalExistingPath(canonicalWorktreePath(project, workspace.worktree));
   if (!candidateLocation.ok) {
     return {
       refusal: `Ticket "${item.id}" records a worktree that cannot be resolved on disk: ${candidateLocation.detail}`,
@@ -46695,7 +46701,7 @@ async function unsafeTakenWorktree(store2, project, item) {
   const warnings = [];
   for (const other of await store2.listItems()) {
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
-    if (item.lease_batch !== void 0 && other.lease_batch === item.lease_batch) continue;
+    if (batchId !== null && other.lease_batch === batchId) continue;
     const otherLocation = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
     if (!otherLocation.ok) {
       warnings.push(`Active ticket "${other.id}" has an unresolved recorded worktree: ${otherLocation.detail}`);
@@ -46742,9 +46748,9 @@ async function unsafeTakenWorktree(store2, project, item) {
       warnings
     };
   }
-  if (branch.branch !== item.branch) {
+  if (branch.branch !== workspace.branch) {
     return {
-      refusal: `Ticket "${item.id}" records branch "${item.branch}", but its worktree currently has "${branch.branch}" checked out; this is not a resumable ticket worktree.`,
+      refusal: `Ticket "${item.id}" records branch "${workspace.branch}", but its worktree currently has "${branch.branch}" checked out; this is not a resumable ticket worktree.`,
       warnings
     };
   }
@@ -46858,8 +46864,6 @@ async function getExecutionPacket(input) {
       gates
     );
   }
-  const worktreeSafety = await unsafeTakenWorktree(store2, project, item);
-  if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
   let batch;
   try {
     batch = await store2.batchState(id);
@@ -46909,6 +46913,8 @@ async function getExecutionPacket(input) {
     );
   }
   const workspace = packetWorkspace(item, batch);
+  const worktreeSafety = await unsafeExecutionWorktree(store2, project, item, workspace, batch?.id ?? null);
+  if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
   const exactRecordedResume = resume !== void 0 && item.branch !== void 0 && resume.branch === item.branch && item.worktree !== void 0 && resume.worktree === item.worktree;
   const board = await store2.getBoard();
   const timing = leaseConfig(board);

@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Batch workspaces follow-up: merge gate accepts a batch roster, closeout roster
   discovery, batch hardening (CORE-124 review)
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-31T07:15:00.575Z'
 labels:
   - reliable-autonomy
 groups:
@@ -19,7 +21,7 @@ refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 archived: false
 created: '2026-08-27T21:17:27.817Z'
-updated: '2026-08-27T21:17:27.817Z'
+updated: '2026-08-31T07:15:00.575Z'
 ---
 
 ## What

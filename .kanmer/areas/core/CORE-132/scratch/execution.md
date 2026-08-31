@@ -20,3 +20,14 @@ The exact-head automated review at predecessor `244e9143abffb2066db4e8e9912e4122
 - fails release evidence closed when an immutable attempt link is missing or contradictory.
 
 Focused evidence at the amended head: core release/delivery tests 127/127 PASS; full core 641/641 PASS; core typecheck PASS; plugin byte-identity check PASS; skills/AGENTS/docs/manual checks PASS. A representative validator matrix matched local `git check-ref-format --branch`, including Git's valid `@` and reserved exact `HEAD` cases. The complete clean-checkout rail and hosted exact-head checks remain to be recorded separately before review attestation.
+
+## Exact-head review correction — `ce2645cb082ff5d2a86240c5ae67cffa0f9310f5`
+
+The final automated review at predecessor `e31f2fdc5f740d3c7dbad8fb5175bc9839f7b041` identified four remaining release invariants. One consolidated root-cause correction now:
+
+- treats public lease id/revision as CAS only; ordinary renew/record/complete/fail also require the actual per-request actor, while supersede retains its explicit expired/operator-authorised path;
+- refuses action-inapplicable fields before Git or mutation and refuses contradictory unavailable/recovered observations;
+- follows the immutable successor chain when a successor deliberately drops a predecessor ticket from its fresh roster, so reconciliation cannot preserve stale superseded evidence forever;
+- documents the actor, field, and causal-scope contracts in AGENTS.md and the canonical tool inventory.
+
+Focused evidence at the amended head: core release 78/78 PASS; MCP release 21/21 PASS; protocol smoke 349/349 PASS; core/MCP typechecks PASS; plugin byte identity, skills, AGENTS 31/31, and docs/manual checks PASS; `git diff --check` PASS. The prior detached full rail at `e31f2fdc...` passed after one retained setup INCONCLUSIVE caused by installing dependencies in the wrong worktree. A clean detached full rail and hosted checks for this new exact head remain pending and will be recorded before attestation or merge.

@@ -35,3 +35,7 @@ Focused evidence at the amended head: core release 78/78 PASS; MCP release 21/21
 ## Retained exact-head verification failure — `ce2645cb082ff5d2a86240c5ae67cffa0f9310f5`
 
 A clean detached Windows `npm run verify` attempt reached `mcpb:check` after build, core 647/647, GUI 524/524, MCP 165/165, scripts 155/155, typecheck, docs, smoke 349/349 and headless all passed. It then failed deterministically because the committed plugin MCP bundle differed from the freshly built MCPB server. Cause: the final store-source comment correction happened after the previous bundle generation. No assertion or source behavior failed. The canonical bundle was regenerated, `plugin:check` and `mcpb:check` both passed locally, and the amended exact head is `2aaab24bd62c58a43703b8cef06f431a40825c77`. This FAIL remains part of the verification history; the full rail must pass at the amended SHA.
+
+## Exact-head Windows verification PASS — `2aaab24bd62c58a43703b8cef06f431a40825c77`
+
+Fresh detached worktree, clean tracked state, `npm ci` exit 0, then one complete `npm run verify` exit 0. Results: core 647/647 (release 78/78), GUI 524/524, MCP 165/165 (release 21/21), scripts 155/155, smoke 349/349, protocol 50/50, discovery 13/13, AGENTS 31/31; build, all workspace typechecks, docs/manual, skills, headless standalone, MCPB coherence and plugin byte identity all PASS. This proves the deterministic `ce2645cb...` bundle mismatch was corrected rather than retried unchanged. Hosted exact-head checks and fresh independent review remain required before merge.

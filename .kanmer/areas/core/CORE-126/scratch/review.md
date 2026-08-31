@@ -1,43 +1,47 @@
 ---
 kind: review-attestation
 pr: "306"
-head_sha: "213209e2a3cb5a2dd572737f1b930c846b8062e8"
-verdict: needs-changes
-reviewer: "Codex subagent /root/core126_final_review"
+head_sha: "4fd3fadd154fa72f8a8e149c7381931e1b235495"
+verdict: pass
+reviewer: "Codex subagent /root/core126_delta_review"
 independent: true
-plan_hash: "ba95bd91f8924e4a"
-ticket_updated: "2026-08-31T14:56:41.222Z"
-board_sha: "eeabc89c85d90fe61472e63945604198ca1b5cdc"
+plan_hash: "eb9ed4ebdc7d2e3e"
+ticket_updated: "2026-08-31T16:55:37.483Z"
+board_sha: "42a5937dc2f48569be8f1c22240a8e085b84a907"
 expected_reviewers:
   - "GitHub Codex automated review"
-  - "Codex subagent /root/core126_final_review"
+  - "Codex subagent /root/core126_delta_review"
 threads_snapshot:
-  - { source: github, id: "PRRT_kwDOT2PEds6dqX9y", finding: F-003, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dqX94", finding: F-001, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dqX9-", finding: F-002, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6drk17", finding: F-005, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6drk2A", finding: F-006, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6drk2D", finding: F-007, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dseFN", finding: F-008, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dseFQ", finding: F-009, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dseFT", finding: F-010, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dseFW", finding: F-011, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dseFX", finding: F-012, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dtMzL", finding: F-013, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dtMzS", finding: F-014, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dtMza", finding: F-015, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dtMzg", finding: F-016, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dtMzm", finding: F-017, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6duEUg", finding: F-018, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6du2gm", finding: F-019, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6du2gs", finding: F-020, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6du2g0", finding: F-021, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6du2g5", finding: F-022, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6du2g_", finding: F-023, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dwRez", finding: F-024, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dwRe6", finding: F-025, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dxSdp", finding: F-026, resolved: false }
-  - { source: github, id: "PRRT_kwDOT2PEds6dxSdt", finding: F-027, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dqX9y", finding: F-003, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dqX94", finding: F-001, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dqX9-", finding: F-002, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6drk17", finding: F-005, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6drk2A", finding: F-006, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6drk2D", finding: F-007, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFN", finding: F-008, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFQ", finding: F-009, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFT", finding: F-010, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFW", finding: F-011, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFX", finding: F-012, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzL", finding: F-013, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzS", finding: F-014, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMza", finding: F-015, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzg", finding: F-016, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzm", finding: F-017, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6duEUg", finding: F-018, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2gm", finding: F-019, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2gs", finding: F-020, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2g0", finding: F-021, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2g5", finding: F-022, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2g_", finding: F-023, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dwRez", finding: F-024, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dwRe6", finding: F-025, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dxSdp", finding: F-026, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dxSdt", finding: F-027, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dyWTs", finding: F-028, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dyxFl", finding: F-029, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dzPgT", finding: F-030, resolved: true }
+  - { source: github, id: "PRRT_kwDOT2PEds6dzPgY", finding: F-031, resolved: true }
 findings:
   - id: F-001
     severity: major
@@ -90,7 +94,7 @@ findings:
     disposition: fixed
   - id: F-013
     severity: major
-    summary: "Plural reviews were not bound to each member current ticket and plan evidence."
+    summary: "Plural reviews were not bound to each member's current ticket and plan evidence."
     disposition: fixed
   - id: F-014
     severity: major
@@ -135,33 +139,41 @@ findings:
     disposition: fixed
   - id: F-024
     severity: major
-    summary: "A plural PR against the wrong configured base can pass when strict mode is unset."
+    summary: "A plural PR against the wrong configured base could pass when strict mode was unset."
     disposition: fixed
   - id: F-025
     severity: major
-    summary: "A plural PR from a missing or foreign head repository can pass provenance checks."
+    summary: "A plural PR from a missing or foreign head repository could pass provenance checks."
     disposition: fixed
   - id: F-026
     severity: major
-    summary: "An untaken terminal or archived batch member can receive a ready packet and be taken, racing terminal cleanup."
-    disposition: open
+    summary: "A terminal or archived batch member could receive a ready packet and race cleanup."
+    disposition: fixed
   - id: F-027
     severity: minor
-    summary: "Canonical prose overclaims search_items as a complete archived batch-roster census."
-    disposition: open
+    summary: "Canonical prose overclaimed search_items as a complete archived batch-roster census."
+    disposition: fixed
+  - id: F-028
+    severity: major
+    summary: "Fresh batch declaration bypassed the one-writer workspace occupancy check."
+    disposition: fixed
+  - id: F-029
+    severity: major
+    summary: "Final member release could erase the manifest before shared Git cleanup."
+    disposition: fixed
+  - id: F-030
+    severity: minor
+    summary: "The automated review requested rejection of duplicate normalized footer IDs."
+    disposition: rejected-with-reason
+    reason: "The frozen CORE-126 plan explicitly normalizes duplicates away, while exact unique-roster equality still rejects every omitted or extra member."
+  - id: F-031
+    severity: major
+    summary: "A PASS review could retain an open blocker or major finding."
+    disposition: fixed
 ---
 
 # Independent exact-head delta review — CORE-126 / PR #306
 
-## Verdict
+PASS at exact head `4fd3fadd154fa72f8a8e149c7381931e1b235495` against base `c1bc3be8532150832328a6d7f62ecd94cdcf6220`.
 
-Needs changes at exact head `213209e2a3cb5a2dd572737f1b930c846b8062e8`.
-
-Hosted verify passed on that exact head. F-024 and F-025 are fixed. The settled exact-head automated review and fresh independent reviewer identified one remaining major and one minor; no other blocker or major was found in the bounded delta.
-
-## Required bounded remediation
-
-- F-026: expose manifest lifecycle state through `BatchState`; require an active manifest and a selected nonterminal member before projecting a shared workspace; recheck active/nonterminal member state inside the core lease lock before any take write; add zero-write negatives for archived, Done, and releasing members while preserving the active untaken positive and F-018 physical-worktree refusals.
-- F-027: correct canonical prose so `list_items include_archived:true` is the complete batch-roster census and `search_items` only projects matching non-archived results; pin the narrower contract with a negative prose fixture.
-
-No new tool, stage, service, dependency, workflow architecture, credential, rotation, or unrelated feature is authorized.
+The expected automated reviewer settled on this head at 2026-08-31T17:00:01Z with no new suggestion thread. The independent delta reviewed F-029 through F-031, changed lines, affected review-evidence callers and focused/full tests. No open blocker, major, minor, or note remains. Hosted verify and the authoritative clean Windows rail passed at the exact head; all 30 GitHub threads carry public dispositions and are resolved.

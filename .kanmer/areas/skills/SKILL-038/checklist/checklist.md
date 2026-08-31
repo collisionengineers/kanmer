@@ -58,11 +58,11 @@
 - [x] Push prior exact head `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`
   with lease against remote head `5d13609c39b27b99df5f586a0bb300cdf1c591cc`.
 - [x] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
-- [ ] Wait for every expected automated reviewer on the exact head.
-- [ ] Obtain one fresh independent delta review bound to the exact head and
+- [x] Wait for every expected automated reviewer on the exact head.
+- [x] Obtain one fresh independent delta review bound to the exact head and
   pushed board inputs.
-- [ ] Publicly disposition and resolve every current GitHub thread.
-- [ ] Replace the whole-file review attestation with an exact-head PASS.
+- [x] Publicly disposition and resolve every current GitHub thread.
+- [x] Replace the whole-file review attestation with an exact-head PASS.
 - [ ] Sync the board and require exact-head `verify` plus `kanmer-gate` green.
 - [ ] Merge PR #304 and verify the exact merge SHA.
 - [ ] Write PASS proof, move through Verifying to Done, release the claim, and

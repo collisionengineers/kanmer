@@ -4,16 +4,15 @@ type: ticket
 title: >-
   Serialize releases with release-channel leases and immutable candidate
   identity
-status: review
+status: done
 area: core
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-28T06:59:47.277Z'
   review: '2026-08-28T07:47:14.196Z'
-taken_at: '2026-08-28T07:10:58.408Z'
-branch: core-132-release-channel-leases
-worktree: .worktrees/core-132
+  verifying: '2026-08-31T07:10:40.594Z'
+  done: '2026-08-31T07:11:34.899Z'
 labels:
   - reliable-autonomy
 groups:
@@ -25,12 +24,12 @@ refs:
   - docs/functional/frd/FRD-031-configurable-delivery-and-release-state.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 commits:
-  - e2a36b856cbb67b7dcbd2cbcee05a3f3874e40d9
+  - c1bc3be8532150832328a6d7f62ecd94cdcf6220
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/303'
 archived: false
 created: '2026-08-28T03:10:57.878Z'
-updated: '2026-08-31T06:22:11.990Z'
+updated: '2026-08-31T07:11:52.499Z'
 ---
 
 ## What

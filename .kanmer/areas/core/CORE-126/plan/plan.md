@@ -181,3 +181,37 @@ The expected automated reviewer settled on the exact final head and the independ
 All work stays within the already-authorized `packages/core/src/types.ts`, `packages/core/src/store.ts`, `packages/core/src/claims.test.ts`, `packages/core/src/merge-gate.ts`, `packages/core/src/merge-gate.test.ts`, `packages/mcp-server/src/errors.ts`, `packages/mcp-server/src/check-pr.test.mjs`, committed bundle, and only directly affected canonical prose/generated artifacts if their contract changes. No delivery-policy redesign, new tool, stage, service, dependency or compatibility architecture is added.
 
 Negative tests cover structured outside-root refusal with unchanged bytes; every invalid plural attestation under non-strict mode while singular compatibility remains unchanged; padded renewal followed by consistent packet/member/closeout behavior; pre-WAL mixed-target refusal plus strict/non-strict gate failure; and exact versus mismatched PR head branches in core and real check-pr fixtures. Run focused checks first, rebuild the committed bundle, commit a clean exact head, then run one authoritative Windows `npm run verify` rail. The next review is strictly a delta over F-008 through F-012 and affected callers/tests.
+
+## Final exact-head review replan — F-013 through F-017
+
+The automated and fresh independent exact-head reviews at `4ef3c8170d9ae247cf8af04fc29981b31899a048` exposed one remaining root invariant: a complete frozen roster must prove each member's own current execution and review evidence, not only roster membership and a shared PR/head.
+
+1. **F-013 — bind each review to current member evidence (major, fix).**
+   - Extend the existing one-snapshot gate packet so every member carries its current ticket `updated` value and current plan-document version.
+   - A plural member review passes only when its parsed `ticket_updated` and `plan_hash` exactly match those current values, in addition to the already mandatory PR, head, verdict and independence checks.
+   - Missing or mismatched member evidence is a hard `STALE_REVIEW` in strict and lenient modes. Preserve singular compatibility behavior.
+
+2. **F-014 — packet-first identity for an untaken frozen sibling (major, fix).**
+   - The execution packet remains the first ticket-specific implementation input.
+   - For a consistent active batch member that is not yet taken, project the immutable manifest branch and portable worktree into the packet ticket/claim/compiled-step workspace fields so the batch controller can take that exact shared location.
+   - Preserve actor plus controller-run checks and refuse pending, inconsistent or foreign-controller batches.
+
+3. **F-015 — require per-member PR trace (major, fix).**
+   - Include each member's `prs` evidence in the gate packet.
+   - Every plural member must record the current PR using the same canonical numeric/URL identity rules as review attestations. Absence or a different PR is a hard error in strict and lenient modes.
+
+4. **F-016 — require actual workspace acquisition before merge (major, fix).**
+   - A plural roster is mergeable only when every member state reports `taken: true`.
+   - An untaken member is a hard batch-roster failure in strict and lenient modes, even if board stage or copied review prose was manually advanced.
+
+5. **F-017 — active pre-manifest v0.3.12 migration (rejected-with-reason).**
+   - The public v0.3.12 tag `7eed70e` contains no `lease_batch` implementation. Pre-manifest CORE-124 batches first appear at later unreleased candidate commit `9c9a698`.
+   - The fixed promotion boundary forbids candidate Kanmer from governing the live board before copied-board acceptance. Therefore no supported v0.3.12 live-board state can contain the alleged batch format.
+   - Do not add a speculative migration for disposable development-era candidate state. F-005's stable/candidate isolation and backup/restore promotion proof remain the safety boundary.
+
+### Focused proof
+
+- Core merge-gate regressions cover copied/stale member evidence, absent/wrong member PRs, and untaken members in strict and lenient modes while preserving singular compatibility.
+- Execution-packet unit and standalone MCP smoke coverage prove an untaken frozen sibling receives the exact manifest branch/worktree before take, then the same controller/run can take it.
+- The public-tag history assertion is recorded in the final review disposition; no compatibility source path is added.
+- Run all affected focused suites, generated-artifact checks, and one clean authoritative Windows `npm run verify` at the final new head.

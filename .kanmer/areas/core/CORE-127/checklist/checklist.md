@@ -17,4 +17,4 @@
 - [x] No later packet is issued without PASS for the complete exact prior packet.
 - [x] Board, ticket and activity bytes are unchanged by packet-aware reconciliation.
 - [x] Tool roster remains 41 and no new apply action, workflow stage, board field or dependency appears.
-- [ ] Focused tests, `npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact head. Local focused and authoritative Windows verification pass at `fbeab7630d6d287c90f1d59da596890ae507b0be`; hosted checks are pending on PR #307.
+- [ ] Focused tests, `npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact head. Focused remediation evidence passes at `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7`; fresh authoritative Windows verification, hosted verification and the board-synced gate remain pending at that SHA. The earlier full rail at `fbeab7630d6d287c90f1d59da596890ae507b0be` is retained as historical evidence, not final-head proof.

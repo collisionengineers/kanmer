@@ -7,8 +7,10 @@ Exact authorised implementation surface after rebasing onto the CORE-126 merge. 
 | Modify | `packages/core/src/plan.ts` | Strict repository-relative path parsing, documented glob subset and evidence-pin matching |
 | Modify | `packages/core/src/plan.test.ts` | Path-confinement, glob and live-evidence negatives |
 | Modify | `packages/core/src/step-packet.ts` | `step-packet/2`, canonical verification, checklist/baseline shape and pure changed-path classification |
-| Modify | `packages/core/src/step-packet.test.ts` | Packet-version/digest, baseline, path classification, staleness and checklist deviation cases |
-| Add | `packages/mcp-server/src/step-reconciliation.ts` | Bounded Git workspace snapshot and packet/evidence reconstruction shared by the two existing read-only tools |
+| Modify | `packages/core/src/step-packet.test.ts` | Packet-version/digest, baseline, path/symbol classification, staleness and checklist deviation cases |
+| Modify | `packages/core/src/store.ts` | One metadata-first, handle-capped execution-authority snapshot over ticket, document and group evidence |
+| Modify | `packages/core/src/store.test.ts` | Real per-file, aggregate, identity-race and pre-allocation refusal coverage for the bounded snapshot |
+| Add | `packages/mcp-server/src/step-reconciliation.ts` | Bounded Git workspace/symbol facts and consumption of the core execution-authority snapshot shared by the two existing read-only tools |
 | Add | `packages/mcp-server/src/step-reconciliation.test.mjs` | Real fixture-worktree snapshot, rename/untracked/hash/error and read-only cases |
 | Modify | `packages/mcp-server/src/execution-packet.ts` | Stable document snapshot, proven worktree baseline, prior-packet gate and next-packet issuance |
 | Modify | `packages/mcp-server/src/reconciliation.ts` | Add optional packet-aware inspection while preserving the existing delivery/claim recommendation |
@@ -26,7 +28,7 @@ Exact authorised implementation surface after rebasing onto the CORE-126 merge. 
 
 ## Explicitly outside this ticket
 
-- `packages/core/src/store.ts`, batch manifests/lease ownership and merge-gate behavior owned by CORE-126.
+- Batch manifests/lease ownership and merge-gate behavior owned by CORE-126; only the bounded read-only store snapshot is in scope.
 - CORE-133 abandoned-claim classification and FAIL merge-SHA routing.
 - CORE-129 proof schema/consistency enforcement.
 - GUI, governing FRD/ADR/PRD files, release records, delivery policy, workflow stages and package dependencies.

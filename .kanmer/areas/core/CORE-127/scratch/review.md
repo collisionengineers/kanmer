@@ -1,20 +1,20 @@
 ---
 kind: review-attestation
 pr: "307"
-head_sha: "fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7"
+head_sha: "5302e445dc70714e89762dc19fb96754490e3fa9"
 verdict: needs-changes
-reviewer: "Codex subagent /root/core127_delta_consolidation"
+reviewer: "Codex subagent /root/core127_audit"
 independent: true
-plan_hash: "68bbd208cb76bf88"
-ticket_updated: "2026-08-31T20:57:22.845Z"
+plan_hash: "e6a8ce9e627e5392"
+ticket_updated: "2026-08-31T22:05:07.511Z"
 findings:
   - id: F-001
     severity: major
-    summary: "Recursive glob matching could block the MCP process with exponential revisiting."
+    summary: "Recursive runtime glob matching could revisit states exponentially."
     disposition: fixed
   - id: F-002
     severity: major
-    summary: "A selected constrained step could lack a checklist marker and never reconcile PASS."
+    summary: "A selected constrained step could lack a checklist marker."
     disposition: fixed
   - id: F-003
     severity: major
@@ -30,54 +30,66 @@ findings:
     disposition: fixed
   - id: F-006
     severity: major
-    summary: "Unique group references are resolved with unbounded filesystem reads before the packet budget is checked."
-    disposition: open
+    summary: "Unique group references were resolved before their bounded census."
+    disposition: fixed
   - id: F-007
     severity: major
-    summary: "Literal path parsing and equality bypass the aggregate matcher work budget."
-    disposition: open
+    summary: "Literal path parsing and equality bypassed the shared runtime matcher budget."
+    disposition: fixed
   - id: F-008
     severity: major
-    summary: "Workspace file validation and reading are not bound to one filesystem object."
-    disposition: open
+    summary: "Workspace validation and reading were not bound to one filesystem object."
+    disposition: fixed
   - id: F-009
     severity: major
-    summary: "Assume-unchanged or skip-worktree index flags can hide tracked edits from porcelain status."
+    summary: "Index flags could hide tracked edits from porcelain status."
+    disposition: fixed
+  - id: F-010
+    severity: major
+    summary: "Compile-time glob-language proof does not bound alphabet transitions, queue entries or move caches."
     disposition: open
+  - id: F-011
+    severity: major
+    summary: "allowedSymbols is signed worker prose but actual same-file symbol changes are not reconciled."
+    disposition: open
+  - id: F-012
+    severity: major
+    summary: "Ticket, document and group byte limits are checked only after repeated full reads and allocation."
+    disposition: open
+  - id: F-013
+    severity: note
+    summary: "A later group title/body edit is not retained step evidence when context.md is unchanged."
+    disposition: rejected-with-reason
 ---
 
-# Independent exact-head consolidation — CORE-127 / PR #307
+# Independent exact-head delta review — CORE-127 / PR #307
 
-Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7` after the expected automated review settled.
+Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `5302e445dc70714e89762dc19fb96754490e3fa9` after the expected automated reviewer settled on that head.
 
-The 19 changed paths remain within the authorized files packet. The worktree is clean. Hosted `verify` passed in run 33438698598, job 99641326109. The clean local Windows `npm run verify` also passed at this exact head from 2026-08-31T20:58:44.5293965Z through 2026-08-31T21:10:01.7598092Z. The current `kanmer-gate` failure is the known stale stage/old-head attestation snapshot, not a source-test failure.
+The worktree was clean and `git diff --check` passed. Independent focused reruns passed 108/108 core plan/packet tests and 27/27 collector tests. The clean Windows `npm run verify` rail and hosted `verify` also passed at this exact head; those results become historical once remediation changes source.
 
-## Prior findings — fixed
+## Prior findings
 
-- F-001 / `PRRT_kwDOT2PEds6d2-fI`: iterative bounded matching replaces recursion and exhaustion propagates as INCONCLUSIVE.
-- F-002 / `PRRT_kwDOT2PEds6d2-fO`: compilation and strict verification require a mapped unchecked checklist marker.
-- F-003 / `PRRT_kwDOT2PEds6d2-fP`: raw line bodies and CRLF/CR/LF/final-newline state are compared exactly.
-- F-004 / `PRRT_kwDOT2PEds6d2-fS`: exact duplicate evidence is canonicalized, conflicts refuse, and emitted packets self-verify.
-- F-005 / `PRRT_kwDOT2PEds6d2-fU`: both packet paths reject a real linked worktree beneath a dedicated board while retaining the legacy colocated layout.
+F-001 through F-009 are fixed and their affected contracts/tests remain green. F-010 is distinct from runtime matching: the exact NFA relation proof caps processed product states but not the full literal alphabet crossed with those states, queue-before-dedup work, or move-cache growth.
 
-## Exact-head findings — open
+## Blocking findings
 
-### F-006 — major
+### F-010 — major
 
-Thread `PRRT_kwDOT2PEds6d4PLS`. Build and bound one canonical unique-group census before any `getGroup` or `getGroupDoc` call, then use it in both group-resolution paths. Prove the limit, limit plus one with zero context reads, and duplicate canonicalization.
+Add one aggregate proof-work budget covering alphabet construction, epsilon closure, transition scans, cache insertion and queue work. Deduplicate product states before enqueue. Exhaustion must remain `null` and surface as `PLAN_GLOB_COMPLEXITY`. Prove large distinct-alphabet containment and intersection exhaustion.
 
-### F-007 — major
+### F-011 — major
 
-Thread `PRRT_kwDOT2PEds6d4PLb`. Charge parsing, top-level literal equality and segment comparisons to the shared matcher budget before doing their work. Exhaustion across a literal Cartesian product must emit `STEP_PATH_MATCH_INCONCLUSIVE`, never authorize or mislabel the path as undeclared.
+`allowedSymbols` is compiled, hashed and current-plan checked, but `StepReconciliationFacts` contains no collector-derived changed-symbol scope. A change to a different symbol in an allowed file can therefore PASS. Add bounded collector-derived scope evidence; every observed changed symbol must be authorised and unsupported or ambiguous resolution must be typed INCONCLUSIVE. Never accept a worker summary as proof.
 
-### F-008 — major
+### F-012 — major
 
-Thread `PRRT_kwDOT2PEds6d4PLk`. Open one file handle, bind pre/handle/post identity and mode, cap the read itself, and postvalidate size and identity. Deterministic replacement and growth races must be INCONCLUSIVE.
+`documentSample`, core revision reads, fixed/inventory reads and group reads allocate full contents before the packet budget is checked, and the double sample repeats them. Add a metadata-first bounded snapshot path that counts canonical ticket/document/group paths, then reads the ticket record, counted documents, group records and contexts through capped handles under one aggregate byte budget. Compute versions and revision from those bounded bytes. Real limit+1 and aggregate overflow fixtures must refuse before full allocation.
 
-### F-009 — major
+## Non-blocking disposition
 
-Thread `PRRT_kwDOT2PEds6d4PLs`. Add a bounded index-flag census and refuse assume-unchanged plus skip-worktree entries before accepting a workspace snapshot. Prove flags present before issuance and flag drift between samples.
+F-013 is rejected as a current-scope defect. The retained shared evidence contract explicitly binds `<group-id>/context.md`; the live CORE-127 plan and HZN-008 place binding constraints there. Group kind/title/body are issuance-coherence response metadata, double-sampled around Git, not retained step evidence. Expanding retained authority to every group record field is a product-contract change and is not required for this release acceptance.
 
 ## Decision
 
-The four new major findings are valid and block merge. They share the root invariant that authority evidence must be bounded and race-safe before it can authorize a step. Return the same PR and recorded workspace to Implementing for one root-cause replan covering all four. Do not create follow-up tickets or widen the architecture. After source changes, require fresh exact-head automated settlement, one bounded independent delta review, a clean Windows rail, hosted `verify`, and a board-synced `kanmer-gate`.
+NEEDS CHANGES. Return the existing branch, worktree and PR to Implementing for one consolidated F-010/F-011/F-012 root-cause remediation. Do not create follow-up tickets or expand the roster. After source changes, require fresh exact-head automated settlement, one bounded independent delta review, a clean Windows rail, hosted `verify`, synced-board `kanmer-gate`, merge and exact-merge verification.

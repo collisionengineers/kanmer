@@ -7,7 +7,7 @@ Extend the existing constrained step-packet and read-only reconciliation surface
 ## Starting state
 
 - Preparation audit base: `origin/main` `c1bc3be8532150832328a6d7f62ecd94cdcf6220`. Implementation starts only after CORE-126 merges, then rebases onto and records that exact merge base before any source edit.
-- Evidence: `research/research.md`@`3ee113c0c88072d9`, `files/files.md`@`d975dd2947206d8f`, `HZN-008/context.md`@`354c57fe272f7d7f`.
+- Evidence: `research/research.md`@`3ee113c0c88072d9`, `files/files.md`@`9dc7da831b8d1e92`, `HZN-008/context.md`@`354c57fe272f7d7f`.
 - `normalisePlanPath` does not confine paths; forbidden globs use exact membership; live evidence pins need not match.
 - `step-packet/1` has no checklist snapshot or workspace baseline and its canonical digest has no public verifier.
 - `workspaceEvidence` discards changed paths, while `reconcile_ticket` accepts only an id.
@@ -62,7 +62,9 @@ Extend the existing constrained step-packet and read-only reconciliation surface
 | Modify | `packages/core/src/plan.ts` | Strict path parser, glob matcher and evidence-pin validation |
 | Modify | `packages/core/src/plan.test.ts` | Plan path/glob/evidence tests |
 | Modify | `packages/core/src/step-packet.ts` | v2 packet, verifier and pure step reconciliation |
-| Modify | `packages/core/src/step-packet.test.ts` | Packet and classifier tests |
+| Modify | `packages/core/src/step-packet.test.ts` | Packet and path/symbol classifier tests |
+| Modify | `packages/core/src/store.ts` | Metadata-first bounded execution-authority snapshot from exact board bytes |
+| Modify | `packages/core/src/store.test.ts` | Snapshot byte/count/identity/race tests against real files |
 | Add | `packages/mcp-server/src/step-reconciliation.ts` | Git/evidence snapshot collector |
 | Add | `packages/mcp-server/src/step-reconciliation.test.mjs` | Collector fixture tests |
 | Modify | `packages/mcp-server/src/execution-packet.ts` | Stable issuance and prior-packet gate |
@@ -81,7 +83,7 @@ Extend the existing constrained step-packet and read-only reconciliation surface
 
 ## Do not modify
 
-- `packages/core/src/store.ts`, batch sidecars, merge-gate code or lease ownership.
+- Batch sidecars, merge-gate code or lease ownership. In `store.ts`, modify only the bounded read-only execution-authority snapshot seam.
 - CORE-133 abandoned-workspace recovery or FAIL proof routing.
 - CORE-129 proof schema/consistency behavior.
 - `apps/gui/**`, governing documents, release/delivery records, workflow stages or dependencies.
@@ -192,7 +194,7 @@ Extend the existing constrained step-packet and read-only reconciliation surface
 Run from the recorded CORE-127 worktree after CORE-126 merges:
 
 - `npm ci`
-- `npm exec --workspace @kanmer/core -- vitest run src/plan.test.ts src/step-packet.test.ts --no-file-parallelism`
+- `npm exec --workspace @kanmer/core -- vitest run src/plan.test.ts src/step-packet.test.ts src/store.test.ts --no-file-parallelism`
 - `npm run build:core`
 - `npm run build:server`
 - `node --test packages/mcp-server/src/step-reconciliation.test.mjs`
@@ -257,3 +259,39 @@ The first remediation fixed F-001 through F-005. Exact-head automation and indep
 - Focused commands: core plan/packet tests; core and MCP builds; collector tests; reconciliation tests; MCP smoke; protocol; scripts/prose/AGENTS; plugin build and byte check; typecheck; `git diff --check`.
 - The committed standalone MCP bundle must be regenerated after source passes. No dependency, new tool, new stage, new board field, database, watcher or persistent packet state is allowed.
 - The implementation worker stops after one clean commit on the existing branch and PR. The controller then requires exact-head automated settlement, one independent delta review over F-001 through F-009 and affected callers/tests, one fresh clean Windows `npm run verify`, hosted `verify`, synced-board `kanmer-gate`, merge, and exact-merge verification.
+
+
+## Second exact-head root-cause remediation — review head `5302e445dc70714e89762dc19fb96754490e3fa9`
+
+After the F-006–F-009 remediation, exact-head automation and a fresh independent delta review confirmed F-010 through F-012 as three remaining majors. F-013 is rejected with reason in the exact-head review record: the retained shared evidence contract binds `<group-id>/context.md`, while the complete group object remains issuance-coherence metadata. No release-roster or governing-contract expansion is authorized.
+
+### RC-5 — Bound the complete glob-language proof (F-010)
+
+- Files/symbols: `packages/core/src/plan.ts` relation-proof helpers and `packages/core/src/plan.test.ts`.
+- Reuse one aggregate proof context per `validatePlan` call. Charge alphabet construction, NFA transition scans, epsilon-closure edges, product-state/alphabet work, queue insertion and every move-cache insertion before performing them.
+- Deduplicate product states before enqueue and independently bound queue/cache entries. Preserve the canonical equality fast path.
+- Exhaustion returns `null` and remains the existing blocking `PLAN_GLOB_COMPLEXITY` result; an exhausted forbidden proof cannot become allowed or undeclared.
+- Negative cases: thousands of distinct Unicode literals; many declaration pairs sharing one budget; deterministic cache exhaustion; ordinary containment/intersection retains exact results.
+
+### RC-6 — Fail closed on unprovable symbol authority (F-011)
+
+- Files/symbols: `packages/core/src/step-packet.ts::reconcileStepPacket`, its tests, and the canonical AGENTS/plan/execute/auto/tool-reference prose.
+- The current FRD packet carries free-form symbol names without language/parser identity, file mapping, immutable source ranges or AST identities. A generic text/diff heuristic could falsely authorize comments, strings, overloads, nested declarations or unsupported languages.
+- Preserve `allowedSymbols` in the immutable packet. When actual changes exist and that list is non-empty, emit typed `STEP_SYMBOL_SCOPE_INCONCLUSIVE`; forbidden or undeclared path failures retain precedence and are never masked. Empty-symbol packets explicitly authorize at file scope and retain the existing PASS path. No worker summary becomes proof.
+- Negative cases: an allowed file with non-empty symbols is INCONCLUSIVE; text mentioning an allowed name does not authorize it; forbidden/undeclared paths still FAIL; empty-symbol file-scoped packets still PASS; no actual change creates no symbol finding.
+- A future mechanical symbol PASS would require a separately versioned language/parser plus immutable range/AST contract. It is not invented inside this release remediation.
+
+### RC-7 — Cap board evidence before allocation (F-012)
+
+- Files/symbols: `packages/core/src/store.ts::KanmerStore.getExecutionAuthoritySnapshot` with focused private inventory/handle helpers; `packages/core/src/store.test.ts`; `packages/mcp-server/src/step-reconciliation.ts::documentSample`; execution-packet/smoke callers and existing tests.
+- Reuse the store's authoritative item/document/group location logic. Enumerate and deduplicate the canonical ticket, document, group-record and context paths under explicit count bounds before document/group content reads.
+- Stat all authority files and enforce per-file plus aggregate bytes before opening content. Read sequentially through capped handles with pre/handle/post identity, regular-file, link, size and growth checks. Compute parsed item/group values, content versions and the document-inclusive revision from those same bounded bytes.
+- Both whole-ticket and constrained packet paths consume this one snapshot. Scratch/reference remain revision-exempt, but their inventory and returned version bytes remain bounded; the existing 300-small-exempt-document case stays valid.
+- Negative cases: counted limit and limit+1 with zero later content reads; real oversized document/group/context; aggregate small-file overflow; identity replacement/growth; handle closure; oversized whole-ticket and constrained issuance refuse before Git observation.
+
+### Second-remediation acceptance and stop
+
+- F-010 large-alphabet and shared-budget proofs terminate deterministically without losing exact ordinary semantics.
+- F-011 makes symbol authority fail closed: non-empty symbols plus actual changes cannot PASS without a future versioned parser/range contract, while path failures retain FAIL precedence.
+- F-012 proves real pre-allocation refusal and derives revision/evidence versions only from bounded exact bytes in both packet paths.
+- Update canonical prose and its existing assertions, regenerate the MCP bundle, run the complete focused matrix, and stop on one clean commit in the existing branch/PR. The controller will then require fresh automated settlement, one final independent delta review, one fresh clean Windows rail, hosted `verify`, synced-board `kanmer-gate`, merge and exact-merge verification.

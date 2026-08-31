@@ -331,16 +331,65 @@ describe("validatePlan with a selected step", () => {
         .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `a/**/**/b`"),
     );
     expect(validatePlan(consecutiveRecursive, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+
+    for (const [authority, requested] of [
+      ["src/*/**", "src/**/file.ts"],
+      ["a/*/**/b", "a/**/x/b"],
+      ["a/*/**", "a/**/x"],
+      ["*/**", "**"],
+      ["a/**/*", "a/*/**"],
+    ]) {
+      const crossSegment = parsePlan(
+        GOOD_PLAN
+          .replace("| Modify | `src/queue.ts` | retry loop |", `| Modify | \`${authority}\` | retry sources |`)
+          .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+          .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", `- Files: \`${requested}\``),
+      );
+      expect(validatePlan(crossSegment, { step: 1 }).findings.some(
+        (finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED",
+      )).toBe(false);
+    }
   });
 
   it("rejects a requested glob language that can escape its Expected-files authority", () => {
-    const plan = parsePlan(
+    for (const [authority, requested] of [
+      ["src/a*.ts", "src/*.ts"],
+      ["src/*/**", "src/**"],
+      ["src/*/**/file.ts", "src/**/file.ts"],
+      ["a/*/**/b", "a/**/b"],
+      ["a/**/x/b", "a/*/**/b"],
+    ]) {
+      const plan = parsePlan(
+        GOOD_PLAN
+          .replace("| Modify | `src/queue.ts` | retry loop |", `| Modify | \`${authority}\` | retry sources |`)
+          .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+          .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", `- Files: \`${requested}\``),
+      );
+      expect(validatePlan(plan, { step: 1 }).findings.some(
+        (finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED",
+      )).toBe(true);
+    }
+  });
+
+  it("authorizes canonical-equal long globs and reports non-identical proof-budget exhaustion explicitly", () => {
+    const longPath = Array.from({ length: 14 }, () => "a*".repeat(100)).join("/");
+    const planFor = (requested: string): ParsedPlan => parsePlan(
       GOOD_PLAN
-        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/a*.ts` | retry sources |")
+        .replace("| Modify | `src/queue.ts` | retry loop |", `| Modify | \`${longPath}\` | retry sources |`)
         .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
-        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`"),
+        .replace("- `src/vendor/bundle.js` — generated output.", "- No generated paths are in scope.")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", `- Files: \`${requested}\``),
     );
-    expect(validatePlan(plan, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(true);
+
+    const equal = validatePlan(planFor(longPath), { step: 1 });
+    expect(equal.findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+    expect(equal.findings.some((finding) => finding.code === "PLAN_GLOB_COMPLEXITY")).toBe(false);
+
+    const exhausted = validatePlan(planFor(`${longPath}b`), { step: 1 });
+    expect(exhausted.findings.some(
+      (finding) => finding.code === "PLAN_GLOB_COMPLEXITY" && finding.severity === "blocker",
+    )).toBe(true);
+    expect(exhausted.findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
   });
 
   it("does not let narrow Expected-files literals authorize a broader step glob", () => {

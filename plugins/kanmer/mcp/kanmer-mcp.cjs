@@ -39501,144 +39501,215 @@ function planPathMatches(patternValue, pathValue) {
   };
   return visit(0, 0);
 }
-function segmentClosure(pattern, seed) {
-  const result = new Set(seed);
+var MAX_GLOB_NFA_STATES = 8192;
+var MAX_GLOB_PRODUCT_STATES = 65536;
+var GlobAutomatonLimitError = class extends Error {
+};
+function compileGlobNfa(pattern) {
+  const transitions = [];
+  const state = () => {
+    if (transitions.length >= MAX_GLOB_NFA_STATES) throw new GlobAutomatonLimitError();
+    transitions.push([]);
+    return transitions.length - 1;
+  };
+  const connect = (from, transition) => {
+    transitions[from].push(transition);
+  };
+  const epsilon = () => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "epsilon", to: end });
+    return { start, end };
+  };
+  const literal2 = (value) => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "literal", to: end, value });
+    return { start, end };
+  };
+  const nonSlash = () => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "non-slash", to: end });
+    return { start, end };
+  };
+  const sequence = (fragments) => {
+    if (fragments.length === 0) return epsilon();
+    for (let index = 1; index < fragments.length; index += 1) {
+      connect(fragments[index - 1].end, { kind: "epsilon", to: fragments[index].start });
+    }
+    return { start: fragments[0].start, end: fragments[fragments.length - 1].end };
+  };
+  const zeroOrMore = (fragment) => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "epsilon", to: end });
+    connect(start, { kind: "epsilon", to: fragment.start });
+    connect(fragment.end, { kind: "epsilon", to: end });
+    connect(fragment.end, { kind: "epsilon", to: fragment.start });
+    return { start, end };
+  };
+  const oneOrMore = (fragment) => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "epsilon", to: fragment.start });
+    connect(fragment.end, { kind: "epsilon", to: end });
+    connect(fragment.end, { kind: "epsilon", to: fragment.start });
+    return { start, end };
+  };
+  const anySegment = () => oneOrMore(nonSlash());
+  const ordinarySegment = (segment) => {
+    if (segment === "*") return anySegment();
+    return sequence(Array.from(segment, (character) => character === "*" ? zeroOrMore(nonSlash()) : literal2(character)));
+  };
+  try {
+    const segments = pattern.split("/").filter(
+      (segment, index, all) => segment !== "**" || all[index - 1] !== "**"
+    );
+    let compiled;
+    if (segments.length === 1 && segments[0] === "**") {
+      compiled = sequence([
+        anySegment(),
+        zeroOrMore(sequence([literal2("/"), anySegment()]))
+      ]);
+    } else {
+      const fragments = [];
+      for (let index = 0; index < segments.length; index += 1) {
+        const segment = segments[index];
+        if (segment === "**") {
+          fragments.push(index === 0 ? zeroOrMore(sequence([anySegment(), literal2("/")])) : zeroOrMore(sequence([literal2("/"), anySegment()])));
+          continue;
+        }
+        const followsLeadingRecursive = index === 1 && segments[0] === "**";
+        if (index > 0 && !followsLeadingRecursive) fragments.push(literal2("/"));
+        fragments.push(ordinarySegment(segment));
+      }
+      compiled = sequence(fragments);
+    }
+    return { transitions, start: compiled.start, accept: compiled.end };
+  } catch (error2) {
+    if (error2 instanceof GlobAutomatonLimitError) return null;
+    throw error2;
+  }
+}
+function epsilonClosure(nfa, seed) {
+  const closure = new Set(seed);
   const queue = [...seed];
-  while (queue.length) {
-    const index = queue.shift();
-    if (pattern[index] !== "*" || result.has(index + 1)) continue;
-    result.add(index + 1);
-    queue.push(index + 1);
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const current = queue[cursor];
+    for (const transition of nfa.transitions[current]) {
+      if (transition.kind !== "epsilon" || closure.has(transition.to)) continue;
+      closure.add(transition.to);
+      queue.push(transition.to);
+    }
   }
-  return [...result].sort((left, right) => left - right);
+  return [...closure].sort((left, right) => left - right);
 }
-function segmentTransition(pattern, states, character) {
+function globAlphabet(left, right) {
+  const literals = /* @__PURE__ */ new Set();
+  for (const nfa of [left, right]) {
+    for (const transitions of nfa.transitions) {
+      for (const transition of transitions) {
+        if (transition.kind === "literal" && transition.value !== "/") literals.add(transition.value);
+      }
+    }
+  }
+  const ordered = [...literals].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+  return ["/", ...ordered, null];
+}
+function globMove(nfa, states, character, cache) {
+  const characterKey = character === null ? "other" : `literal:${character}`;
+  const key = `${states.join(",")}|${characterKey}`;
+  const cached3 = cache.get(key);
+  if (cached3) return cached3;
   const next = /* @__PURE__ */ new Set();
-  for (const index of segmentClosure(pattern, states)) {
-    if (index >= pattern.length) continue;
-    if (pattern[index] === "*") next.add(index);
-    else if (character !== null && pattern[index] === character) next.add(index + 1);
+  for (const current of states) {
+    for (const transition of nfa.transitions[current]) {
+      if (transition.kind === "literal") {
+        if (character !== null && transition.value === character) next.add(transition.to);
+      } else if (transition.kind === "non-slash" && character !== "/") {
+        next.add(transition.to);
+      }
+    }
   }
-  return segmentClosure(pattern, [...next]);
+  const result = epsilonClosure(nfa, [...next]);
+  cache.set(key, result);
+  return result;
 }
-function segmentDeclarationCovers(authorityValue, requestedValue) {
-  const authority = Array.from(authorityValue);
-  const requested = Array.from(requestedValue);
-  const alphabet = [
-    ...new Set([...authority, ...requested].filter((character) => character !== "*")),
-    null
-  ];
-  const startAuthority = segmentClosure(authority, [0]);
-  const startRequested = segmentClosure(requested, [0]);
-  const queue = [
-    { authority: startAuthority, requested: startRequested, consumed: false }
-  ];
+function globLanguageContained(authority, requested) {
+  const alphabet = globAlphabet(authority, requested);
+  const authorityCache = /* @__PURE__ */ new Map();
+  const requestedCache = /* @__PURE__ */ new Map();
+  const queue = [{
+    authority: epsilonClosure(authority, [authority.start]),
+    requested: epsilonClosure(requested, [requested.start])
+  }];
   const seen = /* @__PURE__ */ new Set();
-  while (queue.length) {
-    const current = queue.shift();
-    const key = `${current.authority.join(",")}|${current.requested.join(",")}|${current.consumed ? 1 : 0}`;
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const current = queue[cursor];
+    const key = `${current.authority.join(",")}|${current.requested.join(",")}`;
     if (seen.has(key)) continue;
+    if (seen.size >= MAX_GLOB_PRODUCT_STATES) return null;
     seen.add(key);
-    const requestedAccepts = current.requested.includes(requested.length);
-    const authorityAccepts = current.authority.includes(authority.length);
-    if (current.consumed && requestedAccepts && !authorityAccepts) return false;
+    if (current.requested.includes(requested.accept) && !current.authority.includes(authority.accept)) {
+      return false;
+    }
     for (const character of alphabet) {
-      const nextRequested = segmentTransition(requested, current.requested, character);
+      const nextRequested = globMove(requested, current.requested, character, requestedCache);
       if (nextRequested.length === 0) continue;
       queue.push({
-        authority: segmentTransition(authority, current.authority, character),
-        requested: nextRequested,
-        consumed: true
+        authority: globMove(authority, current.authority, character, authorityCache),
+        requested: nextRequested
       });
     }
   }
   return true;
 }
+function globLanguagesOverlap(left, right) {
+  const alphabet = globAlphabet(left, right);
+  const leftCache = /* @__PURE__ */ new Map();
+  const rightCache = /* @__PURE__ */ new Map();
+  const queue = [{
+    left: epsilonClosure(left, [left.start]),
+    right: epsilonClosure(right, [right.start])
+  }];
+  const seen = /* @__PURE__ */ new Set();
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const current = queue[cursor];
+    const key = `${current.left.join(",")}|${current.right.join(",")}`;
+    if (seen.has(key)) continue;
+    if (seen.size >= MAX_GLOB_PRODUCT_STATES) return null;
+    seen.add(key);
+    if (current.left.includes(left.accept) && current.right.includes(right.accept)) return true;
+    for (const character of alphabet) {
+      const nextLeft = globMove(left, current.left, character, leftCache);
+      if (nextLeft.length === 0) continue;
+      const nextRight = globMove(right, current.right, character, rightCache);
+      if (nextRight.length === 0) continue;
+      queue.push({ left: nextLeft, right: nextRight });
+    }
+  }
+  return false;
+}
 function declarationCovers(authorityValue, requestedValue) {
   const authority = parsePlanPath(authorityValue, { allowPattern: true });
   const requested = parsePlanPath(requestedValue, { allowPattern: true });
   if (!authority.ok || !requested.ok) return false;
-  if (!requested.pattern) return planPathMatches(authority.path, requested.path);
-  if (!authority.pattern) return false;
-  const collapseRecursive = (segments) => segments.filter(
-    (segment, index) => segment !== "**" || segments[index - 1] !== "**"
-  );
-  const authoritySegments = collapseRecursive(authority.path.split("/"));
-  const requestedSegments = collapseRecursive(requested.path.split("/"));
-  const memo = /* @__PURE__ */ new Map();
-  const visit = (authorityIndex, requestedIndex) => {
-    const key = `${authorityIndex}:${requestedIndex}`;
-    const cached3 = memo.get(key);
-    if (cached3 !== void 0) return cached3;
-    let result;
-    if (requestedIndex === requestedSegments.length) {
-      result = authoritySegments.slice(authorityIndex).every((segment) => segment === "**");
-    } else if (authorityIndex === authoritySegments.length) {
-      result = false;
-    } else if (authoritySegments[authorityIndex] === "**") {
-      if (authorityIndex === authoritySegments.length - 1) {
-        result = true;
-      } else if (requestedSegments[requestedIndex] === "**") {
-        result = visit(authorityIndex + 1, requestedIndex + 1) || visit(authorityIndex, requestedIndex + 1);
-      } else {
-        result = visit(authorityIndex + 1, requestedIndex) || visit(authorityIndex, requestedIndex + 1);
-      }
-    } else if (requestedSegments[requestedIndex] === "**") {
-      result = false;
-    } else {
-      result = segmentDeclarationCovers(
-        authoritySegments[authorityIndex],
-        requestedSegments[requestedIndex]
-      ) && visit(authorityIndex + 1, requestedIndex + 1);
-    }
-    memo.set(key, result);
-    return result;
-  };
-  return visit(0, 0);
-}
-function segmentDeclarationsMayOverlap(left, right) {
-  const a = Array.from(left);
-  const b = Array.from(right);
-  const queue = [[0, 0]];
-  const seen = /* @__PURE__ */ new Set();
-  while (queue.length) {
-    const [i, j] = queue.shift();
-    const key = `${i}:${j}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    if (i === a.length && j === b.length) return true;
-    const leftStar = a[i] === "*";
-    const rightStar = b[j] === "*";
-    if (leftStar) queue.push([i + 1, j]);
-    if (rightStar) queue.push([i, j + 1]);
-    if (i >= a.length || j >= b.length) continue;
-    if (leftStar || rightStar || a[i] === b[j]) {
-      const next = [leftStar ? i : i + 1, rightStar ? j : j + 1];
-      if (next[0] !== i || next[1] !== j) queue.push(next);
-    }
-  }
-  return false;
+  if (authority.path === requested.path) return true;
+  const authorityNfa = compileGlobNfa(authority.path);
+  const requestedNfa = compileGlobNfa(requested.path);
+  if (!authorityNfa || !requestedNfa) return null;
+  return globLanguageContained(authorityNfa, requestedNfa);
 }
 function declarationsOverlap(leftValue, rightValue) {
   const left = parsePlanPath(leftValue, { allowPattern: true });
   const right = parsePlanPath(rightValue, { allowPattern: true });
   if (!left.ok || !right.ok) return true;
-  const a = left.path.split("/");
-  const b = right.path.split("/");
-  const seen = /* @__PURE__ */ new Set();
-  const visit = (i, j) => {
-    const key = `${i}:${j}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    if (i === a.length && j === b.length) return true;
-    if (i === a.length) return b.slice(j).every((segment) => segment === "**");
-    if (j === b.length) return a.slice(i).every((segment) => segment === "**");
-    if (a[i] === "**" && b[j] === "**") return visit(i + 1, j) || visit(i, j + 1);
-    if (a[i] === "**") return visit(i + 1, j) || visit(i, j + 1);
-    if (b[j] === "**") return visit(i, j + 1) || visit(i + 1, j);
-    return segmentDeclarationsMayOverlap(a[i], b[j]) && visit(i + 1, j + 1);
-  };
-  return visit(0, 0);
+  if (left.path === right.path) return true;
+  const leftNfa = compileGlobNfa(left.path);
+  const rightNfa = compileGlobNfa(right.path);
+  if (!leftNfa || !rightNfa) return null;
+  return globLanguagesOverlap(leftNfa, rightNfa);
 }
 function sectionContent(sections, title) {
   const wanted = title.toLocaleLowerCase();
@@ -40019,7 +40090,17 @@ function stepFindings(plan, severity, selected) {
       }
     }
     for (const file of step.files) {
-      if (!declared.some((authority) => declarationCovers(authority, file))) {
+      const declarationProofs = declared.map((authority) => declarationCovers(authority, file));
+      if (!declarationProofs.includes(true) && declarationProofs.includes(null)) {
+        findings.push({
+          code: "PLAN_GLOB_COMPLEXITY",
+          severity: stepSeverity,
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} path "${file}" exceeds the bounded glob-containment proof budget; simplify its Expected files or step declaration.`,
+          detail: file
+        });
+      } else if (!declarationProofs.includes(true)) {
         findings.push({
           code: "PLAN_STEP_FILE_UNDECLARED",
           severity: stepSeverity,
@@ -40029,13 +40110,23 @@ function stepFindings(plan, severity, selected) {
           detail: file
         });
       }
-      if (forbidden.some((pattern) => declarationsOverlap(pattern, file))) {
+      const forbiddenProofs = forbidden.map((pattern) => declarationsOverlap(pattern, file));
+      if (forbiddenProofs.includes(true)) {
         findings.push({
           code: "PLAN_STEP_FILE_FORBIDDEN",
           severity: stepSeverity,
           section: "Ordered steps",
           step: step.index,
           message: `Step ${step.index} names "${file}", which the plan's Do not modify section forbids.`,
+          detail: file
+        });
+      } else if (forbiddenProofs.includes(null)) {
+        findings.push({
+          code: "PLAN_GLOB_COMPLEXITY",
+          severity: stepSeverity,
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} path "${file}" exceeds the bounded forbidden-glob intersection proof budget; simplify its Do not modify or step declaration.`,
           detail: file
         });
       }

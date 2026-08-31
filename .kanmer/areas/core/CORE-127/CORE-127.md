@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Detect forbidden-file changes, stale evidence and plan deviation before the
   next step packet
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-31T15:53:50.295Z'
 labels:
   - reliable-autonomy
 groups:
@@ -17,7 +19,7 @@ refs:
   - docs/functional/frd/FRD-033-constrained-preparation-and-step-packets.md
 archived: false
 created: '2026-08-27T23:06:18.794Z'
-updated: '2026-08-27T23:06:18.794Z'
+updated: '2026-08-31T15:53:50.295Z'
 ---
 
 ## What

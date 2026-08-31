@@ -167,3 +167,17 @@ Exact remediation base is PR #306 head `405a65c2736001de4adfa97f5b4a999f57348054
 - F-007 is fixed only in plural batch-gate evaluation. A dependency whose blocker is a member of the exact immutable roster is ordered within the shared PR and is excluded from `DEPENDENCY_BLOCKED`; external and dangling blockers, and every singular-ticket rule, remain unchanged.
 
 Implementation stays in the already-authorized `packages/core/src/store.ts`, `packages/core/src/claims.test.ts`, `packages/core/src/merge-gate.ts`, `packages/core/src/merge-gate.test.ts`, canonical contract prose, generated manual and committed plugin bundle. Negative cases cover an out-of-repository worktree, a copied/relocated pending or active batch, an external/dangling blocker, and unchanged singular behavior. Verify with focused claims and merge-gate tests, build/check-pr/smoke/protocol/prose/plugin checks, then one clean full Windows `npm run verify` at the final head.
+
+## Final settled-review consolidation at `8665908dd21dd282823161bbeadde272b3944474`
+
+The expected automated reviewer settled on the exact final head and the independent delta reviewer confirmed one last bounded batch. This is a continuation of the existing root-cause remediation, not a new product replan:
+
+- F-008 (minor) is fixed by classifying `BATCH_WORKSPACE_INVALID` as structured `LEASE_CONFLICT`; the outside-root refusal remains zero-write.
+- F-009 (major) is fixed only for the validated plural batch path: missing, invalid, stale, wrong-PR/head, non-independent or non-PASS member review evidence is an unconditional error even when singular compatibility mode is lenient.
+- F-010 (major) persists the already-trimmed canonical `controller_run` used for batch renewal authorization, so a padded request cannot corrupt manifest consistency.
+- F-011 (major) resolves every member through the existing delivery policy and refuses a mixed PR-target roster before the pending WAL or any ticket write. The merge gate independently hard-fails a manually corrupted or policy-drifted mixed roster in both strict and non-strict modes.
+- F-012 (major) projects the authoritative manifest branch through `BatchState` and hard-binds the hosted PR head branch to it in both strict and non-strict modes.
+
+All work stays within the already-authorized `packages/core/src/types.ts`, `packages/core/src/store.ts`, `packages/core/src/claims.test.ts`, `packages/core/src/merge-gate.ts`, `packages/core/src/merge-gate.test.ts`, `packages/mcp-server/src/errors.ts`, `packages/mcp-server/src/check-pr.test.mjs`, committed bundle, and only directly affected canonical prose/generated artifacts if their contract changes. No delivery-policy redesign, new tool, stage, service, dependency or compatibility architecture is added.
+
+Negative tests cover structured outside-root refusal with unchanged bytes; every invalid plural attestation under non-strict mode while singular compatibility remains unchanged; padded renewal followed by consistent packet/member/closeout behavior; pre-WAL mixed-target refusal plus strict/non-strict gate failure; and exact versus mismatched PR head branches in core and real check-pr fixtures. Run focused checks first, rebuild the committed bundle, commit a clean exact head, then run one authoritative Windows `npm run verify` rail. The next review is strictly a delta over F-008 through F-012 and affected callers/tests.

@@ -8,6 +8,14 @@
 - [x] Step 4 — Extend the existing `reconcile_ticket` and `get_execution_packet` inputs so an exact PASS is required before any later step packet; prove both calls remain read-only.
 - [x] Step 5 — Update canonical operating prose, regenerate the bundle, run the focused and full rails, push one bounded PR and hand off in Review.
 
+## Root-cause remediation after exact-head review
+
+- [ ] Step 6 — Bound the canonical unique-group census before any group/context I/O in both packet paths; prove over-limit refusal performs zero context reads.
+- [ ] Step 7 — Charge parsing and every literal/wildcard comparison to the aggregate path-match budget; prove exhaustion is INCONCLUSIVE.
+- [ ] Step 8 — Read dirty workspace files through one identity-checked, size-capped handle and reject replacement/growth races.
+- [ ] Step 9 — Reject assume-unchanged and skip-worktree tracked entries with a bounded, non-mutating index-flag census.
+- [ ] Step 10 — Regenerate prose pins/bundle as required and run the complete focused matrix on one clean root-cause commit.
+
 ## Acceptance census
 
 - [x] Escaping/absolute/unsupported paths fail closed; literal, `*` and `**` semantics are pinned by tests.

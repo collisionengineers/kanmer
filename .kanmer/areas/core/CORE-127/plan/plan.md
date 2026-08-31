@@ -219,3 +219,41 @@ Run from the recorded CORE-127 worktree after CORE-126 merges:
 ## Stop condition
 
 Stop when the bounded CORE-127 PR is open at one clean exact head, the post-implementation report is current, the board is synced and CORE-127 is in Review. Do not self-review, merge, verify or start CORE-133 from the implementation run.
+
+## Root-cause remediation replan — exact review head `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7`
+
+The first remediation fixed F-001 through F-005. Exact-head automation and independent review then confirmed F-006 through F-009 as blocking majors. The remediation counter does not authorize a merge through those gaps; this section is the one evidence-based root-cause replan required by the release contract. All four findings share one invariant: every fact used to authorize a worker step must be bounded and bound to the exact object observed before PASS is possible.
+
+### RC-1 — Bound group authority before I/O (F-006)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::documentSample`, `packages/mcp-server/src/execution-packet.ts::groupContexts`, their existing collector/smoke tests.
+- Build one canonical unique group-id census before the first group or context lookup. Apply the packet document/array bound up front, including the already counted ticket-document census; an over-limit request returns an ordinary refusal/INCONCLUSIVE result with zero group-context reads.
+- Use the same bounded canonical census in both whole-ticket and constrained packet paths. Exact duplicate ids collapse once; a missing or conflicting resolved identity still refuses.
+- Negative cases: exactly the limit; limit plus one with no `getGroup`/`getGroupDoc` calls; many duplicates; a missing group after a valid bounded census.
+
+### RC-2 — Charge all path matching work (F-007)
+
+- Files/symbols: `packages/core/src/plan.ts::planPathMatch` and its budget helpers; `packages/core/src/plan.test.ts`; `packages/core/src/step-packet.ts::reconcileStepPacket`; `packages/core/src/step-packet.test.ts`.
+- Reject overlong raw values and charge their parsing plus literal equality before doing that work. Charge literal segment comparisons as well as wildcard/KMP work. Once the shared aggregate budget is exhausted, do not parse or compare another declaration.
+- Preserve precedence: a proven forbidden match fails; otherwise any unproved forbidden result is INCONCLUSIVE; only then can allowed matching run. A literal Cartesian product that exhausts the budget emits `STEP_PATH_MATCH_INCONCLUSIVE`, never PASS or `STEP_PATH_UNDECLARED`.
+- Negative cases: one-operation literal exhaustion; 65,536-character literals; many allowed/forbidden literals across many observed paths; forbidden-unknown precedence over an allowed match.
+
+### RC-3 — Bind file validation and reading to one handle (F-008)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::fileIdentity` plus a focused bounded handle reader; `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Open one read-only handle and compare handle `fstat` with path `lstat` before and after the read using stable device/inode/type/mode/link/size facts. Reject a symlink/reparse substitution, non-regular file, hard link, identity change, shrink or growth.
+- Read through that handle with an explicit `MAX_FILE_BYTES + 1`/remaining-total cap rather than `readFile(path)`. Close in `finally`; a short, repeated or over-limit read is INCONCLUSIVE. Keep the existing physical-containment and index-object checks.
+- Negative cases: deterministic path replacement between open/validation/read; replacement by symlink where supported; growth beyond the pre-read size and budget; post-read identity change; handle cleanup on refusal.
+
+### RC-4 — Refuse status-hidden tracked files (F-009)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::captureOnce` and bounded Git parsers; `packages/mcp-server/src/step-reconciliation.test.mjs`; canonical AGENTS/execute/auto/tool-reference prose and existing prose pins where the observable-evidence contract is stated.
+- Add one bounded NUL-delimited `git ls-files -v -z` census to each sample. Reject lowercase assume-unchanged tags and `S`/`s` skip-worktree tags before a snapshot is accepted; malformed, oversized or timed-out output is INCONCLUSIVE.
+- Include the clean flag census in double-sample authority so a flag change between samples cannot be accepted. Do not clear or mutate index flags.
+- Negative cases: assume-unchanged predating issuance with a hidden edit; skip-worktree predating issuance; flag introduced or removed between samples; clean ordinary/staged/untracked workspaces remain supported and the index bytes/mtime remain unchanged.
+
+### Root-cause verification and stop
+
+- Focused commands: core plan/packet tests; core and MCP builds; collector tests; reconciliation tests; MCP smoke; protocol; scripts/prose/AGENTS; plugin build and byte check; typecheck; `git diff --check`.
+- The committed standalone MCP bundle must be regenerated after source passes. No dependency, new tool, new stage, new board field, database, watcher or persistent packet state is allowed.
+- The implementation worker stops after one clean commit on the existing branch and PR. The controller then requires exact-head automated settlement, one independent delta review over F-001 through F-009 and affected callers/tests, one fresh clean Windows `npm run verify`, hosted `verify`, synced-board `kanmer-gate`, merge, and exact-merge verification.

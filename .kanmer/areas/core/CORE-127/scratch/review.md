@@ -1,63 +1,83 @@
 ---
 kind: review-attestation
 pr: "307"
-head_sha: "fbeab7630d6d287c90f1d59da596890ae507b0be"
+head_sha: "fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7"
 verdict: needs-changes
-reviewer: "Codex subagent /root/core127_formal_review"
+reviewer: "Codex subagent /root/core127_delta_consolidation"
 independent: true
 plan_hash: "68bbd208cb76bf88"
-ticket_updated: "2026-08-31T19:55:04.505Z"
+ticket_updated: "2026-08-31T20:57:22.845Z"
 findings:
   - id: F-001
     severity: major
-    summary: "Recursive glob matching can block the single MCP process with exponential backtracking."
-    disposition: open
+    summary: "Recursive glob matching could block the MCP process with exponential revisiting."
+    disposition: fixed
   - id: F-002
     severity: major
-    summary: "Compilation emits constrained packets whose selected step has no checklist marker and can never reconcile PASS."
-    disposition: open
+    summary: "A selected constrained step could lack a checklist marker and never reconcile PASS."
+    disposition: fixed
   - id: F-003
     severity: major
-    summary: "Checklist EOL normalization permits a CRLF-to-LF whole-document rewrite to reconcile PASS."
-    disposition: open
+    summary: "Checklist newline normalization could accept a whole-document EOL rewrite."
+    disposition: fixed
   - id: F-004
     severity: minor
-    summary: "Duplicate ticket group membership makes the producer sign a packet that its own verifier rejects."
-    disposition: open
+    summary: "Duplicate group evidence could make an emitted packet fail its own verifier."
+    disposition: fixed
   - id: F-005
     severity: blocker
-    summary: "A linked worktree physically nested beneath the dedicated board worktree bypasses protected-workspace checks."
+    summary: "A linked worktree beneath the dedicated board could bypass protected-workspace checks."
+    disposition: fixed
+  - id: F-006
+    severity: major
+    summary: "Unique group references are resolved with unbounded filesystem reads before the packet budget is checked."
+    disposition: open
+  - id: F-007
+    severity: major
+    summary: "Literal path parsing and equality bypass the aggregate matcher work budget."
+    disposition: open
+  - id: F-008
+    severity: major
+    summary: "Workspace file validation and reading are not bound to one filesystem object."
+    disposition: open
+  - id: F-009
+    severity: major
+    summary: "Assume-unchanged or skip-worktree index flags can hide tracked edits from porcelain status."
     disposition: open
 ---
 
-# Independent consolidated review — CORE-127 / PR #307
+# Independent exact-head consolidation — CORE-127 / PR #307
 
-Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `fbeab7630d6d287c90f1d59da596890ae507b0be`.
+Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `fc242c3c8fc8c97d2fbb7c9948af3f7d537c4de7` after the expected automated review settled.
 
-The 19 changed paths match the authorized files packet. The implementation worktree is clean and `git diff --check` passes. Hosted `verify` passed in run 33433072332, job 99622879161. The required `kanmer-gate` is red from its pre-attestation/pre-Review board snapshot, and all five exact-head review threads are open and non-outdated.
+The 19 changed paths remain within the authorized files packet. The worktree is clean. Hosted `verify` passed in run 33438698598, job 99641326109. The clean local Windows `npm run verify` also passed at this exact head from 2026-08-31T20:58:44.5293965Z through 2026-08-31T21:10:01.7598092Z. The current `kanmer-gate` failure is the known stale stage/old-head attestation snapshot, not a source-test failure.
 
-## Findings and remediation
+## Prior findings — fixed
 
-### F-001 — major — open
+- F-001 / `PRRT_kwDOT2PEds6d2-fI`: iterative bounded matching replaces recursion and exhaustion propagates as INCONCLUSIVE.
+- F-002 / `PRRT_kwDOT2PEds6d2-fO`: compilation and strict verification require a mapped unchecked checklist marker.
+- F-003 / `PRRT_kwDOT2PEds6d2-fP`: raw line bodies and CRLF/CR/LF/final-newline state are compared exactly.
+- F-004 / `PRRT_kwDOT2PEds6d2-fS`: exact duplicate evidence is canonicalized, conflicts refuse, and emitted packets self-verify.
+- F-005 / `PRRT_kwDOT2PEds6d2-fU`: both packet paths reject a real linked worktree beneath a dedicated board while retaining the legacy colocated layout.
 
-Thread `PRRT_kwDOT2PEds6d2-fI`. Replace recursive revisiting in `planPathMatches` with bounded matching. Exhaustion must be inconclusive for both allowed and forbidden evaluation, never silently “no match.” Prove adversarial repeated-`**`, long-path/stack-depth, and classifier behavior.
+## Exact-head findings — open
 
-### F-002 — major — open
+### F-006 — major
 
-Thread `PRRT_kwDOT2PEds6d2-fO`. Refuse compilation unless the selected step has at least one mapped unchecked checklist marker. Prove null, unrelated-only, and named-missing checklists refuse, while valid multi-marker steps remain usable.
+Thread `PRRT_kwDOT2PEds6d4PLS`. Build and bound one canonical unique-group census before any `getGroup` or `getGroupDoc` call, then use it in both group-resolution paths. Prove the limit, limit plus one with zero context reads, and duplicate canonicalization.
 
-### F-003 — major — open
+### F-007 — major
 
-Thread `PRRT_kwDOT2PEds6d2-fP`. Compare exact checklist line bytes and terminators, allowing only `[ ]` to `[x]` or `[X]` on mapped lines. Prove CRLF preservation passes and CRLF/LF, CR/LF, mixed-EOL, and final-newline changes fail.
+Thread `PRRT_kwDOT2PEds6d4PLb`. Charge parsing, top-level literal equality and segment comparisons to the shared matcher budget before doing their work. Exhaustion across a literal Cartesian product must emit `STEP_PATH_MATCH_INCONCLUSIVE`, never authorize or mislabel the path as undeclared.
 
-### F-004 — minor — open
+### F-008 — major
 
-Thread `PRRT_kwDOT2PEds6d2-fS`. Deduplicate identical group membership during collection or refuse it before signing; reject conflicting duplicate evidence. Assert every emitted packet passes its verifier.
+Thread `PRRT_kwDOT2PEds6d4PLk`. Open one file handle, bind pre/handle/post identity and mode, cap the read itself, and postvalidate size and identity. Deterministic replacement and growth races must be INCONCLUSIVE.
 
-### F-005 — blocker — open
+### F-009 — major
 
-Thread `PRRT_kwDOT2PEds6d2-fU`. In both whole-ticket resume safety and snapshot collection, reject every physical descendant of a dedicated board worktree regardless of the candidate Git top-level. Preserve the legacy shared-root case. Prove the bypass with a real nested linked-worktree fixture.
+Thread `PRRT_kwDOT2PEds6d4PLs`. Add a bounded index-flag census and refuse assume-unchanged plus skip-worktree entries before accepting a workspace snapshot. Prove flags present before issuance and flag drift between samples.
 
 ## Decision
 
-The blocker and major findings prevent PASS. Return the same PR and recorded workspace for one bounded consolidated remediation batch. The delta review must bind to the resulting exact new head and cover these findings, changed lines, affected callers/contracts, and relevant tests.
+The four new major findings are valid and block merge. They share the root invariant that authority evidence must be bounded and race-safe before it can authorize a step. Return the same PR and recorded workspace to Implementing for one root-cause replan covering all four. Do not create follow-up tickets or widen the architecture. After source changes, require fresh exact-head automated settlement, one bounded independent delta review, a clean Windows rail, hosted `verify`, and a board-synced `kanmer-gate`.

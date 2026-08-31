@@ -39,11 +39,12 @@ commits:
   - 54f8a2940a23847d8936e380c6f4647b7c9ec11c
   - 7a7c0a91a8cdf4f9d368be56be973450e14a9100
   - 4fd3fadd154fa72f8a8e149c7381931e1b235495
+  - 4fda54b4489fa4bc4b6b091c2af67715245ffa08
 prs:
   - '306'
 archived: false
 created: '2026-08-27T21:17:27.817Z'
-updated: '2026-08-31T17:33:17.764Z'
+updated: '2026-08-31T17:34:44.947Z'
 ---
 
 ## What
@@ -63,3 +64,7 @@ Without 1 the FRD-030 AC4 batch flow is complete in core but unreachable through
 - [ ] Merge-gate test: a PR whose body carries one footer per member of a frozen batch passes when all members are in Review with the same head attestation.
 - [ ] Closeout prose/test names a discovery path that finds archived members.
 - [ ] Core tests for 3a/3b/3c.
+
+## Outcome
+
+Shipped via [PR #306](https://github.com/collisionengineers/kanmer/pull/306), merged as `4fda54b4489fa4bc4b6b091c2af67715245ffa08` on 2026-08-31. The frozen explicit batch now traverses the protected merge gate with exact-head per-member attestations; archived-member discovery, controller authority, interrupted declaration recovery, and all-terminal cleanup are enforced. No follow-up ticket is required for this release scope.

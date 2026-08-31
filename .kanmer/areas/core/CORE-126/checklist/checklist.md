@@ -52,3 +52,14 @@ Exact head `7a7c0a91a8cdf4f9d368be56be973450e14a9100` fixes F-029 without adding
 Exact head `4fd3fadd154fa72f8a8e149c7381931e1b235495` fixes F-031: a plural batch attestation whose verdict is PASS now fails the protected gate when it still carries any open blocker or major finding. Dispositioned blocker/major findings and open minor/note findings remain eligible; singular compatibility is unchanged. F-030 is rejected-with-reason because the frozen plan deliberately normalizes duplicate footer IDs and exact set equality still cannot conceal an omitted unique member. Focused merge-gate tests passed 37/37; the final authoritative Windows rail and exact-head delta review remain pending. Post-merge detached verification remains intentionally unchecked.
 
 The single non-overlapping authoritative Windows `npm run verify` rail completed with exit 0 from the clean exact head `4fd3fadd154fa72f8a8e149c7381931e1b235495`: 720 core, 524 GUI, 172 MCP/integration, 160 scripts, 371 standalone smoke, and 50 protocol checks, plus all builds, typechecks, docs/manual, discovery/headless, MCPB, skills, AGENTS, and plugin byte identity. The worktree remained clean at the exact head.
+
+## Closeout — CORE-126
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-126`
+- [ ] `git branch -d core-126-batch-merge-path` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

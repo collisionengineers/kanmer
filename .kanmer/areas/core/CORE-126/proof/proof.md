@@ -24,3 +24,7 @@ attempts:
 PASS at the exact GitHub merge SHA in a clean detached Windows worktree.
 
 The protected batch merge path is present at the merged target, and the complete authoritative verification rail passed without retries or source changes.
+
+Merged PR: https://github.com/collisionengineers/kanmer/pull/306
+
+GitHub merge date: 2026-08-31T17:20:18Z

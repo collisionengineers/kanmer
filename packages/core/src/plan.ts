@@ -175,11 +175,261 @@ export interface ParsedPlan {
   stopCondition: string | null;
   evidencePins: PlanEvidencePin[];
   steps: PlanStep[];
+  /** Invalid authority-bearing path values retained for typed validation. */
+  pathIssues: PlanPathIssue[];
 }
 
-/** Normalise a repo-relative path for comparison: `/` separators, no `./`. */
+export interface PlanPathIssue {
+  value: string;
+  reason: string;
+  section: string;
+  step?: number;
+}
+
+export type PlanPathResult =
+  | { ok: true; path: string; pattern: boolean }
+  | { ok: false; reason: string };
+
+/**
+ * Parse one repository-relative path or the deliberately small plan-pattern
+ * subset. `*` stays inside one segment; a segment that is exactly `**` spans
+ * segments. Everything else fails closed rather than becoming a literal by
+ * accident.
+ */
+export function parsePlanPath(value: string, options: { allowPattern?: boolean; observed?: boolean } = {}): PlanPathResult {
+  // Git's `-z` formats already return the exact path bytes (decoded as fatal
+  // UTF-8 by the collector). Never trim, dequote or separator-normalise that
+  // observation: a leading space, trailing space, Unicode scalar or newline is
+  // part of the filename. Plan declarations are Markdown and retain the small
+  // convenience normalisation they have always had.
+  let candidate = options.observed ? value : value.trim().replace(/^`|`$/g, "");
+  if (options.observed && candidate.includes("\\")) return { ok: false, reason: "observed Git paths must use slash separators" };
+  if (!options.observed) {
+    candidate = candidate.replace(/\\/g, "/");
+    if (candidate.startsWith("./")) candidate = candidate.slice(2);
+  }
+  if (!candidate || candidate === ".") return { ok: false, reason: "path is empty or dot" };
+  if (candidate.includes("\0")) return { ok: false, reason: "path contains NUL" };
+  if (candidate.startsWith("/") || candidate.startsWith("//")) {
+    return { ok: false, reason: "absolute and UNC paths are not repository-relative" };
+  }
+  // A colon is a drive/scheme separator or a Windows-unsupported filename
+  // byte. Reject every form, not merely `scheme://`, so the same declaration
+  // cannot mean different things on the Windows verification rail.
+  if (candidate.includes(":")) {
+    return { ok: false, reason: "drive, URI and colon-qualified paths are not supported" };
+  }
+  if (!options.observed && candidate.endsWith("/")) candidate = candidate.slice(0, -1);
+  const segments = candidate.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) {
+    return { ok: false, reason: "path contains an empty, dot or parent-traversal segment" };
+  }
+  if (segments.some((segment) => /[?\[\]{}]/.test(segment))) {
+    return { ok: false, reason: "path uses unsupported pattern syntax" };
+  }
+  const pattern = segments.some((segment) => segment.includes("*"));
+  if (pattern && !options.allowPattern) return { ok: false, reason: "wildcards are not allowed in a literal path" };
+  if (segments.some((segment) => segment.includes("**") && segment !== "**")) {
+    return { ok: false, reason: "** is supported only as a complete path segment" };
+  }
+  return { ok: true, path: segments.join("/"), pattern };
+}
+
+/** Normalise a valid plan path; invalid values become empty for legacy callers. */
 export function normalisePlanPath(value: string): string {
-  return value.trim().replace(/^`|`$/g, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+  const parsed = parsePlanPath(value, { allowPattern: true });
+  return parsed.ok ? parsed.path : "";
+}
+
+function segmentMatches(pattern: string, value: string): boolean {
+  let source = "^";
+  for (const character of pattern) {
+    source += character === "*" ? "[^/]*" : character.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+  }
+  return new RegExp(`${source}$`, "u").test(value);
+}
+
+/** Match a confined literal path against the documented literal/`*`/`**` subset. */
+export function planPathMatches(patternValue: string, pathValue: string): boolean {
+  const pattern = parsePlanPath(patternValue, { allowPattern: true });
+  const observed = parsePlanPath(pathValue, { observed: true });
+  if (!pattern.ok || !observed.ok) return false;
+  const patterns = pattern.path.split("/");
+  const values = observed.path.split("/");
+  const visit = (left: number, right: number): boolean => {
+    if (left === patterns.length) return right === values.length;
+    if (patterns[left] === "**") {
+      return visit(left + 1, right) || (right < values.length && visit(left, right + 1));
+    }
+    return right < values.length && segmentMatches(patterns[left], values[right]) && visit(left + 1, right + 1);
+  };
+  return visit(0, 0);
+}
+
+function segmentClosure(pattern: readonly string[], seed: readonly number[]): number[] {
+  const result = new Set(seed);
+  const queue = [...seed];
+  while (queue.length) {
+    const index = queue.shift()!;
+    if (pattern[index] !== "*" || result.has(index + 1)) continue;
+    result.add(index + 1);
+    queue.push(index + 1);
+  }
+  return [...result].sort((left, right) => left - right);
+}
+
+function segmentTransition(pattern: readonly string[], states: readonly number[], character: string | null): number[] {
+  const next = new Set<number>();
+  for (const index of segmentClosure(pattern, states)) {
+    if (index >= pattern.length) continue;
+    if (pattern[index] === "*") next.add(index);
+    else if (character !== null && pattern[index] === character) next.add(index + 1);
+  }
+  return segmentClosure(pattern, [...next]);
+}
+
+/** Exact language containment for the supported within-segment `*` syntax. */
+function segmentDeclarationCovers(authorityValue: string, requestedValue: string): boolean {
+  const authority = Array.from(authorityValue);
+  const requested = Array.from(requestedValue);
+  // Every literal plus `null` (the equivalence class for any other character)
+  // is a complete alphabet for these two star NFAs.
+  const alphabet: Array<string | null> = [
+    ...new Set([...authority, ...requested].filter((character) => character !== "*")),
+    null,
+  ];
+  const startAuthority = segmentClosure(authority, [0]);
+  const startRequested = segmentClosure(requested, [0]);
+  const queue: Array<{ authority: number[]; requested: number[]; consumed: boolean }> = [
+    { authority: startAuthority, requested: startRequested, consumed: false },
+  ];
+  const seen = new Set<string>();
+  while (queue.length) {
+    const current = queue.shift()!;
+    const key = `${current.authority.join(",")}|${current.requested.join(",")}|${current.consumed ? 1 : 0}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const requestedAccepts = current.requested.includes(requested.length);
+    const authorityAccepts = current.authority.includes(authority.length);
+    // Repository path segments are non-empty, so the epsilon-only word is not
+    // a counterexample even when a bare `*` accepts it.
+    if (current.consumed && requestedAccepts && !authorityAccepts) return false;
+    for (const character of alphabet) {
+      const nextRequested = segmentTransition(requested, current.requested, character);
+      if (nextRequested.length === 0) continue;
+      queue.push({
+        authority: segmentTransition(authority, current.authority, character),
+        requested: nextRequested,
+        consumed: true,
+      });
+    }
+  }
+  return true;
+}
+
+/**
+ * Prove that one declaration grants no less path authority than another.
+ * Segment languages use exact containment. A path-level `**` proof is
+ * deliberately constructive: each accepted relationship gives the authority
+ * glob one concrete way to consume every requested segment. Relationships the
+ * proof cannot establish fail closed; a literal never authorises a step glob.
+ */
+function declarationCovers(authorityValue: string, requestedValue: string): boolean {
+  const authority = parsePlanPath(authorityValue, { allowPattern: true });
+  const requested = parsePlanPath(requestedValue, { allowPattern: true });
+  if (!authority.ok || !requested.ok) return false;
+  if (!requested.pattern) return planPathMatches(authority.path, requested.path);
+  if (!authority.pattern) return false;
+  const collapseRecursive = (segments: string[]): string[] => segments.filter(
+    (segment, index) => segment !== "**" || segments[index - 1] !== "**",
+  );
+  const authoritySegments = collapseRecursive(authority.path.split("/"));
+  const requestedSegments = collapseRecursive(requested.path.split("/"));
+  const memo = new Map<string, boolean>();
+  const visit = (authorityIndex: number, requestedIndex: number): boolean => {
+    const key = `${authorityIndex}:${requestedIndex}`;
+    const cached = memo.get(key);
+    if (cached !== undefined) return cached;
+    let result: boolean;
+    if (requestedIndex === requestedSegments.length) {
+      result = authoritySegments.slice(authorityIndex).every((segment) => segment === "**");
+    } else if (authorityIndex === authoritySegments.length) {
+      // A remaining requested `**` can always emit at least one more segment,
+      // which exhausted authority cannot cover.
+      result = false;
+    } else if (authoritySegments[authorityIndex] === "**") {
+      if (authorityIndex === authoritySegments.length - 1) {
+        result = true;
+      } else if (requestedSegments[requestedIndex] === "**") {
+        // Either pair the recursive spans, or let this authority span absorb
+        // every segment emitted by the requested span and keep proving the
+        // requested suffix. The latter is what establishes, for example,
+        // `a/**/b` covering `a/**/x/b`.
+        result = visit(authorityIndex + 1, requestedIndex + 1) || visit(authorityIndex, requestedIndex + 1);
+      } else {
+        result = visit(authorityIndex + 1, requestedIndex) || visit(authorityIndex, requestedIndex + 1);
+      }
+    } else if (requestedSegments[requestedIndex] === "**") {
+      result = false;
+    } else {
+      result = segmentDeclarationCovers(
+        authoritySegments[authorityIndex]!,
+        requestedSegments[requestedIndex]!,
+      ) && visit(authorityIndex + 1, requestedIndex + 1);
+    }
+    memo.set(key, result);
+    return result;
+  };
+  return visit(0, 0);
+}
+
+function segmentDeclarationsMayOverlap(left: string, right: string): boolean {
+  const a = Array.from(left);
+  const b = Array.from(right);
+  const queue: Array<[number, number]> = [[0, 0]];
+  const seen = new Set<string>();
+  while (queue.length) {
+    const [i, j] = queue.shift()!;
+    const key = `${i}:${j}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (i === a.length && j === b.length) return true;
+    const leftStar = a[i] === "*";
+    const rightStar = b[j] === "*";
+    if (leftStar) queue.push([i + 1, j]); // `*` consumes nothing
+    if (rightStar) queue.push([i, j + 1]);
+    if (i >= a.length || j >= b.length) continue;
+    if (leftStar || rightStar || a[i] === b[j]) {
+      const next: [number, number] = [leftStar ? i : i + 1, rightStar ? j : j + 1];
+      // Two stars consuming the same arbitrary character remain in the same
+      // state and add no reachability beyond their epsilon transitions.
+      if (next[0] !== i || next[1] !== j) queue.push(next);
+    }
+  }
+  return false;
+}
+
+/** Fail-closed intersection for the supported segment `*` / path `**` subset. */
+function declarationsOverlap(leftValue: string, rightValue: string): boolean {
+  const left = parsePlanPath(leftValue, { allowPattern: true });
+  const right = parsePlanPath(rightValue, { allowPattern: true });
+  if (!left.ok || !right.ok) return true;
+  const a = left.path.split("/");
+  const b = right.path.split("/");
+  const seen = new Set<string>();
+  const visit = (i: number, j: number): boolean => {
+    const key = `${i}:${j}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    if (i === a.length && j === b.length) return true;
+    if (i === a.length) return b.slice(j).every((segment) => segment === "**");
+    if (j === b.length) return a.slice(i).every((segment) => segment === "**");
+    if (a[i] === "**" && b[j] === "**") return visit(i + 1, j) || visit(i, j + 1);
+    if (a[i] === "**") return visit(i + 1, j) || visit(i, j + 1);
+    if (b[j] === "**") return visit(i, j + 1) || visit(i + 1, j);
+    return segmentDeclarationsMayOverlap(a[i], b[j]) && visit(i + 1, j + 1);
+  };
+  return visit(0, 0);
 }
 
 function sectionContent(sections: AtxSection[], title: string): string | null {
@@ -337,10 +587,40 @@ function parseSteps(content: string | null): PlanStep[] {
   return items.map((item, position) => buildStep(position + 1, stepTitle(item), false, ""));
 }
 
+function collectPathIssues(sections: AtxSection[], steps: PlanStep[]): PlanPathIssue[] {
+  const issues: PlanPathIssue[] = [];
+  const add = (value: string, section: string, allowPattern: boolean, step?: number) => {
+    const parsed = parsePlanPath(value, { allowPattern });
+    if (!parsed.ok) issues.push({ value, reason: parsed.reason, section, ...(step === undefined ? {} : { step }) });
+  };
+  const expected = sectionContent(sections, "Expected files");
+  if (expected) {
+    for (const line of expected.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("|")) continue;
+      const cells = trimmed.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+      if (cells.length < 2 || cells[0].toLocaleLowerCase() === "action" || /^:?-{2,}:?$/.test(cells[1])) continue;
+      add(cells[1], "Expected files", true);
+    }
+  }
+  for (const item of bulletItems(sectionContent(sections, "Do not modify"))) {
+    for (const span of codeSpans(item)) add(span, "Do not modify", true);
+  }
+  const starting = sectionContent(sections, "Starting state") ?? "";
+  for (const match of starting.matchAll(/`([^`]+)`\s*@\s*`?([0-9a-fA-F]{8,64})`?/g)) {
+    add(match[1], "Starting state", false);
+  }
+  for (const step of steps) {
+    for (const value of step.fields.files ? listValues(step.fields.files) : []) add(value, "Ordered steps", true, step.index);
+  }
+  return issues;
+}
+
 /** Read a plan document into the structures a step packet is compiled from. */
 export function parsePlan(markdown: string): ParsedPlan {
   const sections = parseAtxSections(markdown);
   const startingState = sectionContent(sections, "Starting state");
+  const steps = parseSteps(sectionContent(sections, "Ordered steps"));
   return {
     sections,
     objective: sectionContent(sections, "Objective"),
@@ -350,7 +630,8 @@ export function parsePlan(markdown: string): ParsedPlan {
     commands: bulletItems(sectionContent(sections, "Commands")),
     stopCondition: sectionContent(sections, "Stop condition"),
     evidencePins: parseEvidencePins(startingState),
-    steps: parseSteps(sectionContent(sections, "Ordered steps")),
+    steps,
+    pathIssues: collectPathIssues(sections, steps),
   };
 }
 
@@ -370,7 +651,10 @@ export type PlanFindingCode =
   | "PLAN_STOP_CONDITION_MISSING"
   | "PLAN_EVIDENCE_STALE"
   | "PLAN_EVIDENCE_UNKNOWN"
-  | "PLAN_EVIDENCE_UNRECORDED";
+  | "PLAN_EVIDENCE_UNRECORDED"
+  | "PLAN_EVIDENCE_DUPLICATE"
+  | "PLAN_PATH_INVALID"
+  | "PLAN_PACKET_BUDGET_EXCEEDED";
 
 /**
  * `blocker` refuses a step packet; `advisory` is always reported and never
@@ -542,14 +826,30 @@ function evidenceFindings(
   options: ValidatePlanOptions,
 ): PlanFinding[] {
   if (!options.liveEvidence) return [];
-  const live = new Map(options.liveEvidence.map((entry) => [normalisePlanPath(entry.path), entry.version.toLowerCase()]));
+  const live = new Map(
+    options.liveEvidence.flatMap((entry) => {
+      const parsed = parsePlanPath(entry.path);
+      return parsed.ok ? [[parsed.path, entry.version.toLowerCase()] as const] : [];
+    }),
+  );
   const findings: PlanFinding[] = [];
+  const seenPins = new Set<string>();
   for (const pin of plan.evidencePins) {
+    if (seenPins.has(pin.path)) {
+      findings.push({
+        code: "PLAN_EVIDENCE_DUPLICATE",
+        severity,
+        section: "Starting state",
+        message: `Evidence "${pin.path}" is pinned more than once; authority must be unambiguous.`,
+        detail: pin.path,
+      });
+    }
+    seenPins.add(pin.path);
     const current = live.get(pin.path);
     if (current === undefined) {
       findings.push({
         code: "PLAN_EVIDENCE_UNKNOWN",
-        severity: "advisory",
+        severity,
         section: "Starting state",
         message: `The plan pins "${pin.path}", which is not among this ticket's current evidence documents.`,
         detail: pin.path,
@@ -566,15 +866,18 @@ function evidenceFindings(
       });
     }
   }
-  if (options.requireEvidencePin && plan.evidencePins.length === 0) {
-    findings.push({
-      code: "PLAN_EVIDENCE_UNRECORDED",
-      severity,
-      section: "Starting state",
-      message:
-        "This ticket carries research/impact evidence, but the plan pins no evidence version in Starting state, " +
-        "so nothing can tell whether the plan was written against the current evidence.",
-    });
+  if (options.requireEvidencePin) {
+    const pinned = new Map(plan.evidencePins.map((entry) => [entry.path, entry.version]));
+    for (const [path, version] of live) {
+      if (!/^(?:research|files)\//.test(path) || pinned.get(path) === version) continue;
+      findings.push({
+        code: "PLAN_EVIDENCE_UNRECORDED",
+        severity,
+        section: "Starting state",
+        detail: path,
+        message: `Current evidence "${path}"@${version} has no matching pin in Starting state.`,
+      });
+    }
   }
   return findings;
 }
@@ -601,8 +904,8 @@ function stepFindings(plan: ParsedPlan, severity: PlanFindingSeverity, selected:
     return findings;
   }
 
-  const declared = new Set(plan.expectedFiles.map((entry) => entry.path));
-  const forbidden = new Set(plan.doNotModify);
+  const declared = plan.expectedFiles.map((entry) => entry.path);
+  const forbidden = plan.doNotModify;
 
   for (const step of plan.steps) {
     const chosen = selected !== undefined && step.index === selected;
@@ -644,7 +947,7 @@ function stepFindings(plan: ParsedPlan, severity: PlanFindingSeverity, selected:
       }
     }
     for (const file of step.files) {
-      if (!declared.has(file)) {
+      if (!declared.some((authority) => declarationCovers(authority, file))) {
         findings.push({
           code: "PLAN_STEP_FILE_UNDECLARED",
           severity: stepSeverity,
@@ -654,7 +957,7 @@ function stepFindings(plan: ParsedPlan, severity: PlanFindingSeverity, selected:
           detail: file,
         });
       }
-      if (forbidden.has(file)) {
+      if (forbidden.some((pattern) => declarationsOverlap(pattern, file))) {
         findings.push({
           code: "PLAN_STEP_FILE_FORBIDDEN",
           severity: stepSeverity,
@@ -700,6 +1003,17 @@ export function validatePlan(plan: ParsedPlan, options: ValidatePlanOptions = {}
 
   findings.push(...vagueFindings(plan));
   findings.push(...riskFindings(plan));
+  for (const issue of plan.pathIssues) {
+    const selectedIssue = issue.step === undefined || issue.step === options.step;
+    findings.push({
+      code: "PLAN_PATH_INVALID",
+      severity: selectedIssue ? structural : "advisory",
+      section: issue.section,
+      ...(issue.step === undefined ? {} : { step: issue.step }),
+      detail: issue.value,
+      message: `"${issue.value}" is not a supported repository-relative path: ${issue.reason}.`,
+    });
+  }
 
   if (plan.expectedFiles.length === 0) {
     findings.push({

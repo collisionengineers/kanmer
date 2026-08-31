@@ -989,11 +989,22 @@ server.registerTool(
   {
     title: "Inspect a ticket's reconciliation state (read-only)",
     description:
-      "Read one ticket's board, claim, proof, recorded-workspace, local release-sidecar, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. This inspector is read-only: it never mutates the board, Git, workspace, checks or release state. Apply one still-current recommendation only through apply_reconciliation, which re-collects external evidence and rechecks the release epoch plus ticket revision before delegating to the existing mutation verbs. Claim state is current | expired | unclaimed with review_round/remediation_budget. Unavailable GitHub/CI/workspace/release facts are reported as inconclusive, never invented. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
-    inputSchema: { id: z.string().describe("Existing ticket id") },
+      "Read one ticket's board, claim, proof, recorded-workspace, local release-sidecar, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. An optional complete step_packet is strictly parsed and digest-checked before Git, reconstructed against the current plan/evidence/checklist/project/ticket/batch/workspace, and adds a typed pass | fail | inconclusive step result. packet_id alone is never authority. This inspector is read-only: it never mutates the board, Git, workspace, checks or release state. Apply one still-current recommendation only through apply_reconciliation. Unavailable facts are inconclusive, never invented. The request cannot supply a path, command, executable or project root.",
+    inputSchema: {
+      id: z.string().describe("Existing ticket id"),
+      step_packet: z.record(z.unknown()).optional()
+        .describe("Optional complete immutable step-packet/2 object returned by get_execution_packet; a packet id or partial object is refused"),
+    },
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
-  guard(async ({ id }) => ok(await reconcileTicket(store, id))),
+  guard(async ({ id, step_packet }) => {
+    if (step_packet === undefined) return ok(await reconcileTicket(store, id));
+    const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
+    return ok(await reconcileTicket(store, id, undefined, {
+      stepPacket: step_packet,
+      stepProject: { project_id: logical.project_id, board_id: logical.board_id, fingerprint: project.fingerprint },
+    }));
+  }),
 );
 
 server.registerTool(
@@ -1127,7 +1138,7 @@ server.registerTool(
   {
     title: "Get an execution packet",
     description:
-      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, incomplete or unsafe ownership evidence, occupancy by another actor, then — only when `step` is supplied — a plan that cannot be compiled into a bounded step. An occupied isolated ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A batch additionally requires a complete consistent manifest plus both the actual MCP request actor and the exact durable controller_run that declared it; copied owner labels or an exact resume path never authorize another controller run. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or \"next\") additionally compiles one versioned step packet limiting the worker to that step's allowed files and symbols, with its exact tests, commands, expected output and stop condition — and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.",
+      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false GATE_BLOCKED result. A ready whole-ticket packet remains the setup route. Supplying step additionally compiles one immutable step-packet/2 from stable plan/evidence/checklist facts and a proven recorded Git workspace. Step 1 needs no predecessor; every later numeric step and next resolving beyond step 1 require the complete exact prior_step_packet. That prior packet is reconciled against actual Git changes and current constituent evidence, and FAIL or INCONCLUSIVE refuses the next packet. packet_id alone is never accepted. It never takes, moves, writes, dispatches, or creates a worktree.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       resume: z.object({ branch: z.string(), worktree: z.string() }).optional()
@@ -1136,10 +1147,12 @@ server.registerTool(
         .describe("Durable controller run identity; required and exact-matched for a batch packet"),
       step: z.union([z.number().int().positive(), z.literal("next")]).optional()
         .describe("Compile one bounded step packet: a 1-based ordered-step index, or \"next\" for the first unfinished step"),
+      prior_step_packet: z.record(z.unknown()).optional()
+        .describe("Complete exact step-packet/2 returned for the immediately preceding step; required before any later step"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ id, resume, controller_run, step }, extra) => {
+  guard(async ({ id, resume, controller_run, step, prior_step_packet }, extra) => {
     const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
     // FRD-029: the packet names the logical project, and reads the ticket's
     // document-inclusive revision itself so a worker's first write can be
@@ -1153,6 +1166,7 @@ server.registerTool(
       resume,
       logical,
       step,
+      priorStepPacket: prior_step_packet,
     });
     return ok({
       ...packet,

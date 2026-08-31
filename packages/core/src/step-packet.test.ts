@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { parsePlan } from "./plan.js";
 import {
   compileStepPacket,
+  reconcileStepPacket,
+  stepPacketAuthority,
+  stepPacketDigest,
+  stepTicketAuthority,
+  verifyStepPacket,
   nextStepIndex,
+  STEP_PACKET_LIMITS,
   STEP_PACKET_VERSION,
   STEP_RETURN_STOP,
   type StepPacketEvidence,
@@ -83,11 +89,22 @@ function input(overrides: Partial<StepPacketInput> = {}): StepPacketInput {
     planPath: "plan/plan.md",
     planVersion: "1111111111111111",
     project: { project_id: "proj-1", board_id: "board-1", fingerprint: "kanmer-proj-v1:abc" },
-    ticket: { id: "TICK-001", revision: "rev1:deadbeef" },
+    ticket: {
+      id: "TICK-001",
+      revision: "rev1:deadbeef",
+      itemAuthority: stepTicketAuthority({ id: "TICK-001", status: "implementing", lease_id: "lease-1", lease_worker_run: "worker-1", claim_expires_at: "2026-08-31T10:00:00.000Z", lease_revision: 1 }),
+      documents: [
+        { path: "checklist/checklist.md", version: "2222222222222222" },
+        { path: "plan/plan.md", version: "1111111111111111" },
+        { path: "research/research.md", version: "aaaaaaaaaaaaaaaa" },
+      ],
+    },
     batch: null,
-    workspace: { branch: "tick-001-queue", worktree: ".worktrees/tick-001" },
+    workspace: { branch: "tick-001-queue", worktree: ".worktrees/tick-001", head: "a".repeat(40), entries: [] },
     evidence: EVIDENCE,
-    checklist: null,
+    checklist: "- [ ] Step 1 — bound the loop\n- [ ] Step 2 — document the cap\n",
+    checklistPath: "checklist/checklist.md",
+    checklistVersion: "2222222222222222",
     select: 1,
     stopCondition: "Stop when the PR is open.",
     ...overrides,
@@ -124,10 +141,17 @@ describe("compileStepPacket", () => {
     if (!result.ok) throw new Error(result.reason);
     expect(result.packet.packetVersion).toBe(STEP_PACKET_VERSION);
     expect(result.packet.project.project_id).toBe("proj-1");
-    expect(result.packet.ticket).toEqual({ id: "TICK-001", revision: "rev1:deadbeef" });
+    expect(result.packet.ticket).toEqual(input().ticket);
     expect(result.packet.batch).toBe("batch-queue");
-    expect(result.packet.workspace).toEqual({ branch: "tick-001-queue", worktree: ".worktrees/tick-001" });
+    expect(result.packet.workspace).toEqual({ branch: "tick-001-queue", worktree: ".worktrees/tick-001", head: "a".repeat(40), entries: [] });
     expect(result.packet.plan).toEqual({ path: "plan/plan.md", version: "1111111111111111" });
+    expect(result.packet.checklist).toEqual({
+      path: "checklist/checklist.md",
+      version: "2222222222222222",
+      content: "- [ ] Step 1 — bound the loop\n- [ ] Step 2 — document the cap\n",
+      steps: [false, false],
+      stepLines: [[0], [1]],
+    });
     expect(result.packet.step).toEqual({ index: 1, total: 2, id: "step-1", title: "Bound the retry loop" });
     expect(result.packet.stopCondition).toContain("Stop when the PR is open.");
     expect(result.packet.stopCondition).toContain(STEP_RETURN_STOP);
@@ -143,15 +167,107 @@ describe("compileStepPacket", () => {
   it("gives identical input a stable packet id and different input a different one", () => {
     const first = compileStepPacket(input());
     const again = compileStepPacket(input());
-    const other = compileStepPacket(input({ select: 2 }));
+    const other = compileStepPacket(input({ select: 2, checklist: "- [x] Step 1 — done\n- [ ] Step 2 — pending\n" }));
     if (!first.ok || !again.ok || !other.ok) throw new Error("expected three ready packets");
-    expect(first.packet.packetId).toMatch(/^[0-9a-f]{16}$/);
+    expect(first.packet.packetId).toMatch(/^[0-9a-f]{64}$/);
     expect(again.packet.packetId).toBe(first.packet.packetId);
     expect(other.packet.packetId).not.toBe(first.packet.packetId);
+  });
+
+  it("round-trips a documented allowed glob through strict packet verification", () => {
+    const patterned = parsePlan(
+      PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/**` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`"),
+    );
+    const result = compileStepPacket(input({ plan: patterned }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.packet.allowedFiles).toEqual(["src/*.ts"]);
+    expect(verifyStepPacket(result.packet)).toMatchObject({ ok: true });
+  });
+
+  it("strictly refuses missing/extra nested keys and duplicate or noncanonical sets", () => {
+    const ready = compileStepPacket(input());
+    if (!ready.ok) throw new Error(ready.reason);
+    const signed = (mutate: (body: any) => void) => {
+      const { packetId: _ignored, ...body } = structuredClone(ready.packet);
+      mutate(body);
+      return { ...body, packetId: stepPacketDigest(body) };
+    };
+    expect(verifyStepPacket(signed((body) => { delete body.project.board_id; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.workspace.extra = true; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.evidence.extra = []; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => {
+      body.workspace.entries = [
+        { path: "z.ts", index: ".", worktree: "M", content: "a".repeat(64) },
+        { path: "a.ts", index: ".", worktree: "M", content: "b".repeat(64) },
+      ];
+    })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.evidence.ticket.push(structuredClone(body.evidence.ticket[0])); })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.ticket.documents.reverse(); })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.workspace.entries = [{ path: "./x.ts", index: ".", worktree: "M", content: "a".repeat(64) }]; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.workspace.worktree = ".worktrees\\tick-001"; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.plan.path = "./plan/plan.md"; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.checklist.path = "checklist\\checklist.md"; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.ticket.documents[0].path = "./checklist/checklist.md"; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.evidence.ticket[0].path = "./research/research.md"; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.allowedFiles[0] = "./src/queue.ts"; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.forbiddenFiles[0] = "src\\vendor\\**"; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.workspace.entries = [{ path: "x.ts", index: " ", worktree: "M", content: "a".repeat(64) }]; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => { body.workspace.entries = [{ path: "x.ts", index: ".", worktree: " ", content: "a".repeat(64) }]; })).ok).toBe(false);
+  });
+
+  it("refuses oversized strings and arrays before a stale digest can be considered", () => {
+    const ready = compileStepPacket(input());
+    if (!ready.ok) throw new Error(ready.reason);
+    const oversizedString = structuredClone(ready.packet);
+    oversizedString.stopCondition = "x".repeat(STEP_PACKET_LIMITS.maxStringBytes + 1);
+    const stringResult = verifyStepPacket(oversizedString);
+    expect(stringResult.ok).toBe(false);
+    if (!stringResult.ok) expect(stringResult.reason).toMatch(/encoded bytes|budget/i);
+
+    const oversizedArray = structuredClone(ready.packet);
+    oversizedArray.negativeCases = Array.from(
+      { length: STEP_PACKET_LIMITS.maxArrayEntries + 1 },
+      (_, index) => `case-${index}`,
+    );
+    const arrayResult = verifyStepPacket(oversizedArray);
+    expect(arrayResult.ok).toBe(false);
+    if (!arrayResult.ok) expect(arrayResult.reason).toMatch(/array exceeds/i);
   });
 });
 
 describe("compileStepPacket refusals", () => {
+  it("refuses oversized checklist material before plan compilation", () => {
+    const checklist = Array.from(
+      { length: STEP_PACKET_LIMITS.maxChecklistLines + 1 },
+      (_, index) => `line ${index}`,
+    ).join("\n");
+    const result = compileStepPacket(input({ checklist }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.validation.findings).toContainEqual(expect.objectContaining({ code: "PLAN_PACKET_BUDGET_EXCEEDED", severity: "blocker" }));
+    expect(result.reason).toMatch(/checklist exceeds/i);
+  });
+
+  it("refuses an oversized counted-document census before minting a packet", () => {
+    const result = compileStepPacket(input({
+      ticket: {
+        ...input().ticket,
+        documents: Array.from(
+          { length: STEP_PACKET_LIMITS.maxDocuments + 1 },
+          (_, index) => ({ path: `proof/attempt-${String(index).padStart(3, "0")}.md`, version: "a".repeat(16) }),
+        ),
+      },
+    }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.validation.findings).toContainEqual(expect.objectContaining({ code: "PLAN_PACKET_BUDGET_EXCEEDED" }));
+    expect(result.reason).toMatch(/document census exceeds/i);
+  });
+
   it("refuses a step the plan does not have, and reports why", () => {
     const result = compileStepPacket(input({ select: 9 }));
     expect(result.ok).toBe(false);
@@ -202,7 +318,7 @@ describe("selecting the next step", () => {
 
   it("starts at step 1 when there is no checklist", () => {
     expect(nextStepIndex(plan, null)).toBe(1);
-    const result = compileStepPacket(input({ select: "next" }));
+    const result = compileStepPacket(input({ select: "next", checklist: null, checklistVersion: null }));
     if (!result.ok) throw new Error(result.reason);
     expect(result.packet.step.index).toBe(1);
   });
@@ -233,5 +349,211 @@ describe("selecting the next step", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.reason).toContain("already ticked");
+  });
+
+  it("refuses an explicitly selected step that is already complete", () => {
+    const result = compileStepPacket(input({ select: 1, checklist: "- [x] Step 1 — done\n- [ ] Step 2 — pending\n" }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain("already complete");
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])("refuses invalid direct numeric selection %s", (select) => {
+    expect(compileStepPacket(input({ select })).ok).toBe(false);
+  });
+
+  it("refuses skipping the current unfinished step", () => {
+    const result = compileStepPacket(input({ select: 2 }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain("step 1 is the current unfinished step");
+  });
+});
+
+describe("reconcileStepPacket", () => {
+  function packet() {
+    const result = compileStepPacket(input());
+    if (!result.ok) throw new Error(result.reason);
+    return result.packet;
+  }
+
+  function facts(overrides = {}) {
+    const value = packet();
+    return {
+      project: value.project,
+      ticket: { ...value.ticket, revision: "rev1:after-checklist" },
+      batch: value.batch,
+      plan: { ...value.plan, authority: stepPacketAuthority(parsePlan(PLAN), value.step.index, "Stop when the PR is open.") },
+      checklist: {
+        ...value.checklist,
+        version: "3333333333333333",
+        content: value.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? null,
+        steps: [true, false],
+      },
+      evidence: [...value.evidence.group, ...value.evidence.ticket],
+      workspace: { snapshot: value.workspace, headChanges: ["src/queue.ts"] },
+      ...overrides,
+    };
+  }
+
+  it("passes only complete current evidence and allowed changes", () => {
+    expect(reconcileStepPacket(packet(), facts())).toMatchObject({ status: "pass", changedPaths: [{ path: "src/queue.ts", classification: "allowed" }] });
+  });
+
+  it("permits only heartbeat timing/phase churn, while binding the recorded worker run", () => {
+    const base = {
+      id: "TICK-001",
+      status: "implementing",
+      lease_id: "lease-1",
+      lease_worker_run: "worker-1",
+      claim_expires_at: "2026-08-31T10:00:00.000Z",
+      lease_revision: 1,
+      lease_phase: "implementing",
+      lease_heartbeat_at: "2026-08-31T09:30:00.000Z",
+      updated: "2026-08-31T09:30:00.000Z",
+    };
+    expect(stepTicketAuthority({
+      ...base,
+      claim_expires_at: "2026-08-31T12:00:00.000Z",
+      lease_revision: 2,
+      lease_phase: "running-command",
+      lease_heartbeat_at: "2026-08-31T10:00:00.000Z",
+      updated: "2026-08-31T10:00:00.000Z",
+    })).toBe(stepTicketAuthority(base));
+    expect(stepTicketAuthority({ ...base, lease_worker_run: "worker-2" })).not.toBe(stepTicketAuthority(base));
+  });
+
+  it("does not let an exact checklist tick mask another ticket or document mutation", () => {
+    const value = packet();
+    const changedItem = reconcileStepPacket(value, facts({
+      ticket: { ...value.ticket, revision: "changed", itemAuthority: "e".repeat(64) },
+    }));
+    expect(changedItem.status).toBe("fail");
+    expect(changedItem.findings.some((finding) => finding.code === "STEP_TICKET_AUTHORITY_STALE")).toBe(true);
+
+    const changedDocument = reconcileStepPacket(value, facts({
+      ticket: {
+        ...value.ticket,
+        revision: "changed",
+        documents: [...value.ticket.documents, { path: "proof/proof.md", version: "f".repeat(16) }]
+          .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0),
+      },
+    }));
+    expect(changedDocument.status).toBe("fail");
+    expect(changedDocument.findings.some((finding) => finding.code === "STEP_TICKET_DOCUMENTS_STALE")).toBe(true);
+  });
+
+  it("fails forbidden and undeclared changes with typed paths", () => {
+    const value = packet();
+    const result = reconcileStepPacket(value, facts({ workspace: { snapshot: value.workspace, headChanges: ["src/vendor/bundle.js", "README.md"] } }));
+    expect(result.status).toBe("fail");
+    expect(result.changedPaths).toEqual([
+      { path: "src/vendor/bundle.js", classification: "forbidden" },
+      { path: "README.md", classification: "undeclared" },
+    ]);
+  });
+
+  it("classifies an exact newline-bearing Git path against a declaration glob", () => {
+    const patterned = parsePlan(
+      PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/**` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`"),
+    );
+    const compiled = compileStepPacket(input({ plan: patterned }));
+    if (!compiled.ok) throw new Error(compiled.reason);
+    const currentChecklist = {
+      ...compiled.packet.checklist,
+      version: "changed",
+      content: compiled.packet.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? null,
+      steps: [true, false],
+    };
+    const result = reconcileStepPacket(compiled.packet, {
+      project: compiled.packet.project,
+      ticket: { ...compiled.packet.ticket, revision: "changed" },
+      batch: null,
+      plan: { ...compiled.packet.plan, authority: stepPacketAuthority(patterned, 1, "Stop when the PR is open.") },
+      checklist: currentChecklist,
+      evidence: [...compiled.packet.evidence.group, ...compiled.packet.evidence.ticket],
+      workspace: { snapshot: compiled.packet.workspace, headChanges: ["src/雪\nqueue.ts"] },
+    });
+    expect(result.status).toBe("pass");
+    expect(result.changedPaths).toEqual([{ path: "src/雪\nqueue.ts", classification: "allowed" }]);
+  });
+
+  it("refuses a tampered or v1 packet before trusting observations", () => {
+    const tampered = { ...packet(), allowedFiles: ["README.md"] };
+    expect(reconcileStepPacket(tampered, facts()).status).toBe("inconclusive");
+    expect(reconcileStepPacket({ ...packet(), packetVersion: "step-packet/1" }, facts()).status).toBe("inconclusive");
+  });
+
+  it("fails independently stale plan, evidence and checklist deviation", () => {
+    const value = packet();
+    const result = reconcileStepPacket(value, facts({
+      plan: { ...value.plan, version: "stale" },
+      evidence: [...value.evidence.group, { ...value.evidence.ticket[0], version: "stale" }],
+      checklist: { ...value.checklist, version: "changed", steps: [false, true] },
+    }));
+    expect(result.status).toBe("fail");
+    expect(result.findings.map((finding) => finding.code)).toEqual(expect.arrayContaining(["STEP_PLAN_STALE", "STEP_EVIDENCE_STALE", "STEP_NOT_COMPLETED", "STEP_LATER_ADVANCED"]));
+  });
+
+  it("is inconclusive when workspace or evidence cannot be read", () => {
+    expect(reconcileStepPacket(packet(), facts({ workspace: null, evidence: null })).status).toBe("inconclusive");
+  });
+
+  it("derives another change to a pre-dirty path from entry identities", () => {
+    const baselineEntry = { path: "src/queue.ts", index: ".", worktree: "M", content: "a".repeat(64) };
+    const result = compileStepPacket(input({ workspace: { ...input().workspace!, entries: [baselineEntry] } }));
+    if (!result.ok) throw new Error(result.reason);
+    const current = { ...result.packet.workspace, entries: [{ ...baselineEntry, content: "b".repeat(64) }] };
+    const currentChecklist = {
+      ...result.packet.checklist,
+      version: "changed",
+      content: result.packet.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? null,
+      steps: [true, false],
+    };
+    expect(reconcileStepPacket(result.packet, {
+      project: result.packet.project,
+      ticket: { ...result.packet.ticket, revision: "changed" },
+      batch: result.packet.batch,
+      plan: { ...result.packet.plan, authority: stepPacketAuthority(parsePlan(PLAN), result.packet.step.index, "Stop when the PR is open.") },
+      checklist: currentChecklist,
+      evidence: [...result.packet.evidence.group, ...result.packet.evidence.ticket],
+      workspace: { snapshot: current, headChanges: [] },
+    }).changedPaths).toEqual([{ path: "src/queue.ts", classification: "allowed" }]);
+  });
+
+  it("detects a same-path porcelain role or cardinality change", () => {
+    const recreated = { path: "src/queue.ts", index: "?", worktree: "?", content: "a".repeat(64) };
+    const renameSource = { path: "src/queue.ts", index: "R", worktree: ".", content: "b".repeat(64) };
+    const compiled = compileStepPacket(input({
+      workspace: { ...input().workspace!, entries: [recreated, renameSource] },
+    }));
+    if (!compiled.ok) throw new Error(compiled.reason);
+    const currentChecklist = {
+      ...compiled.packet.checklist,
+      version: "changed",
+      content: compiled.packet.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? null,
+      steps: [true, false],
+    };
+    const result = reconcileStepPacket(compiled.packet, {
+      project: compiled.packet.project,
+      ticket: { ...compiled.packet.ticket, revision: "changed" },
+      batch: compiled.packet.batch,
+      plan: { ...compiled.packet.plan, authority: stepPacketAuthority(parsePlan(PLAN), compiled.packet.step.index, "Stop when the PR is open.") },
+      checklist: currentChecklist,
+      evidence: [...compiled.packet.evidence.group, ...compiled.packet.evidence.ticket],
+      workspace: { snapshot: { ...compiled.packet.workspace, entries: [renameSource] }, headChanges: [] },
+    });
+    expect(result.changedPaths).toEqual([{ path: "src/queue.ts", classification: "allowed" }]);
+  });
+
+  it("rejects recomputed digest authority that broadens the live plan", () => {
+    const original = packet();
+    const { packetId: _ignored, ...body } = original;
+    const changedBody = { ...body, allowedFiles: [...body.allowedFiles, "README.md"] };
+    const forged = { ...changedBody, packetId: stepPacketDigest(changedBody) };
+    const result = reconcileStepPacket(forged, facts());
+    expect(result.status).toBe("fail");
+    expect(result.findings.some((finding) => finding.code === "STEP_PLAN_AUTHORITY_MISMATCH")).toBe(true);
   });
 });

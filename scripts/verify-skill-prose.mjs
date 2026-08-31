@@ -1521,6 +1521,65 @@ check(
   "inventory + target/claim ordering + dynamic blockers + retry budget + prepared schema transition",
 );
 
+console.log("\n=== constrained-step authority and reconciliation contract ===");
+const constrainedDocs = [agentsGuide, planSkill, executeSkill, autoSkill, toolReference];
+check(
+  "constrained plans pin canonical repository-relative path syntax",
+  /canonical repository-relative POSIX path/.test(planSkill) &&
+    /Benign declaration backslashes are\s*normalized to `\/`/.test(planSkill) &&
+    /absolute paths, `\.\.`, colon forms/.test(planSkill) &&
+    /Packet wire paths and observed Git paths must already be canonical and refuse backslashes/.test(agentsGuide) &&
+    /Packet wire paths and observed Git\s*paths must already be canonical and refuse backslashes/.test(toolReference) &&
+    /Expected-files glob may authorize a narrower step literal or pattern, but a\s*narrower Expected-files literal never authorizes a broader step glob/.test(planSkill) &&
+    /intersecting Do-not-modify patterns always win/.test(planSkill) &&
+    /Git-observed filenames retain exact\s*bytes/.test(toolReference),
+  "literal/segment-star/doublestar declarations stay directional and Git paths stay exact",
+);
+check(
+  "the controller retains the exact packet and treats packetId as non-authenticating",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /packetId` is\s*tamper-evident identity, not authentication/.test(body) &&
+    /worker-returned or reconstructed packet/.test(body),
+  ) &&
+    /Do not persist full packets or prompts in the automation run ledger/.test(agentsGuide) &&
+    /record packet-loss as `INCONCLUSIVE`, issue no successor/.test(agentsGuide) &&
+    /record\s*packet-loss as `INCONCLUSIVE`, dispatch no successor/.test(autoSkill),
+  "packet loss stops; no worker result or run-ledger prompt becomes authority",
+);
+check(
+  "packet-aware reconciliation derives actual Git changes and fails closed",
+  /bounded, double-sampled `git --no-optional-locks` HEAD\/index\/worktree evidence/.test(agentsGuide) &&
+    /Packet\/document bytes, entries and checklist lines plus the aggregate Git collection time are capped/.test(agentsGuide) &&
+    /caller-supplied changed-path summaries are not proof/.test(executeSkill) &&
+    /Missing, unreadable,\s*unstable, escaped, symlinked or hard-linked workspace evidence is `INCONCLUSIVE`/.test(executeSkill) &&
+    /forbidden or undeclared path is FAIL/.test(executeSkill) &&
+    /only permitted ticket-document\s*change is the selected checklist marker from unchecked to checked/.test(executeSkill),
+  "actual workspace, document and exact checklist evidence govern PASS/FAIL/INCONCLUSIVE",
+);
+check(
+  "constrained workers stop at the ignored and Git-metadata observation boundary",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /tracked,\s*staged,\s*unstaged\s+and\s+untracked\s+paths\s+plus\s+both\s+rename\s+endpoints/.test(body) &&
+    /Ignored\s+paths\s+and\s+`\.git`\s*\/\s*common-directory\s+metadata\s+are\s+outside/.test(body) &&
+    /deviation stop/.test(body) &&
+    /`INCONCLUSIVE`/.test(body),
+  ),
+  "ignored paths and Git metadata are forbidden worker scope, not silently detected writes",
+);
+check(
+  "successor steps require the complete exact prior PASS packet",
+  /complete exact prior packet as `prior_step_packet`/.test(agentsGuide) &&
+    /Only PASS may authorize the next step/.test(executeSkill) &&
+    /supplied whole as\s*`prior_step_packet`/.test(autoSkill) &&
+    /short id, worker-returned packet, reconstruction or numeric skip is refused/.test(toolReference),
+  "no id-only, reconstructed or skipped successor authority",
+);
+check(
+  "canonical docs describe only step-packet/2",
+  constrainedDocs.every((body) => /step-packet\/2/.test(body) && !/step-packet\/1/.test(body)),
+  "AGENTS, plan, execute, auto and tool reference all name schema 2",
+);
+
 // Two claims that must stay absent. The first is the role boundary that
 // FRD-034's "the controller merges after the final independent pass" is easily
 // misread into — the live run's own invariant is that the reviewer merges. The

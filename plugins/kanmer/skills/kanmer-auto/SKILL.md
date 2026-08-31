@@ -465,6 +465,18 @@ reads that command's log itself before returning — it is not notified while
 stopped, and a worker that ends its turn "waiting for a notification" is a
 failed worker, reconciled from live state like any other.
 
+For a constrained step, the trusted controller retains the exact full
+`step-packet/2` object inside the live dispatch/reconciliation chain before
+dispatch and later supplies that same object to `reconcile_ticket
+step_packet:`. Its `packetId` is tamper-evident identity, not authentication;
+a worker-returned or reconstructed packet is never authority. The run
+ledger records the packet id and compact outcome, not the full packet or
+prompt. If a crash or reconnect loses the controller-retained object, record
+packet-loss as `INCONCLUSIVE`, dispatch no successor, and never rebuild it from
+worker text or current board/Git state. A successor step is issued only after
+the exact retained predecessor reconciles PASS and is supplied whole as
+`prior_step_packet`.
+
 On every result or timeout, the controller:
 
 1. stops conflicting dispatch while the result is uncertain;
@@ -472,11 +484,20 @@ On every result or timeout, the controller:
    Git/PR state where applicable, and `get_doc_gates`;
 3. compares the live dependency state with the frozen snapshot and applies the
    post-result revalidation and downstream-failure propagation above;
-4. compares actual mutations, stage, gate, checklist, branch/worktree, commit,
-   PR and error evidence with the approved scope;
+4. calls packet-aware `reconcile_ticket` when constrained, then compares its
+   bounded actual HEAD/index/worktree deltas, stage, gate, exact checklist,
+   counted ticket documents, branch/worktree, commit, PR and error evidence
+   with the approved scope; missing or unreadable evidence is `INCONCLUSIVE`,
+   while undeclared or forbidden changes are FAIL;
 5. records the worker result, reconciliation, discrepancy, and one next action
    in the ledger/event log; and
 6. writes and reads back the run record before selecting another action.
+
+The constrained Git census covers tracked, staged, unstaged and untracked
+paths plus both rename endpoints. Ignored paths and `.git` / common-directory
+metadata are outside it and constrained workers must never mutate them. Any
+need or attempt is a deviation stop recorded as `INCONCLUSIVE`; absence from the
+census never authorizes such a write.
 
 After anything merges to the run's recorded `delivery_target`, lanes still in
 flight rebase onto that same target before opening a PR, with absolute paths and

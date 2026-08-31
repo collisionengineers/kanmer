@@ -2436,3 +2436,68 @@ test("goal contract validator rejects a run record that records no transient bud
     removeTreeWithRetrySync(fixture);
   }
 });
+
+test("constrained-step prose validator rejects weakened authority, path and reconciliation contracts", () => {
+  const mutations = [
+    {
+      label: "path-syntax",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "canonical repository-relative POSIX path",
+      to: "convenient project path",
+      failure: "constrained plans pin canonical repository-relative path syntax",
+    },
+    {
+      label: "backslash-direction",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "Benign declaration backslashes are\n   normalized to `/`",
+      to: "Declaration and observed backslashes are accepted without normalization",
+      failure: "constrained plans pin canonical repository-relative path syntax",
+    },
+    {
+      label: "packet-auth",
+      file: (fixture) => skillFile(fixture, "kanmer-auto"),
+      from: "Its `packetId` is tamper-evident identity, not authentication",
+      to: "Its `packetId` authenticates the worker result",
+      failure: "the controller retains the exact packet and treats packetId as non-authenticating",
+    },
+    {
+      label: "caller-paths",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "caller-supplied changed-path summaries are not proof",
+      to: "caller-supplied changed-path summaries are sufficient proof",
+      failure: "packet-aware reconciliation derives actual Git changes and fails closed",
+    },
+    {
+      label: "ignored-boundary",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "Ignored paths and `.git` / common-directory metadata are",
+      to: "Ignored paths and Git metadata are fully observed and",
+      failure: "constrained workers stop at the ignored and Git-metadata observation boundary",
+    },
+    {
+      label: "successor-pass",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "Only PASS may authorize the next step",
+      to: "Any terminal result may authorize the next step",
+      failure: "successor steps require the complete exact prior PASS packet",
+    },
+    {
+      label: "schema-version",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "`step-packet/2`",
+      to: "`step-packet/1`",
+      failure: "canonical docs describe only step-packet/2",
+    },
+  ];
+  for (const mutation of mutations) {
+    const fixture = goalFixture(`kanmer-constrained-step-${mutation.label}-`);
+    try {
+      edit(mutation.file(fixture), mutation.from, mutation.to);
+      const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+      assert.notEqual(result.status, 0, `${mutation.label} mutation should fail the validator`);
+      expectFail(result.stdout, mutation.failure);
+    } finally {
+      removeTreeWithRetrySync(fixture);
+    }
+  }
+});

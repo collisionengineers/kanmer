@@ -57,8 +57,16 @@ resolve time, so its `profiles:` block is not the effective set.
    worker, write each ordered step as its own `### Step N — <title>`
    sub-section with the template's labelled bullets, and pin the evidence
    versions in Starting state. That is what `get_execution_packet id: <ID>,
-   step: <n>` compiles into a packet limited to that step's files and symbols;
+   step: <n>` compiles into a `step-packet/2` limited to that step's files and symbols;
    a plan without it still executes normally, it simply cannot be compiled.
+   Every `Expected files`, `Do not modify`, and ordered-step `Files` entry is a
+   canonical repository-relative POSIX path: use literals, `*` within one path
+   segment, or `**` as a complete segment. Benign declaration backslashes are
+   normalized to `/`; absolute paths, `..`, colon forms, URI/pathspec syntax
+   and other glob syntax are refused. An
+   Expected-files glob may authorize a narrower step literal or pattern, but a
+   narrower Expected-files literal never authorizes a broader step glob;
+   intersecting Do-not-modify patterns always win.
    `get_execution_packet` also returns an advisory `validation` report for any
    plan — read its findings, but they remain advisory, not a gate.
 5. **Resolve planner decisions before dispatch.** In Required changes, words

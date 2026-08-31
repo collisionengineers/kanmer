@@ -113,6 +113,30 @@ step may touch, the files it must not, its exact tests, commands, expected
 output, done condition, deviation stop, and a stop condition that ends the work
 after that one step. Execute exactly that step, then stop and report so the
 controller can reconcile the actual changes before another packet is issued.
+The controller, not the worker, retains the exact full `step-packet/2` object
+inside the live dispatch/reconciliation chain before dispatch. `packetId` is
+tamper-evident identity, not authentication: reconcile only the controller's
+retained object, never a worker-returned or reconstructed packet. Do not
+copy the full packet into an automation ledger. If a crash or reconnect loses
+that retained object, record packet-loss as `INCONCLUSIVE`, issue no successor,
+and do not rebuild authority from live state.
+
+At the stop, call `reconcile_ticket` with that exact retained `step_packet`.
+Kanmer derives the actual HEAD, index, worktree and pre-dirty deltas itself;
+caller-supplied changed-path summaries are not proof. Missing, unreadable,
+unstable, escaped, symlinked or hard-linked workspace evidence is `INCONCLUSIVE`; a
+forbidden or undeclared path is FAIL. The only permitted ticket-document
+change is the selected checklist marker from unchecked to checked: every other
+checklist line, ticket authority field and counted document remains bound.
+This Git evidence covers tracked, staged, unstaged and untracked paths plus both
+rename endpoints. Ignored paths and `.git` / common-directory metadata are
+outside it; a constrained worker must never mutate them. Any need or attempt is
+a deviation stop and the controller records `INCONCLUSIVE` — an absent path is
+not proof that an ignored or Git-metadata write was safe.
+Only PASS may authorize the next step, by sending the complete exact prior
+packet as `prior_step_packet`; a short packet id, reconstruction, numeric skip
+or worker summary cannot advance. Write `post-implementation-report` only
+after the final step has reconciled PASS.
 A plan that cannot be compiled into a bounded step is a normal
 `ready:false, code:"GATE_BLOCKED"` refusal carrying a `validation` report; hand
 it back to `kanmer-plan` rather than guessing the missing fields. Without

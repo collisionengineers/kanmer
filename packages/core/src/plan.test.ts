@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   extractAtxSection,
+  parsePlanPath,
   parseAtxSections,
   parsePlan,
+  planPathMatches,
   validatePlan,
   type PlanFindingCode,
   type ParsedPlan,
@@ -279,6 +281,95 @@ describe("validatePlan with a selected step", () => {
     expect(report.findings.some((f) => f.code === "PLAN_STEP_FILE_FORBIDDEN" && f.severity === "blocker")).toBe(true);
   });
 
+  it("blocks a step file matched by a supported forbidden glob", () => {
+    const plan = parsePlan(
+      GOOD_PLAN.replace("`src/vendor/bundle.js`", "`src/vendor/**`")
+        .replace("| Modify | `src/legacy.ts` | untouched by step 1 |", "| Modify | `src/vendor/generated/file.ts` | generated |")
+        .replace("- Files: `src/legacy.ts`", "- Files: `src/vendor/generated/file.ts`"),
+    );
+    expect(validatePlan(plan, { step: 2 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_FORBIDDEN")).toBe(true);
+  });
+
+  it("lets a broader Expected-files glob cover a literal step path", () => {
+    const plan = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/**` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", ""),
+    );
+    expect(validatePlan(plan, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+  });
+
+  it("proves narrower patterned step authority inside supported Expected-files globs", () => {
+    const segment = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/*.ts` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/a*.ts`"),
+    );
+    expect(validatePlan(segment, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+
+    const recursive = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/**/*.ts` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/**/a*.ts`"),
+    );
+    expect(validatePlan(recursive, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+
+    const trailingRecursive = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `a/**` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `a/**/b`"),
+    );
+    expect(validatePlan(trailingRecursive, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+
+    const consecutiveRecursive = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `a/**/b` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `a/**/**/b`"),
+    );
+    expect(validatePlan(consecutiveRecursive, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+  });
+
+  it("rejects a requested glob language that can escape its Expected-files authority", () => {
+    const plan = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/a*.ts` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`"),
+    );
+    expect(validatePlan(plan, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(true);
+  });
+
+  it("does not let narrow Expected-files literals authorize a broader step glob", () => {
+    const plan = parsePlan(GOOD_PLAN.replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`"));
+    expect(validatePlan(plan, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(true);
+  });
+
+  it("fails closed when patterned step and forbidden declarations intersect without containing each other", () => {
+    const plan = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/**` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("`src/vendor/bundle.js`", "`src/a/*.ts`")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*/x.ts`"),
+    );
+    expect(validatePlan(plan, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_FORBIDDEN")).toBe(true);
+  });
+
+  it("does not falsely intersect disjoint segment-star languages", () => {
+    const plan = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/**` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("`src/vendor/bundle.js`", "`src/b*.js`")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/a*.ts`"),
+    );
+    expect(validatePlan(plan, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_FORBIDDEN")).toBe(false);
+  });
+
   it("blocks a plan with no usable acceptance check", () => {
     const plan = parsePlan(GOOD_PLAN.replace("- `npm test` proves the retry cap.\n- Manual: read the changelog entry.", "- It should work well."));
     expect(validatePlan(plan, { step: 1 }).findings.some((f) => f.code === "PLAN_ACCEPTANCE_MISSING")).toBe(true);
@@ -311,12 +402,19 @@ describe("evidence currency", () => {
     expect(report.findings.some((f) => f.code === "PLAN_EVIDENCE_STALE" && f.detail === "research/research.md")).toBe(true);
   });
 
-  it("reports an unknown pin as advisory only", () => {
+  it("blocks an unknown pin when compiling a selected step", () => {
     const report = validatePlan(parsePlan(GOOD_PLAN), { step: 1, liveEvidence: [live[0]] });
     const unknown = report.findings.filter((f) => f.code === "PLAN_EVIDENCE_UNKNOWN");
     expect(unknown).toHaveLength(1);
-    expect(unknown[0].severity).toBe("advisory");
-    expect(report.ok).toBe(true);
+    expect(unknown[0].severity).toBe("blocker");
+    expect(report.ok).toBe(false);
+  });
+
+  it("requires a matching pin for every current research/files document", () => {
+    const onePin = parsePlan(GOOD_PLAN.replace(/, `files\/files\.md`@`bbbbbbbbbbbbbbbb`/, ""));
+    const report = validatePlan(onePin, { step: 1, liveEvidence: live, requireEvidencePin: true });
+    expect(report.findings.some((finding) => finding.code === "PLAN_EVIDENCE_UNRECORDED" && finding.detail === "files/files.md")).toBe(true);
+    expect(report.ok).toBe(false);
   });
 
   it("blocks an evidence-bearing ticket whose plan pins nothing", () => {
@@ -327,5 +425,39 @@ describe("evidence currency", () => {
 
   it("says nothing about evidence when no live evidence is supplied", () => {
     expect(codes(parsePlan(GOOD_PLAN), { step: 1 })).not.toContain("PLAN_EVIDENCE_UNRECORDED");
+  });
+});
+
+describe("repository-relative plan paths", () => {
+  it.each(["../x.ts", "src/../../x.ts", "/etc/hosts", "C:\\temp\\x.ts", "\\\\server\\share\\x.ts", "file://x", "https://x", "mailto:x", "src/name:alt", "", ".", "a\0b", "src/[ab].ts", "src/a**b.ts"])(
+    "rejects unsupported or escaping authority %j",
+    (value) => expect(parsePlanPath(value, { allowPattern: true }).ok).toBe(false),
+  );
+
+  it("normalizes a single leading dot and Windows separators", () => {
+    expect(parsePlanPath("./src\\queue.ts")).toEqual({ ok: true, path: "src/queue.ts", pattern: false });
+  });
+
+  it("preserves exact observed whitespace, Unicode and newline bytes without declaration normalization", () => {
+    const observed = " src/雪\nqueue.ts ";
+    expect(parsePlanPath(observed, { observed: true })).toEqual({ ok: true, path: observed, pattern: false });
+    expect(parsePlanPath("./src/queue.ts", { observed: true }).ok).toBe(false);
+    expect(parsePlanPath("src\\queue.ts", { observed: true }).ok).toBe(false);
+    expect(planPathMatches("src/*.ts", "src/雪\nqueue.ts")).toBe(true);
+  });
+
+  it("matches literal, segment-local star and cross-segment double star without regex leakage", () => {
+    expect(planPathMatches("apps/gui/**", "apps/gui/src/main.ts")).toBe(true);
+    expect(planPathMatches("src/*.ts", "src/a.ts")).toBe(true);
+    expect(planPathMatches("src/*.ts", "src/nested/a.ts")).toBe(false);
+    expect(planPathMatches("src/a+b.ts", "src/a+b.ts")).toBe(true);
+    expect(planPathMatches("src/a+b.ts", "src/aaab.ts")).toBe(false);
+    expect(planPathMatches("src/foo.ts", "src/foo.ts.old")).toBe(false);
+  });
+
+  it("retains invalid plan authority as a typed blocking finding", () => {
+    const invalid = parsePlan(GOOD_PLAN.replace("`src/queue.ts`, `src/queue.test.ts`", "`../escape.ts`, `src/queue.test.ts`"));
+    const report = validatePlan(invalid, { step: 1 });
+    expect(report.findings.some((finding) => finding.code === "PLAN_PATH_INVALID" && finding.severity === "blocker")).toBe(true);
   });
 });

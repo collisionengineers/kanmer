@@ -104,6 +104,15 @@ try {
   check("get_ticket_doc is read-only", gtd?.annotations?.readOnlyHint === true);
   const gep = tools.tools.find((t) => t.name === "get_execution_packet");
   check("get_execution_packet is read-only", gep?.annotations?.readOnlyHint === true);
+  check(
+    "get_execution_packet accepts the complete exact prior step packet",
+    gep?.inputSchema?.properties?.prior_step_packet?.type === "object",
+  );
+  const reconcileInspector = tools.tools.find((t) => t.name === "reconcile_ticket");
+  check(
+    "reconcile_ticket accepts a complete immutable step packet",
+    reconcileInspector?.inputSchema?.properties?.step_packet?.type === "object",
+  );
   const dispatchStart = tools.tools.find((t) => t.name === "dispatch_task");
   const dispatchList = tools.tools.find((t) => t.name === "list_dispatches");
   const dispatchCancel = tools.tools.find((t) => t.name === "cancel_dispatch");
@@ -3566,8 +3575,53 @@ Second proof attempt passed; the first failure is retained.
     JSON.stringify(wholeTicketPacket.groupContexts?.[0]?.version),
   );
 
+  // The whole-ticket packet above remains the setup route. A constrained
+  // packet additionally needs the recorded real Git workspace whose changes
+  // reconciliation will inspect; caller-supplied path lists are never proof.
+  fs.mkdirSync(path.join(sandbox, "src"), { recursive: true });
+  fs.writeFileSync(
+    path.join(sandbox, "src", "queue.ts"),
+    "export const QUEUE_MAX_RETRIES = 3;\nexport const enqueue = () => 'queued';\n",
+  );
+  fs.writeFileSync(
+    path.join(sandbox, "src", "queue.test.ts"),
+    "// deterministic constrained-step fixture\n",
+  );
+  execFileSync("git", ["add", "--", "src/queue.ts", "src/queue.test.ts"], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
+  execFileSync(
+    "git",
+    ["-c", "user.name=Kanmer smoke", "-c", "user.email=smoke@example.invalid", "commit", "-m", "step packet source fixture"],
+    { cwd: sandbox, windowsHide: true, stdio: "ignore" },
+  );
+  const stepBranch = "step-packet-branch";
+  const stepWorktreeRelative = ".worktrees/step-packet";
+  const stepWorktree = path.join(sandbox, stepWorktreeRelative);
+  execFileSync("git", ["worktree", "add", "-b", stepBranch, stepWorktree, expectedBoardBranch], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
+  const stepTaken = JSON.parse(textOf(await client.callTool({
+    name: "take_ticket",
+    arguments: {
+      id: stepId,
+      branch: stepBranch,
+      worktree: stepWorktreeRelative,
+      assignee: "smoke",
+      expected_project: expectedProject,
+    },
+  })));
+  check(
+    "constrained execution records the exact real branch and worktree",
+    stepTaken.branch === stepBranch && stepTaken.worktree === stepWorktreeRelative,
+    JSON.stringify({ branch: stepTaken.branch, worktree: stepTaken.worktree }),
+  );
+
   const stepOne = JSON.parse(
-    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 1 } })),
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: stepId, step: 1, resume: { branch: stepBranch, worktree: stepWorktreeRelative } },
+    })),
   );
   check(
     "a compiled step packet limits the worker to that step's allowed files and symbols",
@@ -3591,12 +3645,15 @@ Second proof attempt passed; the first failure is retained.
   );
   check(
     "a compiled step packet is versioned and bound to project, ticket revision, plan and step identity",
-    stepOne.step?.packetVersion === "step-packet/1" &&
-      /^[a-f0-9]{16}$/.test(stepOne.step?.packetId ?? "") &&
+    stepOne.step?.packetVersion === "step-packet/2" &&
+      /^[a-f0-9]{64}$/.test(stepOne.step?.packetId ?? "") &&
       stepOne.step?.project?.fingerprint === expectedProject &&
       typeof stepOne.step?.project?.project_id === "string" &&
       stepOne.step?.ticket?.id === stepId &&
       stepOne.step?.ticket?.revision === stepOne.ticket?.revision &&
+      stepOne.step?.workspace?.branch === stepBranch &&
+      stepOne.step?.workspace?.worktree === stepWorktreeRelative &&
+      /^[a-f0-9]{40}$/.test(stepOne.step?.workspace?.head ?? "") &&
       stepOne.step?.plan?.path === "plan/plan.md" &&
       stepOne.step?.plan?.version === stepOne.documents?.plan?.version &&
       JSON.stringify(stepOne.step?.step) === JSON.stringify({ index: 1, total: 3, id: "step-1", title: "Bound the retry loop" }),
@@ -3611,22 +3668,74 @@ Second proof attempt passed; the first failure is retained.
   );
 
   const nextBeforeTick = JSON.parse(
-    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: "next" } })),
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: stepId, step: "next", resume: { branch: stepBranch, worktree: stepWorktreeRelative } },
+    })),
   );
   check(
     "step \"next\" selects the first unfinished ordered step",
     nextBeforeTick.ready === true && nextBeforeTick.step?.step?.index === 1,
     JSON.stringify(nextBeforeTick.step?.step ?? nextBeforeTick.reason),
   );
+
+  const stepBoardBeforeReconcile = treeSnapshot(path.join(sandbox, ".kanmer"));
+  fs.writeFileSync(path.join(stepWorktree, "src", "secret.ts"), "export const secret = true;\n");
+  const undeclaredReconciliation = JSON.parse(textOf(await client.callTool({
+    name: "reconcile_ticket",
+    arguments: { id: stepId, step_packet: stepOne.step },
+  })));
+  check(
+    "step reconciliation derives and refuses an undeclared actual workspace change",
+    undeclaredReconciliation.step?.status === "fail" &&
+      undeclaredReconciliation.step?.findings?.some((finding) => finding.code === "STEP_PATH_UNDECLARED" && finding.path === "src/secret.ts"),
+    JSON.stringify(undeclaredReconciliation.step),
+  );
+  fs.rmSync(path.join(stepWorktree, "src", "secret.ts"));
+  check(
+    "packet-aware reconciliation is read-only for the board",
+    JSON.stringify(treeSnapshot(path.join(sandbox, ".kanmer"))) === JSON.stringify(stepBoardBeforeReconcile),
+  );
+
+  fs.appendFileSync(path.join(stepWorktree, "src", "queue.ts"), "// cap retry loop at QUEUE_MAX_RETRIES\n");
   await client.callTool({
     name: "set_ticket_doc",
     arguments: { id: stepId, doc: "checklist", content: "- [x] Step 1 — cap the loop\n- [ ] Step 2 — document the cap\n" },
   });
-  const nextAfterTick = JSON.parse(
-    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: "next" } })),
+  const reconciledStepOne = JSON.parse(textOf(await client.callTool({
+    name: "reconcile_ticket",
+    arguments: { id: stepId, step_packet: stepOne.step },
+  })));
+  check(
+    "a selected checklist tick plus only allowed actual changes reconciles PASS",
+    reconciledStepOne.step?.status === "pass" &&
+      JSON.stringify(reconciledStepOne.step?.changedPaths) === JSON.stringify([{ path: "src/queue.ts", classification: "allowed" }]),
+    JSON.stringify(reconciledStepOne.step),
+  );
+  const refusedNextWithoutPrior = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: stepId, step: "next", resume: { branch: stepBranch, worktree: stepWorktreeRelative } },
+    })),
   );
   check(
-    "step \"next\" advances only after the checklist records the step as done",
+    "a later step refuses packet-id-free or missing predecessor authority",
+    refusedNextWithoutPrior.ready === false && refusedNextWithoutPrior.reason.includes("complete exact prior_step_packet"),
+    refusedNextWithoutPrior.reason,
+  );
+  const nextAfterTick = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: {
+        id: stepId,
+        step: "next",
+        resume: { branch: stepBranch, worktree: stepWorktreeRelative },
+        prior_step_packet: stepOne.step,
+      },
+    })),
+  );
+  check(
+    "step \"next\" advances only after the exact prior packet reconciles PASS",
     nextAfterTick.ready === true && nextAfterTick.step?.step?.index === 2 &&
       JSON.stringify(nextAfterTick.step?.allowedFiles) === JSON.stringify(["docs/queue.md"]),
     JSON.stringify(nextAfterTick.step?.step ?? nextAfterTick.reason),
@@ -3640,24 +3749,36 @@ Second proof attempt passed; the first failure is retained.
     ticket: fs.readFileSync(stepTicketFile, "utf8"),
     activity: fs.readFileSync(packetActivity, "utf8"),
   };
-  const refusedUndeclared = JSON.parse(
-    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 3 } })),
-  );
+  const broadenedPrior = structuredClone(stepOne.step);
+  broadenedPrior.allowedFiles.push("src/secret.ts");
+  const refusedTamperedPrior = JSON.parse(textOf(await client.callTool({
+    name: "get_execution_packet",
+    arguments: {
+      id: stepId,
+      step: "next",
+      resume: { branch: stepBranch, worktree: stepWorktreeRelative },
+      prior_step_packet: broadenedPrior,
+    },
+  })));
   check(
-    "a step naming a file the plan never declared is refused, not silently allowed",
-    refusedUndeclared.ready === false && refusedUndeclared.code === "GATE_BLOCKED" &&
-      refusedUndeclared.missing.length === 0 &&
-      codesOf(refusedUndeclared.validation).includes("PLAN_STEP_FILE_UNDECLARED") &&
-      refusedUndeclared.validation.ok === false,
-    JSON.stringify(codesOf(refusedUndeclared.validation)),
+    "a recomputed-authority attempt without a matching full packet digest is refused",
+    refusedTamperedPrior.ready === false && refusedTamperedPrior.code === "GATE_BLOCKED" &&
+      refusedTamperedPrior.reason.includes("digest does not match"),
+    refusedTamperedPrior.reason,
   );
-  const refusedOutOfRange = JSON.parse(
-    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 9 } })),
-  );
+  const refusedSkip = JSON.parse(textOf(await client.callTool({
+    name: "get_execution_packet",
+    arguments: {
+      id: stepId,
+      step: 3,
+      resume: { branch: stepBranch, worktree: stepWorktreeRelative },
+      prior_step_packet: stepOne.step,
+    },
+  })));
   check(
-    "a step the plan does not have is refused",
-    refusedOutOfRange.ready === false && codesOf(refusedOutOfRange.validation).includes("PLAN_STEP_NOT_FOUND"),
-    JSON.stringify(codesOf(refusedOutOfRange.validation)),
+    "numeric selection cannot skip the current unfinished ordered step",
+    refusedSkip.ready === false && refusedSkip.reason.includes("not the immediately preceding step 2"),
+    refusedSkip.reason,
   );
   const stepRefusalAfter = {
     tree: treeSnapshot(path.join(sandbox, ".kanmer")),
@@ -3673,10 +3794,10 @@ Second proof attempt passed; the first failure is retained.
     textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: packetId, step: 1 } })),
   );
   check(
-    "a plan with no ordered steps cannot be compiled, while its whole-ticket packet still works",
-    refusedNoSteps.ready === false && codesOf(refusedNoSteps.validation).includes("PLAN_STEPS_MISSING") &&
+    "a constrained request without a recorded worktree is refused while its whole-ticket setup packet still works",
+    refusedNoSteps.ready === false && refusedNoSteps.reason.includes("proven recorded branch and worktree") &&
       readyPacket.ready === true,
-    JSON.stringify(codesOf(refusedNoSteps.validation)),
+    refusedNoSteps.reason,
   );
   const legacyStepsId = JSON.parse(
     textOf(await client.callTool({ name: "create_item", arguments: { title: "legacy step list", status: "implementing", profile: "chore", docs_todo: true } })),
@@ -3689,19 +3810,28 @@ Second proof attempt passed; the first failure is retained.
     textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: legacyStepsId, step: 1 } })),
   );
   check(
-    "a numbered-list plan step is not a bounded packet",
-    refusedUnstructured.ready === false && codesOf(refusedUnstructured.validation).includes("PLAN_STEP_UNSTRUCTURED"),
-    JSON.stringify(codesOf(refusedUnstructured.validation)),
+    "an unclaimed legacy plan cannot bypass the recorded-workspace constraint",
+    refusedUnstructured.ready === false && refusedUnstructured.reason.includes("proven recorded branch and worktree"),
+    refusedUnstructured.reason,
   );
 
   await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "research", content: "Queue retry research, revised." } });
   const refusedStaleEvidence = JSON.parse(
-    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 2 } })),
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: {
+        id: stepId,
+        step: 2,
+        resume: { branch: stepBranch, worktree: stepWorktreeRelative },
+        prior_step_packet: stepOne.step,
+      },
+    })),
   );
   check(
-    "a plan pinned to superseded evidence cannot compile another step",
-    refusedStaleEvidence.ready === false && codesOf(refusedStaleEvidence.validation).includes("PLAN_EVIDENCE_STALE"),
-    JSON.stringify(codesOf(refusedStaleEvidence.validation)),
+    "a plan pinned to superseded evidence cannot authorize another step",
+    refusedStaleEvidence.ready === false && refusedStaleEvidence.reason.includes("prior step reconciled as fail") &&
+      refusedStaleEvidence.reason.includes("Evidence research/research.md changed"),
+    refusedStaleEvidence.reason,
   );
 
   // CORE-122: reconcile_ticket is a read-only inspector with an advisory

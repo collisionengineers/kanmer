@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Batch workspaces follow-up: merge gate accepts a batch roster, closeout roster
   discovery, batch hardening (CORE-124 review)
-status: implementing
+status: review
 area: core
 assignee: codex-release-controller
 profile: fix
@@ -31,11 +31,12 @@ commits:
   - 4ef3c8170d9ae247cf8af04fc29981b31899a048
   - 738e03ee2179621c347328e704134b1202ea5a8e
   - b51ead6e019f11d035c66f148c311a707f123bb0
+  - 31dac12a8d6445de0c775e47bf709499830a5c4e
 prs:
   - '306'
 archived: false
 created: '2026-08-27T21:17:27.817Z'
-updated: '2026-08-31T13:26:59.654Z'
+updated: '2026-08-31T14:03:15.276Z'
 ---
 
 ## What

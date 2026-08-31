@@ -137,3 +137,35 @@ Failing-first evidence retained: before the shared-validator source fix, the exp
 One authoritative Windows `npm run verify` rail then passed at the exact clean committed head: 707 core tests, 524 GUI tests, 171 MCP/integration tests, 157 script tests, 365 MCP smoke checks, and 50 protocol checks, plus every build, workspace typecheck, docs/manual, headless/discovery, MCPB, skills, AGENTS, and plugin byte-identity check. No overlapping full rail ran on this host.
 
 The first command-launch attempt requested a PTY and failed in the Windows process allocator before npm started; it produced no source-test attempt. The immediate non-PTY launch at the unchanged exact commit is the authoritative passing rail.
+
+## Final protected-batch lifecycle remediation
+
+Exact remediation head: `31dac12a8d6445de0c775e47bf709499830a5c4e`.
+
+F-019 through F-023 were corrected as one complete lifecycle invariant:
+
+- F-019 fixed: a plural batch declaration without a concrete worktree is rejected as `BATCH_WORKSPACE_INVALID` before the pending WAL or any ticket/manifest write; isolated branch-only take remains compatible.
+- F-020 fixed: after exact batch actor/run authorization and manifest consistency, non-authoritative display labels no longer reject the authorized controller; physical Git safety and isolated occupancy checks remain unchanged.
+- F-021 fixed: the schema-3 automation ledger's immutable `run_id` is the `controller_run` for declaration/recovery, packet acquisition, later-member take, and every CAS renewal.
+- F-022 fixed: after GitHub confirms the one shared PR merged, review re-reads the active manifest and idempotently advances every immutable member from Review to Verifying, stopping on any unexpected state and writing no proof.
+- F-023 fixed: only the first completed member creates the shared PR; later members require and record exactly one matching open PR with the configured base, manifest branch, exact head, and complete footer roster.
+
+The remediation changed only the 16 authorized source, test, canonical-prose, generated-manual, and committed-bundle files named by the versioned files/plan documents.
+
+Failing-first evidence at `b51ead6e019f11d035c66f148c311a707f123bb0`:
+
+- Core claims: 75/76, with the new worktree-required case proving the old branch-only batch declaration.
+- MCP smoke: 366/368, with the new zero-write worktree refusal and authorized actor/run display-label cases exposing the two source defects.
+- Three protected-batch prose negative fixtures failed until the canonical auto/execute/review contracts carried the lifecycle invariants.
+
+Focused passing evidence at `31dac12a8d6445de0c775e47bf709499830a5c4e`:
+
+- Core claims: 76/76.
+- MCP typecheck/build and standalone smoke: 368/368.
+- Skill prose and negative fixtures: 52/52.
+- AGENTS verification: 31/31.
+- Generated manual: 22 chapters current.
+- Plugin build/check: 41 tools, 12 skills, exact source/bundle byte identity.
+- `git diff --check`: PASS.
+
+One authoritative, non-overlapping clean Windows `npm run verify` rail then passed with exit 0 at the exact committed head `31dac12a8d6445de0c775e47bf709499830a5c4e`: build; 708 core tests; 524 GUI tests; 171 MCP HTTP/integration tests; 160 repository script tests; all workspace typechecks; 368 MCP smoke checks; headless and discovery checks; 50 protocol checks; MCPB packaging; documentation/manual; skills; AGENTS; and plugin byte identity. The worktree remained clean at the exact head after the rail.

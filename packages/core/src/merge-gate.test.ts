@@ -429,6 +429,46 @@ describe("phase-2 merge-gate evidence", () => {
     }));
   });
 
+  it("orders exact-roster dependencies inside the shared PR while external and dangling blockers still fail", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const internalId = first.tickets[0]!.id;
+    const internalOnly = updateBatchMember(first.packet, selectedId, (member) => ({
+      ...member,
+      evidence: {
+        ...member.evidence,
+        blockers: [{ id: internalId, status: "review", archived: false, exists: true }],
+      },
+    }));
+    const passResult = await evaluateMergeGate({} as KanmerStore, first.pr, internalOnly);
+    expect(passResult.ok).toBe(true);
+    expect(passResult.findings).toEqual([]);
+    expect(passResult.checks).toContainEqual(expect.objectContaining({
+      code: "DEPENDENCY_BLOCKED",
+      outcome: "pass",
+      details: { ticketId: selectedId, blockers: [] },
+    }));
+
+    const external = updateBatchMember(internalOnly, selectedId, (member) => ({
+      ...member,
+      evidence: {
+        ...member.evidence,
+        blockers: [
+          { id: internalId, status: "review", archived: false, exists: true },
+          { id: "DEP-LIVE", status: "implementing", archived: false, exists: true },
+          { id: "DEP-MISSING", exists: false },
+        ],
+      },
+    }));
+    const failResult = await evaluateMergeGate({} as KanmerStore, first.pr, external);
+    expect(failResult.ok).toBe(false);
+    expect(failResult.findings).toContainEqual(expect.objectContaining({
+      code: "DEPENDENCY_BLOCKED",
+      outcome: "fail",
+      details: { ticketId: selectedId, blockers: ["DEP-LIVE", "DEP-MISSING"] },
+    }));
+  });
+
   it("requires every member's independent PASS review for this exact PR head", async () => {
     const first = await batchPacket();
     const selectedId = first.tickets[1]!.id;

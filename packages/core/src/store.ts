@@ -284,6 +284,7 @@ function batchRequestSha256(
   members: string[],
   input: TakeTicketInput,
   stage: string,
+  canonicalWorktree: string | null,
 ): string {
   return sha256(JSON.stringify({
     batch_id: batchId,
@@ -292,7 +293,7 @@ function batchRequestSha256(
     controller_run: controllerRun,
     members,
     branch: input.branch,
-    worktree: input.worktree ?? null,
+    worktree: canonicalWorktree,
     stage,
     assignee: input.assignee ?? null,
     controller_label: input.controller ?? null,
@@ -1461,6 +1462,48 @@ export class KanmerStore {
   }
 
   /**
+   * The portable workspace identity persisted by a batch manifest. Worktree
+   * identity is always relative to the repository root. Host-absolute values
+   * are used only transiently for containment/equality and are never retained
+   * as batch authority; isolated leases keep their existing contract.
+   */
+  private batchWorkspaceIdentity(
+    worktree: string | undefined,
+    branch: string,
+  ): { workspace: string; worktree: string | null } {
+    if (!worktree) return { workspace: `branch:${branch}`, worktree: null };
+
+    // A Windows drive-qualified path is not absolute to path.posix. Refuse it
+    // explicitly on non-Windows hosts rather than turning a foreign machine's
+    // absolute path into a misleading repo-relative identity.
+    if (process.platform !== "win32" && /^[a-zA-Z]:[\\/]/u.test(worktree)) {
+      throw new Error(
+        `BATCH_WORKSPACE_INVALID: batch worktree "${worktree}" is outside this repository; ` +
+          `use a repo-relative ticket worktree.`,
+      );
+    }
+    // Resolve transiently for containment and host-equivalence only. On
+    // Windows normalizeWorktreePath case-folds both values, so case variants
+    // produce one portable request fingerprint without persisting a host path.
+    const repoRoot = normalizeWorktreePath(this.paths.repoRoot, this.paths.repoRoot);
+    const resolved = normalizeWorktreePath(worktree, this.paths.repoRoot);
+    const relative = path.relative(repoRoot, resolved);
+    if (
+      relative.length === 0 ||
+      relative === ".." ||
+      relative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relative)
+    ) {
+      throw new Error(
+        `BATCH_WORKSPACE_INVALID: batch worktree "${worktree}" is outside this repository; ` +
+          `use a repo-relative ticket worktree.`,
+      );
+    }
+    const portable = relative.replaceAll(path.sep, "/");
+    return { workspace: `worktree:${portable}`, worktree: portable };
+  }
+
+  /**
    * One live writer per workspace (FRD-030): refuse a take whose worktree or
    * branch is recorded on another taken, non-archived ticket. A lease that has
    * expired but was never released still owns its workspace — "a final claim
@@ -1538,17 +1581,15 @@ export class KanmerStore {
   }
 
   private assertBatchJournalWorkspace(journal: BatchDeclarationJournal): void {
-    if (journal.state !== "pending") {
-      const branchWorkspace = `branch:${journal.branch}`;
-      const canonicalWorktree = journal.workspace.startsWith("worktree:") &&
-        this.workspaceKey(journal.workspace.slice("worktree:".length), journal.branch) === journal.workspace;
-      if (journal.workspace !== branchWorkspace && !canonicalWorktree) {
-        throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} manifest workspace is not canonical for its frozen branch.`);
-      }
-      return;
+    const recordedWorktree = journal.workspace.startsWith("worktree:")
+      ? journal.workspace.slice("worktree:".length)
+      : undefined;
+    const expected = this.batchWorkspaceIdentity(recordedWorktree, journal.branch);
+    if (expected.workspace !== journal.workspace) {
+      throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} manifest workspace is not canonical for its frozen branch.`);
     }
-    const expected = this.workspaceKey(journal.take.worktree ?? undefined, journal.take.branch);
-    if (expected !== journal.workspace) {
+    if (journal.state !== "pending") return;
+    if (journal.take.worktree !== expected.worktree) {
       throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} journal workspace does not match its frozen branch/worktree intent.`);
     }
     const requestSha256 = batchRequestSha256(
@@ -1571,6 +1612,7 @@ export class KanmerStore {
         force: journal.take.force,
       },
       journal.take.stage,
+      journal.take.worktree,
     );
     if (requestSha256 !== journal.request_sha256) {
       throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} journal request fingerprint is contradictory.`);
@@ -1704,8 +1746,8 @@ export class KanmerStore {
       if (!member) return false;
       const activeLease = member.taken_at
         ? Boolean(
-            member.branch === journal.branch && member.lease_workspace === journal.workspace &&
-            this.workspaceKey(member.worktree, member.branch) === journal.workspace &&
+            member.branch === journal.branch && member.lease_workspace !== undefined &&
+            this.batchWorkspaceIdentity(member.worktree, member.branch).workspace === journal.workspace &&
             member.lease_id && member.lease_revision && member.claim_expires_at &&
             member.lease_phase && member.lease_heartbeat_at &&
             member.lease_controller_run === journal.controller_run
@@ -1726,7 +1768,9 @@ export class KanmerStore {
       controllerRun: journal?.controller_run ?? (controllerRuns.size === 1 ? [...controllerRuns][0]! : null),
       frozenAt: journal?.frozen_at ?? (frozen.size === 1 ? [...frozen][0]! : null),
       declaration: journal?.state === "pending" ? "pending" : (consistent ? "consistent" : "inconsistent"),
-      workspace: journal?.workspace ?? taken?.lease_workspace ?? (taken?.branch ? `branch:${taken.branch}` : null),
+      workspace: journal?.workspace ?? (taken?.branch
+        ? this.batchWorkspaceIdentity(taken.worktree, taken.branch).workspace
+        : null),
       members: memberIds.map((id, index) => {
         const member = members[index];
         return {
@@ -1885,15 +1929,18 @@ export class KanmerStore {
     return next;
   }
 
-  private static assertBatchAfterItem(manifest: BatchPendingManifest, intended: Item, id: string): void {
+  private assertBatchAfterItem(manifest: BatchPendingManifest, intended: Item, id: string): void {
     const isTaker = id === manifest.take.ticket_id;
+    const intendedWorkspace = isTaker && intended.branch
+      ? this.batchWorkspaceIdentity(intended.worktree, intended.branch).workspace
+      : null;
     if (
       intended.id !== id || intended.lease_batch !== manifest.batch_id ||
       intended.lease_batch_controller !== manifest.controller ||
       intended.lease_batch_frozen_at !== manifest.frozen_at ||
       (isTaker && (
         intended.taken_at !== manifest.frozen_at || intended.branch !== manifest.branch ||
-        intended.lease_workspace !== manifest.workspace || intended.status !== manifest.take.stage ||
+        intended.lease_workspace === undefined || intendedWorkspace !== manifest.workspace || intended.status !== manifest.take.stage ||
         intended.lease_phase !== manifest.take.phase || intended.lease_id !== manifest.lease_id ||
         intended.claim_expires_at !== manifest.claim_expires_at || intended.lease_revision !== 1 ||
         intended.lease_controller_run !== manifest.controller_run
@@ -1946,7 +1993,7 @@ export class KanmerStore {
       const intended = state === "before"
         ? KanmerStore.batchAfterItem(journal, observed, write.id)
         : observed;
-      KanmerStore.assertBatchAfterItem(journal, intended, write.id);
+      this.assertBatchAfterItem(journal, intended, write.id);
       if (write.id === journal.take.ticket_id) {
         if (await this.documentStateHash(loc) !== journal.documents_sha256) {
           throw new Error(`BATCH_TRANSACTION_CONFLICT: document-inclusive evidence for "${write.id}" changed during batch ${journal.batch_id} declaration.`);
@@ -2004,19 +2051,29 @@ export class KanmerStore {
     expiryMinutes: number,
   ): Promise<{ item: Item; activated: boolean }> {
     const requested = Array.from(new Set(memberIds.map((member) => member.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-    const workspace = this.workspaceKey(input.worktree, input.branch)!;
+    const requestedWorkspace = this.batchWorkspaceIdentity(input.worktree, input.branch);
+    const workspace = requestedWorkspace.workspace;
     const manifests = await this.listBatchManifests();
     const existingJournal = manifests.find((manifest) => manifest.batch_id === batchId) ?? null;
     const controllerRun = input.controllerRun?.trim() || "";
     if (!controllerRun) {
       throw new Error(`BATCH_RUN_REQUIRED: batch ${batchId} requires the durable controller_run on declaration and every member operation.`);
     }
-    const requestSha256 = batchRequestSha256(batchId, id, actor, controllerRun, requested, input, stage);
+    const requestSha256 = batchRequestSha256(
+      batchId,
+      id,
+      actor,
+      controllerRun,
+      requested,
+      input,
+      stage,
+      requestedWorkspace.worktree,
+    );
     const currentForIntent = await this.getItem(id);
     const intent: BatchTakeIntent = {
       ticket_id: id,
       branch: input.branch,
-      worktree: input.worktree ?? null,
+      worktree: requestedWorkspace.worktree,
       stage,
       from_stage: existingJournal?.state === "pending" ? existingJournal.take.from_stage : (currentForIntent?.status ?? stage),
       assignee: input.assignee ?? null,
@@ -2087,7 +2144,8 @@ export class KanmerStore {
       if (
         current.lease_batch !== batchId || current.lease_batch_controller !== actor ||
         current.lease_batch_frozen_at !== existingJournal.frozen_at || current.taken_at !== existingJournal.frozen_at ||
-        current.branch !== existingJournal.branch || current.lease_workspace !== existingJournal.workspace ||
+        current.branch !== existingJournal.branch || current.lease_workspace === undefined ||
+        this.batchWorkspaceIdentity(current.worktree, current.branch).workspace !== existingJournal.workspace ||
         current.lease_controller_run !== existingJournal.controller_run
       ) {
         throw new Error(`BATCH_FROZEN: batch ${batchId} is already active and its declaring take is no longer an idempotent retry target.`);
@@ -2317,6 +2375,7 @@ export class KanmerStore {
       }
       const effectiveBatch = current.lease_batch ?? batchId;
       const batchControllerRun = effectiveBatch === undefined ? undefined : input.controllerRun?.trim();
+      let authoritativeBatchWorkspace: { workspace: string; worktree: string | null } | undefined;
       if (effectiveBatch !== undefined && !batchControllerRun) {
         throw new Error(
           `BATCH_RUN_REQUIRED: batch ${effectiveBatch} requires the durable controller_run on declaration and every member operation.`,
@@ -2357,16 +2416,17 @@ export class KanmerStore {
               `${batchControllerRun} cannot take a member.`,
           );
         }
-        const requestedWorkspace = this.workspaceKey(input.worktree, input.branch);
-        if (input.branch !== manifest.branch || requestedWorkspace !== manifest.workspace) {
+        const requestedWorkspace = this.batchWorkspaceIdentity(input.worktree, input.branch);
+        if (input.branch !== manifest.branch || requestedWorkspace.workspace !== manifest.workspace) {
           const recordedWorkspace = manifest.workspace.startsWith("worktree:")
-            ? `worktree ${path.relative(this.paths.repoRoot, manifest.workspace.slice("worktree:".length)).replaceAll("\\", "/")} on branch ${manifest.branch}`
+            ? `worktree ${manifest.workspace.slice("worktree:".length)} on branch ${manifest.branch}`
             : `branch ${manifest.branch}`;
           throw new Error(
             `BATCH_WORKSPACE_MISMATCH: batch ${effectiveBatch} owns ${recordedWorkspace}; ` +
-              `the requested ${requestedWorkspace ?? "workspace"} on branch ${input.branch} is not its frozen workspace.`,
+              `the requested ${requestedWorkspace.workspace} on branch ${input.branch} is not its frozen workspace.`,
           );
         }
+        authoritativeBatchWorkspace = requestedWorkspace;
       }
       await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, batchActor, batchControllerRun, tickets);
       if (stage !== current.status && loc.kind === "v2") {
@@ -2380,7 +2440,10 @@ export class KanmerStore {
         branch: input.branch,
         updated: now,
       };
-      if (input.worktree !== undefined) next.worktree = input.worktree;
+      if (authoritativeBatchWorkspace !== undefined) {
+        if (authoritativeBatchWorkspace.worktree !== null) next.worktree = authoritativeBatchWorkspace.worktree;
+        else delete next.worktree;
+      } else if (input.worktree !== undefined) next.worktree = input.worktree;
       else delete next.worktree; // a force-retake must not keep a stale worktree
       if (input.assignee !== undefined) next.assignee = input.assignee;
       // Lease record (FRD-030): every fresh acquisition carries an expiry, a
@@ -2391,7 +2454,7 @@ export class KanmerStore {
       else delete next.claim_controller;
       next.lease_id = randomUUID();
       next.lease_revision = 1;
-      const workspace = this.workspaceKey(input.worktree, input.branch);
+      const workspace = authoritativeBatchWorkspace?.workspace ?? this.workspaceKey(input.worktree, input.branch);
       if (workspace) next.lease_workspace = workspace;
       else delete next.lease_workspace;
       next.lease_phase = input.phase ?? "implementing";
@@ -2928,7 +2991,7 @@ export class KanmerStore {
         updated: now,
       };
       if (legacy && !next.claim_controller && ownerActor) next.claim_controller = ownerActor;
-      const workspace = current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
+      const workspace = batch?.workspace ?? current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
       if (workspace) next.lease_workspace = workspace;
       KanmerStore.applyRunIdentity(next, request, true);
       await writeFileAtomic(loc.file, serialiseItem(next));

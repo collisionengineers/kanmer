@@ -152,6 +152,10 @@ manifest projection from the summaries: `batch.state` must be `active`,
 only currently taken tickets or matching owner labels. A pending,
 inconsistent, or missing projection is a stop. Confirm every projected member
 is in Review, names that exact PR in `prs[]`, and is bound to the same head.
+Treat a dependency whose blocker is another member of that exact manifest
+roster as internal ordering already covered by the shared PR. An external or
+dangling blocker remains a stop, and the ordinary single-ticket rule is
+unchanged.
 
 Then write a separate, member-owned whole-file `scratch/review.md` attestation
 for every member in the complete frozen roster. Every record must truthfully

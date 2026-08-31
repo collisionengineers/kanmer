@@ -276,6 +276,11 @@ member list, declaring ticket, branch, or worktree is refused; after activation
 nobody may add a member, and per-member transfer or a caller-supplied
 `assignee`/`controller` label is not a recovery path.
 
+The manifest's worktree identity is canonical and repository-relative, with
+the branch recorded separately. After a checkout is copied or relocated, pass
+the equivalent worktree under the new repository root; a persisted absolute
+host path is never batch authority.
+
 Every modern batch heartbeat calls `take_ticket action: "renew"` with the
 current `lease_id`, current `lease_revision`, and that same `controller_run`.
 The isolated/legacy no-token compatibility lane never applies to a

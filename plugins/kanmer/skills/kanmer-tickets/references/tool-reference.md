@@ -168,7 +168,10 @@ summary means "not reported here", not "no links".
   idempotent. All three manifest states persist both the actual MCP request
   actor and the nonempty durable `controller_run`; declaration, pending
   recovery, later member take, renew and execution-packet access exact-match
-  that pair. `lease_batch_controller` is the actor projection, while
+  that pair. The manifest worktree is canonical and repository-relative, with
+  the branch recorded separately; copying or relocating the repository keeps
+  the same authority, while absolute paths are derived only for local
+  collision checks. `lease_batch_controller` is the actor projection, while
   `lease_controller_run` is present on a taken member's lease; supplied owner
   labels cannot authorize either. These fields are absent in isolated mode and
   may clear member by member only while the manifest is `releasing`. Summary
@@ -288,6 +291,10 @@ full head SHA while retaining that member's own plan version, ticket timestamp,
 findings and thread mapping. A leader-only or partial-roster attestation cannot
 satisfy the protected batch gate; every member later receives its own merged-SHA
 proof as well.
+
+A dependency edge between two members of that exact immutable roster orders
+work inside the shared PR and is not a protected-gate blocker. External and
+dangling blockers remain failures, and singular-ticket behavior is unchanged.
 
 Each finding is an ordered mapping with these keys and enums:
 

@@ -42089,7 +42089,7 @@ var BATCH_DECLARATION_SCHEMA = 1;
 function sha256(value) {
   return (0, import_crypto7.createHash)("sha256").update(value, "utf8").digest("hex");
 }
-function batchRequestSha256(batchId, id, actor, controllerRun, members, input, stage) {
+function batchRequestSha256(batchId, id, actor, controllerRun, members, input, stage, canonicalWorktree) {
   return sha256(JSON.stringify({
     batch_id: batchId,
     ticket_id: id,
@@ -42097,7 +42097,7 @@ function batchRequestSha256(batchId, id, actor, controllerRun, members, input, s
     controller_run: controllerRun,
     members,
     branch: input.branch,
-    worktree: input.worktree ?? null,
+    worktree: canonicalWorktree,
     stage,
     assignee: input.assignee ?? null,
     controller_label: input.controller ?? null,
@@ -42975,6 +42975,30 @@ ${entry}`;
     return void 0;
   }
   /**
+   * The portable workspace identity persisted by a batch manifest. Worktree
+   * identity is always relative to the repository root. Host-absolute values
+   * are used only transiently for containment/equality and are never retained
+   * as batch authority; isolated leases keep their existing contract.
+   */
+  batchWorkspaceIdentity(worktree, branch) {
+    if (!worktree) return { workspace: `branch:${branch}`, worktree: null };
+    if (process.platform !== "win32" && /^[a-zA-Z]:[\\/]/u.test(worktree)) {
+      throw new Error(
+        `BATCH_WORKSPACE_INVALID: batch worktree "${worktree}" is outside this repository; use a repo-relative ticket worktree.`
+      );
+    }
+    const repoRoot = normalizeWorktreePath(this.paths.repoRoot, this.paths.repoRoot);
+    const resolved = normalizeWorktreePath(worktree, this.paths.repoRoot);
+    const relative = import_path11.default.relative(repoRoot, resolved);
+    if (relative.length === 0 || relative === ".." || relative.startsWith(`..${import_path11.default.sep}`) || import_path11.default.isAbsolute(relative)) {
+      throw new Error(
+        `BATCH_WORKSPACE_INVALID: batch worktree "${worktree}" is outside this repository; use a repo-relative ticket worktree.`
+      );
+    }
+    const portable = relative.replaceAll(import_path11.default.sep, "/");
+    return { workspace: `worktree:${portable}`, worktree: portable };
+  }
+  /**
    * One live writer per workspace (FRD-030): refuse a take whose worktree or
    * branch is recorded on another taken, non-archived ticket. A lease that has
    * expired but was never released still owns its workspace — "a final claim
@@ -43027,16 +43051,13 @@ ${entry}`;
     return import_path11.default.join(this.paths.batchTransactionsDir, `${sha256(batchId)}.json`);
   }
   assertBatchJournalWorkspace(journal) {
-    if (journal.state !== "pending") {
-      const branchWorkspace = `branch:${journal.branch}`;
-      const canonicalWorktree = journal.workspace.startsWith("worktree:") && this.workspaceKey(journal.workspace.slice("worktree:".length), journal.branch) === journal.workspace;
-      if (journal.workspace !== branchWorkspace && !canonicalWorktree) {
-        throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} manifest workspace is not canonical for its frozen branch.`);
-      }
-      return;
+    const recordedWorktree = journal.workspace.startsWith("worktree:") ? journal.workspace.slice("worktree:".length) : void 0;
+    const expected = this.batchWorkspaceIdentity(recordedWorktree, journal.branch);
+    if (expected.workspace !== journal.workspace) {
+      throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} manifest workspace is not canonical for its frozen branch.`);
     }
-    const expected = this.workspaceKey(journal.take.worktree ?? void 0, journal.take.branch);
-    if (expected !== journal.workspace) {
+    if (journal.state !== "pending") return;
+    if (journal.take.worktree !== expected.worktree) {
       throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} journal workspace does not match its frozen branch/worktree intent.`);
     }
     const requestSha256 = batchRequestSha256(
@@ -43058,7 +43079,8 @@ ${entry}`;
         ...journal.take.expected_revision !== null ? { expectedRevision: journal.take.expected_revision } : {},
         force: journal.take.force
       },
-      journal.take.stage
+      journal.take.stage,
+      journal.take.worktree
     );
     if (requestSha256 !== journal.request_sha256) {
       throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} journal request fingerprint is contradictory.`);
@@ -43169,7 +43191,7 @@ ${entry}`;
     const manifestConsistent = (journal?.state === "active" || journal?.state === "releasing") && members.every((member) => {
       if (!member) return false;
       const activeLease = member.taken_at ? Boolean(
-        member.branch === journal.branch && member.lease_workspace === journal.workspace && this.workspaceKey(member.worktree, member.branch) === journal.workspace && member.lease_id && member.lease_revision && member.claim_expires_at && member.lease_phase && member.lease_heartbeat_at && member.lease_controller_run === journal.controller_run
+        member.branch === journal.branch && member.lease_workspace !== void 0 && this.batchWorkspaceIdentity(member.worktree, member.branch).workspace === journal.workspace && member.lease_id && member.lease_revision && member.claim_expires_at && member.lease_phase && member.lease_heartbeat_at && member.lease_controller_run === journal.controller_run
       ) : !hasWorkspaceLeaseResidue(member);
       const stamped = member.lease_batch === batchId && member.lease_batch_controller === journal.controller && member.lease_batch_frozen_at === journal.frozen_at && activeLease;
       const clearedTerminal = journal.state === "releasing" && isTerminalTicket(member) && !member.taken_at && !hasClaimResidue(member);
@@ -43182,7 +43204,7 @@ ${entry}`;
       controllerRun: journal?.controller_run ?? (controllerRuns.size === 1 ? [...controllerRuns][0] : null),
       frozenAt: journal?.frozen_at ?? (frozen.size === 1 ? [...frozen][0] : null),
       declaration: journal?.state === "pending" ? "pending" : consistent ? "consistent" : "inconsistent",
-      workspace: journal?.workspace ?? taken?.lease_workspace ?? (taken?.branch ? `branch:${taken.branch}` : null),
+      workspace: journal?.workspace ?? (taken?.branch ? this.batchWorkspaceIdentity(taken.worktree, taken.branch).workspace : null),
       members: memberIds.map((id, index) => {
         const member = members[index];
         return {
@@ -43334,9 +43356,10 @@ ${entry}`;
     set("lease_provider", manifest.take.provider);
     return next;
   }
-  static assertBatchAfterItem(manifest, intended, id) {
+  assertBatchAfterItem(manifest, intended, id) {
     const isTaker = id === manifest.take.ticket_id;
-    if (intended.id !== id || intended.lease_batch !== manifest.batch_id || intended.lease_batch_controller !== manifest.controller || intended.lease_batch_frozen_at !== manifest.frozen_at || isTaker && (intended.taken_at !== manifest.frozen_at || intended.branch !== manifest.branch || intended.lease_workspace !== manifest.workspace || intended.status !== manifest.take.stage || intended.lease_phase !== manifest.take.phase || intended.lease_id !== manifest.lease_id || intended.claim_expires_at !== manifest.claim_expires_at || intended.lease_revision !== 1 || intended.lease_controller_run !== manifest.controller_run) || !isTaker && (intended.taken_at !== void 0 || intended.branch !== void 0 || intended.worktree !== void 0 || intended.claim_expires_at !== void 0 || intended.claim_controller !== void 0 || intended.lease_id !== void 0 || intended.lease_revision !== void 0 || intended.lease_workspace !== void 0 || intended.lease_phase !== void 0 || intended.lease_heartbeat_at !== void 0 || intended.lease_reclaimed_from !== void 0 || intended.lease_controller_run !== void 0 || intended.lease_worker_run !== void 0 || intended.lease_provider !== void 0)) {
+    const intendedWorkspace = isTaker && intended.branch ? this.batchWorkspaceIdentity(intended.worktree, intended.branch).workspace : null;
+    if (intended.id !== id || intended.lease_batch !== manifest.batch_id || intended.lease_batch_controller !== manifest.controller || intended.lease_batch_frozen_at !== manifest.frozen_at || isTaker && (intended.taken_at !== manifest.frozen_at || intended.branch !== manifest.branch || intended.lease_workspace === void 0 || intendedWorkspace !== manifest.workspace || intended.status !== manifest.take.stage || intended.lease_phase !== manifest.take.phase || intended.lease_id !== manifest.lease_id || intended.claim_expires_at !== manifest.claim_expires_at || intended.lease_revision !== 1 || intended.lease_controller_run !== manifest.controller_run) || !isTaker && (intended.taken_at !== void 0 || intended.branch !== void 0 || intended.worktree !== void 0 || intended.claim_expires_at !== void 0 || intended.claim_controller !== void 0 || intended.lease_id !== void 0 || intended.lease_revision !== void 0 || intended.lease_workspace !== void 0 || intended.lease_phase !== void 0 || intended.lease_heartbeat_at !== void 0 || intended.lease_reclaimed_from !== void 0 || intended.lease_controller_run !== void 0 || intended.lease_worker_run !== void 0 || intended.lease_provider !== void 0)) {
       throw new Error(`BATCH_TRANSACTION_INVALID: batch ${manifest.batch_id} contains an invalid intended record for "${id}" and was retained.`);
     }
   }
@@ -43370,7 +43393,7 @@ ${entry}`;
         );
       }
       const intended = state === "before" ? _KanmerStore.batchAfterItem(journal, observed, write.id) : observed;
-      _KanmerStore.assertBatchAfterItem(journal, intended, write.id);
+      this.assertBatchAfterItem(journal, intended, write.id);
       if (write.id === journal.take.ticket_id) {
         if (await this.documentStateHash(loc) !== journal.documents_sha256) {
           throw new Error(`BATCH_TRANSACTION_CONFLICT: document-inclusive evidence for "${write.id}" changed during batch ${journal.batch_id} declaration.`);
@@ -43417,19 +43440,29 @@ ${entry}`;
   }
   async declareBatchAndTake(id, batchId, memberIds, actor, input, stage, expiryMinutes) {
     const requested = Array.from(new Set(memberIds.map((member) => member.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-    const workspace = this.workspaceKey(input.worktree, input.branch);
+    const requestedWorkspace = this.batchWorkspaceIdentity(input.worktree, input.branch);
+    const workspace = requestedWorkspace.workspace;
     const manifests = await this.listBatchManifests();
     const existingJournal = manifests.find((manifest) => manifest.batch_id === batchId) ?? null;
     const controllerRun = input.controllerRun?.trim() || "";
     if (!controllerRun) {
       throw new Error(`BATCH_RUN_REQUIRED: batch ${batchId} requires the durable controller_run on declaration and every member operation.`);
     }
-    const requestSha256 = batchRequestSha256(batchId, id, actor, controllerRun, requested, input, stage);
+    const requestSha256 = batchRequestSha256(
+      batchId,
+      id,
+      actor,
+      controllerRun,
+      requested,
+      input,
+      stage,
+      requestedWorkspace.worktree
+    );
     const currentForIntent = await this.getItem(id);
     const intent = {
       ticket_id: id,
       branch: input.branch,
-      worktree: input.worktree ?? null,
+      worktree: requestedWorkspace.worktree,
       stage,
       from_stage: existingJournal?.state === "pending" ? existingJournal.take.from_stage : currentForIntent?.status ?? stage,
       assignee: input.assignee ?? null,
@@ -43490,7 +43523,7 @@ ${entry}`;
         );
       }
       const current = directById.get(id);
-      if (current.lease_batch !== batchId || current.lease_batch_controller !== actor || current.lease_batch_frozen_at !== existingJournal.frozen_at || current.taken_at !== existingJournal.frozen_at || current.branch !== existingJournal.branch || current.lease_workspace !== existingJournal.workspace || current.lease_controller_run !== existingJournal.controller_run) {
+      if (current.lease_batch !== batchId || current.lease_batch_controller !== actor || current.lease_batch_frozen_at !== existingJournal.frozen_at || current.taken_at !== existingJournal.frozen_at || current.branch !== existingJournal.branch || current.lease_workspace === void 0 || this.batchWorkspaceIdentity(current.worktree, current.branch).workspace !== existingJournal.workspace || current.lease_controller_run !== existingJournal.controller_run) {
         throw new Error(`BATCH_FROZEN: batch ${batchId} is already active and its declaring take is no longer an idempotent retry target.`);
       }
       if (current.updated !== existingJournal.frozen_at) {
@@ -43685,6 +43718,7 @@ ${entry}`;
       }
       const effectiveBatch = current.lease_batch ?? batchId;
       const batchControllerRun = effectiveBatch === void 0 ? void 0 : input.controllerRun?.trim();
+      let authoritativeBatchWorkspace;
       if (effectiveBatch !== void 0 && !batchControllerRun) {
         throw new Error(
           `BATCH_RUN_REQUIRED: batch ${effectiveBatch} requires the durable controller_run on declaration and every member operation.`
@@ -43719,13 +43753,14 @@ ${entry}`;
             `BATCH_OWNER_MISMATCH: batch ${effectiveBatch} belongs to controller run ${state.controllerRun ?? "an unknown run"}; ${batchControllerRun} cannot take a member.`
           );
         }
-        const requestedWorkspace = this.workspaceKey(input.worktree, input.branch);
-        if (input.branch !== manifest.branch || requestedWorkspace !== manifest.workspace) {
-          const recordedWorkspace = manifest.workspace.startsWith("worktree:") ? `worktree ${import_path11.default.relative(this.paths.repoRoot, manifest.workspace.slice("worktree:".length)).replaceAll("\\", "/")} on branch ${manifest.branch}` : `branch ${manifest.branch}`;
+        const requestedWorkspace = this.batchWorkspaceIdentity(input.worktree, input.branch);
+        if (input.branch !== manifest.branch || requestedWorkspace.workspace !== manifest.workspace) {
+          const recordedWorkspace = manifest.workspace.startsWith("worktree:") ? `worktree ${manifest.workspace.slice("worktree:".length)} on branch ${manifest.branch}` : `branch ${manifest.branch}`;
           throw new Error(
-            `BATCH_WORKSPACE_MISMATCH: batch ${effectiveBatch} owns ${recordedWorkspace}; the requested ${requestedWorkspace ?? "workspace"} on branch ${input.branch} is not its frozen workspace.`
+            `BATCH_WORKSPACE_MISMATCH: batch ${effectiveBatch} owns ${recordedWorkspace}; the requested ${requestedWorkspace.workspace} on branch ${input.branch} is not its frozen workspace.`
           );
         }
+        authoritativeBatchWorkspace = requestedWorkspace;
       }
       await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, batchActor, batchControllerRun, tickets);
       if (stage !== current.status && loc.kind === "v2") {
@@ -43739,7 +43774,10 @@ ${entry}`;
         branch: input.branch,
         updated: now
       };
-      if (input.worktree !== void 0) next.worktree = input.worktree;
+      if (authoritativeBatchWorkspace !== void 0) {
+        if (authoritativeBatchWorkspace.worktree !== null) next.worktree = authoritativeBatchWorkspace.worktree;
+        else delete next.worktree;
+      } else if (input.worktree !== void 0) next.worktree = input.worktree;
       else delete next.worktree;
       if (input.assignee !== void 0) next.assignee = input.assignee;
       next.claim_expires_at = this.claimExpiry(timing.expiryMinutes);
@@ -43748,7 +43786,7 @@ ${entry}`;
       else delete next.claim_controller;
       next.lease_id = (0, import_crypto7.randomUUID)();
       next.lease_revision = 1;
-      const workspace = this.workspaceKey(input.worktree, input.branch);
+      const workspace = authoritativeBatchWorkspace?.workspace ?? this.workspaceKey(input.worktree, input.branch);
       if (workspace) next.lease_workspace = workspace;
       else delete next.lease_workspace;
       next.lease_phase = input.phase ?? "implementing";
@@ -44213,7 +44251,7 @@ ${entry}`;
         updated: now
       };
       if (legacy && !next.claim_controller && ownerActor) next.claim_controller = ownerActor;
-      const workspace = current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
+      const workspace = batch?.workspace ?? current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
       if (workspace) next.lease_workspace = workspace;
       _KanmerStore.applyRunIdentity(next, request, true);
       await writeFileAtomic(loc.file, serialiseItem(next));

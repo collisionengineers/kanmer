@@ -429,6 +429,7 @@ function evaluatePhase2(
   evidence: MergeGatePhase2Evidence,
   policy: DeliveryPolicy,
   requireRosterIdentity = false,
+  batchRoster: ReadonlySet<string> | null = null,
 ): MergeGateResult {
   const checks: MergeGateCheck[] = [pass("NO_TICKET", "error", `Kanmer ticket ${item.id} resolved`)];
   const findings: MergeGateFinding[] = [];
@@ -448,6 +449,12 @@ function evaluatePhase2(
   }
 
   const liveBlockers = evidence.blockers
+    // A frozen batch is one implementation/PR unit. Its own dependency edges
+    // still order work inside that unit, but cannot require one Review member
+    // to reach Done before the shared PR is allowed to merge. Only the plural
+    // path supplies this exact immutable roster; singular tickets and every
+    // external or dangling dependency retain the ordinary blocking rule.
+    .filter((blocker) => !batchRoster?.has(blocker.id))
     .filter((blocker) => blocker.exists === false || (!blocker.archived && blocker.status !== evidence.finalStageId))
     .map((blocker) => blocker.id)
     .sort();
@@ -629,6 +636,7 @@ async function evaluateBatch(
   }
 
   const evidenceById = new Map(evidence.members.map((member) => [member.ticketId, member.evidence]));
+  const batchRoster = new Set(ticketIds);
   const checks: MergeGateCheck[] = [pass("BATCH_ROSTER", "error", `explicit roster exactly matches frozen batch ${batchId}`, {
     batchId,
     ticketIds,
@@ -640,7 +648,7 @@ async function evaluateBatch(
   for (const [index, id] of ticketIds.entries()) {
     const memberEvidence = evidenceById.get(id)!;
     const member = items[index]!;
-    const result = evaluatePhase2(member!, pr, questions[index]!, memberEvidence, policy!, true);
+    const result = evaluatePhase2(member!, pr, questions[index]!, memberEvidence, policy!, true, batchRoster);
     if (boardSha === null) boardSha = memberEvidence.board?.sha ?? null;
     for (const check of result.checks ?? []) {
       const decorated = {

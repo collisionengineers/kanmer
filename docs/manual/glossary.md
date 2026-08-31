@@ -92,6 +92,11 @@ the exact pair of the actual MCP actor and a nonempty durable controller-run id
 that survives reconnects; every declaration, recovery, member take, heartbeat
 and execution packet must match both. A modern batch heartbeat also names its
 current lease id and revision. Supplied owner labels cannot take the batch over.
+The manifest records its worktree relative to the repository plus the branch,
+so a copied or relocated checkout retains the same authority; absolute paths
+are only local collision evidence. Dependencies between exact roster members
+order work within the shared pull request, while external or dangling blockers
+still block it.
 While the manifest remains active or releasing, listings show its state,
 complete roster, workspace and branch even if ticket-local fields have already
 been cleared. The pull request must name every member, each member keeps its own

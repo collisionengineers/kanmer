@@ -737,7 +737,7 @@ describe("batch workspaces (CORE-124)", () => {
    * declaration once, then restore the exact pre-declaration board. The WAL
    * retains only hashes and the frozen take fingerprint, never ticket bodies.
    */
-  async function manualPendingFixture(batchId: string) {
+  async function manualPendingFixture(batchId: string, worktree = `.worktrees/${batchId}`) {
     const a = await store.createItem({ ...free, title: `${batchId} A` });
     const b = await store.createItem({ ...free, title: `${batchId} B` });
     const c = await store.createItem({ ...free, title: `${batchId} C` });
@@ -747,7 +747,7 @@ describe("batch workspaces (CORE-124)", () => {
     const activityBefore = await fs.readFile(activityFile, "utf8");
     const take = {
       branch: `${batchId}-branch`,
-      worktree: `.worktrees/${batchId}`,
+      worktree,
       assignee: "ctl-a",
       controller: "visible-controller",
       controllerRun: "controller-run",
@@ -777,7 +777,7 @@ describe("batch workspaces (CORE-124)", () => {
       take: {
         ticket_id: a.id,
         branch: take.branch,
-        worktree: take.worktree,
+        worktree: declaring.worktree ?? null,
         stage: "implementing",
         from_stage: "implementing",
         assignee: take.assignee,
@@ -1006,6 +1006,158 @@ describe("batch workspaces (CORE-124)", () => {
 
     expect(await Promise.all(paths.map((file) => fs.readFile(file, "utf8")))).toEqual(before);
     await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("rejects an out-of-repository batch worktree before writing a manifest or ticket", async () => {
+    const a = await store.createItem({ ...free, title: "Outside A" });
+    const b = await store.createItem({ ...free, title: "Outside B" });
+    const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(a.id, {
+      branch: "outside-batch",
+      worktree: path.resolve(root, "..", `${path.basename(root)}-outside`, "batch"),
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "outside-batch",
+      batchMembers: [a.id, b.id],
+    })).rejects.toThrow(/^BATCH_WORKSPACE_INVALID:.*outside this repository/u);
+
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("keeps an active batch portable across a repository copy and accepts an absolute local retry and later member take", async () => {
+    const a = await store.createItem({ ...free, title: "Portable active A" });
+    const b = await store.createItem({ ...free, title: "Portable active B" });
+    const c = await store.createItem({ ...free, title: "Portable active C" });
+    const portableWorktree = ".worktrees/portable-active";
+    const declaration = {
+      branch: "portable-active",
+      worktree: path.join(root, ".worktrees", "portable-active"),
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "portable-active",
+      batchMembers: [a.id, b.id, c.id],
+    };
+    const first = await store.takeTicket(a.id, declaration);
+    const originalManifest = JSON.parse(await fs.readFile(batchManifestFile("portable-active"), "utf8"));
+    expect(originalManifest.workspace).toBe(`worktree:${portableWorktree}`);
+    expect(first).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+
+    const relocated = path.join(root, "relocated-active");
+    await fs.mkdir(relocated, { recursive: true });
+    await fs.cp(path.join(root, ".kanmer"), path.join(relocated, ".kanmer"), { recursive: true });
+    const relocatedStore = new KanmerStore(relocated, { actor: "test-actor" });
+    const relocatedWorktree = path.join(relocated, ".worktrees", "portable-active");
+    const retried = await relocatedStore.takeTicket(a.id, { ...declaration, worktree: relocatedWorktree });
+    expect(retried).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+
+    const second = await relocatedStore.takeTicket(b.id, {
+      branch: declaration.branch,
+      worktree: relocatedWorktree,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: declaration.batch,
+    });
+    expect(second).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+    expect((await relocatedStore.batchState(c.id))?.declaration).toBe("consistent");
+    const relocatedManifest = JSON.parse(await fs.readFile(
+      path.join(relocated, ".kanmer", "batches", "transactions", path.basename(batchManifestFile("portable-active"))),
+      "utf8",
+    ));
+    expect(relocatedManifest).toMatchObject({
+      workspace: `worktree:${portableWorktree}`,
+      request_sha256: originalManifest.request_sha256,
+    });
+  });
+
+  it.skipIf(process.platform !== "win32")("case-folds equivalent Windows batch paths into one portable identity and request fingerprint", async () => {
+    const a = await store.createItem({ ...free, title: "Case A" });
+    const b = await store.createItem({ ...free, title: "Case B" });
+    const declaration = {
+      branch: "case-batch",
+      worktree: path.join(root, ".WORKTREES", "CASE-BATCH").toUpperCase(),
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "case-batch",
+      batchMembers: [a.id, b.id],
+    };
+    const first = await store.takeTicket(a.id, declaration);
+    const manifestBefore = JSON.parse(await fs.readFile(batchManifestFile("case-batch"), "utf8"));
+    expect(first).toMatchObject({
+      worktree: ".worktrees/case-batch",
+      lease_workspace: "worktree:.worktrees/case-batch",
+    });
+
+    await expect(store.takeTicket(a.id, {
+      ...declaration,
+      worktree: path.join(root, ".worktrees", "case-batch").toLowerCase(),
+    })).resolves.toMatchObject({ id: a.id, worktree: ".worktrees/case-batch" });
+    const manifestAfter = JSON.parse(await fs.readFile(batchManifestFile("case-batch"), "utf8"));
+    expect(manifestAfter.request_sha256).toBe(manifestBefore.request_sha256);
+  });
+
+  it("uses canonical worktree plus branch as manifest authority when a ticket-local lease_workspace is absolute", async () => {
+    const { a, b, c, first } = await threeMemberBatch();
+    const absoluteLeaseWorkspace = `worktree:${path.join(root, ".worktrees", "batch-a")}`;
+    const changed = parseItem(await fs.readFile(ticketFile(a.id), "utf8"));
+    changed.lease_workspace = absoluteLeaseWorkspace;
+    await fs.writeFile(ticketFile(a.id), serialiseItem(changed), "utf8");
+
+    expect((await store.batchState(a.id))?.declaration).toBe("consistent");
+    await expect(retryFirstTake(a, b, c)).resolves.toMatchObject({
+      id: a.id,
+      lease_workspace: absoluteLeaseWorkspace,
+    });
+    const renewed = await store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    });
+    expect(renewed.lease_workspace).toBe("worktree:.worktrees/batch-a");
+  });
+
+  it("recovers a pending declaration after a repository copy and retains its canonical request fingerprint", async () => {
+    const fixture = await manualPendingFixture(
+      "portable-pending",
+      path.join(root, ".worktrees", "portable-pending"),
+    );
+    const portableWorktree = ".worktrees/portable-pending";
+    expect(fixture.pending).toMatchObject({
+      workspace: `worktree:${portableWorktree}`,
+      take: { worktree: portableWorktree },
+    });
+
+    const relocated = path.join(root, "relocated-pending");
+    await fs.mkdir(relocated, { recursive: true });
+    await fs.cp(path.join(root, ".kanmer"), path.join(relocated, ".kanmer"), { recursive: true });
+    const relocatedStore = new KanmerStore(relocated, { actor: "test-actor" });
+    const relocatedWorktree = path.join(relocated, ".worktrees", "portable-pending");
+    const recovered = await relocatedStore.takeTicket(fixture.a.id, {
+      ...fixture.take,
+      worktree: relocatedWorktree,
+    });
+    expect(recovered).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+
+    const second = await relocatedStore.takeTicket(fixture.b.id, {
+      branch: fixture.take.branch,
+      worktree: relocatedWorktree,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "portable-pending",
+    });
+    expect(second).toMatchObject({ worktree: portableWorktree, lease_workspace: `worktree:${portableWorktree}` });
+    const relocatedManifest = JSON.parse(await fs.readFile(
+      path.join(relocated, ".kanmer", "batches", "transactions", path.basename(fixture.manifestFile)),
+      "utf8",
+    ));
+    expect(relocatedManifest).toMatchObject({
+      state: "active",
+      workspace: `worktree:${portableWorktree}`,
+      request_sha256: fixture.pending.request_sha256,
+    });
   });
 
   it("rolls a hash-only pending declaration forward from the WAL and every sorted member boundary", async () => {

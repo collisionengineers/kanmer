@@ -222,3 +222,24 @@ Failing-first core evidence at `8965f4eb95653edc3f182ab6cafcc354ded511da` exited
 Corrected focused evidence passed at `54f8a2940a23847d8936e380c6f4647b7c9ec11c`: core claims 84/84; MCP smoke 371/371; core and MCP typechecks; root build; plugin rebuild/check with 41 tools, 12 skills and byte-identical source/bundle; and `git diff --check`.
 
 The first attempt to launch the authoritative rail through the host PTY failed before PowerShell or npm started. The identical command was started without PTY. That one authoritative, non-overlapping clean Windows `npm run verify` rail completed with exit 0 at exact head `54f8a2940a23847d8936e380c6f4647b7c9ec11c`: 719 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 371 standalone MCP smoke checks and 50 protocol checks, plus builds, workspace typechecks, docs/manual, headless/discovery, MCPB, skills, AGENTS and plugin byte identity. The worktree remained clean and based on current `origin/main`.
+
+## Final cleanup-order remediation
+
+Exact remediation head: `7a7c0a91a8cdf4f9d368be56be973450e14a9100`.
+
+The settled automated review and fresh independent exact-head reviewer agreed on F-029 as the only remaining major: final member release unlinked the authoritative manifest before canonical closeout removed the shared Git worktree and branch, so an interruption in that gap could leave orphan Git artifacts with no board pointer.
+
+The bounded root correction changes ordering, not architecture:
+
+- complete the warning-free manifest census, per-member final record checks, and all-terminal gate;
+- capture the immutable roster, workspace and branch, and retain the manifest;
+- remove or confirm removal of the one shared worktree and branch;
+- stop without releasing any member when Git cleanup fails;
+- only after successful Git cleanup, release every member idempotently so final manifest unlink is last;
+- when recovering an already-releasing record, perform or confirm Git cleanup before another release.
+
+The change is confined to `AGENTS.md`, `kanmer-closeout/SKILL.md`, the canonical tool reference, and the skill-prose validator plus its negative fixture. No store state, MCP tool, generated bundle, dependency, stage, service, credential, or unrelated behavior changed.
+
+Retained failing-first evidence: the new old-order prose contract check exited 1 before the canonical wording changed. Corrected focused evidence passed: validator exit 0; script tests 52/52; `verify:skills`; `verify:agents-block` 31/31; skill validation; and `git diff --check`.
+
+One authoritative non-overlapping Windows `npm run verify` rail passed with exit 0 at exact clean head `7a7c0a91a8cdf4f9d368be56be973450e14a9100`: 719 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 371 standalone MCP smoke checks, and 50 protocol checks, plus every build, workspace typecheck, documentation/manual, headless/discovery, MCPB, skill, AGENTS, and plugin byte-identity check. The branch and remote head match and remain based on current `origin/main`.

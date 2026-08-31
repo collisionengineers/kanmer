@@ -84,3 +84,38 @@ The plan originally named 39 tools. Exact base `c1bc3be8532150832328a6d7f62ecd94
 ## Exact-head review focus
 
 Review `4ef3c8170d9ae247cf8af04fc29981b31899a048` against the complete plan, then delta-check F-001 through F-012, the final changed lines, affected callers/contracts, and relevant tests. F-005 is the explicit fixed-boundary residual-risk disposition; every other finding is implemented and covered.
+
+
+## Final complete-roster evidence remediation
+
+The exact-head automated review at `4ef3c8170d9ae247cf8af04fc29981b31899a048` and the fresh independent reviewer identified four remaining major manifestations of one invariant: every frozen member must carry its own current execution, PR, workspace-acquisition, and review evidence.
+
+- F-013 fixed: each plural attestation now exact-matches the member's current ticket `updated` value and plan-document version. Missing, stale, or padded values are hard `STALE_REVIEW` failures under strict and lenient policy; singular compatibility is unchanged.
+- F-014 fixed: a consistent untaken sibling packet truthfully retains `taken: null` while projecting the immutable manifest branch and portable worktree through ticket, claim, batch, and compiled-step workspace fields. The exact actor/controller run can then take that location.
+- F-015 fixed: every plural member's stored `prs` evidence must canonically identify PR #306; absent, wrong, and foreign identities fail.
+- F-016 fixed: every plural roster member must report `taken: true` before protected merge.
+- F-017 rejected-with-reason: public v0.3.12 commit `7eed70e` contains no `lease_batch`; the pre-manifest form first existed only in a later unreleased candidate at `9c9a698`. Stable/candidate isolation confines that state to copied or disposable boards, so no speculative live-board migration was added.
+
+Final remediation head: `738e03ee2179621c347328e704134b1202ea5a8e`.
+
+Changed files were confined to the affected gate, packet, tests, canonical command documentation, generated manual, and shipped bundle:
+
+- `packages/core/src/merge-gate.ts` and `merge-gate.test.ts`
+- `packages/mcp-server/src/check-pr.mjs`, `check-pr.test.mjs`, `execution-packet.ts`, and `smoke.mjs`
+- `AGENTS.md`, `docs/manual/glossary.md`, the execute skill/tool reference, generated manual, and committed MCP bundle
+
+## Final head verification
+
+Focused evidence at `738e03ee2179621c347328e704134b1202ea5a8e`:
+
+- core and MCP workspace typechecks passed
+- merge-gate: 33/33
+- real check-pr CLI: 9/9
+- MCP smoke: 363/363
+- repository scripts: 157/157 with terminal exit 0
+- build, core build, 22-chapter manual generation, documentation, skills, plugin build/check, exact bundle bytes, and `git diff --check` passed
+- plugin inventory remained 41 tools and 12 skills
+
+Retained attempt evidence: the first final-remediation `verify:skills` run found one deterministic canonical-prose wording mismatch; the wording was corrected without weakening the assertion and the final run passed. The subagent's concurrent `test:scripts` process did not yield a terminal status, so it was recorded as inconclusive; the release controller reran that focused suite once and obtained 157/157 with exit 0.
+
+One authoritative clean Windows `npm run verify` rail passed at the exact committed head, with no overlapping rail on the host: 707 core tests, 524 GUI tests, 171 MCP/integration tests, 157 script tests, 363 MCP smoke checks, and 50 protocol checks, plus every build, typecheck, documentation, discovery/headless, MCPB, skill, AGENTS, and plugin byte-identity check.

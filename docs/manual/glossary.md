@@ -61,6 +61,28 @@ stand in for proof.
 worktree). It expires unless renewed, so a dead agent's ticket can be taken
 over — with its work kept — instead of staying taken forever.
 
+**Release channel** — a named stream a project releases on, usually its release
+branch. Exactly one release owns a channel at a time, held by a renewable lease
+that behaves like a ticket's: it expires unless renewed, and an expired one is
+reclaimed rather than quietly taken. Names are normalized for Windows, corrupt
+ownership fails closed, and a short-lived journal finishes an interrupted
+multi-file update before another owner can act. A second owner is refused.
+
+**Release attempt** — the durable record of one release on a channel: which
+commit it was cut from, its candidate identity, the branch and tag it produced,
+the pull requests and tickets it includes, its artifacts and its verification
+state. Its identity can never be edited, and a finished attempt is frozen — so a
+failed release keeps its exact evidence instead of being tidied away. The record
+also binds the delivery-policy version used when its integration commit was
+resolved; a policy change during collection refuses the mint.
+
+**Candidate identity** — the name a release attempt gives the exact commit it is
+releasing. It is derived from that commit, so remediating at a different commit
+necessarily produces a *different* candidate — which is what stops evidence
+gathered for the first one from being read as evidence for the second. A release
+that finishes clears its channel; one that is replaced records its causal
+predecessor/successor rather than relying on wall-clock timestamps.
+
 **Batch workspace** — a deliberate exception to "one ticket, one workspace":
 two or more small related tickets that share one branch, worktree and pull
 request. The batch is frozen when its first member is taken, no other ticket

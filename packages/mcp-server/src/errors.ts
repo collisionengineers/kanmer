@@ -7,13 +7,34 @@ export type KanmerErrorCode =
   // FRD-028 apply refusals (CORE-131): nothing to apply, and the ticket moved
   // under the collection that proposed it. Both are normal outcomes.
   | "RECONCILIATION_INCONCLUSIVE"
-  | "RECONCILIATION_DRIFT";
+  | "RECONCILIATION_DRIFT"
+  // FRD-031 release serialization (CORE-132): a second concurrent owner of a
+  // release channel. Named in the approved structured-error set.
+  | "RELEASE_CHANNEL_HELD";
 
 /**
  * Lease refusals (CORE-115, FRD-030) that mean "the workspace or lease is not
  * yours to write": a live lease held by someone else, an occupied workspace,
  * a reclaim the evidence forbids, or a renew that did not name its lease.
  */
+/**
+ * Release-serialization refusals (CORE-132, FRD-031 AC4). `RELEASE_CHANNEL_HELD`
+ * is its own code because it is in the approved structured-error set; the other
+ * two are immutability refusals and classify as lease conflicts, which is what
+ * they are — a write to a record that is no longer yours to change.
+ */
+const RELEASE_HELD_PREFIX = "RELEASE_CHANNEL_HELD:";
+const RELEASE_CONFLICT_PREFIXES = [
+  "RELEASE_ATTEMPT_TERMINAL:",
+  "RELEASE_CANDIDATE_IMMUTABLE:",
+  "RELEASE_ATTEMPT_MISSING:",
+  "RELEASE_RECORD_UNREADABLE:",
+  "RELEASE_TRANSACTION_CONFLICT:",
+  "RELEASE_TRANSACTION_PENDING:",
+  "RELEASE_TRANSACTION_INVALID:",
+  "RELEASE_CHANNEL_CASE_COLLISION:",
+];
+
 const LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
 
 export class KanmerError extends Error {
@@ -25,7 +46,12 @@ export class KanmerError extends Error {
 
 function classifiedCode(message: string): KanmerErrorCode | undefined {
   if (message.startsWith("Conflict:")) return "REVISION_CONFLICT";
+  if (message.startsWith(RELEASE_HELD_PREFIX)) return "RELEASE_CHANNEL_HELD";
+  if (message.startsWith("RELEASE_POLICY_DRIFT:")) return "REVISION_CONFLICT";
+  if (message.startsWith("RELEASE_INPUT_INVALID:")) return "RECONCILIATION_INCONCLUSIVE";
+  if (message.startsWith("RECONCILIATION_DRIFT:")) return "RECONCILIATION_DRIFT";
   if (message.startsWith("LEASE_EXPIRED:")) return "LEASE_EXPIRED";
+  if (RELEASE_CONFLICT_PREFIXES.some((prefix) => message.startsWith(prefix))) return "LEASE_CONFLICT";
   if (LEASE_CONFLICT_PREFIXES.some((prefix) => message.startsWith(prefix))) return "LEASE_CONFLICT";
   // Core keeps gate failures as ordinary errors. Match its explicit movement
   // refusal wording, not generic words such as "blocked" in validation text.

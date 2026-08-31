@@ -61,6 +61,29 @@ export function resolvePaths(projectRoot: string, repoRoot?: string) {
     projectFile: path.join(kanmer, "project.json"),
     /** Format 2: area folders live here, one per area id, plus `_none`. */
     areasRoot: path.join(kanmer, "areas"),
+    /**
+     * Release serialization (FRD-031, CORE-132). A sidecar for the same reason
+     * `project.json` is one: `board.yml` is re-serialised through a
+     * key-stripping schema by every board write, so an older server would
+     * silently drop a lease stored there. The item scan walks `areas/` only,
+     * so a stable v0.3.12 server neither reads, rewrites nor warns about this
+     * folder — it simply does not see it.
+     */
+    releasesRoot: path.join(kanmer, "releases"),
+    /** Optimistic transaction epoch for lock-free release reads. */
+    releaseStateFile: path.join(kanmer, "releases", "state.json"),
+    /** One mutable lease record per release channel. */
+    releaseChannelsDir: path.join(kanmer, "releases", "channels"),
+    /** One durable ordinal high-water head per release channel. */
+    releaseHeadsDir: path.join(kanmer, "releases", "heads"),
+    /** One record per release attempt, named `<channel>@<ordinal>.json`. */
+    releaseAttemptsDir: path.join(kanmer, "releases", "attempts"),
+    /**
+     * One recoverable write-ahead journal per release channel. Journals are
+     * short-lived during an ordinary mutation and retained after interruption
+     * so the next locked mutation can finish the exact intended write set.
+     */
+    releaseTransactionsDir: path.join(kanmer, "releases", "transactions"),
     tickets: path.join(kanmer, TYPE_DIRS.ticket),
     plans: path.join(kanmer, TYPE_DIRS.plan),
     research: path.join(kanmer, TYPE_DIRS.research),
@@ -117,6 +140,30 @@ export function assertSafeRepoPath(projectRoot: string, rel: string): string {
     throw new Error(`Repo doc path "${rel}" escapes the project root`);
   }
   return abs;
+}
+
+/**
+ * A release-channel name safe to embed in a filename.
+ *
+ * A channel arrives from model output (or defaults to the board's resolved
+ * release branch, which arrives from board.yml), and is joined into a path, so
+ * it gets exactly the traversal guard item ids get. `@` is deliberately NOT in
+ * `SAFE_ID_RE`, which is what makes `<channel>@<ordinal>` an unambiguous
+ * attempt id for every legal channel name.
+ */
+export function assertSafeChannel(channel: string): void {
+  if (!SAFE_ID_RE.test(channel) || channel.includes("..")) {
+    throw new Error(
+      `Invalid release channel "${channel}": a channel name starts with a letter or digit and ` +
+        `may contain only letters, digits, ".", "_" and "-". A release branch that is not a legal ` +
+        `channel name (for example "release/next") is not slugified silently — name the channel explicitly.`,
+    );
+  }
+  if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu.test(channel)) {
+    throw new Error(
+      `Invalid release channel "${channel}": Windows device names cannot be used as release channels.`,
+    );
+  }
 }
 
 /**

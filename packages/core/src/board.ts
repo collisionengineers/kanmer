@@ -267,8 +267,25 @@ export function deliveryTargets(
   return { hotfix, baseBranch: branch, prTarget: branch, verificationTarget: branch };
 }
 
-/** A branch name a delivery policy may name: no whitespace, no leading/trailing `/`, no `..`. */
-const DELIVERY_BRANCH_RE = /^(?!\/)(?!.*\.\.)(?!.*\/$)\S+$/u;
+const GIT_REF_FORBIDDEN = new Set(["~", "^", ":", "?", "*", "[", "\\"]);
+
+/**
+ * Pure equivalent of `git check-ref-format --branch <name>` for a concrete
+ * branch name. Core never shells out, and release minting runs under the board
+ * write lock, so Git-shaped policy validation must remain a deterministic
+ * in-process check.
+ */
+export function isValidGitBranchName(branch: string): boolean {
+  if (branch.length === 0 || branch === "HEAD" || branch.startsWith("-")) return false;
+  if (branch.startsWith("/") || branch.endsWith("/") || branch.endsWith(".")) return false;
+  if (branch.includes("//") || branch.includes("..") || branch.includes("@{")) return false;
+  for (const character of branch) {
+    const code = character.charCodeAt(0);
+    if (code <= 0x20 || code === 0x7f || GIT_REF_FORBIDDEN.has(character)) return false;
+  }
+  return branch.split("/").every((component) =>
+    component.length > 0 && !component.startsWith(".") && !component.endsWith(".lock"));
+}
 
 /**
  * Reject a delivery policy that cannot be acted on.
@@ -281,17 +298,19 @@ function assertDeliveryPolicy(board: BoardConfig): void {
   if (!delivery) return;
   for (const key of ["integrationBranch", "releaseBranch"] as const) {
     const value = delivery[key];
-    if (value !== undefined && !DELIVERY_BRANCH_RE.test(value)) {
-      throw new Error(`Invalid delivery.${key} "${value}": a branch name cannot contain whitespace, "..", or a leading/trailing "/"`);
+    if (value !== undefined && !isValidGitBranchName(value)) {
+      throw new Error(`Invalid delivery.${key} "${value}": it is not a valid Git branch name`);
     }
   }
   const pattern = delivery.releaseCandidatePattern;
   if (pattern !== undefined && pattern !== null) {
-    if (!DELIVERY_BRANCH_RE.test(pattern)) {
-      throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": it cannot contain whitespace, "..", or a leading/trailing "/"`);
-    }
     if (!pattern.includes("*")) {
       throw new Error(`Invalid delivery.releaseCandidatePattern "${pattern}": a candidate pattern must contain "*" (for example "release/*")`);
+    }
+    if (!isValidGitBranchName(pattern.replaceAll("*", "candidate-1"))) {
+      throw new Error(
+        `Invalid delivery.releaseCandidatePattern "${pattern}": it does not produce a valid Git branch name`,
+      );
     }
   }
 }

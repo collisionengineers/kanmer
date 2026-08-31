@@ -27,6 +27,7 @@ import {
   resolveSources,
   SourceDeclarationArraySchema,
   deliveryPolicySource,
+  deliveryTargets,
   resolveDelivery,
   resolveGroupKinds,
   resolveProfiles,
@@ -50,6 +51,7 @@ import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
 import { getExecutionPacket } from "./execution-packet.js";
 import { applyReconciliation, collectReconciliationEvidence, leaseRecoverySummary, reconcileTicket } from "./reconciliation.js";
+import { RELEASE_ACTIONS, releaseChannelAction, releaseStatus } from "./release.js";
 import { failCoded, KanmerError, type ResponseProject } from "./errors.js";
 import {
   expectedProjectMatches,
@@ -738,6 +740,11 @@ server.registerTool(
        * not know the key, round-tripped the file.
        */
       delivery: { ...resolveDelivery(board), source: deliveryPolicySource(board) },
+      // FRD-031 release serialization (CORE-132). The read side of
+      // `release_channel`, reported here rather than as its own tool: it
+      // answers "is the release channel clear?" in the orientation call every
+      // session already makes.
+      release: await releaseStatus(store),
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
         path: projectRoot,
@@ -954,7 +961,7 @@ server.registerTool(
   {
     title: "Inspect a ticket's reconciliation state (read-only)",
     description:
-      "Read one ticket's board, claim, proof, recorded-workspace, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. This is a dry-run inspector only: it never mutates the board, Git, workspace, checks or release state, and there is no apply surface — an operator or controller acts on the recommendation through the ordinary tools. Claim state is current | expired | unclaimed with review_round/remediation_budget. Unavailable GitHub/CI/workspace facts are reported as inconclusive, never invented. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
+      "Read one ticket's board, claim, proof, recorded-workspace, local release-sidecar, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. This inspector is read-only: it never mutates the board, Git, workspace, checks or release state. Apply one still-current recommendation only through apply_reconciliation, which re-collects external evidence and rechecks the release epoch plus ticket revision before delegating to the existing mutation verbs. Claim state is current | expired | unclaimed with review_round/remediation_budget. Unavailable GitHub/CI/workspace/release facts are reported as inconclusive, never invented. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
     inputSchema: { id: z.string().describe("Existing ticket id") },
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
@@ -966,7 +973,8 @@ server.registerTool(
   {
     title: "Apply a reconciliation recommendation",
     description:
-      "Apply the ONE recovery action reconcile_ticket currently recommends for a ticket, and only while it is still current (FRD-028). The action is never supplied by the caller: this re-collects and re-classifies through the same read-only inspector, then applies what the fresh evidence supports. `expected_revision` is the `revision` from the recommendation you are applying — the document-inclusive revision, so a proof, plan or review record rewritten since is a structured REVISION_CONFLICT and nothing is written. No recommendation at all (a `transient` or `inconclusive` verification failure, inconclusive evidence, or the protected board worktree) is a normal RECONCILIATION_INCONCLUSIVE refusal, not an error. " +
+      "Apply the ONE recovery action reconcile_ticket currently recommends for a ticket, and only while it is still current (FRD-028). The action is never supplied by the caller: this first finishes at most one already-authorised bounded release transaction left by an interrupted writer, then re-collects and re-classifies through the same read-only inspector. reconcile_ticket itself remains mutation-free. `expected_revision` is the `revision` from the recommendation you are applying — the document-inclusive revision, so a proof, plan or review record rewritten since is a structured REVISION_CONFLICT and no ticket or reconciliation audit record is written. Prior release crash recovery may still complete before that refusal. No recommendation at all (a `transient` or `inconclusive` verification failure, inconclusive evidence, or the protected board worktree) is a normal RECONCILIATION_INCONCLUSIVE refusal, not an error. " +
+      "Git/GitHub and full release-history collection stay outside the write lock; the store samples the constant-size release transaction epoch around that snapshot, then validates the exact epoch inside the lock. If release evidence changes, it retries the bounded collection and proceeds only when freshly classified evidence is still safe; otherwise RECONCILIATION_DRIFT refuses it. This binds release observation, ticket CAS and mutation without scanning retained history in the critical section. " +
       "The action set is exhaustive and composed only of existing verbs: MOVE_TO_VERIFYING (merged Review), MOVE_TO_DONE (PASS proof in Verifying), MOVE_TO_IMPLEMENTING (closed-unmerged or worker-less Review), ROUTE_VERIFICATION_FAILURE (a FAIL proof's `failure_class`: implementation → Implementing, plan → Preparing), RELEASE_CLEAN_TERMINAL_CLAIM (a Done ticket's clean, identity-matched claim) and RECOVER_EXPIRED_CLAIM (transfer an expired lease, preserving branch, worktree and any dirty work). " +
       "Authority is not widened: a backward move is judged by the existing contract, so Review → Implementing still needs a needs-changes attestation bound to this ticket's PR or a `reason` beginning `operator:` (REVIEW_RETURN_NEEDS_ATTESTATION otherwise), and a live lease still refuses with CLAIM_LIVE. Every applied action appends one durable line to `## Transitions` in scratch/execution.md naming the action, stage or controller change and the revision. It never deletes a worktree or branch, cleans or force-pushes a workspace, bypasses a required check, adds a stage, or mutates the Kanmer board worktree — which is refused as a target in every path.",
     inputSchema: {
@@ -974,7 +982,7 @@ server.registerTool(
       expected_revision: z
         .string()
         .describe(
-          "Required. The `revision` carried by the recommendation you are applying (from reconcile_ticket). Refused with REVISION_CONFLICT if the ticket or ANY of its pipeline documents changed since; nothing is written.",
+          "Required. The `revision` carried by the recommendation you are applying (from reconcile_ticket). Refused with REVISION_CONFLICT if the ticket or ANY of its pipeline documents changed since; no ticket or reconciliation audit record is written. A recoverable release transaction already authorised by a prior release verb may still be completed first.",
         ),
       reason: z
         .string()
@@ -997,6 +1005,93 @@ server.registerTool(
       ...(controller !== undefined ? { controller } : {}),
     })),
   ),
+);
+
+
+server.registerTool(
+  "release_channel",
+  {
+    title: "Own and record one release channel",
+    description:
+      "Serialize releases on one normalized channel (FRD-031). ONE renewable lease owns it at a time. Immutable identity includes the exact integration SHA and the delivery-policy version collected with it; policy drift is refused before mint. A durable per-channel high-water head survives lease clearing, supplies the only next ordinal without scanning retained history under the write lock, and makes missing immutable evidence fail closed. Lock-free snapshots require every canonical ordinal below the head, and schema-1 objects reject unknown keys. Every record, relation and enum is validated, malformed ownership fails closed, and a per-channel write-ahead journal commits attempt, head and lease endpoints recoverably after interruption. " +
+      "`acquire` resolves or accepts the SHA and takes an absent channel; live OR expired ownership is RELEASE_CHANNEL_HELD. `renew` heartbeats; `record` writes progress and also renews expiry. `service_unavailable` advances a numeric retry schedule that freezes whole at exhaustion. `supersede` authorises against the actual calling actor, archives an active attempt, and mints a successor with EMPTY evidence. An already failed terminal attempt remains exactly failed and is linked only from its successor. `complete` clears the lease; `fail` retains the lease and exact proof. " +
+      "Every ordinary write after acquire names the current `lease_id` and `lease_revision` AND must come from the actual lease owner; public CAS values are not authority. Fields that do not belong to the selected action and a supersede missing its lease CAS are refused before Git or board mutation, and one record cannot report both service unavailable and recovered. Read complete current/terminal evidence, predecessor/successor links and pending recovery state from `get_status.release`. Records live in `.kanmer/releases/`, never board.yml, and are never a stage gate.",
+    inputSchema: {
+      action: z
+        .enum(RELEASE_ACTIONS)
+        .describe("acquire | renew | record | supersede | complete | fail"),
+      channel: z
+        .string()
+        .optional()
+        .describe("Release channel id; defaults to the board's resolved release branch (get_status.delivery.releaseBranch)"),
+      integration_sha: z
+        .string()
+        .optional()
+        .describe("Exact 40-hex integration SHA for acquire/supersede. Omit to resolve `integration_ref` with a bounded git rev-parse."),
+      integration_ref: z
+        .string()
+        .optional()
+        .describe("Explicit Git ref to resolve for acquire/supersede; when omitted, the configured integration branch is resolved through refs/heads. A ref that cannot be resolved is refused, never guessed."),
+      lease_id: z.string().min(1).optional().describe("The channel's current lease id; required for every action but acquire"),
+      lease_revision: z.number().int().positive().optional().describe("The channel's current lease revision; required for every action but acquire"),
+      reason: z
+        .string()
+        .optional()
+        .describe("Required by `fail`. On `supersede`, required to take a LIVE lease you do not own, and only when it begins `operator:`."),
+      release_tag: z.string().optional().describe("Recorded release tag; \"\" clears it"),
+      verification_state: z.enum(["pending", "passed", "failed"]).optional().describe("The attempt's recorded verification state — advisory, never a stage gate"),
+      included_prs: z.array(z.string()).optional().describe("PRs this attempt includes (replaces the recorded list)"),
+      included_tickets: z.array(z.string()).optional().describe("Tickets this attempt includes (replaces the recorded list); this is what reconcile_ticket's release evidence is keyed on"),
+      artifact_manifest: z.array(z.string()).optional().describe("Artifacts this attempt produced (replaces the recorded list)"),
+      service_unavailable: z
+        .string()
+        .optional()
+        .describe("Your own bounded observation that the release service could not be reached; appends one entry to the attempt's retry schedule. Kanmer never contacts a release service itself."),
+      service_recovered: z.literal(true).optional().describe("Clear the retry schedule after observing the release service again"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  write(async (input: {
+    action: (typeof RELEASE_ACTIONS)[number];
+    channel?: string;
+    integration_sha?: string;
+    integration_ref?: string;
+    lease_id?: string;
+    lease_revision?: number;
+    reason?: string;
+    release_tag?: string;
+    verification_state?: "pending" | "passed" | "failed";
+    included_prs?: string[];
+    included_tickets?: string[];
+    artifact_manifest?: string[];
+    service_unavailable?: string;
+    service_recovered?: true;
+  }, extra) => {
+    // `store.actor` is shared by all handlers and can change while this call is
+    // resolving Git. Bind the actual per-request actor to a call-local store so
+    // a concurrent request cannot authorise supersession by rebinding shared
+    // mutable state.
+    const releaseStore = new KanmerStore(store.paths.projectRoot, {
+      actor: actorName(server, extra),
+      repoRoot: store.paths.repoRoot,
+    });
+    return ok(await releaseChannelAction(releaseStore, {
+      action: input.action,
+      ...(input.channel !== undefined ? { channel: input.channel } : {}),
+      ...(input.integration_sha !== undefined ? { integrationSha: input.integration_sha } : {}),
+      ...(input.integration_ref !== undefined ? { integrationRef: input.integration_ref } : {}),
+      ...(input.lease_id !== undefined ? { leaseId: input.lease_id } : {}),
+      ...(input.lease_revision !== undefined ? { leaseRevision: input.lease_revision } : {}),
+      ...(input.reason !== undefined ? { reason: input.reason } : {}),
+      ...(input.release_tag !== undefined ? { releaseTag: input.release_tag } : {}),
+      ...(input.verification_state !== undefined ? { verificationState: input.verification_state } : {}),
+      ...(input.included_prs !== undefined ? { includedPrs: input.included_prs } : {}),
+      ...(input.included_tickets !== undefined ? { includedTickets: input.included_tickets } : {}),
+      ...(input.artifact_manifest !== undefined ? { artifactManifest: input.artifact_manifest } : {}),
+      ...(input.service_unavailable !== undefined ? { serviceUnavailable: input.service_unavailable } : {}),
+      ...(input.service_recovered !== undefined ? { serviceRecovered: input.service_recovered } : {}),
+    }));
+  }),
 );
 
 server.registerTool(
@@ -1040,7 +1135,7 @@ server.registerTool(
   {
     title: "Dispatch one named task",
     description:
-      "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
+      "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. After elicited approval, mutable ticket feasibility and delivery-target facts are re-read immediately before start. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
     inputSchema: {
       ticket_id: z.string().describe("Existing non-archived ticket id"),
       provider: z.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok | antigravity"),
@@ -1056,16 +1151,25 @@ server.registerTool(
     if (!dispatchPolicy.providers.includes(provider as never)) return dispatchRefusal("DISPATCH_PROVIDER_NOT_ALLOWED", `provider "${provider}" is not allowlisted`, policy);
     if (!dispatchPolicy.tasks.includes(taskId)) return dispatchRefusal("DISPATCH_TASK_NOT_ALLOWED", `task "${taskId}" is not allowlisted`, policy);
     const identity = await assertExpectedProject(expected_project);
-    const item = await store.getItem(ticket_id);
-    if (!item || item.type !== "ticket") return dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy);
-    if (item.archived) return dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy);
-    if (item.taken_at) return dispatchRefusal("DISPATCH_TICKET_TAKEN", `${ticket_id} is already taken; dispatch does not steal tickets.`, policy);
-    const info = await store.getTicketDocsInfo(ticket_id);
     const task = dispatchTaskById(taskId);
     if (!task) return dispatchRefusal("DISPATCH_TASK_UNKNOWN", `Unknown task "${taskId}".`, policy);
-    const feasibility = taskFeasibility(taskId, { stage: item.status, docCounts: info?.counts ?? {} });
-    if (!feasibility.ok) return dispatchRefusal("DISPATCH_TASK_INFEASIBLE", feasibility.reason ?? "task is not feasible for this ticket", policy);
-    if (dispatchSupervisor.list({ projectId: projectRoot, ticketId: ticket_id, includeRecent: false }).length > 0) return dispatchRefusal("DISPATCH_DUPLICATE", `${ticket_id} already has a dispatch in flight for this project.`, policy);
+    const inspectCandidate = async () => {
+      const item = await store.getItem(ticket_id);
+      if (!item || item.type !== "ticket") return { ready: false, refusal: dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy) } as const;
+      if (item.archived) return { ready: false, refusal: dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy) } as const;
+      if (item.taken_at) return { ready: false, refusal: dispatchRefusal("DISPATCH_TICKET_TAKEN", `${ticket_id} is already taken; dispatch does not steal tickets.`, policy) } as const;
+      const info = await store.getTicketDocsInfo(ticket_id);
+      const feasibility = taskFeasibility(taskId, { stage: item.status, docCounts: info?.counts ?? {} });
+      if (!feasibility.ok) {
+        return { ready: false, refusal: dispatchRefusal("DISPATCH_TASK_INFEASIBLE", feasibility.reason ?? "task is not feasible for this ticket", policy) } as const;
+      }
+      if (dispatchSupervisor.list({ projectId: projectRoot, ticketId: ticket_id, includeRecent: false }).length > 0) {
+        return { ready: false, refusal: dispatchRefusal("DISPATCH_DUPLICATE", `${ticket_id} already has a dispatch in flight for this project.`, policy) } as const;
+      }
+      return { ready: true, item, feasibility } as const;
+    };
+    let candidate = await inspectCandidate();
+    if (!candidate.ready) return candidate.refusal;
     if (dispatchPolicy.approval === "elicit") {
       if (!server.server.getClientCapabilities()?.elicitation) return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval requires an MCP host with elicitation capability", policy);
       try {
@@ -1077,10 +1181,18 @@ server.registerTool(
       } catch {
         return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval round trip failed; dispatch remains refused", policy);
       }
+      // Approval can be arbitrarily slow. Re-read every mutable ticket fact
+      // immediately before deriving the delivery target and starting work.
+      candidate = await inspectCandidate();
+      if (!candidate.ready) return candidate.refusal;
     }
-    // FRD-031: the verify prompt names this project's integration branch, not
-    // a hardcoded `main`.
-    const verificationTarget = resolveDelivery(await store.getBoard()).integrationBranch;
+    // FRD-031: the verify prompt names the branch THIS ticket is verified
+    // against, not a hardcoded `main` and not the integration branch. For a
+    // hotfix — a ticket whose *recorded* delivery_branch is the release branch
+    // — those differ, and pointing a verifier at the wrong branch is the
+    // defect CORE-116's review raised as F-001. `deliveryTargets` stays the
+    // single definition of "hotfix"; there is deliberately no second one.
+    const verificationTarget = deliveryTargets(resolveDelivery(await store.getBoard()), candidate.item).verificationTarget;
     try {
       const status = await dispatchSupervisor.start({
         projectId: projectRoot,
@@ -1092,7 +1204,7 @@ server.registerTool(
         task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id, verificationTarget) },
         ...(timeout_ms === undefined ? {} : { timeoutMs: timeout_ms }),
       });
-      return ok({ ok: true, status, deliverable: task.deliverable, warning: feasibility.warning ?? null, policy });
+      return ok({ ok: true, status, deliverable: task.deliverable, warning: candidate.feasibility.warning ?? null, policy });
     } catch (error) {
       return dispatchRefusal("DISPATCH_START_REFUSED", error instanceof Error ? error.message : String(error), policy);
     }

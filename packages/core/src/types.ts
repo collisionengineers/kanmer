@@ -1083,10 +1083,14 @@ export interface ReconciliationEvidence {
     claimIdentity: "not-applicable" | "matches-claim" | "foreign-repository" | "branch-mismatch" | "detached" | "unavailable";
   };
   /**
-   * Release-attempt observation. CORE-116 delivered the delivery *policy* and
-   * per-ticket delivery *state*; persisted release **attempts** — the release
-   * channel lease, immutable candidate identity and supersession — are
-   * CORE-132, so until that lands this is always `not-applicable`.
+   * Release-attempt observation (CORE-132). Produced by
+   * `classifyReleaseEvidence` over the persisted `.kanmer/releases/` records:
+   * `superseded` when the ticket's release evidence has been archived behind a
+   * successor, `contended` when its ownership is ambiguous, `unavailable` when
+   * a bounded retry schedule is live or a record cannot be read, and
+   * `not-applicable` when no attempt names the ticket or the attempt that does
+   * is cleanly owned or cleanly finished. A finished release deliberately reads
+   * `not-applicable`: an ordinary ticket must never sit waiting for one.
    */
   release: {
     state: "not-applicable" | "superseded" | "contended" | "unavailable";

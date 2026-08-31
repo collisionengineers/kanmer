@@ -1,4 +1,4 @@
-// Fail if the plugin is out of sync with the server, in three ways:
+// Fail if the plugin is out of sync with the server, in five ways:
 //
 //   1. tool NAMES registered by the server vs. documented in the plugin's tool
 //      reference — the skills describe the tool surface, so a rename that only
@@ -11,6 +11,8 @@
 //   3. every SKILL.md's YAML frontmatter parses under a strict parser (SKILL-018).
 //   4. the setup runtime shipped beside the skills is byte-identical to its
 //      canonical source, so the setup skill's documented command can run.
+//   5. AGENTS.md's canonical tool inventory exactly matches the registered
+//      read/write/destructive surface and its annotations.
 //
 // (2) means plugin:check now requires a prior `npm run build` — consistent with
 // `npm run plugin:build` already running it, and with AGENTS.md §10 pairing the
@@ -66,12 +68,13 @@ if (!ownsCoreResolution({ ownCore, resolvedCore })) {
 }
 
 const serverPath = join(root, "packages/mcp-server/src/index.ts");
+const agentsPath = join(root, "AGENTS.md");
 const refPath = join(
   root,
   "plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md",
 );
 
-for (const p of [serverPath, refPath]) {
+for (const p of [serverPath, refPath, agentsPath]) {
   if (!existsSync(p)) {
     console.error(`Missing file: ${p}`);
     process.exit(1);
@@ -80,6 +83,7 @@ for (const p of [serverPath, refPath]) {
 
 const serverSrc = readFileSync(serverPath, "utf8");
 const refDoc = readFileSync(refPath, "utf8");
+const agentsDoc = readFileSync(agentsPath, "utf8");
 
 const registered = [...serverSrc.matchAll(/registerTool\(\s*"([^"]+)"/g)].map((m) => m[1]);
 
@@ -97,6 +101,35 @@ if (missing.length || stale.length) {
   if (stale.length) console.error(`Documented but unregistered: ${stale.join(", ")}`);
   console.error(`Update ${refPath}`);
   process.exit(1);
+}
+
+// AGENTS.md calls this list the whole tool surface, so keep it mechanically
+// whole. Categorise from the annotations themselves: readOnlyHint is a write-
+// guard dependency, not decoration, and destructiveHint controls host UX.
+const registrationStarts = [...serverSrc.matchAll(/server\.registerTool\(\s*"([^"]+)"/g)];
+const registeredInventory = { Read: [], Write: [], Destructive: [] };
+for (let index = 0; index < registrationStarts.length; index += 1) {
+  const match = registrationStarts[index];
+  const block = serverSrc.slice(match.index, registrationStarts[index + 1]?.index ?? serverSrc.length);
+  const category = /destructiveHint:\s*true/.test(block)
+    ? "Destructive"
+    : /readOnlyHint:\s*true/.test(block) ? "Read" : "Write";
+  registeredInventory[category].push(match[1]);
+}
+
+const documentedInventory = { Read: [], Write: [], Destructive: [] };
+for (const match of agentsDoc.matchAll(/^- (Read|Write|Destructive)[^\n]*?—\s*\d+:\s*([^\n]+)$/gm)) {
+  documentedInventory[match[1]].push(...[...match[2].matchAll(/`([a-z_]+)`/g)].map((entry) => entry[1]));
+}
+for (const category of Object.keys(registeredInventory)) {
+  const actual = [...registeredInventory[category]].sort();
+  const documentedCategory = [...documentedInventory[category]].sort();
+  if (JSON.stringify(actual) !== JSON.stringify(documentedCategory)) {
+    console.error(`AGENTS.md ${category} tool inventory is stale.`);
+    console.error(`  registered: ${actual.join(", ")}`);
+    console.error(`  documented: ${documentedCategory.join(", ")}`);
+    process.exit(1);
+  }
 }
 
 // The bundle's bytes. Tool names are the contract; the bundle is the thing

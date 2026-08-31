@@ -10,7 +10,7 @@ import {
 } from "./paths.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
 import { parseWikiLinks } from "./links.js";
-import { areaPrefix, DEFAULT_GROUP_KINDS, writeBoard } from "./board.js";
+import { areaPrefix, DEFAULT_GROUP_KINDS } from "./board.js";
 import { isStageId, type StageId } from "./stages.js";
 import {
   DEFAULT_PROFILES,
@@ -719,7 +719,7 @@ export async function migrateToV3(
   next.defaultProfile ??= DEFAULT_PROFILE_ID;
   next.groupKinds ??= structuredClone(DEFAULT_GROUP_KINDS);
   next.proofTypes ??= [...DEFAULT_PROOF_TYPES];
-  await writeBoard(store.paths, next);
+  await store.setBoard(next);
 
   await writeVersion(store.paths, {
     format: 3,

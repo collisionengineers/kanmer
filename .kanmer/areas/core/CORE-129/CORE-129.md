@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Validate proof documents for internal consistency so a stale result cannot
   outlive its own evidence
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-31T17:48:20.688Z'
 labels:
   - reliable-autonomy
 groups: []
@@ -16,7 +18,7 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-08-28T04:25:59.656Z'
+updated: '2026-08-31T17:51:55.334Z'
 ---
 
 ## What
@@ -31,13 +33,13 @@ Nothing checks that a proof document's machine-readable verdict agrees with its 
 
 ## Approach
 
-- Extend the proof-record contract so every rerun is a typed entry in `attempts[]` — with its own `attempted_at`, `result` and exit code — rather than appended prose, and require the top-level `result` to be consistent with the latest attempt.
-- Add a validator in `packages/core` (alongside `review-attestation.ts`) that reports a proof as `invalid` when the top-level `result` is PASS while a later attempt records FAIL/INCONCLUSIVE, or when the body contains an explicit later disposition that contradicts it.
+- Extend the proof-record contract so every rerun is a typed entry in `attempts[]` — with its own `attempted_at`, `result` and exit code — rather than appended prose, and require the top-level `result` to be consistent with the latest authoritative attempt.
+- Add one validator in `packages/core` (alongside `review-attestation.ts`) that reports a current typed proof as invalid when the top-level `result` disagrees with its latest authoritative attempt. Historical free prose is reported as legacy/unvalidated rather than heuristically converted into machine authority.
 - Surface it where it matters: `get_doc_gates`' `enter-done` requirement, the read-only `reconcile_ticket` inspector (which today classifies any non-PASS/FAIL proof as simply `invalid`), and `kanmer-verify`/`kanmer-closeout` prose so a human or agent reading the proof is told to read the whole document.
-- Do not retroactively invalidate existing proofs; report, do not refuse, until a strict flag is turned on — the [[CORE-123]] `KANMER_GATE_STRICT` precedent.
+- Do not retroactively rewrite or reopen existing proofs. Use a board-owned report/strict policy and the existing `migrate_board` dry run to census historical records before deliberately enabling strict Done authority.
 
 ## Verification
 
-- [ ] A fixture proof whose frontmatter says PASS while a later attempt says FAIL is reported inconsistent, and `enter-done` refuses it under the strict flag.
-- [ ] CORE-042's real proof is reported inconsistent by the validator.
+- [ ] A fixture proof whose frontmatter says PASS while a later attempt says FAIL is reported inconsistent, and `enter-done` refuses it under strict board policy.
+- [ ] CORE-042's real free-prose proof is reported legacy/unvalidated before cutover and cannot authorise a new Done transition under strict policy; no prose heuristic rewrites its meaning.
 - [ ] A well-formed single-attempt PASS proof is unaffected.

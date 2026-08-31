@@ -4,11 +4,11 @@
 
 | Path | Why |
 |---|---|
-| packages/core/src/types.ts | Add the optional durable batch-controller field, strict batch-declaration journal/result shapes, and roster-aware merge-gate evidence/result types. All item fields stay additive. |
+| packages/core/src/types.ts | Add the optional durable batch-controller field, strict persistent batch-manifest/result shapes, and roster-aware merge-gate evidence/result types. All item fields stay additive. |
 | packages/core/src/frontmatter.ts | Keep the new batch-controller field in the canonical lease/batch key order. |
-| packages/core/src/paths.ts | Name the batch sidecar and short-lived transaction directory; stable v0.3.12 item scans remain untouched. |
-| packages/core/src/store.ts | Enforce the real batch actor, refuse declaration from any already-taken member, write/recover the exact declaration journal under withLeaseLock, report consistent/pending batch state, and require every member terminal before release. |
-| packages/core/src/claims.test.ts | Failing-first and regression cases for actor mismatch, force-retaken declaration, each interruption boundary, matching recovery, conflicting recovery, malformed journal, complete terminal cleanup, and unchanged isolated batches. |
+| packages/core/src/paths.ts | Name the path-confined persistent batch-manifest directory; stable v0.3.12 item scans remain untouched. |
+| packages/core/src/store.ts | Enforce the real batch actor; transact declaration plus first take; retain/recover the authoritative manifest under withLeaseLock; guard conflicting pending mutations and member deletion; report manifest-driven state; and require every original member terminal before release. |
+| packages/core/src/claims.test.ts | Failing-first and regression cases for actor mismatch, force-retaken declaration, every manifest/member/taker interruption boundary, exact and conflicting recovery, changed take intent, malformed manifest, concurrent mutation/deletion, missing members, partial release recovery, complete terminal cleanup, and unchanged isolated batches. |
 | packages/core/src/merge-gate.ts | Resolve a normalized explicit footer roster; validate that a multi-ticket roster exactly equals one complete frozen batch; aggregate every member's stage, question, dependency, target, PR/head attestation, commit and board-sync verdict while preserving the single-ticket result. |
 | packages/core/src/merge-gate.test.ts | Valid three-member batch and incomplete, superset, mixed, unbatched, pending/corrupt, wrong-stage, archived, open-question, blocker, wrong-PR/head and missing/invalid review cases; unchanged single-ticket behavior. |
 | packages/mcp-server/src/check-pr.mjs | Collect phase-2 evidence for every resolved roster member from one board snapshot and emit one protected verdict. |
@@ -46,7 +46,7 @@
 
 - The protected kanmer-gate output gains a roster/batch identity but retains the existing singular ticketId and single-ticket check order for compatibility.
 - list_items summaries gain one explicit batch block; consumers that ignore unknown keys are unchanged.
-- The new sidecar journal is normally absent. After interruption it is retained until an exact same-actor/same-roster recovery succeeds; stable v0.3.12 ignores it because it reads area ticket folders only.
+- The new sidecar manifest exists only for a frozen batch. Pending records roll forward only for the exact same actor/roster/take intent; active records retain the immutable roster until complete terminal clearing. Stable v0.3.12 ignores the sidecar because it reads area ticket folders only.
 - The committed plugin bundle and generated manual must be rebuilt from the same final source head.
 - verify:skills, test:scripts, core tests, check-pr tests, smoke, protocol, plugin identity, full verify, hosted verify and kanmer-gate all exercise affected production paths.
 

@@ -156,3 +156,14 @@ The original plan named 39 tools, but exact base `c1bc3be8532150832328a6d7f62ecd
 ## Stop condition
 
 One PR is open against current main with a Kanmer: CORE-126 footer, the exact implementation commit and PR are recorded, the post-implementation report is complete, the synced board has CORE-126 in Review, and the worktree/lease remain intact for independent review. Do not review, merge, verify, write proof, close out, release the lease, or start another ticket during execution.
+
+
+## Root-cause replan after exact-head review
+
+Exact remediation base is PR #306 head `405a65c2736001de4adfa97f5b4a999f57348054`. The settled automated review and fresh independent reviewer confirmed two new major defects and one bounded residual-risk disposition:
+
+- F-005 is rejected as fix-required. Concurrent v0.3.12 mutation of candidate-created batch state violates HZN-008's fixed rollout boundary: candidate writes occur only on copied/disposable boards; live promotion backs up the board and stops v0.3.12 first; rollback restores that backup. Stable compatibility is read/passthrough, not mixed-version writes.
+- F-006 is fixed at the workspace-identity root. Persist the manifest's worktree identity canonically relative to the repository, normalize equivalent caller paths before request hashing, and derive host-absolute identity only for local collision checks. Pending recovery, active state, later member take and summaries must remain valid after the repository root changes; persisted host-absolute `lease_workspace` is never authority.
+- F-007 is fixed only in plural batch-gate evaluation. A dependency whose blocker is a member of the exact immutable roster is ordered within the shared PR and is excluded from `DEPENDENCY_BLOCKED`; external and dangling blockers, and every singular-ticket rule, remain unchanged.
+
+Implementation stays in the already-authorized `packages/core/src/store.ts`, `packages/core/src/claims.test.ts`, `packages/core/src/merge-gate.ts`, `packages/core/src/merge-gate.test.ts`, canonical contract prose, generated manual and committed plugin bundle. Negative cases cover an out-of-repository worktree, a copied/relocated pending or active batch, an external/dangling blocker, and unchanged singular behavior. Verify with focused claims and merge-gate tests, build/check-pr/smoke/protocol/prose/plugin checks, then one clean full Windows `npm run verify` at the final head.

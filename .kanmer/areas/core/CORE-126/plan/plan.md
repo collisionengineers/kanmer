@@ -237,3 +237,48 @@ The automated exact-head review at `738e03ee2179621c347328e704134b1202ea5a8e`, i
 - Run MCP typecheck/build, standalone smoke, plugin build/check, `git diff --check`, and one clean non-overlapping Windows `npm run verify` rail at the committed final head.
 
 The next review is one strict delta over F-018, its changed lines, the shared physical validator, affected packet/take callers, and the new regressions. No unrelated review ideation or release-roster expansion is authorized.
+
+## End-to-end batch lifecycle root-cause replan — F-019 through F-023
+
+Exact review head is `b51ead6e019f11d035c66f148c311a707f123bb0`. Hosted `verify` passed there. The expected automated reviewer settled and the independent delta reviewer confirmed F-018 fixed, then found four majors and one minor that share one root invariant: a frozen batch must remain executable and governable through declaration, every member packet/take, the one shared PR, shared merge transition, per-member verification, and terminal cleanup.
+
+This is the one evidence-based root-cause replan after the ordinary remediation loop was spent. It does not widen the product or roster.
+
+1. **F-019 — require a real shared worktree before freezing (major).**
+   - Reject a missing or blank worktree at the start of batch declaration, before the pending WAL or any ticket byte is written, using the existing structured `BATCH_WORKSPACE_INVALID` / `LEASE_CONFLICT` path.
+   - Preserve isolated branch-only take compatibility.
+   - Core tests prove zero ticket/sidecar mutation; MCP smoke proves structured refusal and an unchanged board tree.
+
+2. **F-020 — keep display labels non-authoritative (minor).**
+   - After a consistent batch and exact actor/controller-run authorize the packet, bypass only the generic assignee/claim-controller display-label occupancy check.
+   - Wrong actor or run remains refused even with an exact resume; F-018 physical Git validation remains mandatory; isolated occupied-ticket behavior is unchanged.
+   - Smoke covers the authorized mismatched-label path plus wrong-run and isolated controls.
+
+3. **F-021 — carry one durable run identity through `/goal` batch work (major).**
+   - The existing automation run record's immutable `run_id` is the batch `controller_run`; do not mint a worker, session, or per-call substitute.
+   - Canonical auto prose must pass it on declaration/recovery, packet calls, every later-member take, and every modern renewal with current CAS tokens.
+   - Prose verifier and independent negative fixtures must fail when either declaration/member propagation or renewal propagation is removed.
+
+4. **F-022 — move the complete roster after the shared merge (major).**
+   - After GitHub confirms the one shared PR merged, review re-reads the authoritative active manifest and deterministically processes every immutable member.
+   - For each member, re-read gates and move exactly one `Review -> Verifying` boundary. An interrupted retry skips a member already in Verifying and stops on any other unexpected stage; it never writes proof.
+   - Prose verification must reject restoration of the singular-only post-merge move.
+
+5. **F-023 — create exactly one PR and reuse it for later members (major).**
+   - The first completed member creates the shared PR with the complete exact roster footer set.
+   - Every later member pushes the same manifest branch, resolves exactly one existing open PR matching repository, configured base, manifest head branch, and exact footer roster, records that PR in its own `prs[]`, and never calls `gh pr create`.
+   - Missing, ambiguous, closed, wrong-base/head, or wrong-roster PR evidence fails closed and leaves the member in Implementing.
+   - Prose verification must reject a later-member path that creates another PR.
+
+### Authorized files and proof
+
+The versioned `files` document is expanded only for `plugins/kanmer/skills/kanmer-auto/SKILL.md`; all other required source, tests, canonical prose, generated manual, AGENTS contract, tool reference, and bundle paths were already authorized.
+
+Focused failing-first and regression proof:
+
+- `packages/core/src/claims.test.ts`: batch worktree required with no writes; isolated branch-only control.
+- `packages/mcp-server/src/smoke.mjs`: structured refusal, display-label authorization, wrong-run/refusal, and unchanged isolated behavior.
+- `scripts/verify-skill-prose.mjs` plus `.test.mjs`: auto run-id propagation, one shared PR reuse, and complete post-merge roster transition.
+- Rebuild the generated manual and committed standalone bundle, prove 41 tools/12 skills and exact bundle identity, run affected typechecks/builds and `git diff --check`, then run one clean non-overlapping Windows `npm run verify` at the committed final head.
+
+The next review is one strict delta over F-019 through F-023, F-018 regression safety, changed lines, affected callers/contracts, and these tests. It is not a new unrestricted repository review.

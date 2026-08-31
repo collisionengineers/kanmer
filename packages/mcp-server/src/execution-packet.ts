@@ -576,6 +576,8 @@ export async function getExecutionPacket(input: {
   store: KanmerStore;
   id: string;
   actor: string;
+  /** Durable run identity required to exercise a batch controller's authority. */
+  controllerRun?: string;
   project: ProjectIdentity;
   resume?: { branch: string; worktree: string };
   /** Logical project identity (FRD-029), carried into a compiled step packet. */
@@ -587,7 +589,7 @@ export async function getExecutionPacket(input: {
    */
   step?: number | "next";
 }): Promise<ExecutionPacket> {
-  const { store, id, actor, project, resume, logical, step } = input;
+  const { store, id, actor, controllerRun, project, resume, logical, step } = input;
   const item = await store.getItem(id);
   if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
   if (item.type !== "ticket") {
@@ -660,11 +662,30 @@ export async function getExecutionPacket(input: {
       gates,
     );
   }
+  if (batch && !controllerRun?.trim()) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}; controller_run is required to obtain its execution packet.`,
+      [],
+      item,
+      gates,
+    );
+  }
   if (batch && batch.controller !== actor) {
     return refuse(
       project,
       `Ticket "${id}" belongs to batch ${batch.id}, controlled by ${batch.controller ?? "an unknown actor"}; ` +
         `${actor} cannot obtain its execution packet even with an exact branch/worktree resume.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && batch.controllerRun !== controllerRun?.trim()) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, controlled by run ${batch.controllerRun ?? "an unknown run"}; ` +
+        `${controllerRun?.trim() ?? "an unknown run"} cannot obtain its execution packet even with an exact branch/worktree resume.`,
       [],
       item,
       gates,

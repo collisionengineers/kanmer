@@ -18,7 +18,9 @@ run and stop when the packet says to stop.
    when `identity` is `logical`, else the legacy `project.fingerprint`) and the
    server's `compat.expectedProject` / `compat.expectedRevision` capabilities.
 2. Make `get_execution_packet <id>` the **first ticket-specific data call**.
-   A refusal is a normal result, not an invitation to reconstruct the packet.
+   For a known frozen batch, include the same nonempty `controller_run` from
+   the controller's durable run record. A refusal is a normal result, not an
+   invitation to reconstruct the packet or mint a new run identity.
 3. If `ready: false`, return its exact `code`, `reason`, and `missing` values
    in the external hand-off and stop without mutating the ticket, except for the deliberately resumable occupancy case:
    when the refusal names an existing branch and worktree, retry this one call
@@ -51,6 +53,19 @@ merges its own PR and never starts another ticket.
 ```
 get_execution_packet id: <ID>
 ```
+
+For a ticket in a declared batch, the call is instead:
+
+```
+get_execution_packet id: <ID>, controller_run: "<durable-controller-run>"
+```
+
+Retain that nonempty `controller_run` in the controller's durable run record
+across reconnects and restarts. Batch authority is the exact pair of the actual
+MCP request actor observed by the server and that durable run id; an
+`assignee`, `controller`, copied owner label, exact resume path, or a newly
+minted per-call id is not authority. Omission or mismatch is a normal
+`GATE_BLOCKED` refusal and is not a reason to reconstruct the packet.
 
 The packet is read-only and does not take, move, write, dispatch, or create a
 worktree. It is ordered to refuse unsafe execution: a non-ticket/legacy item,
@@ -152,6 +167,12 @@ ticket is alive again, naming the lease the packet reported:
 take_ticket id: <ID>, action: "renew", lease_id: <claim.leaseId>, lease_revision: <claim.leaseRevision>
 ```
 
+For a manifest-backed batch, add
+`controller_run: "<durable-controller-run>"` from the same durable run record.
+A modern batch renewal always requires both current `lease_id` and
+`lease_revision` plus that exact run id; it never enters the no-token owner
+compatibility lane. Missing either CAS token or the run id is a stop.
+
 Every successful renew returns the next `lease_revision`; keep it for the next
 heartbeat. Renew refuses `LEASE_EXPIRED` when the lease is no longer current
 (it was reclaimed by another controller) and `CLAIM_NOT_OWNED` when a legacy
@@ -238,19 +259,29 @@ sequence.
 Isolated mode above is the default. Only when the operator or controller has
 explicitly named two or more small related tickets as one batch, the first
 member's take declares and freezes the membership in one call —
-`take_ticket id: <first>, branch: "<batch>-<slug>", worktree: ".worktrees/<batch>", batch: "<batch>", batch_members: [<every member id>]`
+`take_ticket id: <first>, branch: "<batch>-<slug>", worktree: ".worktrees/<batch>", batch: "<batch>", batch_members: [<every member id>], controller_run: "<durable-controller-run>"`
 — and every later member is taken on that exact recorded worktree and branch
-with `batch: "<batch>"` (any other workspace is `BATCH_WORKSPACE_MISMATCH`;
-adding a ticket later is `BATCH_FROZEN`). The packet's `claim.batch` lists the
-complete frozen roster and which members are still non-terminal.
+with `batch: "<batch>"` and the same `controller_run` (any other workspace is
+`BATCH_WORKSPACE_MISMATCH`; adding a ticket later is `BATCH_FROZEN`). The
+packet's `claim.batch` lists the complete frozen roster and which members are
+still non-terminal.
 
-Batch ownership is the actual MCP request actor recorded as the batch
-controller, never an `assignee`, `controller`, or other caller-supplied label.
-Only that actual batch controller may add or take a frozen member on the shared
-workspace, or recover a `pending` declaration by repeating the exact original
-declaring take. Another actor, member list, declaring ticket, branch, or
-worktree is refused; after activation nobody may add a member, and per-member
-transfer is not a recovery path.
+Before the first packet or take, the controller reads one nonempty
+`controller_run` from its durable run record and keeps it unchanged across
+reconnects, restarts, workers, and every member operation. Pending, active and
+releasing manifests persist both that run id and the actual MCP request actor.
+Declaration, pending recovery, every later member take, batch renew, and every
+batch execution packet exact-match that actor/run pair. Another actor, run id,
+member list, declaring ticket, branch, or worktree is refused; after activation
+nobody may add a member, and per-member transfer or a caller-supplied
+`assignee`/`controller` label is not a recovery path.
+
+Every modern batch heartbeat calls `take_ticket action: "renew"` with the
+current `lease_id`, current `lease_revision`, and that same `controller_run`.
+The isolated/legacy no-token compatibility lane never applies to a
+manifest-backed batch. Terminal release is different: after every immutable
+roster member is terminal, a fresh `kanmer-closeout` actor may release the
+batch without matching the implementation actor or `controller_run`.
 
 A batch ships one PR whose body contains one standalone `Kanmer: <ID>` footer
 for every member in the complete frozen roster, with no omission or extra

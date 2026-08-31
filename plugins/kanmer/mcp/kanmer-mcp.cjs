@@ -42089,18 +42089,18 @@ var BATCH_DECLARATION_SCHEMA = 1;
 function sha256(value) {
   return (0, import_crypto7.createHash)("sha256").update(value, "utf8").digest("hex");
 }
-function batchRequestSha256(batchId, id, actor, members, input, stage) {
+function batchRequestSha256(batchId, id, actor, controllerRun, members, input, stage) {
   return sha256(JSON.stringify({
     batch_id: batchId,
     ticket_id: id,
     actor,
+    controller_run: controllerRun,
     members,
     branch: input.branch,
     worktree: input.worktree ?? null,
     stage,
     assignee: input.assignee ?? null,
     controller_label: input.controller ?? null,
-    controller_run: input.controllerRun ?? null,
     worker_run: input.workerRun ?? null,
     provider: input.provider ?? null,
     phase: input.phase ?? "implementing",
@@ -42126,9 +42126,9 @@ function isBatchDeclarationJournal(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const record2 = value;
   const state = record2.state;
-  const expectedKeys = state === "pending" ? ["schema", "state", "transaction_id", "request_sha256", "batch_id", "controller", "frozen_at", "members", "workspace", "branch", "take", "lease_id", "claim_expires_at", "documents_sha256", "writes"] : ["schema", "state", "request_sha256", "declaring_ticket", "batch_id", "controller", "frozen_at", "members", "workspace", "branch"];
+  const expectedKeys = state === "pending" ? ["schema", "state", "transaction_id", "request_sha256", "batch_id", "controller", "controller_run", "frozen_at", "members", "workspace", "branch", "take", "lease_id", "claim_expires_at", "documents_sha256", "writes"] : ["schema", "state", "request_sha256", "declaring_ticket", "batch_id", "controller", "controller_run", "frozen_at", "members", "workspace", "branch"];
   if (!exactKeys(record2, expectedKeys)) return false;
-  if (record2.schema !== BATCH_DECLARATION_SCHEMA || state !== "pending" && state !== "active" && state !== "releasing" || typeof record2.batch_id !== "string" || record2.batch_id.length === 0 || record2.batch_id.trim() !== record2.batch_id || typeof record2.controller !== "string" || record2.controller.length === 0 || record2.controller.trim() !== record2.controller || typeof record2.frozen_at !== "string" || Number.isNaN(Date.parse(record2.frozen_at)) || new Date(record2.frozen_at).toISOString() !== record2.frozen_at || !Array.isArray(record2.members) || record2.members.length < 2 || !record2.members.every((id) => typeof id === "string" && id.length > 0 && id.trim() === id) || typeof record2.workspace !== "string" || record2.workspace.length === 0 || record2.workspace.trim() !== record2.workspace || typeof record2.branch !== "string" || record2.branch.length === 0 || record2.branch.trim() !== record2.branch || typeof record2.request_sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(record2.request_sha256)) return false;
+  if (record2.schema !== BATCH_DECLARATION_SCHEMA || state !== "pending" && state !== "active" && state !== "releasing" || typeof record2.batch_id !== "string" || record2.batch_id.length === 0 || record2.batch_id.trim() !== record2.batch_id || typeof record2.controller !== "string" || record2.controller.length === 0 || record2.controller.trim() !== record2.controller || typeof record2.controller_run !== "string" || record2.controller_run.length === 0 || record2.controller_run.trim() !== record2.controller_run || typeof record2.frozen_at !== "string" || Number.isNaN(Date.parse(record2.frozen_at)) || new Date(record2.frozen_at).toISOString() !== record2.frozen_at || !Array.isArray(record2.members) || record2.members.length < 2 || !record2.members.every((id) => typeof id === "string" && id.length > 0 && id.trim() === id) || typeof record2.workspace !== "string" || record2.workspace.length === 0 || record2.workspace.trim() !== record2.workspace || typeof record2.branch !== "string" || record2.branch.length === 0 || record2.branch.trim() !== record2.branch || typeof record2.request_sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(record2.request_sha256)) return false;
   const members = record2.members;
   if (new Set(members).size !== members.length || members.some((id, index) => index > 0 && members[index - 1].localeCompare(id) >= 0)) return false;
   if (state !== "pending") {
@@ -42137,7 +42137,7 @@ function isBatchDeclarationJournal(value) {
   if (typeof record2.transaction_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(record2.transaction_id) || !record2.take || typeof record2.take !== "object" || Array.isArray(record2.take) || typeof record2.lease_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(record2.lease_id) || typeof record2.claim_expires_at !== "string" || Number.isNaN(Date.parse(record2.claim_expires_at)) || new Date(record2.claim_expires_at).toISOString() !== record2.claim_expires_at || Date.parse(record2.claim_expires_at) <= Date.parse(record2.frozen_at) || !Array.isArray(record2.writes)) return false;
   const take = record2.take;
   if (!exactKeys(take, ["ticket_id", "branch", "worktree", "stage", "from_stage", "assignee", "controller_label", "controller_run", "worker_run", "provider", "phase", "expected_revision", "force"])) return false;
-  if (typeof take.ticket_id !== "string" || !members.includes(take.ticket_id) || typeof take.branch !== "string" || take.branch.length === 0 || take.branch.trim() !== take.branch || take.branch !== record2.branch || take.worktree !== null && (typeof take.worktree !== "string" || take.worktree.length === 0 || take.worktree.trim() !== take.worktree) || typeof take.stage !== "string" || !isStageId(take.stage) || typeof take.from_stage !== "string" || !isStageId(take.from_stage) || ![take.assignee, take.controller_label, take.controller_run, take.worker_run, take.provider, take.expected_revision].every((entry) => entry === null || typeof entry === "string") || typeof take.phase !== "string" || !LEASE_PHASES.some((phase) => phase === take.phase) || typeof take.force !== "boolean") return false;
+  if (typeof take.ticket_id !== "string" || !members.includes(take.ticket_id) || typeof take.branch !== "string" || take.branch.length === 0 || take.branch.trim() !== take.branch || take.branch !== record2.branch || take.worktree !== null && (typeof take.worktree !== "string" || take.worktree.length === 0 || take.worktree.trim() !== take.worktree) || typeof take.stage !== "string" || !isStageId(take.stage) || typeof take.from_stage !== "string" || !isStageId(take.from_stage) || ![take.assignee, take.controller_label, take.controller_run, take.worker_run, take.provider, take.expected_revision].every((entry) => entry === null || typeof entry === "string") || take.controller_run !== record2.controller_run || typeof take.phase !== "string" || !LEASE_PHASES.some((phase) => phase === take.phase) || typeof take.force !== "boolean") return false;
   if (typeof record2.documents_sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(record2.documents_sha256)) return false;
   const writes = record2.writes;
   if (writes.length !== members.length) return false;
@@ -42984,7 +42984,7 @@ ${entry}`;
    * owns exactly one workspace, so a member may take the workspace its batch
    * already occupies — and only that one (`BATCH_WORKSPACE_MISMATCH`).
    */
-  async assertWorkspaceFree(id, worktree, branch, batchId, batchActor, siblings) {
+  async assertWorkspaceFree(id, worktree, branch, batchId, batchActor, batchControllerRun, siblings) {
     const mine = worktree ? normalizeWorktreePath(worktree, this.paths.repoRoot) : null;
     for (const other of siblings) {
       if (other.id === id || !other.taken_at) continue;
@@ -42995,6 +42995,11 @@ ${entry}`;
         if (other.lease_batch_controller !== batchActor) {
           throw new Error(
             `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to ${other.lease_batch_controller ?? "an unknown actor"}; ${batchActor} cannot take its shared workspace.`
+          );
+        }
+        if (other.lease_controller_run !== batchControllerRun) {
+          throw new Error(
+            `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to controller run ${other.lease_controller_run ?? "an unknown run"}; ${batchControllerRun ?? "an unknown run"} cannot take its shared workspace.`
           );
         }
         const otherWorktree = other.worktree !== void 0 ? normalizeWorktreePath(other.worktree, this.paths.repoRoot) : null;
@@ -43038,6 +43043,7 @@ ${entry}`;
       journal.batch_id,
       journal.take.ticket_id,
       journal.controller,
+      journal.controller_run,
       journal.members,
       {
         branch: journal.take.branch,
@@ -43155,6 +43161,7 @@ ${entry}`;
     const taken = members.find((member) => member?.taken_at);
     const present = members.filter((member) => member !== void 0);
     const controllers = new Set(present.map((m) => m.lease_batch_controller).filter((value) => Boolean(value)));
+    const controllerRuns = new Set(present.map((m) => m.lease_controller_run).filter((value) => Boolean(value)));
     const frozen = new Set(present.map((m) => m.lease_batch_frozen_at).filter((value) => Boolean(value)));
     const fullyStamped = present.length > 0 && present.every(
       (member) => member.lease_batch === batchId && member.lease_batch_controller !== void 0 && member.lease_batch_frozen_at !== void 0
@@ -43162,7 +43169,7 @@ ${entry}`;
     const manifestConsistent = (journal?.state === "active" || journal?.state === "releasing") && members.every((member) => {
       if (!member) return false;
       const activeLease = member.taken_at ? Boolean(
-        member.branch === journal.branch && member.lease_workspace === journal.workspace && this.workspaceKey(member.worktree, member.branch) === journal.workspace && member.lease_id && member.lease_revision && member.claim_expires_at && member.lease_phase && member.lease_heartbeat_at
+        member.branch === journal.branch && member.lease_workspace === journal.workspace && this.workspaceKey(member.worktree, member.branch) === journal.workspace && member.lease_id && member.lease_revision && member.claim_expires_at && member.lease_phase && member.lease_heartbeat_at && member.lease_controller_run === journal.controller_run
       ) : !hasWorkspaceLeaseResidue(member);
       const stamped = member.lease_batch === batchId && member.lease_batch_controller === journal.controller && member.lease_batch_frozen_at === journal.frozen_at && activeLease;
       const clearedTerminal = journal.state === "releasing" && isTerminalTicket(member) && !member.taken_at && !hasClaimResidue(member);
@@ -43172,6 +43179,7 @@ ${entry}`;
     return {
       id: batchId,
       controller: journal?.controller ?? (controllers.size === 1 ? [...controllers][0] : null),
+      controllerRun: journal?.controller_run ?? (controllerRuns.size === 1 ? [...controllerRuns][0] : null),
       frozenAt: journal?.frozen_at ?? (frozen.size === 1 ? [...frozen][0] : null),
       declaration: journal?.state === "pending" ? "pending" : consistent ? "consistent" : "inconsistent",
       workspace: journal?.workspace ?? taken?.lease_workspace ?? (taken?.branch ? `branch:${taken.branch}` : null),
@@ -43235,6 +43243,27 @@ ${entry}`;
       throw new Error(`BATCH_INCONSISTENT: "${id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
     }
     return null;
+  }
+  /**
+   * One authoritative manifest projection per member for list/search results.
+   * The manifest remains visible through the final-clear interruption, after
+   * every ticket-local batch/workspace field has already been removed.
+   */
+  async batchSummaryProjections() {
+    const projected = /* @__PURE__ */ new Map();
+    for (const manifest of await this.listBatchManifests()) {
+      const summary = {
+        id: manifest.batch_id,
+        controller: manifest.controller,
+        frozenAt: manifest.frozen_at,
+        state: manifest.state,
+        members: [...manifest.members],
+        workspace: manifest.workspace,
+        branch: manifest.branch
+      };
+      for (const member of manifest.members) projected.set(member, summary);
+    }
+    return projected;
   }
   /**
    * Validate a batch declaration: the taker names the complete membership
@@ -43307,7 +43336,7 @@ ${entry}`;
   }
   static assertBatchAfterItem(manifest, intended, id) {
     const isTaker = id === manifest.take.ticket_id;
-    if (intended.id !== id || intended.lease_batch !== manifest.batch_id || intended.lease_batch_controller !== manifest.controller || intended.lease_batch_frozen_at !== manifest.frozen_at || isTaker && (intended.taken_at !== manifest.frozen_at || intended.branch !== manifest.branch || intended.lease_workspace !== manifest.workspace || intended.status !== manifest.take.stage || intended.lease_phase !== manifest.take.phase || intended.lease_id !== manifest.lease_id || intended.claim_expires_at !== manifest.claim_expires_at || intended.lease_revision !== 1) || !isTaker && (intended.taken_at !== void 0 || intended.branch !== void 0 || intended.worktree !== void 0 || intended.claim_expires_at !== void 0 || intended.claim_controller !== void 0 || intended.lease_id !== void 0 || intended.lease_revision !== void 0 || intended.lease_workspace !== void 0 || intended.lease_phase !== void 0 || intended.lease_heartbeat_at !== void 0 || intended.lease_reclaimed_from !== void 0 || intended.lease_controller_run !== void 0 || intended.lease_worker_run !== void 0 || intended.lease_provider !== void 0)) {
+    if (intended.id !== id || intended.lease_batch !== manifest.batch_id || intended.lease_batch_controller !== manifest.controller || intended.lease_batch_frozen_at !== manifest.frozen_at || isTaker && (intended.taken_at !== manifest.frozen_at || intended.branch !== manifest.branch || intended.lease_workspace !== manifest.workspace || intended.status !== manifest.take.stage || intended.lease_phase !== manifest.take.phase || intended.lease_id !== manifest.lease_id || intended.claim_expires_at !== manifest.claim_expires_at || intended.lease_revision !== 1 || intended.lease_controller_run !== manifest.controller_run) || !isTaker && (intended.taken_at !== void 0 || intended.branch !== void 0 || intended.worktree !== void 0 || intended.claim_expires_at !== void 0 || intended.claim_controller !== void 0 || intended.lease_id !== void 0 || intended.lease_revision !== void 0 || intended.lease_workspace !== void 0 || intended.lease_phase !== void 0 || intended.lease_heartbeat_at !== void 0 || intended.lease_reclaimed_from !== void 0 || intended.lease_controller_run !== void 0 || intended.lease_worker_run !== void 0 || intended.lease_provider !== void 0)) {
       throw new Error(`BATCH_TRANSACTION_INVALID: batch ${manifest.batch_id} contains an invalid intended record for "${id}" and was retained.`);
     }
   }
@@ -43377,6 +43406,7 @@ ${entry}`;
       declaring_ticket: journal.take.ticket_id,
       batch_id: journal.batch_id,
       controller: journal.controller,
+      controller_run: journal.controller_run,
       frozen_at: journal.frozen_at,
       members: journal.members,
       workspace: journal.workspace,
@@ -43390,7 +43420,11 @@ ${entry}`;
     const workspace = this.workspaceKey(input.worktree, input.branch);
     const manifests = await this.listBatchManifests();
     const existingJournal = manifests.find((manifest) => manifest.batch_id === batchId) ?? null;
-    const requestSha256 = batchRequestSha256(batchId, id, actor, requested, input, stage);
+    const controllerRun = input.controllerRun?.trim() || "";
+    if (!controllerRun) {
+      throw new Error(`BATCH_RUN_REQUIRED: batch ${batchId} requires the durable controller_run on declaration and every member operation.`);
+    }
+    const requestSha256 = batchRequestSha256(batchId, id, actor, controllerRun, requested, input, stage);
     const currentForIntent = await this.getItem(id);
     const intent = {
       ticket_id: id,
@@ -43400,7 +43434,7 @@ ${entry}`;
       from_stage: existingJournal?.state === "pending" ? existingJournal.take.from_stage : currentForIntent?.status ?? stage,
       assignee: input.assignee ?? null,
       controller_label: input.controller ?? null,
-      controller_run: input.controllerRun ?? null,
+      controller_run: controllerRun,
       worker_run: input.workerRun ?? null,
       provider: input.provider ?? null,
       phase: input.phase ?? "implementing",
@@ -43411,6 +43445,11 @@ ${entry}`;
       if (existingJournal.controller !== actor) {
         throw new Error(
           `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to ${existingJournal.controller}; ${actor} cannot resume or redeclare it.`
+        );
+      }
+      if (existingJournal.controller_run !== controllerRun) {
+        throw new Error(
+          `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to controller run ${existingJournal.controller_run}; ${controllerRun} cannot resume or redeclare it.`
         );
       }
       if (existingJournal.members.join("\0") !== requested.join("\0") || existingJournal.workspace !== workspace || existingJournal.branch !== input.branch || existingJournal.request_sha256 !== requestSha256) {
@@ -43451,7 +43490,7 @@ ${entry}`;
         );
       }
       const current = directById.get(id);
-      if (current.lease_batch !== batchId || current.lease_batch_controller !== actor || current.lease_batch_frozen_at !== existingJournal.frozen_at || current.taken_at !== existingJournal.frozen_at || current.branch !== existingJournal.branch || current.lease_workspace !== existingJournal.workspace) {
+      if (current.lease_batch !== batchId || current.lease_batch_controller !== actor || current.lease_batch_frozen_at !== existingJournal.frozen_at || current.taken_at !== existingJournal.frozen_at || current.branch !== existingJournal.branch || current.lease_workspace !== existingJournal.workspace || current.lease_controller_run !== existingJournal.controller_run) {
         throw new Error(`BATCH_FROZEN: batch ${batchId} is already active and its declaring take is no longer an idempotent retry target.`);
       }
       if (current.updated !== existingJournal.frozen_at) {
@@ -43488,6 +43527,7 @@ ${entry}`;
       request_sha256: requestSha256,
       batch_id: batchId,
       controller: actor,
+      controller_run: controllerRun,
       frozen_at: frozenAt,
       members: requested,
       workspace,
@@ -43644,6 +43684,12 @@ ${entry}`;
         );
       }
       const effectiveBatch = current.lease_batch ?? batchId;
+      const batchControllerRun = effectiveBatch === void 0 ? void 0 : input.controllerRun?.trim();
+      if (effectiveBatch !== void 0 && !batchControllerRun) {
+        throw new Error(
+          `BATCH_RUN_REQUIRED: batch ${effectiveBatch} requires the durable controller_run on declaration and every member operation.`
+        );
+      }
       const tickets = effectiveBatch === void 0 ? await this.listItems({ type: "ticket", includeArchived: true }) : await this.batchTicketCensus();
       if (batchId !== void 0 && current.lease_batch === void 0) {
         throw new Error(
@@ -43668,6 +43714,11 @@ ${entry}`;
         if (state.controller !== batchActor) {
           throw new Error(`BATCH_OWNER_MISMATCH: batch ${effectiveBatch} belongs to ${state.controller ?? "an unknown actor"}; ${batchActor} cannot take a member.`);
         }
+        if (state.controllerRun !== batchControllerRun) {
+          throw new Error(
+            `BATCH_OWNER_MISMATCH: batch ${effectiveBatch} belongs to controller run ${state.controllerRun ?? "an unknown run"}; ${batchControllerRun} cannot take a member.`
+          );
+        }
         const requestedWorkspace = this.workspaceKey(input.worktree, input.branch);
         if (input.branch !== manifest.branch || requestedWorkspace !== manifest.workspace) {
           const recordedWorkspace = manifest.workspace.startsWith("worktree:") ? `worktree ${import_path11.default.relative(this.paths.repoRoot, manifest.workspace.slice("worktree:".length)).replaceAll("\\", "/")} on branch ${manifest.branch}` : `branch ${manifest.branch}`;
@@ -43676,7 +43727,7 @@ ${entry}`;
           );
         }
       }
-      await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, batchActor, tickets);
+      await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, batchActor, batchControllerRun, tickets);
       if (stage !== current.status && loc.kind === "v2") {
         await this.assertDocGate(loc.dir, board, current, current.status, stage);
       }
@@ -43703,7 +43754,10 @@ ${entry}`;
       next.lease_phase = input.phase ?? "implementing";
       next.lease_heartbeat_at = now;
       delete next.lease_reclaimed_from;
-      _KanmerStore.applyRunIdentity(next, input, false);
+      _KanmerStore.applyRunIdentity(next, {
+        ...input,
+        ...batchControllerRun !== void 0 ? { controllerRun: batchControllerRun } : {}
+      }, false);
       await writeFileAtomic(loc.file, serialiseItem(next));
       await appendActivity(this.paths, [
         this.activity(id, "take", { field: "branch", to: input.branch }),
@@ -44094,10 +44148,24 @@ ${entry}`;
           `BATCH_OWNER_MISMATCH: batch ${batch.batch_id} belongs to ${batch.controller}; ${requestActor || "an unknown actor"} cannot renew its member lease.`
         );
       }
+      const controllerRun = request.controllerRun?.trim();
+      if (batch && !controllerRun) {
+        throw new Error(`BATCH_RUN_REQUIRED: batch ${batch.batch_id} requires controller_run on every renewal.`);
+      }
+      if (batch && controllerRun !== batch.controller_run) {
+        throw new Error(
+          `BATCH_OWNER_MISMATCH: batch ${batch.batch_id} belongs to controller run ${batch.controller_run}; ${controllerRun} cannot renew its member lease.`
+        );
+      }
       await this.assertRevision(loc, id, request.expectedRevision);
       const legacy = isLegacyLease(current);
       if (request.leaseRevision !== void 0 && request.leaseId === void 0) {
         throw new Error(`LEASE_ID_REQUIRED: "${id}" lease_revision is only meaningful with lease_id; pass both from your packet or last take.`);
+      }
+      if (batch && !legacy && request.leaseId === void 0) {
+        throw new Error(
+          `LEASE_ID_REQUIRED: "${id}" is a modern batch lease; renew with both lease_id and lease_revision from the current packet.`
+        );
       }
       if (!legacy && request.leaseId !== void 0) {
         if (request.leaseId !== current.lease_id) {
@@ -46684,7 +46752,7 @@ function sectionFromPlan(plan, titles, fallback) {
   return fallback;
 }
 async function getExecutionPacket(input) {
-  const { store: store2, id, actor, project, resume, logical, step } = input;
+  const { store: store2, id, actor, controllerRun, project, resume, logical, step } = input;
   const item = await store2.getItem(id);
   if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
   if (item.type !== "ticket") {
@@ -46748,10 +46816,28 @@ async function getExecutionPacket(input) {
       gates
     );
   }
+  if (batch && !controllerRun?.trim()) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}; controller_run is required to obtain its execution packet.`,
+      [],
+      item,
+      gates
+    );
+  }
   if (batch && batch.controller !== actor) {
     return refuse(
       project,
       `Ticket "${id}" belongs to batch ${batch.id}, controlled by ${batch.controller ?? "an unknown actor"}; ${actor} cannot obtain its execution packet even with an exact branch/worktree resume.`,
+      [],
+      item,
+      gates
+    );
+  }
+  if (batch && batch.controllerRun !== controllerRun?.trim()) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, controlled by run ${batch.controllerRun ?? "an unknown run"}; ${controllerRun?.trim() ?? "an unknown run"} cannot obtain its execution packet even with an exact branch/worktree resume.`,
       [],
       item,
       gates
@@ -46892,7 +46978,7 @@ var RELEASE_CONFLICT_PREFIXES = [
   "RELEASE_TRANSACTION_INVALID:",
   "RELEASE_CHANNEL_CASE_COLLISION:"
 ];
-var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_OWNER_MISMATCH:", "BATCH_INCONSISTENT:", "BATCH_TRANSACTION_CONFLICT:", "BATCH_TRANSACTION_PENDING:", "BATCH_TRANSACTION_INVALID:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
+var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_RUN_REQUIRED:", "BATCH_OWNER_MISMATCH:", "BATCH_INCONSISTENT:", "BATCH_TRANSACTION_CONFLICT:", "BATCH_TRANSACTION_PENDING:", "BATCH_TRANSACTION_INVALID:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
 var KanmerError = class extends Error {
   constructor(code, message) {
     super(message);
@@ -48537,7 +48623,7 @@ async function confirmDestructive(requestServer, message) {
     return true;
   }
 }
-async function summarise(item, blockedIds) {
+async function summarise(item, blockedIds, manifestBatch) {
   const info = item.type === "ticket" ? await store.getTicketDocsInfo(item.id) : null;
   return {
     id: item.id,
@@ -48558,10 +48644,22 @@ async function summarise(item, blockedIds) {
     capture_disposition: item.capture_disposition ?? null,
     // Always present so archived members remain discoverable during batch
     // closeout without opening every ticket file.
-    batch: item.lease_batch ? {
+    batch: manifestBatch ? {
+      id: manifestBatch.id,
+      controller: manifestBatch.controller,
+      frozenAt: manifestBatch.frozenAt,
+      state: manifestBatch.state,
+      members: manifestBatch.members,
+      workspace: manifestBatch.workspace,
+      branch: manifestBatch.branch
+    } : item.lease_batch ? {
       id: item.lease_batch,
       controller: item.lease_batch_controller ?? null,
-      frozenAt: item.lease_batch_frozen_at ?? null
+      frozenAt: item.lease_batch_frozen_at ?? null,
+      state: "inconsistent",
+      members: [item.id],
+      workspace: item.lease_workspace ?? null,
+      branch: item.branch ?? null
     } : null,
     deployment: item.deployment ?? null,
     // FRD-031: how far the change has travelled, independent of the stage.
@@ -48895,7 +48993,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "list_items",
     {
       title: "List items",
-      description: "List items as summaries (no body). Filter by type, status (workflow stage), area, label, group, or updated_since (ISO timestamp \u2014 only items changed after it). Filters combine with AND, so group + status narrows to one stage of one group. Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken), `profile`, and `docs`/`checklist` (pipeline document presence and checklist progress) \u2014 which is why this, rather than get_group, is how you build a roster from a group: get_group's derived members carry only id/title/stage. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
+      description: "List items as summaries (no body). Filter by type, status (workflow stage), area, label, group, or updated_since (ISO timestamp \u2014 only items changed after it). Filters combine with AND, so group + status narrows to one stage of one group. Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken), `profile`, and `docs`/`checklist` (pipeline document presence and checklist progress) \u2014 which is why this, rather than get_group, is how you build a roster from a group: get_group's derived members carry only id/title/stage. A manifest-backed batch summary retains its state, complete member roster, workspace and branch even during recoverable final cleanup after ticket projections have been cleared. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
       inputSchema: {
         type: itemTypeEnum.optional().describe("Restrict to one item type"),
         status: external_exports.string().optional().describe("Filter by status id (workflow stage)"),
@@ -48933,8 +49031,8 @@ function createKanmerMcpServer(policy = "local-stdio") {
           selected = [...selected].sort((a, b) => a.updated < b.updated ? 1 : -1);
         }
         if (limit !== void 0) selected = selected.slice(0, limit);
-        const blocked = await blockedSet();
-        const summaries = await Promise.all(selected.map((i) => summarise(i, blocked)));
+        const [blocked, batches] = await Promise.all([blockedSet(), store.batchSummaryProjections()]);
+        const summaries = await Promise.all(selected.map((i) => summarise(i, blocked, batches.get(i.id))));
         return ok(warnings.length ? { items: summaries, warnings } : summaries);
       }
     )
@@ -49051,20 +49149,22 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "get_execution_packet",
     {
       title: "Get an execution packet",
-      description: 'Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, incomplete or unsafe ownership evidence, occupancy by another actor, then \u2014 only when `step` is supplied \u2014 a plan that cannot be compiled into a bounded step. An occupied isolated ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A batch additionally requires a complete consistent manifest and the actual declaring controller; copied owner labels or an exact resume path never authorize another actor. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or "next") additionally compiles one versioned step packet limiting the worker to that step\'s allowed files and symbols, with its exact tests, commands, expected output and stop condition \u2014 and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.',
+      description: 'Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, incomplete or unsafe ownership evidence, occupancy by another actor, then \u2014 only when `step` is supplied \u2014 a plan that cannot be compiled into a bounded step. An occupied isolated ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A batch additionally requires a complete consistent manifest plus both the actual MCP request actor and the exact durable controller_run that declared it; copied owner labels or an exact resume path never authorize another controller run. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or "next") additionally compiles one versioned step packet limiting the worker to that step\'s allowed files and symbols, with its exact tests, commands, expected output and stop condition \u2014 and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.',
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
         resume: external_exports.object({ branch: external_exports.string(), worktree: external_exports.string() }).optional().describe("Exact recorded branch/worktree required to resume an occupied isolated ticket; it cannot transfer batch authority"),
+        controller_run: external_exports.string().optional().describe("Durable controller run identity; required and exact-matched for a batch packet"),
         step: external_exports.union([external_exports.number().int().positive(), external_exports.literal("next")]).optional().describe('Compile one bounded step packet: a 1-based ordered-step index, or "next" for the first unfinished step')
       },
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
-    guard(async ({ id, resume, step }, extra) => {
+    guard(async ({ id, resume, controller_run, step }, extra) => {
       const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
       const packet = await getExecutionPacket({
         store,
         id,
         actor: actorName(server, extra),
+        controllerRun: controller_run,
         project,
         resume,
         logical,
@@ -49220,10 +49320,10 @@ function createKanmerMcpServer(policy = "local-stdio") {
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
     guard(async ({ query, type, profile }) => {
-      const blocked = await blockedSet();
+      const [blocked, batches] = await Promise.all([blockedSet(), store.batchSummaryProjections()]);
       return ok(
         await Promise.all(
-          (await store.searchItems(query, { type, profile })).map((i) => summarise(i, blocked))
+          (await store.searchItems(query, { type, profile })).map((i) => summarise(i, blocked, batches.get(i.id)))
         )
       );
     })
@@ -49575,7 +49675,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "take_ticket",
     {
       title: "Take, release, transfer or renew a ticket workspace lease",
-      description: 'Acquire a ticket\'s workspace lease before working it (FRD-030): records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client\'s name), stamps the lease expiry (board `claimExpiryMinutes`, default 30) and mints the lease record \u2014 lease_id, lease_revision, lease_workspace, lease_phase, lease_heartbeat_at, plus controller_run/worker_run/provider when given \u2014 and moves the ticket to the working stage (default `implementing`). One live writer per workspace: a worktree or branch recorded on another taken ticket refuses with WORKSPACE_OCCUPIED (force does not bypass it); an already-taken ticket refuses with LEASE_LIVE unless force is true. Batch mode is the one deliberate exception: the first member passes batch plus the complete batch_members roster. Kanmer writes a recoverable pending declaration before member changes, then retains the immutable roster as active and later releasing. The actual MCP request actor owns the batch; assignee/controller labels do not authorize declaration recovery, member take, or renewal. Later members use that actor and the exact shared worktree/branch; other actors, workspaces, rosters and per-member transfer are refused. Members share one PR/head but retain member-owned review attestations and proofs. Release refuses BATCH_ACTIVE until every immutable-roster member is Done or archived, then clears members idempotently through releasing. action: "renew" is the heartbeat (renew at least every get_status.leases.heartbeatMinutes): pass the lease_id and lease_revision from your packet or last take \u2014 a non-current lease_id refuses with LEASE_EXPIRED (the lease was reclaimed; stop), a stale lease_revision with REVISION_CONFLICT, and nothing is written on refusal; an expired lease nobody reclaimed still renews for its holder. Optional phase (implementing | running-command | review | verifying | closeout); phase "running-command" with extend_minutes is the explicit long-command state, bounded by board `leaseCommandMaxMinutes` (default 120). A renew that names no lease falls back to the owner check (CLAIM_NOT_OWNED) and migrates a legacy isolated claim into a lease. action: "transfer" reclaims an EXPIRED isolated lease for the caller (or another assignee): it first re-reads worktree, branch, PR, commit and proof evidence, records it with the old and new controller in scratch/execution.md, preserves the recorded branch/worktree and any dirty work, and refuses with RECOVERY_REFUSED for a board, foreign-repository or branch-mismatched workspace; a live lease refuses with CLAIM_LIVE unless reason begins "operator:". action: "release" clears an isolated claim or advances recoverable batch cleanup. Never use force to recover a dead controller\'s ticket; transfer only an isolated lease.',
+      description: 'Acquire a ticket\'s workspace lease before working it (FRD-030): records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client\'s name), stamps the lease expiry (board `claimExpiryMinutes`, default 30) and mints the lease record \u2014 lease_id, lease_revision, lease_workspace, lease_phase, lease_heartbeat_at, plus controller_run/worker_run/provider when given \u2014 and moves the ticket to the working stage (default `implementing`). One live writer per workspace: a worktree or branch recorded on another taken ticket refuses with WORKSPACE_OCCUPIED (force does not bypass it); an already-taken ticket refuses with LEASE_LIVE unless force is true. Batch mode is the one deliberate exception: the first member passes batch plus the complete batch_members roster and a nonempty durable controller_run. Kanmer writes a recoverable pending declaration before member changes, then retains the immutable roster as active and later releasing. The actual MCP request actor together with that exact controller_run owns declaration recovery, later member take and renewal; copied assignee/controller labels do not authorize them. Later members use the same actor, controller_run and exact shared worktree/branch; other actors, runs, workspaces, rosters and per-member transfer are refused. Members share one PR/head but retain member-owned review attestations and proofs. Release refuses BATCH_ACTIVE until every immutable-roster member is Done or archived, then clears members idempotently through releasing. action: "renew" is the heartbeat (renew at least every get_status.leases.heartbeatMinutes): a modern manifest-backed batch must pass controller_run plus both lease_id and lease_revision from the packet or last take; omission is refused. A non-current lease_id refuses with LEASE_EXPIRED (the lease was reclaimed; stop), a stale lease_revision with REVISION_CONFLICT, and nothing is written on refusal; an expired lease nobody reclaimed still renews for its holder. Optional phase (implementing | running-command | review | verifying | closeout); phase "running-command" with extend_minutes is the explicit long-command state, bounded by board `leaseCommandMaxMinutes` (default 120). An isolated compatibility renewal may omit lease tokens and falls back to the owner check (CLAIM_NOT_OWNED); a legacy isolated claim then migrates into a lease. action: "transfer" reclaims an EXPIRED isolated lease for the caller (or another assignee): it first re-reads worktree, branch, PR, commit and proof evidence, records it with the old and new controller in scratch/execution.md, preserves the recorded branch/worktree and any dirty work, and refuses with RECOVERY_REFUSED for a board, foreign-repository or branch-mismatched workspace; a live lease refuses with CLAIM_LIVE unless reason begins "operator:". action: "release" clears an isolated claim or advances recoverable batch cleanup. Never use force to recover a dead controller\'s ticket; transfer only an isolated lease.',
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
         action: external_exports.enum(["take", "release", "transfer", "renew"]).default("take"),
@@ -49591,7 +49691,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
         lease_revision: external_exports.number().int().positive().optional().describe("renew: the lease_revision you last read; stale \u21D2 REVISION_CONFLICT"),
         phase: external_exports.enum(LEASE_PHASES).optional().describe("take/renew: lease phase; running-command is the explicit long-command state"),
         extend_minutes: external_exports.number().positive().optional().describe("renew in phase running-command: extend the lease by up to leaseCommandMaxMinutes"),
-        controller_run: external_exports.string().optional().describe("Durable controller run identity behind the lease"),
+        controller_run: external_exports.string().optional().describe("Durable controller run identity behind the lease; required for batch declaration, recovery, member take and renewal"),
         worker_run: external_exports.string().optional().describe("Worker run identity doing the work"),
         provider: external_exports.string().optional().describe("Provider behind the worker (e.g. claude-code, codex)"),
         batch: external_exports.string().min(1).optional().describe("take: the batch workspace this ticket belongs to (FRD-030 batch mode)"),

@@ -249,6 +249,7 @@ test("strict check-pr accepts only the complete frozen batch with per-member PR/
       branch: "batch-pr",
       worktree: ".worktrees/batch-pr",
       actor: "batch-controller",
+      controllerRun: "batch-controller-run",
       batch: "batch-pr",
       batchMembers: tickets.map((ticket) => ticket.id),
     });

@@ -782,6 +782,8 @@ export interface BatchState {
   id: string;
   /** Actual actor that declared the batch, or null for an inconsistent legacy record. */
   controller: string | null;
+  /** Durable controller-run identity paired with the actual actor. */
+  controllerRun: string | null;
   frozenAt: string | null;
   /** Whether the declaration is complete, recoverably pending, or internally inconsistent. */
   declaration: "consistent" | "pending" | "inconsistent";
@@ -790,6 +792,17 @@ export interface BatchState {
   members: BatchMemberState[];
   /** True once every member is Done or archived — the point at which cleanup and release may proceed. */
   allTerminal: boolean;
+}
+
+/** Manifest-backed batch identity projected into list/search summaries during closeout. */
+export interface BatchSummaryProjection {
+  id: string;
+  controller: string;
+  frozenAt: string;
+  state: "pending" | "active" | "releasing";
+  members: string[];
+  workspace: string;
+  branch: string;
 }
 
 /** Input for renewTicket (CORE-115): the caller's own lease, named by id and revision. */

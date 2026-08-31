@@ -157,6 +157,7 @@ import {
   type TransferTicketInput,
   type RenewTicketInput,
   type UpdateItemPatch,
+  type BatchSummaryProjection,
   type BatchState,
   type DeliveryPolicy,
   type ReconciliationApplyInput,
@@ -244,6 +245,7 @@ interface BatchManifestBase {
   schema: typeof BATCH_DECLARATION_SCHEMA;
   batch_id: string;
   controller: string;
+  controller_run: string;
   frozen_at: string;
   members: string[];
   workspace: string;
@@ -278,6 +280,7 @@ function batchRequestSha256(
   batchId: string,
   id: string,
   actor: string,
+  controllerRun: string,
   members: string[],
   input: TakeTicketInput,
   stage: string,
@@ -286,13 +289,13 @@ function batchRequestSha256(
     batch_id: batchId,
     ticket_id: id,
     actor,
+    controller_run: controllerRun,
     members,
     branch: input.branch,
     worktree: input.worktree ?? null,
     stage,
     assignee: input.assignee ?? null,
     controller_label: input.controller ?? null,
-    controller_run: input.controllerRun ?? null,
     worker_run: input.workerRun ?? null,
     provider: input.provider ?? null,
     phase: input.phase ?? "implementing",
@@ -328,14 +331,15 @@ function isBatchDeclarationJournal(value: unknown): value is BatchDeclarationJou
   const record = value as Record<string, unknown>;
   const state = record.state;
   const expectedKeys = state === "pending"
-    ? ["schema", "state", "transaction_id", "request_sha256", "batch_id", "controller", "frozen_at", "members", "workspace", "branch", "take", "lease_id", "claim_expires_at", "documents_sha256", "writes"]
-    : ["schema", "state", "request_sha256", "declaring_ticket", "batch_id", "controller", "frozen_at", "members", "workspace", "branch"];
+    ? ["schema", "state", "transaction_id", "request_sha256", "batch_id", "controller", "controller_run", "frozen_at", "members", "workspace", "branch", "take", "lease_id", "claim_expires_at", "documents_sha256", "writes"]
+    : ["schema", "state", "request_sha256", "declaring_ticket", "batch_id", "controller", "controller_run", "frozen_at", "members", "workspace", "branch"];
   if (!exactKeys(record, expectedKeys)) return false;
   if (
     record.schema !== BATCH_DECLARATION_SCHEMA ||
     (state !== "pending" && state !== "active" && state !== "releasing") ||
     typeof record.batch_id !== "string" || record.batch_id.length === 0 || record.batch_id.trim() !== record.batch_id ||
     typeof record.controller !== "string" || record.controller.length === 0 || record.controller.trim() !== record.controller ||
+    typeof record.controller_run !== "string" || record.controller_run.length === 0 || record.controller_run.trim() !== record.controller_run ||
     typeof record.frozen_at !== "string" || Number.isNaN(Date.parse(record.frozen_at)) || new Date(record.frozen_at).toISOString() !== record.frozen_at ||
     !Array.isArray(record.members) || record.members.length < 2 ||
     !record.members.every((id) => typeof id === "string" && id.length > 0 && id.trim() === id) ||
@@ -366,6 +370,7 @@ function isBatchDeclarationJournal(value: unknown): value is BatchDeclarationJou
     typeof take.from_stage !== "string" || !isStageId(take.from_stage) ||
     ![take.assignee, take.controller_label, take.controller_run, take.worker_run, take.provider, take.expected_revision]
       .every((entry) => entry === null || typeof entry === "string") ||
+    take.controller_run !== record.controller_run ||
     typeof take.phase !== "string" || !LEASE_PHASES.some((phase) => phase === take.phase) ||
     typeof take.force !== "boolean"
   ) return false;
@@ -1471,6 +1476,7 @@ export class KanmerStore {
     branch: string | undefined,
     batchId: string | undefined,
     batchActor: string,
+    batchControllerRun: string | undefined,
     siblings: Item[],
   ): Promise<void> {
     const mine = worktree ? normalizeWorktreePath(worktree, this.paths.repoRoot) : null;
@@ -1485,6 +1491,12 @@ export class KanmerStore {
           throw new Error(
             `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to ${other.lease_batch_controller ?? "an unknown actor"}; ` +
               `${batchActor} cannot take its shared workspace.`,
+          );
+        }
+        if (other.lease_controller_run !== batchControllerRun) {
+          throw new Error(
+            `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to controller run ${other.lease_controller_run ?? "an unknown run"}; ` +
+              `${batchControllerRun ?? "an unknown run"} cannot take its shared workspace.`,
           );
         }
         // A ticket cannot occupy two active workspaces and a batch owns one:
@@ -1543,6 +1555,7 @@ export class KanmerStore {
       journal.batch_id,
       journal.take.ticket_id,
       journal.controller,
+      journal.controller_run,
       journal.members,
       {
         branch: journal.take.branch,
@@ -1680,6 +1693,7 @@ export class KanmerStore {
     const taken = members.find((member) => member?.taken_at);
     const present = members.filter((member): member is Item => member !== undefined);
     const controllers = new Set(present.map((m) => m.lease_batch_controller).filter((value): value is string => Boolean(value)));
+    const controllerRuns = new Set(present.map((m) => m.lease_controller_run).filter((value): value is string => Boolean(value)));
     const frozen = new Set(present.map((m) => m.lease_batch_frozen_at).filter((value): value is string => Boolean(value)));
     const fullyStamped = present.length > 0 && present.every((member) =>
       member.lease_batch === batchId &&
@@ -1693,7 +1707,8 @@ export class KanmerStore {
             member.branch === journal.branch && member.lease_workspace === journal.workspace &&
             this.workspaceKey(member.worktree, member.branch) === journal.workspace &&
             member.lease_id && member.lease_revision && member.claim_expires_at &&
-            member.lease_phase && member.lease_heartbeat_at
+            member.lease_phase && member.lease_heartbeat_at &&
+            member.lease_controller_run === journal.controller_run
           )
         : !hasWorkspaceLeaseResidue(member);
       const stamped = member.lease_batch === batchId &&
@@ -1708,6 +1723,7 @@ export class KanmerStore {
     return {
       id: batchId,
       controller: journal?.controller ?? (controllers.size === 1 ? [...controllers][0]! : null),
+      controllerRun: journal?.controller_run ?? (controllerRuns.size === 1 ? [...controllerRuns][0]! : null),
       frozenAt: journal?.frozen_at ?? (frozen.size === 1 ? [...frozen][0]! : null),
       declaration: journal?.state === "pending" ? "pending" : (consistent ? "consistent" : "inconsistent"),
       workspace: journal?.workspace ?? taken?.lease_workspace ?? (taken?.branch ? `branch:${taken.branch}` : null),
@@ -1774,6 +1790,28 @@ export class KanmerStore {
       throw new Error(`BATCH_INCONSISTENT: "${id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
     }
     return null;
+  }
+
+  /**
+   * One authoritative manifest projection per member for list/search results.
+   * The manifest remains visible through the final-clear interruption, after
+   * every ticket-local batch/workspace field has already been removed.
+   */
+  async batchSummaryProjections(): Promise<Map<string, BatchSummaryProjection>> {
+    const projected = new Map<string, BatchSummaryProjection>();
+    for (const manifest of await this.listBatchManifests()) {
+      const summary: BatchSummaryProjection = {
+        id: manifest.batch_id,
+        controller: manifest.controller,
+        frozenAt: manifest.frozen_at,
+        state: manifest.state,
+        members: [...manifest.members],
+        workspace: manifest.workspace,
+        branch: manifest.branch,
+      };
+      for (const member of manifest.members) projected.set(member, summary);
+    }
+    return projected;
   }
 
   /**
@@ -1857,7 +1895,8 @@ export class KanmerStore {
         intended.taken_at !== manifest.frozen_at || intended.branch !== manifest.branch ||
         intended.lease_workspace !== manifest.workspace || intended.status !== manifest.take.stage ||
         intended.lease_phase !== manifest.take.phase || intended.lease_id !== manifest.lease_id ||
-        intended.claim_expires_at !== manifest.claim_expires_at || intended.lease_revision !== 1
+        intended.claim_expires_at !== manifest.claim_expires_at || intended.lease_revision !== 1 ||
+        intended.lease_controller_run !== manifest.controller_run
       )) ||
       (!isTaker && (
         intended.taken_at !== undefined || intended.branch !== undefined || intended.worktree !== undefined ||
@@ -1946,6 +1985,7 @@ export class KanmerStore {
       declaring_ticket: journal.take.ticket_id,
       batch_id: journal.batch_id,
       controller: journal.controller,
+      controller_run: journal.controller_run,
       frozen_at: journal.frozen_at,
       members: journal.members,
       workspace: journal.workspace,
@@ -1967,7 +2007,11 @@ export class KanmerStore {
     const workspace = this.workspaceKey(input.worktree, input.branch)!;
     const manifests = await this.listBatchManifests();
     const existingJournal = manifests.find((manifest) => manifest.batch_id === batchId) ?? null;
-    const requestSha256 = batchRequestSha256(batchId, id, actor, requested, input, stage);
+    const controllerRun = input.controllerRun?.trim() || "";
+    if (!controllerRun) {
+      throw new Error(`BATCH_RUN_REQUIRED: batch ${batchId} requires the durable controller_run on declaration and every member operation.`);
+    }
+    const requestSha256 = batchRequestSha256(batchId, id, actor, controllerRun, requested, input, stage);
     const currentForIntent = await this.getItem(id);
     const intent: BatchTakeIntent = {
       ticket_id: id,
@@ -1977,7 +2021,7 @@ export class KanmerStore {
       from_stage: existingJournal?.state === "pending" ? existingJournal.take.from_stage : (currentForIntent?.status ?? stage),
       assignee: input.assignee ?? null,
       controller_label: input.controller ?? null,
-      controller_run: input.controllerRun ?? null,
+      controller_run: controllerRun,
       worker_run: input.workerRun ?? null,
       provider: input.provider ?? null,
       phase: input.phase ?? "implementing",
@@ -1988,6 +2032,12 @@ export class KanmerStore {
       if (existingJournal.controller !== actor) {
         throw new Error(
           `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to ${existingJournal.controller}; ${actor} cannot resume or redeclare it.`,
+        );
+      }
+      if (existingJournal.controller_run !== controllerRun) {
+        throw new Error(
+          `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to controller run ${existingJournal.controller_run}; ` +
+            `${controllerRun} cannot resume or redeclare it.`,
         );
       }
       if (
@@ -2037,7 +2087,8 @@ export class KanmerStore {
       if (
         current.lease_batch !== batchId || current.lease_batch_controller !== actor ||
         current.lease_batch_frozen_at !== existingJournal.frozen_at || current.taken_at !== existingJournal.frozen_at ||
-        current.branch !== existingJournal.branch || current.lease_workspace !== existingJournal.workspace
+        current.branch !== existingJournal.branch || current.lease_workspace !== existingJournal.workspace ||
+        current.lease_controller_run !== existingJournal.controller_run
       ) {
         throw new Error(`BATCH_FROZEN: batch ${batchId} is already active and its declaring take is no longer an idempotent retry target.`);
       }
@@ -2078,6 +2129,7 @@ export class KanmerStore {
       request_sha256: requestSha256,
       batch_id: batchId,
       controller: actor,
+      controller_run: controllerRun,
       frozen_at: frozenAt,
       members: requested,
       workspace,
@@ -2264,6 +2316,12 @@ export class KanmerStore {
         );
       }
       const effectiveBatch = current.lease_batch ?? batchId;
+      const batchControllerRun = effectiveBatch === undefined ? undefined : input.controllerRun?.trim();
+      if (effectiveBatch !== undefined && !batchControllerRun) {
+        throw new Error(
+          `BATCH_RUN_REQUIRED: batch ${effectiveBatch} requires the durable controller_run on declaration and every member operation.`,
+        );
+      }
       const tickets = effectiveBatch === undefined
         ? await this.listItems({ type: "ticket", includeArchived: true })
         : await this.batchTicketCensus();
@@ -2293,6 +2351,12 @@ export class KanmerStore {
         if (state.controller !== batchActor) {
           throw new Error(`BATCH_OWNER_MISMATCH: batch ${effectiveBatch} belongs to ${state.controller ?? "an unknown actor"}; ${batchActor} cannot take a member.`);
         }
+        if (state.controllerRun !== batchControllerRun) {
+          throw new Error(
+            `BATCH_OWNER_MISMATCH: batch ${effectiveBatch} belongs to controller run ${state.controllerRun ?? "an unknown run"}; ` +
+              `${batchControllerRun} cannot take a member.`,
+          );
+        }
         const requestedWorkspace = this.workspaceKey(input.worktree, input.branch);
         if (input.branch !== manifest.branch || requestedWorkspace !== manifest.workspace) {
           const recordedWorkspace = manifest.workspace.startsWith("worktree:")
@@ -2304,7 +2368,7 @@ export class KanmerStore {
           );
         }
       }
-      await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, batchActor, tickets);
+      await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, batchActor, batchControllerRun, tickets);
       if (stage !== current.status && loc.kind === "v2") {
         await this.assertDocGate(loc.dir, board, current, current.status, stage);
       }
@@ -2333,7 +2397,10 @@ export class KanmerStore {
       next.lease_phase = input.phase ?? "implementing";
       next.lease_heartbeat_at = now;
       delete next.lease_reclaimed_from;
-      KanmerStore.applyRunIdentity(next, input, false);
+      KanmerStore.applyRunIdentity(next, {
+        ...input,
+        ...(batchControllerRun !== undefined ? { controllerRun: batchControllerRun } : {}),
+      }, false);
       await writeFileAtomic(loc.file, serialiseItem(next));
       await appendActivity(this.paths, [
         this.activity(id, "take", { field: "branch", to: input.branch }),
@@ -2788,10 +2855,25 @@ export class KanmerStore {
           `BATCH_OWNER_MISMATCH: batch ${batch.batch_id} belongs to ${batch.controller}; ${requestActor || "an unknown actor"} cannot renew its member lease.`,
         );
       }
+      const controllerRun = request.controllerRun?.trim();
+      if (batch && !controllerRun) {
+        throw new Error(`BATCH_RUN_REQUIRED: batch ${batch.batch_id} requires controller_run on every renewal.`);
+      }
+      if (batch && controllerRun !== batch.controller_run) {
+        throw new Error(
+          `BATCH_OWNER_MISMATCH: batch ${batch.batch_id} belongs to controller run ${batch.controller_run}; ` +
+            `${controllerRun} cannot renew its member lease.`,
+        );
+      }
       await this.assertRevision(loc, id, request.expectedRevision);
       const legacy = isLegacyLease(current);
       if (request.leaseRevision !== undefined && request.leaseId === undefined) {
         throw new Error(`LEASE_ID_REQUIRED: "${id}" lease_revision is only meaningful with lease_id; pass both from your packet or last take.`);
+      }
+      if (batch && !legacy && request.leaseId === undefined) {
+        throw new Error(
+          `LEASE_ID_REQUIRED: "${id}" is a modern batch lease; renew with both lease_id and lease_revision from the current packet.`,
+        );
       }
       // Compatibility lane: a renew that names no lease (installed v0.3.12
       // skills) falls back to the CORE-121 owner check. Naming a lease is the

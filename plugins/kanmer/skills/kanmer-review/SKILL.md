@@ -145,8 +145,13 @@ residual risk, recorded in the body, and do not block.
 
 A frozen batch receives one fresh independent review of the shared PR at its
 exact full head SHA, not one repeated review per ticket. Before recording a
-pass, use the complete frozen roster and confirm every member is in Review,
-names that exact PR in `prs[]`, and is bound to the same head.
+pass, call `list_items include_archived: true` and read the authoritative
+manifest projection from the summaries: `batch.state` must be `active`,
+`batch.members` is the complete frozen roster, and `batch.workspace` plus
+`batch.branch` identify the one shared Git path. Do not derive membership from
+only currently taken tickets or matching owner labels. A pending,
+inconsistent, or missing projection is a stop. Confirm every projected member
+is in Review, names that exact PR in `prs[]`, and is bound to the same head.
 
 Then write a separate, member-owned whole-file `scratch/review.md` attestation
 for every member in the complete frozen roster. Every record must truthfully

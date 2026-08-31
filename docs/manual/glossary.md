@@ -87,11 +87,17 @@ predecessor/successor rather than relying on wall-clock timestamps.
 two or more small related tickets that share one branch, worktree and pull
 request. Its first take records the complete roster in a hash-bound manifest:
 `pending` can roll an interrupted declaration forward, `active` protects that
-immutable roster, and `releasing` makes cleanup resumable. One actual controller
-owns the batch; supplied owner labels cannot take it over. The pull request must
-name every member, each member keeps its own exact-head review attestation and
-merged proof, and only after every member is terminal are releases completed
-and the shared worktree and branch removed.
+immutable roster, and `releasing` makes cleanup resumable. Work authority is
+the exact pair of the actual MCP actor and a nonempty durable controller-run id
+that survives reconnects; every declaration, recovery, member take, heartbeat
+and execution packet must match both. A modern batch heartbeat also names its
+current lease id and revision. Supplied owner labels cannot take the batch over.
+While the manifest remains active or releasing, listings show its state,
+complete roster, workspace and branch even if ticket-local fields have already
+been cleared. The pull request must name every member, each member keeps its own
+exact-head review attestation and merged proof, and only after every member is
+terminal may any fresh closeout agent complete the actor-neutral release and
+remove the shared worktree and branch.
 
 **Profile** — how much evidence a ticket owes. `fix` is the default; `chore`,
 `feature`, `spike` and `custom` are the others.

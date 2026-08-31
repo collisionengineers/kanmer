@@ -593,6 +593,7 @@ for (const [name, ok] of remediationContract) {
 }
 
 console.log("\n=== 19. CORE-126 protected batch workflow contract ===");
+const toolReference = read(join(skillsDir, "kanmer-tickets", "references", "tool-reference.md"));
 const protectedBatchContract = [
   [
     "kanmer-execute emits the complete frozen batch footer roster",
@@ -602,7 +603,13 @@ const protectedBatchContract = [
   ],
   [
     "kanmer-review writes one member-owned exact-head pass attestation per roster ticket",
-    /one fresh independent review of the shared PR at its\s+exact full head SHA[\s\S]{0,500}member-owned whole-file `scratch\/review\.md` attestation\s+for every member in the complete frozen roster[\s\S]{0,500}`independent: true`[\s\S]{0,80}`verdict: pass`[\s\S]{0,120}exact shared `pr` and full\s+`head_sha`/i.test(
+    /one fresh independent review of the shared PR at its\s+exact full head SHA[\s\S]{0,1200}member-owned whole-file `scratch\/review\.md` attestation\s+for every member in the complete frozen roster[\s\S]{0,500}`independent: true`[\s\S]{0,80}`verdict: pass`[\s\S]{0,120}exact shared `pr` and full\s+`head_sha`/i.test(
+      reviewSkill,
+    ),
+  ],
+  [
+    "kanmer-review reads the complete active manifest projection before batch attestation",
+    /call `list_items include_archived: true`[\s\S]{0,180}`batch\.state` must be `active`[\s\S]{0,180}`batch\.members` is the complete frozen roster[\s\S]{0,180}`batch\.workspace` plus[\s\S]{0,80}`batch\.branch`/i.test(
       reviewSkill,
     ),
   ],
@@ -614,9 +621,38 @@ const protectedBatchContract = [
   ],
   [
     "kanmer-closeout releases an all-terminal roster before shared Git cleanup",
-    /require every immutable-roster member to be terminal[\s\S]{0,700}release[^\n]*every\s+roster member[\s\S]{0,180}idempotent[\s\S]{0,450}Only then remove the one shared worktree and delete the shared branch/i.test(
+    /require every immutable-roster member to be terminal[\s\S]{0,1200}release[^\n]*every\s+roster member[\s\S]{0,450}idempotent[\s\S]{0,450}Only then remove the one shared worktree\s+and delete the shared branch/i.test(
       closeoutSkill,
     ),
+  ],
+  [
+    "kanmer-execute binds all batch work authority to actor plus durable controller_run",
+    /Retain that nonempty `controller_run` in the controller's durable run record[\s\S]{0,220}actual\s+MCP request actor[\s\S]{0,120}durable run id/i.test(executeSkill) &&
+      /Declaration, pending recovery, every later member take, batch renew, and every\s+batch execution packet exact-match that actor\/run pair/i.test(executeSkill),
+  ],
+  [
+    "kanmer-execute requires current CAS tokens on every modern batch renew",
+    /modern batch renewal always requires both current `lease_id` and\s+`lease_revision` plus that exact run id[\s\S]{0,180}never enters the no-token owner\s+compatibility lane/i.test(
+      executeSkill,
+    ),
+  ],
+  [
+    "kanmer-closeout retains manifest discovery through unlink and permits a fresh terminal releaser",
+    /authoritative manifest is `active` or `releasing`[\s\S]{0,180}`list_items` and `search_items`[\s\S]{0,160}until\s+manifest unlink[\s\S]{0,300}`batch\.state`[\s\S]{0,120}`batch\.members`[\s\S]{0,120}`batch\.workspace`[\s\S]{0,80}`batch\.branch`/i.test(
+      closeoutSkill,
+    ) &&
+      /fresh closeout agent may call[\s\S]{0,100}`take_ticket action: "release"`[\s\S]{0,180}not actor-bound[\s\S]{0,180}does not require the original MCP actor or\s+`controller_run`/i.test(closeoutSkill),
+  ],
+  [
+    "tool reference exposes the durable batch authority, summary, CAS, and closeout contract",
+    /Pending, active and releasing manifests persist the exact pair of the actual MCP request actor and that durable run id[\s\S]{0,260}Declaration, pending recovery, every later member take, batch renew and batch execution packet must exact-match both values/i.test(
+      toolReference,
+    ) &&
+      /`batch` \(`\{ id, controller, frozenAt, state, members, workspace, branch \}`[\s\S]{0,260}active\/releasing manifest onto every roster member[\s\S]{0,100}until manifest unlink/i.test(toolReference) &&
+      /Every modern manifest-backed batch renew supplies its exact `controller_run` and both current `lease_id` and `lease_revision`[\s\S]{0,120}no no-token compatibility fallback/i.test(
+        toolReference,
+      ) &&
+      /terminal release is deliberately not actor-bound[\s\S]{0,160}fresh closeout agent/i.test(toolReference),
   ],
 ];
 for (const [name, ok] of protectedBatchContract) {

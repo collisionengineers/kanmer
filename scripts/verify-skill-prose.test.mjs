@@ -332,7 +332,7 @@ test("skill prose validator rejects incomplete protected-batch execution, review
       readFileSync(closeout, "utf8")
         .replace("first call `list_items include_archived: true`", "inspect only the active board")
         .replace(
-          "Only then remove the one shared worktree and delete the shared branch.",
+          "Only then remove the one shared worktree\nand delete the shared branch.",
           "Delete the shared worktree before the members are released.",
         ),
     );
@@ -343,6 +343,80 @@ test("skill prose validator rejects incomplete protected-batch execution, review
     assert.match(result.stdout, /FAIL {2}kanmer-review writes one member-owned exact-head pass attestation per roster ticket/);
     assert.match(result.stdout, /FAIL {2}kanmer-closeout discovers archived batch members by exact batch id/);
     assert.match(result.stdout, /FAIL {2}kanmer-closeout releases an all-terminal roster before shared Git cleanup/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("skill prose validator rejects batch run, renewal CAS, manifest projection, and fresh closeout regressions", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-protected-batch-remediation-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    const review = join(fixture, "plugins", "kanmer", "skills", "kanmer-review", "SKILL.md");
+    const closeout = join(fixture, "plugins", "kanmer", "skills", "kanmer-closeout", "SKILL.md");
+    const toolReference = join(
+      fixture,
+      "plugins",
+      "kanmer",
+      "skills",
+      "kanmer-tickets",
+      "references",
+      "tool-reference.md",
+    );
+
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8")
+        .replace(
+          "Retain that nonempty `controller_run` in the controller's durable run record",
+          "Trust the caller's visible controller label",
+        )
+        .replace(
+          "A modern batch renewal always requires both current `lease_id` and\n`lease_revision` plus that exact run id; it never enters the no-token owner\ncompatibility lane.",
+          "A modern batch renewal may omit its lease tokens and use owner compatibility.",
+        ),
+    );
+    writeFileSync(
+      review,
+      readFileSync(review, "utf8").replace(
+        "call `list_items include_archived: true` and read the authoritative",
+        "inspect one remembered active member and assume the",
+      ),
+    );
+    writeFileSync(
+      closeout,
+      readFileSync(closeout, "utf8")
+        .replace(
+          "both\n`list_items` and `search_items` keep projecting it onto every member until\nmanifest unlink",
+          "ticket-local projections may disappear before manifest unlink",
+        )
+        .replace(
+          "Terminal batch release\nis deliberately not actor-bound",
+          "Terminal batch release remains bound to the implementation actor",
+        ),
+    );
+    writeFileSync(
+      toolReference,
+      readFileSync(toolReference, "utf8").replace(
+        "Pending, active and releasing manifests persist the exact pair of the actual MCP request actor and that durable run id.",
+        "The batch stores a display owner.",
+      ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-review reads the complete active manifest projection before batch attestation/);
+    assert.match(result.stdout, /FAIL {2}kanmer-execute binds all batch work authority to actor plus durable controller_run/);
+    assert.match(result.stdout, /FAIL {2}kanmer-execute requires current CAS tokens on every modern batch renew/);
+    assert.match(result.stdout, /FAIL {2}kanmer-closeout retains manifest discovery through unlink and permits a fresh terminal releaser/);
+    assert.match(result.stdout, /FAIL {2}tool reference exposes the durable batch authority, summary, CAS, and closeout contract/);
   } finally {
     removeTreeWithRetrySync(fixture);
   }

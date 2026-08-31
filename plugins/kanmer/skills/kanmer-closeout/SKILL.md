@@ -80,18 +80,29 @@ If the host repo doesn't auto-delete merged branches:
 cleanup action, first call `list_items include_archived: true`. Use the
 summaries' `batch.id` to discover every ticket with the exact same batch id;
 never infer membership from a matching branch, worktree, or only the active
-board. Surface listing warnings and refuse a pending or inconsistent
-declaration instead of guessing the roster. Capture the manifest's immutable
-roster and its shared worktree/branch, finish the Kanmer half for every member,
-and require every immutable-roster member to be terminal — Done, or archived
-under the accepted retired non-success shape — before cleanup starts.
+board. While an authoritative manifest is `active` or `releasing`, both
+`list_items` and `search_items` keep projecting it onto every member until
+manifest unlink — even after a partial release has cleared all ticket-local
+batch fields. Read `batch.state`, the complete `batch.members`,
+`batch.workspace`, and `batch.branch` from that projection. This is the fresh
+closeout discovery path after any interruption; do not depend on remembering a
+member id's old claim fields. Surface listing warnings and refuse a `pending`,
+inconsistent, missing, or conflicting projection instead of guessing the
+roster. Capture the immutable roster and shared Git path, finish the Kanmer
+half for every member, and require every immutable-roster member to be terminal
+— Done, or archived under the accepted retired non-success shape — before
+cleanup starts.
 
-After that all-terminal check, call `take_ticket action: "release"` for every
-roster member. Release is idempotent across the manifest's `releasing` phase:
-after an interruption, repeat the remaining releases until the manifest is
-gone. Only then remove the one shared worktree and delete the shared branch.
-An early release refuses `BATCH_ACTIVE`; an unreadable, incomplete, or changed
-roster is a stop rather than permission to clean Git.
+After that all-terminal check, a fresh closeout agent may call
+`take_ticket action: "release"` for every roster member. Terminal batch release
+is deliberately not actor-bound: it does not require the original MCP actor or
+`controller_run`, because implementation ownership is over and closeout may be
+recovering another process's interruption. Release is idempotent across the
+manifest's `releasing` phase: after an interruption, repeat the remaining
+releases until the manifest is gone. Only then remove the one shared worktree
+and delete the shared branch. An early release refuses `BATCH_ACTIVE`; an
+unreadable, incomplete, or changed roster is a stop rather than permission to
+clean Git.
 
 ## 3. Release, last
 

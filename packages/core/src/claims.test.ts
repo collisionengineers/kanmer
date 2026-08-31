@@ -673,7 +673,11 @@ describe("non-lease writers share the lease lock (CORE-125)", () => {
 describe("batch workspaces (CORE-124)", () => {
   /** Gate-free tickets so the fixture can walk every stage without pipeline documents. */
   const free = { type: "ticket" as const, profile: "custom", requires: {}, status: "implementing" };
-  const batchWorkspace = { branch: "batch-a", worktree: ".worktrees/batch-a" };
+  const batchWorkspace = {
+    branch: "batch-a",
+    worktree: ".worktrees/batch-a",
+    controllerRun: "controller-run",
+  };
   const HEAD = "b".repeat(40);
   const sharedAttestation = (pr: string) => attestation(pr, "pass").replace(`head_sha: "${"a".repeat(40)}"`, `head_sha: "${HEAD}"`);
 
@@ -765,6 +769,7 @@ describe("batch workspaces (CORE-124)", () => {
       request_sha256: active.request_sha256,
       batch_id: active.batch_id,
       controller: active.controller,
+      controller_run: active.controller_run,
       frozen_at: active.frozen_at,
       members: active.members,
       workspace: active.workspace,
@@ -809,6 +814,7 @@ describe("batch workspaces (CORE-124)", () => {
   it("binds admission, renewal and transfer to the observed batch actor", async () => {
     const { a, b, first } = await threeMemberBatch();
     const foreign = new KanmerStore(root, { actor: "foreign-actor" });
+    const competingRun = new KanmerStore(root, { actor: "test-actor" });
     const before = await fs.readFile(ticketFile(b.id), "utf8");
     await expect(foreign.takeTicket(b.id, {
       ...batchWorkspace,
@@ -816,19 +822,86 @@ describe("batch workspaces (CORE-124)", () => {
       assignee: "ctl-a",
       controller: "test-actor",
     })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*belongs to test-actor/u);
+    await expect(competingRun.takeTicket(b.id, {
+      ...batchWorkspace,
+      controllerRun: "competing-controller-run",
+      assignee: "ctl-a",
+      controller: "test-actor",
+    })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*belongs to controller run controller-run/u);
+    await expect(competingRun.takeTicket(b.id, {
+      branch: batchWorkspace.branch,
+      worktree: batchWorkspace.worktree,
+      assignee: "ctl-a",
+    })).rejects.toThrow(/^BATCH_RUN_REQUIRED:/u);
     await expect(store.renewTicket(a.id, {
       actor: "ctl-a",
       leaseId: first.lease_id,
       leaseRevision: first.lease_revision,
     })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*belongs to test-actor/u);
-    const renewed = await store.renewTicket(a.id, {
+    const batchCas = {
       actor: " test-actor ",
+      controllerRun: "controller-run",
       leaseId: first.lease_id,
       leaseRevision: first.lease_revision,
-    });
-    expect(renewed.lease_revision).toBe(2);
+    };
+    const firstBeforeRenew = await fs.readFile(ticketFile(a.id), "utf8");
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^BATCH_RUN_REQUIRED:/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "competing-controller-run",
+      leaseId: first.lease_id,
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^BATCH_OWNER_MISMATCH:.*controller run controller-run/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+    })).rejects.toThrow(/^LEASE_ID_REQUIRED:.*modern batch lease/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseId: first.lease_id,
+    })).rejects.toThrow(/^LEASE_REVISION_REQUIRED:/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^LEASE_ID_REQUIRED:/u);
+    await expect(store.renewTicket(a.id, {
+      actor: "test-actor",
+      controllerRun: "controller-run",
+      leaseId: "not-current",
+      leaseRevision: first.lease_revision,
+    })).rejects.toThrow(/^LEASE_EXPIRED:/u);
+    expect(await fs.readFile(ticketFile(a.id), "utf8")).toBe(firstBeforeRenew);
+    const raced = await Promise.allSettled([
+      store.renewTicket(a.id, batchCas),
+      store.renewTicket(a.id, batchCas),
+    ]);
+    expect(raced.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(raced.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect((raced.find((result) => result.status === "rejected") as PromiseRejectedResult).reason.message)
+      .toMatch(/^Conflict:/u);
+    expect((await store.getItem(a.id))!.lease_revision).toBe(2);
     await expect(store.transferTicket(a.id, { assignee: "test-actor" })).rejects.toThrow(/^BATCH_INVALID:.*per-member transfer/u);
     expect(await fs.readFile(ticketFile(b.id), "utf8")).toBe(before);
+  });
+
+  it("requires a durable controller run before writing a batch declaration", async () => {
+    const a = await store.createItem({ ...free, title: "A" });
+    const b = await store.createItem({ ...free, title: "B" });
+    const before = await snapshotBoardFiles();
+    await expect(store.takeTicket(a.id, {
+      branch: "batch-no-run",
+      worktree: ".worktrees/batch-no-run",
+      assignee: "ctl-a",
+      batch: "batch-no-run",
+      batchMembers: [a.id, b.id],
+    })).rejects.toThrow(/^BATCH_RUN_REQUIRED:/u);
+    expect(await snapshotBoardFiles()).toEqual(before);
   });
 
   it("retains only a compact authoritative manifest and includes the caller in the all-terminal release gate", async () => {
@@ -838,7 +911,7 @@ describe("batch workspaces (CORE-124)", () => {
     expect(files).toHaveLength(1);
     const manifest = JSON.parse(await fs.readFile(path.join(manifestDir, files[0]!), "utf8"));
     expect(Object.keys(manifest).sort()).toEqual([
-      "batch_id", "branch", "controller", "declaring_ticket", "frozen_at", "members",
+      "batch_id", "branch", "controller", "controller_run", "declaring_ticket", "frozen_at", "members",
       "request_sha256", "schema", "state", "workspace",
     ].sort());
     expect(manifest).toMatchObject({ state: "active", batch_id: "batch-a", controller: "test-actor", declaring_ticket: a.id });
@@ -907,7 +980,12 @@ describe("batch workspaces (CORE-124)", () => {
     const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
     const paths = [ticketFile(a.id), ticketFile(b.id)];
     const before = await Promise.all(paths.map((file) => fs.readFile(file, "utf8")));
-    const declaration = { assignee: "ctl-a", batch: "batch-a", batchMembers: [a.id, b.id] };
+    const declaration = {
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "batch-a",
+      batchMembers: [a.id, b.id],
+    };
 
     await expect(store.takeTicket(a.id, {
       ...declaration,
@@ -951,7 +1029,7 @@ describe("batch workspaces (CORE-124)", () => {
         members: fixture.ids,
       });
       expect(Object.keys(active).sort()).toEqual([
-        "batch_id", "branch", "controller", "declaring_ticket", "frozen_at", "members",
+        "batch_id", "branch", "controller", "controller_run", "declaring_ticket", "frozen_at", "members",
         "request_sha256", "schema", "state", "workspace",
       ].sort());
       const matching = [];
@@ -986,7 +1064,7 @@ describe("batch workspaces (CORE-124)", () => {
       {
         name: "first-take intent",
         run: () => store.takeTicket(fixture.a.id, { ...fixture.take, controllerRun: "different-controller-run" }),
-        error: /^BATCH_TRANSACTION_CONFLICT:/u,
+        error: /^BATCH_OWNER_MISMATCH:/u,
       },
     ];
     const retained = await snapshotBoardFiles();
@@ -1075,10 +1153,12 @@ describe("batch workspaces (CORE-124)", () => {
     const d = await store.createItem({ ...free, title: "Overlap D" });
     await store.takeTicket(a.id, {
       branch: "overlap-a", worktree: ".worktrees/overlap-a", assignee: "ctl-a",
+      controllerRun: "controller-run",
       batch: "overlap-a", batchMembers: [a.id, b.id],
     });
     await store.takeTicket(c.id, {
       branch: "overlap-b", worktree: ".worktrees/overlap-b", assignee: "ctl-a",
+      controllerRun: "controller-run",
       batch: "overlap-b", batchMembers: [c.id, d.id],
     });
     const firstFile = batchManifestFile("overlap-a");
@@ -1135,6 +1215,16 @@ describe("batch workspaces (CORE-124)", () => {
     const clearedC = await fs.readFile(ticketFile(c.id), "utf8");
     await expect(fs.stat(manifestFile)).rejects.toMatchObject({ code: "ENOENT" });
     await fs.writeFile(manifestFile, releasingManifest, "utf8");
+    const projections = await store.batchSummaryProjections();
+    for (const id of [a.id, b.id, c.id]) {
+      expect(projections.get(id)).toMatchObject({
+        id: "batch-a",
+        state: "releasing",
+        members: [a.id, b.id, c.id],
+        workspace: expect.stringContaining(".worktrees"),
+        branch: "batch-a",
+      });
+    }
     await store.releaseTicket(c.id, { expectedRevision: revisionC });
     expect(await fs.readFile(ticketFile(c.id), "utf8")).toBe(clearedC);
     await expect(fs.stat(manifestFile)).rejects.toMatchObject({ code: "ENOENT" });
@@ -1185,6 +1275,7 @@ describe("batch workspaces (CORE-124)", () => {
       request_sha256: active.request_sha256,
       batch_id: active.batch_id,
       controller: active.controller,
+      controller_run: active.controller_run,
       frozen_at: active.frozen_at,
       members: active.members,
       workspace: active.workspace,
@@ -1197,7 +1288,7 @@ describe("batch workspaces (CORE-124)", () => {
         from_stage: "implementing",
         assignee: "ctl-a",
         controller_label: null,
-        controller_run: null,
+        controller_run: active.controller_run,
         worker_run: null,
         provider: null,
         phase: "implementing",
@@ -1291,8 +1382,8 @@ describe("batch workspaces (CORE-124)", () => {
   it("a member occupies only the batch workspace: another worktree or branch is BATCH_WORKSPACE_MISMATCH", async () => {
     const { b } = await threeMemberBatch();
     const before = await fs.readFile(ticketFile(b.id), "utf8");
-    await expect(store.takeTicket(b.id, { branch: "batch-a", worktree: ".worktrees/other", assignee: "ctl-a" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:.*worktree \.worktrees\/batch-a on branch batch-a/u);
-    await expect(store.takeTicket(b.id, { branch: "other", worktree: ".worktrees/batch-a", assignee: "ctl-a" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:/u);
+    await expect(store.takeTicket(b.id, { branch: "batch-a", worktree: ".worktrees/other", assignee: "ctl-a", controllerRun: "controller-run" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:.*worktree \.worktrees\/batch-a on branch batch-a/u);
+    await expect(store.takeTicket(b.id, { branch: "other", worktree: ".worktrees/batch-a", assignee: "ctl-a", controllerRun: "controller-run" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:/u);
     await expect(store.takeTicket(b.id, { ...batchWorkspace, assignee: "ctl-a", batch: "batch-z" })).rejects.toThrow(/^BATCH_INVALID:.*frozen member of batch batch-a, not batch-z/u);
     expect(await fs.readFile(ticketFile(b.id), "utf8")).toBe(before);
   });
@@ -1305,7 +1396,7 @@ describe("batch workspaces (CORE-124)", () => {
     const done = await store.createItem({ ...free, title: "D", status: "done" });
     const other = await store.createItem({ ...free, title: "O" });
     const other2 = await store.createItem({ ...free, title: "O2" });
-    await store.takeTicket(other.id, { branch: "o", worktree: ".worktrees/o", assignee: "ctl-c", batch: "batch-o", batchMembers: [other.id, other2.id] });
+    await store.takeTicket(other.id, { branch: "o", worktree: ".worktrees/o", assignee: "ctl-c", controllerRun: "controller-run", batch: "batch-o", batchMembers: [other.id, other2.id] });
     const before = await fs.readFile(ticketFile(a.id), "utf8");
     const attempt = (members: string[], batch = "batch-a") => store.takeTicket(a.id, { ...batchWorkspace, assignee: "ctl-a", batch, batchMembers: members });
     await expect(attempt([a.id])).rejects.toThrow(/^BATCH_INVALID:.*two or more distinct member ids/u);

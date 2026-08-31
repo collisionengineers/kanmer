@@ -190,6 +190,7 @@ describe("phase-2 merge-gate evidence", () => {
       branch: "batch-gate",
       worktree: ".worktrees/batch-gate",
       actor: "gate-controller",
+      controllerRun: "gate-controller-run",
       batch: "batch-gate",
       batchMembers: tickets.map((ticket) => ticket.id),
     });

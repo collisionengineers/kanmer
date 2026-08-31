@@ -4,12 +4,15 @@ type: ticket
 title: >-
   Detect forbidden-file changes, stale evidence and plan deviation before the
   next step packet
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-release-controller
 profile: feature
 stageEntered:
   preparing: '2026-08-31T15:53:50.295Z'
+taken_at: '2026-08-31T17:37:10.569Z'
+branch: core-127-constrained-step-reconciliation
+worktree: .worktrees/core-127
 labels:
   - reliable-autonomy
 groups:
@@ -19,7 +22,7 @@ refs:
   - docs/functional/frd/FRD-033-constrained-preparation-and-step-packets.md
 archived: false
 created: '2026-08-27T23:06:18.794Z'
-updated: '2026-08-31T15:53:50.295Z'
+updated: '2026-08-31T17:37:10.569Z'
 ---
 
 ## What

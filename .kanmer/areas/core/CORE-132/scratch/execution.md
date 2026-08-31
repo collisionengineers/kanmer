@@ -31,3 +31,7 @@ The final automated review at predecessor `e31f2fdc5f740d3c7dbad8fb5175bc9839f7b
 - documents the actor, field, and causal-scope contracts in AGENTS.md and the canonical tool inventory.
 
 Focused evidence at the amended head: core release 78/78 PASS; MCP release 21/21 PASS; protocol smoke 349/349 PASS; core/MCP typechecks PASS; plugin byte identity, skills, AGENTS 31/31, and docs/manual checks PASS; `git diff --check` PASS. The prior detached full rail at `e31f2fdc...` passed after one retained setup INCONCLUSIVE caused by installing dependencies in the wrong worktree. A clean detached full rail and hosted checks for this new exact head remain pending and will be recorded before attestation or merge.
+
+## Retained exact-head verification failure — `ce2645cb082ff5d2a86240c5ae67cffa0f9310f5`
+
+A clean detached Windows `npm run verify` attempt reached `mcpb:check` after build, core 647/647, GUI 524/524, MCP 165/165, scripts 155/155, typecheck, docs, smoke 349/349 and headless all passed. It then failed deterministically because the committed plugin MCP bundle differed from the freshly built MCPB server. Cause: the final store-source comment correction happened after the previous bundle generation. No assertion or source behavior failed. The canonical bundle was regenerated, `plugin:check` and `mcpb:check` both passed locally, and the amended exact head is `2aaab24bd62c58a43703b8cef06f431a40825c77`. This FAIL remains part of the verification history; the full rail must pass at the amended SHA.

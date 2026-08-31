@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "306"
-head_sha: "738e03ee2179621c347328e704134b1202ea5a8e"
+head_sha: "b51ead6e019f11d035c66f148c311a707f123bb0"
 verdict: needs-changes
 reviewer: "Codex subagent /root/core126_final_review"
 independent: true
-plan_hash: "ceafdb46ea6c825c"
-ticket_updated: "2026-08-31T12:23:36.797Z"
-board_sha: "7a1dfd57cbd2a422a86b2e2f0e7f41840f029fe5"
+plan_hash: "38903744c2614884"
+ticket_updated: "2026-08-31T12:58:26.263Z"
+board_sha: "47d375a1989795fb3f9a6799f1df3335b7a7d2ae"
 expected_reviewers:
   - "GitHub Codex automated review"
   - "Codex subagent /root/core126_final_review"
@@ -29,6 +29,11 @@ threads_snapshot:
   - { source: github, id: "PRRT_kwDOT2PEds6dtMzg", finding: F-016, resolved: false }
   - { source: github, id: "PRRT_kwDOT2PEds6dtMzm", finding: F-017, resolved: false }
   - { source: github, id: "PRRT_kwDOT2PEds6duEUg", finding: F-018, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2gm", finding: F-019, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2gs", finding: F-020, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2g0", finding: F-021, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2g5", finding: F-022, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6du2g_", finding: F-023, resolved: false }
 findings:
   - id: F-001
     severity: major
@@ -102,20 +107,48 @@ findings:
     reason: "Public v0.3.12 commit 7eed70e contains no lease_batch; the pre-manifest form existed only in a later unreleased candidate confined to copied or disposable boards."
   - id: F-018
     severity: major
-    summary: "The new untaken-sibling packet projection bypasses physical worktree, branch, and Git-common-directory validation."
+    summary: "Projected untaken-member workspaces bypassed physical Git validation."
+    disposition: fixed
+  - id: F-019
+    severity: major
+    summary: "A worktree-less declaration can freeze an immutable batch that no execution packet can use."
+    disposition: open
+  - id: F-020
+    severity: minor
+    summary: "Non-authoritative display labels can reject an otherwise authorized batch controller."
+    disposition: open
+  - id: F-021
+    severity: major
+    summary: "The auto batch lane omits the mandatory durable controller_run."
+    disposition: open
+  - id: F-022
+    severity: major
+    summary: "Shared review advances only one roster member after merge."
+    disposition: open
+  - id: F-023
+    severity: major
+    summary: "Later batch members are instructed to create a second PR instead of reusing the shared PR."
     disposition: open
 ---
 
-# Independent delta review — CORE-126 / PR #306
+# Independent exact-head delta review — CORE-126 / PR #306
 
 ## Verdict
 
-Needs changes at exact head `738e03ee2179621c347328e704134b1202ea5a8e`.
+Needs changes at exact head `b51ead6e019f11d035c66f148c311a707f123bb0`.
 
-F-013 through F-016 are fixed and F-017's rejection is supported by public-tag history. The automated exact-head review found F-018 in the changed F-014 path, and the fresh independent reviewer reproduced it on a disposable board: a nonexistent manifest worktree yielded a ready packet and successful sibling lease.
+F-018 is fixed: the shared post-projection validator now refuses missing/moved, wrong-branch, foreign-repository, source/board, collision, and Git-common-directory mismatches before an untaken sibling can receive a ready packet or lease. Hosted authoritative `verify` is green at this exact head.
+
+The settled automated review and independent delta review confirmed four merge-blocking majors, F-019/F-021/F-022/F-023, plus the bounded minor F-020. They are one end-to-end lifecycle invariant: a frozen batch must have a real shared worktree, retain actor/run authority through every packet and heartbeat, reuse exactly one PR for every member, and move the complete roster into per-member verification after the shared merge.
 
 ## Required bounded remediation
 
-Reuse or refactor the existing execution-packet physical Git validator after manifest projection and actor/run authorization. Validate the effective projected branch/worktree before returning ready. Keep Git checks out of core. Cover missing/moved, wrong-branch, foreign-repository, board/source-checkout, and physical-alias refusal through the shared validator, and prove the untaken member remains untaken on refusal.
+Apply the versioned plan's single root-cause replan:
 
-Hosted `verify` passed at this exact head. `kanmer-gate` is red only because this needs-changes record replaces the previously stale review; source remediation is still required.
+- reject a worktree-less batch before WAL/ticket writes while preserving isolated branch-only take;
+- let an exact manifest actor/run bypass only the generic display-owner check after all batch and physical safety checks;
+- pass the automation run record's immutable `run_id` as `controller_run` on every batch operation;
+- make later members validate, reuse, and record the one existing shared PR; and
+- after confirmed merge, idempotently move every immutable roster member one Review-to-Verifying boundary.
+
+No new tool, stage, service, migration, provider abstraction, release-roster item, or Infisical/credential work is authorized. The next review is strictly the F-019–F-023 delta and F-018 regression safety.

@@ -332,8 +332,8 @@ test("skill prose validator rejects incomplete protected-batch execution, review
       readFileSync(closeout, "utf8")
         .replace("first call `list_items include_archived: true`", "inspect only the active board")
         .replace(
-          "Only then remove the one shared worktree\nand delete the shared branch.",
-          "Delete the shared worktree before the members are released.",
+          "After that all-terminal check, keep the manifest linked and do not release any\nmember yet.",
+          "After that all-terminal check, release every member before shared Git cleanup.",
         ),
     );
 
@@ -342,7 +342,7 @@ test("skill prose validator rejects incomplete protected-batch execution, review
     assert.match(result.stdout, /FAIL {2}kanmer-execute emits the complete frozen batch footer roster/);
     assert.match(result.stdout, /FAIL {2}kanmer-review writes one member-owned exact-head pass attestation per roster ticket/);
     assert.match(result.stdout, /FAIL {2}kanmer-closeout discovers archived batch members by exact batch id/);
-    assert.match(result.stdout, /FAIL {2}kanmer-closeout releases an all-terminal roster before shared Git cleanup/);
+    assert.match(result.stdout, /FAIL {2}kanmer-closeout retains the all-terminal manifest through shared Git cleanup before member release/);
   } finally {
     removeTreeWithRetrySync(fixture);
   }

@@ -620,10 +620,9 @@ const protectedBatchContract = [
     ),
   ],
   [
-    "kanmer-closeout releases an all-terminal roster before shared Git cleanup",
-    /require every immutable-roster member to be terminal[\s\S]{0,1200}release[^\n]*every\s+roster member[\s\S]{0,450}idempotent[\s\S]{0,450}Only then remove the one shared worktree\s+and delete the shared branch/i.test(
-      closeoutSkill,
-    ),
+    "kanmer-closeout retains the all-terminal manifest through shared Git cleanup before member release",
+    /require every immutable-roster member to be terminal[\s\S]{0,700}keep the manifest linked and do not release any\s+member yet[\s\S]{0,700}remove the\s+one shared worktree and delete the shared branch[\s\S]{0,500}If any shared Git cleanup step fails[\s\S]{0,180}do not (?:call|issue)[\s\S]{0,80}release/i.test(closeoutSkill) &&
+      /Only after (?:that )?shared Git cleanup succeeds[\s\S]{0,220}`take_ticket action: "release"` for every roster member[\s\S]{0,380}idempotent[\s\S]{0,300}final release unlinks the manifest/i.test(closeoutSkill),
   ],
   [
     "kanmer-execute binds all batch work authority to actor plus durable controller_run",

@@ -90,7 +90,9 @@ projects an active/releasing manifest onto every roster member until manifest
 unlink, including after release clears every ticket-local batch, worktree and
 branch field. `search_items` projects batch metadata only for matching
 non-archived results and is not a complete roster census. A fresh closeout uses
-the list census to capture the complete roster and shared Git path,
+the list census to capture the complete roster and shared Git path, keeps that
+manifest linked through shared Git cleanup, then releases members so final
+unlink occurs only after the worktree and branch are gone,
 `deployment` (deployment status or `null`), `created`, `updated`, `archived`,
 `taken` (`{ taken_at, branch, worktree }` or `null` when not taken), `docs`
  (which pipeline document types exist — `null` for legacy-layout items), `documentPaths`
@@ -185,8 +187,10 @@ summary means "not reported here", not "no links".
   may clear member by member only while the manifest is `releasing`. Summary
   projection remains manifest-backed through final unlink, so those clears do
   not hide `state`, complete `members`, `workspace`, or `branch` from closeout.
-  Once the roster is all-terminal, release is intentionally not owner-bound
-  and a fresh closeout agent may finish the releasing pass.
+  Once the roster is all-terminal, closeout cleans the captured shared Git path
+  while this projection remains linked. If cleanup fails it issues no release;
+  only after cleanup succeeds does the intentionally owner-unbound release let
+  a fresh closeout agent finish the releasing pass and final unlink.
 - Plan validation and step packets (FRD-033) read documents; they are not
   frontmatter and nothing is persisted. A finding is `blocker` or `advisory`:
   `PLAN_VAGUE_INSTRUCTION` (a sentence that resolves no exact decision, file,

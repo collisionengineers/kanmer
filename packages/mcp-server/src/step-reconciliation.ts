@@ -95,6 +95,19 @@ function inside(root: string, candidate: string): boolean {
   return relative !== "" && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
 }
 
+/**
+ * A dedicated board checkout protects its complete physical subtree. Legacy
+ * boards rooted at the shared source checkout still permit real linked ticket
+ * worktrees below that source root; arbitrary children are rejected separately
+ * when their Git top-level differs from the recorded path.
+ */
+export function isProtectedBoardExecutionWorktree(sourceRoot: string, boardRoot: string, candidate: string): boolean {
+  const source = canonicalPath(sourceRoot);
+  const board = canonicalPath(boardRoot);
+  const worktree = canonicalPath(candidate);
+  return worktree === board || (board !== source && inside(board, worktree));
+}
+
 async function assertPhysicalContainment(root: string, absolute: string): Promise<void> {
   let cursor = absolute;
   for (;;) {
@@ -293,9 +306,11 @@ export async function collectWorkspaceSnapshot(input: {
     ]);
     if (!inside(physicalSource, physical)) throw new Error("recorded worktree resolves outside the physical source repository");
     const candidateTop = await realpath(path.resolve(candidate, decode(candidateTopRaw).trim()));
-    if (canonicalPath(physical) === canonicalPath(physicalBoard) ||
-        (inside(physicalBoard, physical) && canonicalPath(candidateTop) === canonicalPath(physicalBoard))) {
+    if (isProtectedBoardExecutionWorktree(physicalSource, physicalBoard, physical)) {
       throw new Error("recorded workspace is the protected board worktree or one of its children");
+    }
+    if (canonicalPath(candidateTop) !== canonicalPath(physical)) {
+      throw new Error("recorded worktree points inside a Git worktree instead of at its exact root");
     }
     const candidateCommon = await realpath(path.resolve(candidate, decode(candidateCommonRaw).trim()));
     const sourceCommon = await realpath(path.resolve(input.repoRoot, decode(sourceCommonRaw).trim()));
@@ -373,9 +388,12 @@ async function documentSample(store: KanmerStore, id: string): Promise<StepDocum
     throw new Error("counted ticket document inventory exceeds the bounded snapshot limit");
   }
   const groups = [] as StepDocumentSnapshot["groups"];
-  for (const groupId of item.groups ?? []) {
+  const resolvedGroups = new Set<string>();
+  for (const groupId of [...new Set(item.groups ?? [])]) {
     const group = await store.getGroup(groupId);
     if (!group) throw new Error(`Group "${groupId}" is missing`);
+    if (resolvedGroups.has(group.id)) continue;
+    resolvedGroups.add(group.id);
     const context = await store.getGroupDoc(groupId, "context.md");
     groups.push({ id: group.id, kind: group.kind, title: group.title, body: group.body, context, version: context === null ? null : contentVersion(context) });
   }

@@ -1553,8 +1553,26 @@ check(
     /caller-supplied changed-path summaries are not proof/.test(executeSkill) &&
     /Missing, unreadable,\s*unstable, escaped, symlinked or hard-linked workspace evidence is `INCONCLUSIVE`/.test(executeSkill) &&
     /forbidden or undeclared path is FAIL/.test(executeSkill) &&
-    /only permitted ticket-document\s*change is the selected checklist marker from unchecked to checked/.test(executeSkill),
+    /only permitted ticket-document\s+change\s+is\s+the\s+selected\s+checklist\s+marker\s+from\s+unchecked\s+to\s+checked/.test(executeSkill),
   "actual workspace, document and exact checklist evidence govern PASS/FAIL/INCONCLUSIVE",
+);
+check(
+  "constrained issuance requires a mapped unchecked checklist marker",
+  [agentsGuide, planSkill, executeSkill, autoSkill, toolReference].every((body) =>
+    /at least one mapped\s+unchecked checklist\s+marker/.test(body),
+  ),
+  "whole-ticket setup remains available but dead-on-arrival step packets are refused",
+);
+check(
+  "path matching and checklist bytes fail closed at explicit bounds",
+  /Path matching is iterative and explicitly bounded; budget exhaustion is `INCONCLUSIVE`/.test(agentsGuide) &&
+    /path matcher is iterative and\s*explicitly bounded; budget exhaustion is `INCONCLUSIVE`/.test(executeSkill) &&
+    /Iterative path-match budget\s*exhaustion is also `INCONCLUSIVE`/.test(autoSkill) &&
+    /Iterative path matching has its own aggregate work budget; exhaustion is\s*reported as `INCONCLUSIVE`/.test(toolReference) &&
+    [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+      /CRLF\/CR\/LF terminator/.test(body) && /final-newline/.test(body),
+    ),
+  "matcher exhaustion never authorizes and newline normalization is not a checklist-only transition",
 );
 check(
   "constrained workers stop at the ignored and Git-metadata observation boundary",

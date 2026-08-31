@@ -4,6 +4,7 @@ import {
   parsePlanPath,
   parseAtxSections,
   parsePlan,
+  planPathMatch,
   planPathMatches,
   validatePlan,
   type PlanFindingCode,
@@ -502,6 +503,26 @@ describe("repository-relative plan paths", () => {
     expect(planPathMatches("src/a+b.ts", "src/a+b.ts")).toBe(true);
     expect(planPathMatches("src/a+b.ts", "src/aaab.ts")).toBe(false);
     expect(planPathMatches("src/foo.ts", "src/foo.ts.old")).toBe(false);
+  });
+
+  it("matches deep and repeated recursive patterns iteratively without stack growth", () => {
+    const deep = Array.from({ length: 6_000 }, (_, index) => `part-${index}`).join("/");
+    const repeated = `${Array.from({ length: 10_000 }, () => "**").join("/")}/tail`;
+    expect(planPathMatch("**/tail", `${deep}/tail`)).toBe(true);
+    expect(planPathMatch("**/tail", `${deep}/other`)).toBe(false);
+    expect(planPathMatch(repeated, `${deep}/tail`)).toBe(true);
+    expect(planPathMatch(repeated, `${deep}/other`)).toBe(false);
+  });
+
+  it("uses a linear within-segment star matcher and reports explicit budget exhaustion", () => {
+    const alternating = `${"a*".repeat(8_000)}z`;
+    expect(planPathMatch(alternating, `${"a".repeat(8_000)}z`)).toBe(true);
+    expect(planPathMatch(alternating, `${"a".repeat(8_000)}y`)).toBe(false);
+
+    const boundedPattern = Array.from({ length: 300 }, () => "**/x").join("/");
+    const boundedObserved = Array.from({ length: 300 }, () => "x").join("/");
+    expect(planPathMatch(boundedPattern, boundedObserved)).toBeNull();
+    expect(planPathMatches(boundedPattern, boundedObserved)).toBe(false);
   });
 
   it("retains invalid plan authority as a typed blocking finding", () => {

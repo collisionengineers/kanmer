@@ -3,6 +3,7 @@ import { parsePlan } from "./plan.js";
 import {
   compileStepPacket,
   reconcileStepPacket,
+  stepChecklistSnapshot,
   stepPacketAuthority,
   stepPacketDigest,
   stepTicketAuthority,
@@ -164,6 +165,20 @@ describe("compileStepPacket", () => {
     expect(result.packet.evidence.ticket.map((entry) => entry.path)).toEqual(["research/research.md"]);
   });
 
+  it("canonicalizes exact duplicate evidence and refuses conflicting duplicate authority", () => {
+    const duplicate = compileStepPacket(input({ evidence: [...EVIDENCE, structuredClone(EVIDENCE[0])] }));
+    expect(duplicate.ok).toBe(true);
+    if (!duplicate.ok) return;
+    expect(duplicate.packet.evidence.group).toEqual([EVIDENCE[0]]);
+    expect(verifyStepPacket(duplicate.packet).ok).toBe(true);
+
+    const conflicting = compileStepPacket(input({
+      evidence: [...EVIDENCE, { ...EVIDENCE[0], version: "d".repeat(16) }],
+    }));
+    expect(conflicting.ok).toBe(false);
+    if (!conflicting.ok) expect(conflicting.reason).toMatch(/conflicting duplicate evidence/i);
+  });
+
   it("gives identical input a stable packet id and different input a different one", () => {
     const first = compileStepPacket(input());
     const again = compileStepPacket(input());
@@ -217,6 +232,11 @@ describe("compileStepPacket", () => {
     expect(verifyStepPacket(signed((body) => { body.forbiddenFiles[0] = "src\\vendor\\**"; })).ok).toBe(false);
     expect(verifyStepPacket(signed((body) => { body.workspace.entries = [{ path: "x.ts", index: " ", worktree: "M", content: "a".repeat(64) }]; })).ok).toBe(false);
     expect(verifyStepPacket(signed((body) => { body.workspace.entries = [{ path: "x.ts", index: ".", worktree: " ", content: "a".repeat(64) }]; })).ok).toBe(false);
+    expect(verifyStepPacket(signed((body) => {
+      body.checklist.content = "- [ ] Step 2 — document the cap\n";
+      body.checklist.steps = [false, false];
+      body.checklist.stepLines = [[], [0]];
+    })).ok).toBe(false);
   });
 
   it("refuses oversized strings and arrays before a stale digest can be considered", () => {
@@ -316,11 +336,30 @@ describe("compileStepPacket refusals", () => {
 describe("selecting the next step", () => {
   const plan = parsePlan(PLAN);
 
-  it("starts at step 1 when there is no checklist", () => {
+  it("selects step 1 without a checklist but refuses an unreconcilable constrained packet", () => {
     expect(nextStepIndex(plan, null)).toBe(1);
     const result = compileStepPacket(input({ select: "next", checklist: null, checklistVersion: null }));
-    if (!result.ok) throw new Error(result.reason);
-    expect(result.packet.step.index).toBe(1);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(/mapped unchecked checklist marker/i);
+  });
+
+  it("refuses unrelated or missing named markers and accepts a partially complete selected step", () => {
+    const unrelated = compileStepPacket(input({ checklist: "- [ ] Step 99 — unrelated\n" }));
+    expect(unrelated.ok).toBe(false);
+    if (!unrelated.ok) expect(unrelated.reason).toMatch(/mapped unchecked checklist marker/i);
+
+    const missingSelected = compileStepPacket(input({
+      checklist: "- [ ] Step 2 — pending\n",
+      select: 1,
+    }));
+    expect(missingSelected.ok).toBe(false);
+    if (!missingSelected.ok) expect(missingSelected.reason).toMatch(/mapped unchecked checklist marker/i);
+
+    const partial = compileStepPacket(input({
+      checklist: "- [x] Step 1 — first half\n- [ ] Step 1 — second half\n- [ ] Step 2 — pending\n",
+    }));
+    expect(partial.ok).toBe(true);
+    if (partial.ok) expect(partial.packet.checklist.stepLines[0]).toEqual([0, 1]);
   });
 
   it("reads a checklist that names its steps by name, not by position", () => {
@@ -398,6 +437,50 @@ describe("reconcileStepPacket", () => {
     expect(reconcileStepPacket(packet(), facts())).toMatchObject({ status: "pass", changedPaths: [{ path: "src/queue.ts", classification: "allowed" }] });
   });
 
+  function reconcileChecklistBytes(before: string, after: string) {
+    const plan = parsePlan(PLAN);
+    const compiled = compileStepPacket(input({ checklist: before }));
+    if (!compiled.ok) throw new Error(compiled.reason);
+    return reconcileStepPacket(compiled.packet, {
+      project: compiled.packet.project,
+      ticket: { ...compiled.packet.ticket, revision: "rev1:after-checklist" },
+      batch: compiled.packet.batch,
+      plan: {
+        ...compiled.packet.plan,
+        authority: stepPacketAuthority(plan, compiled.packet.step.index, "Stop when the PR is open."),
+      },
+      checklist: stepChecklistSnapshot(plan, after, compiled.packet.checklist.path, "3333333333333333"),
+      evidence: [...compiled.packet.evidence.group, ...compiled.packet.evidence.ticket],
+      workspace: { snapshot: compiled.packet.workspace, headChanges: [] },
+    });
+  }
+
+  it("accepts only selected marker bytes while preserving CRLF, mixed terminators and uppercase X", () => {
+    expect(reconcileChecklistBytes(
+      "- [ ] Step 1 — first\r\n- [ ] Step 2 — second\r\n",
+      "- [x] Step 1 — first\r\n- [ ] Step 2 — second\r\n",
+    ).status).toBe("pass");
+    expect(reconcileChecklistBytes(
+      "- [ ] Step 1 — first\r\ncontext\r- [ ] Step 2 — second\n",
+      "- [X] Step 1 — first\r\ncontext\r- [ ] Step 2 — second\n",
+    ).status).toBe("pass");
+  });
+
+  it.each([
+    ["CRLF to LF", "- [ ] Step 1 — first\r\n- [ ] Step 2 — second\r\n", "- [x] Step 1 — first\n- [ ] Step 2 — second\n"],
+    ["CR to LF", "- [ ] Step 1 — first\r- [ ] Step 2 — second\r", "- [x] Step 1 — first\n- [ ] Step 2 — second\n"],
+    ["mixed-line terminator", "- [ ] Step 1 — first\r\ncontext\r- [ ] Step 2 — second\n", "- [x] Step 1 — first\r\ncontext\n- [ ] Step 2 — second\n"],
+    ["final newline removal", "- [ ] Step 1 — first\n- [ ] Step 2 — second\n", "- [x] Step 1 — first\n- [ ] Step 2 — second"],
+    ["final newline addition", "- [ ] Step 1 — first\n- [ ] Step 2 — second", "- [x] Step 1 — first\n- [ ] Step 2 — second\n"],
+  ])("refuses %s during a marker transition", (_label, before, after) => {
+    const result = reconcileChecklistBytes(before, after);
+    expect(result.status).toBe("fail");
+    expect(result.findings.map((finding) => finding.code)).toEqual(expect.arrayContaining([
+      "STEP_CHECKLIST_CONTENT_CHANGED",
+      "STEP_TICKET_REVISION_STALE",
+    ]));
+  });
+
   it("permits only heartbeat timing/phase churn, while binding the recorded worker run", () => {
     const base = {
       id: "TICK-001",
@@ -449,6 +532,55 @@ describe("reconcileStepPacket", () => {
       { path: "src/vendor/bundle.js", classification: "forbidden" },
       { path: "README.md", classification: "undeclared" },
     ]);
+  });
+
+  it("classifies bounded matcher exhaustion as inconclusive with deny-first tri-state precedence", () => {
+    const base = packet();
+    const observed = Array.from({ length: 300 }, () => "x").join("/");
+    const unknownMatch = Array.from({ length: 300 }, () => "**/x").join("/");
+    const unknownMiss = `${unknownMatch}/never`;
+    const reconcile = (allowedFiles: string[], forbiddenFiles: string[]) => {
+      const { packetId: _ignored, ...body } = base;
+      const changedBody = { ...body, allowedFiles, forbiddenFiles };
+      const forged = { ...changedBody, packetId: stepPacketDigest(changedBody) };
+      const authority = stepPacketAuthority(parsePlan(PLAN), 1, "Stop when the PR is open.");
+      if (!authority) throw new Error("missing step authority");
+      return reconcileStepPacket(forged, {
+        project: forged.project,
+        ticket: { ...forged.ticket, revision: "rev1:after-checklist" },
+        batch: forged.batch,
+        plan: { ...forged.plan, authority: { ...authority, allowedFiles, forbiddenFiles } },
+        checklist: stepChecklistSnapshot(
+          parsePlan(PLAN),
+          base.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? null,
+          base.checklist.path,
+          "3333333333333333",
+        ),
+        evidence: [...forged.evidence.group, ...forged.evidence.ticket],
+        workspace: { snapshot: forged.workspace, headChanges: [observed] },
+      });
+    };
+
+    const unknownAllowed = reconcile([unknownMatch], []);
+    expect(unknownAllowed).toMatchObject({
+      status: "inconclusive",
+      changedPaths: [{ path: observed, classification: "inconclusive" }],
+    });
+    expect(unknownAllowed.findings.map((finding) => finding.code)).toContain("STEP_PATH_MATCH_INCONCLUSIVE");
+    expect(unknownAllowed.findings.map((finding) => finding.code)).not.toContain("STEP_PATH_UNDECLARED");
+
+    expect(reconcile([observed], [unknownMiss])).toMatchObject({
+      status: "inconclusive",
+      changedPaths: [{ path: observed, classification: "inconclusive" }],
+    });
+    expect(reconcile([observed], [unknownMiss, observed])).toMatchObject({
+      status: "fail",
+      changedPaths: [{ path: observed, classification: "forbidden" }],
+    });
+    expect(reconcile([unknownMiss, observed], [])).toMatchObject({
+      status: "pass",
+      changedPaths: [{ path: observed, classification: "allowed" }],
+    });
   });
 
   it("classifies an exact newline-bearing Git path against a declaration glob", () => {

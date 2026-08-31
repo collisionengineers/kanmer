@@ -475,7 +475,9 @@ prompt. If a crash or reconnect loses the controller-retained object, record
 packet-loss as `INCONCLUSIVE`, dispatch no successor, and never rebuild it from
 worker text or current board/Git state. A successor step is issued only after
 the exact retained predecessor reconciles PASS and is supplied whole as
-`prior_step_packet`.
+`prior_step_packet`. Initial issuance likewise requires at least one mapped
+unchecked checklist marker for the selected ordered step; a plan-only or
+unrelated checklist cannot become worker authority.
 
 On every result or timeout, the controller:
 
@@ -488,7 +490,9 @@ On every result or timeout, the controller:
    bounded actual HEAD/index/worktree deltas, stage, gate, exact checklist,
    counted ticket documents, branch/worktree, commit, PR and error evidence
    with the approved scope; missing or unreadable evidence is `INCONCLUSIVE`,
-   while undeclared or forbidden changes are FAIL;
+   while undeclared or forbidden changes are FAIL. Iterative path-match budget
+   exhaustion is also `INCONCLUSIVE`; checklist reconciliation preserves every
+   raw CRLF/CR/LF terminator and final-newline state outside the selected marker;
 5. records the worker result, reconciliation, discrepancy, and one next action
    in the ledger/event log; and
 6. writes and reads back the run record before selecting another action.

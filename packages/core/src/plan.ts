@@ -241,29 +241,180 @@ export function normalisePlanPath(value: string): string {
   return parsed.ok ? parsed.path : "";
 }
 
-function segmentMatches(pattern: string, value: string): boolean {
-  let source = "^";
-  for (const character of pattern) {
-    source += character === "*" ? "[^/]*" : character.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
-  }
-  return new RegExp(`${source}$`, "u").test(value);
+const MAX_PLAN_PATH_MATCH_STATES = 65_536;
+const MAX_PLAN_PATH_MATCH_CODE_POINTS = 65_536;
+export const PLAN_PATH_MATCH_MAX_OPERATIONS = 1_000_000;
+
+/** One aggregate work budget may be shared across every path classification in a reconciliation. */
+export interface PlanPathMatchBudget {
+  remaining: number;
 }
 
-/** Match a confined literal path against the documented literal/`*`/`**` subset. */
-export function planPathMatches(patternValue: string, pathValue: string): boolean {
+export function createPlanPathMatchBudget(maxOperations = PLAN_PATH_MATCH_MAX_OPERATIONS): PlanPathMatchBudget {
+  return { remaining: Number.isFinite(maxOperations) && maxOperations > 0 ? Math.floor(maxOperations) : 0 };
+}
+
+function consumePlanPathMatchBudget(budget: PlanPathMatchBudget, amount = 1): boolean {
+  if (amount < 0 || budget.remaining < amount) {
+    budget.remaining = 0;
+    return false;
+  }
+  budget.remaining -= amount;
+  return true;
+}
+
+type BoundedMatch = boolean | null;
+
+function codePointsWithinBudget(value: string, budget: PlanPathMatchBudget): string[] | null {
+  if (value.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  const points = Array.from(value);
+  if (points.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || !consumePlanPathMatchBudget(budget, points.length)) return null;
+  return points;
+}
+
+function exactAt(value: readonly string[], literal: readonly string[], offset: number, budget: PlanPathMatchBudget): BoundedMatch {
+  if (offset < 0 || offset + literal.length > value.length) return false;
+  for (let index = 0; index < literal.length; index += 1) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (value[offset + index] !== literal[index]) return false;
+  }
+  return true;
+}
+
+/** KMP search for one literal chunk, confined to `[start, end)`. */
+function findLiteralChunk(
+  value: readonly string[],
+  literal: readonly string[],
+  start: number,
+  end: number,
+  budget: PlanPathMatchBudget,
+): number | null {
+  if (literal.length === 0) return start;
+  const prefix = new Uint32Array(literal.length);
+  for (let index = 1, matched = 0; index < literal.length;) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (literal[index] === literal[matched]) {
+      prefix[index++] = ++matched;
+    } else if (matched > 0) {
+      matched = prefix[matched - 1]!;
+    } else {
+      prefix[index++] = 0;
+    }
+  }
+  for (let index = start, matched = 0; index < end;) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (value[index] === literal[matched]) {
+      index += 1;
+      matched += 1;
+      if (matched === literal.length) return index - matched;
+    } else if (matched > 0) {
+      matched = prefix[matched - 1]!;
+    } else {
+      index += 1;
+    }
+  }
+  return -1;
+}
+
+/** Linear match for the supported within-segment `*` language. */
+function segmentMatches(pattern: string, value: string, budget: PlanPathMatchBudget): BoundedMatch {
+  if (!pattern.includes("*")) return pattern === value;
+  const valuePoints = codePointsWithinBudget(value, budget);
+  if (!valuePoints) return null;
+  const chunks: string[][] = [];
+  for (const chunk of pattern.split("*")) {
+    const points = codePointsWithinBudget(chunk, budget);
+    if (!points) return null;
+    chunks.push(points);
+  }
+
+  let first = 0;
+  let last = chunks.length;
+  let cursor = 0;
+  let end = valuePoints.length;
+  if (!pattern.startsWith("*")) {
+    const prefix = chunks[first++]!;
+    const matched = exactAt(valuePoints, prefix, 0, budget);
+    if (matched !== true) return matched;
+    cursor = prefix.length;
+  }
+  if (!pattern.endsWith("*")) {
+    const suffix = chunks[--last]!;
+    const offset = end - suffix.length;
+    if (offset < cursor) return false;
+    const matched = exactAt(valuePoints, suffix, offset, budget);
+    if (matched !== true) return matched;
+    end = offset;
+  }
+  for (; first < last; first += 1) {
+    const chunk = chunks[first]!;
+    if (chunk.length === 0) continue;
+    const offset = findLiteralChunk(valuePoints, chunk, cursor, end, budget);
+    if (offset === null) return null;
+    if (offset < 0) return false;
+    cursor = offset + chunk.length;
+  }
+  return true;
+}
+
+function triAnd(left: 0 | 1 | 2, right: BoundedMatch): 0 | 1 | 2 {
+  if (left === 0 || right === false) return 0;
+  if (left === 2 || right === null) return 2;
+  return 1;
+}
+
+function triOr(left: 0 | 1 | 2, right: 0 | 1 | 2): 0 | 1 | 2 {
+  if (left === 1 || right === 1) return 1;
+  if (left === 2 || right === 2) return 2;
+  return 0;
+}
+
+/**
+ * Bounded exact match for a confined literal path against the documented
+ * literal/`*`/`**` subset. `null` means the explicit work bound was exhausted.
+ */
+export function planPathMatch(
+  patternValue: string,
+  pathValue: string,
+  budget: PlanPathMatchBudget = createPlanPathMatchBudget(),
+): BoundedMatch {
   const pattern = parsePlanPath(patternValue, { allowPattern: true });
   const observed = parsePlanPath(pathValue, { observed: true });
   if (!pattern.ok || !observed.ok) return false;
-  const patterns = pattern.path.split("/");
+  if (!pattern.pattern) return pattern.path === observed.path;
+  if (pattern.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || observed.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  const patterns = pattern.path.split("/").filter(
+    (segment, index, all) => segment !== "**" || all[index - 1] !== "**",
+  );
   const values = observed.path.split("/");
-  const visit = (left: number, right: number): boolean => {
-    if (left === patterns.length) return right === values.length;
-    if (patterns[left] === "**") {
-      return visit(left + 1, right) || (right < values.length && visit(left, right + 1));
+  const stateCount = (patterns.length + 1) * (values.length + 1);
+  if (!Number.isSafeInteger(stateCount) || stateCount > MAX_PLAN_PATH_MATCH_STATES) return null;
+
+  let previous = new Uint8Array(values.length + 1);
+  previous[0] = 1;
+  for (const segment of patterns) {
+    const current = new Uint8Array(values.length + 1);
+    if (segment === "**") {
+      current[0] = previous[0]!;
+      for (let index = 1; index <= values.length; index += 1) {
+        if (!consumePlanPathMatchBudget(budget)) return null;
+        current[index] = triOr(previous[index]! as 0 | 1 | 2, current[index - 1]! as 0 | 1 | 2);
+      }
+    } else {
+      for (let index = 1; index <= values.length; index += 1) {
+        if (!consumePlanPathMatchBudget(budget)) return null;
+        const prior = previous[index - 1]! as 0 | 1 | 2;
+        current[index] = prior === 0 ? 0 : triAnd(prior, segmentMatches(segment, values[index - 1]!, budget));
+      }
     }
-    return right < values.length && segmentMatches(patterns[left], values[right]) && visit(left + 1, right + 1);
-  };
-  return visit(0, 0);
+    previous = current;
+  }
+  return previous[values.length] === 1 ? true : previous[values.length] === 2 ? null : false;
+}
+
+/** Boolean-compatible legacy surface; bounded exhaustion remains a fail-closed non-match. */
+export function planPathMatches(patternValue: string, pathValue: string): boolean {
+  return planPathMatch(patternValue, pathValue) === true;
 }
 
 const MAX_GLOB_NFA_STATES = 8_192;

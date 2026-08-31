@@ -66,7 +66,9 @@ resolve time, so its `profiles:` block is not the effective set.
    and other glob syntax are refused. An
    Expected-files glob may authorize a narrower step literal or pattern, but a
    narrower Expected-files literal never authorizes a broader step glob;
-   intersecting Do-not-modify patterns always win.
+   intersecting Do-not-modify patterns always win. Runtime path matching is
+   iterative and explicitly bounded; proof-budget exhaustion is
+   `INCONCLUSIVE`, never permission or an undeclared-path claim.
    `get_execution_packet` also returns an advisory `validation` report for any
    plan — read its findings, but they remain advisory, not a gate.
 5. **Resolve planner decisions before dispatch.** In Required changes, words
@@ -78,7 +80,9 @@ resolve time, so its `profiles:` block is not the effective set.
 6. **Distill `checklist.md`** from `assets/checklist-template.md`: one `- [ ]`
    box per plan step, ending with the verification the post-implementation
    report will summarise. Each box must be independently checkable — "wire the
-   retry call", not "do the backend".
+   retry call", not "do the backend". A constrained packet is issued only when
+   its selected ordered step has at least one mapped unchecked checklist
+   marker; a plan-only or unrelated checklist is not executable authority.
    `[pre-review]` and `[post-merge]` labels are advisory human/skill text; gates
    ignore them, so `get_doc_gates` remains authoritative.
 7. **Sanity-check scope.** If the plan grew beyond one unit of work, split it:

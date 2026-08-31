@@ -39479,27 +39479,141 @@ function normalisePlanPath(value) {
   const parsed = parsePlanPath(value, { allowPattern: true });
   return parsed.ok ? parsed.path : "";
 }
-function segmentMatches(pattern, value) {
-  let source = "^";
-  for (const character of pattern) {
-    source += character === "*" ? "[^/]*" : character.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
-  }
-  return new RegExp(`${source}$`, "u").test(value);
+var MAX_PLAN_PATH_MATCH_STATES = 65536;
+var MAX_PLAN_PATH_MATCH_CODE_POINTS = 65536;
+var PLAN_PATH_MATCH_MAX_OPERATIONS = 1e6;
+function createPlanPathMatchBudget(maxOperations = PLAN_PATH_MATCH_MAX_OPERATIONS) {
+  return { remaining: Number.isFinite(maxOperations) && maxOperations > 0 ? Math.floor(maxOperations) : 0 };
 }
-function planPathMatches(patternValue, pathValue) {
+function consumePlanPathMatchBudget(budget, amount = 1) {
+  if (amount < 0 || budget.remaining < amount) {
+    budget.remaining = 0;
+    return false;
+  }
+  budget.remaining -= amount;
+  return true;
+}
+function codePointsWithinBudget(value, budget) {
+  if (value.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  const points = Array.from(value);
+  if (points.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || !consumePlanPathMatchBudget(budget, points.length)) return null;
+  return points;
+}
+function exactAt(value, literal2, offset, budget) {
+  if (offset < 0 || offset + literal2.length > value.length) return false;
+  for (let index = 0; index < literal2.length; index += 1) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (value[offset + index] !== literal2[index]) return false;
+  }
+  return true;
+}
+function findLiteralChunk(value, literal2, start, end, budget) {
+  if (literal2.length === 0) return start;
+  const prefix = new Uint32Array(literal2.length);
+  for (let index = 1, matched = 0; index < literal2.length; ) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (literal2[index] === literal2[matched]) {
+      prefix[index++] = ++matched;
+    } else if (matched > 0) {
+      matched = prefix[matched - 1];
+    } else {
+      prefix[index++] = 0;
+    }
+  }
+  for (let index = start, matched = 0; index < end; ) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (value[index] === literal2[matched]) {
+      index += 1;
+      matched += 1;
+      if (matched === literal2.length) return index - matched;
+    } else if (matched > 0) {
+      matched = prefix[matched - 1];
+    } else {
+      index += 1;
+    }
+  }
+  return -1;
+}
+function segmentMatches(pattern, value, budget) {
+  if (!pattern.includes("*")) return pattern === value;
+  const valuePoints = codePointsWithinBudget(value, budget);
+  if (!valuePoints) return null;
+  const chunks = [];
+  for (const chunk of pattern.split("*")) {
+    const points = codePointsWithinBudget(chunk, budget);
+    if (!points) return null;
+    chunks.push(points);
+  }
+  let first = 0;
+  let last = chunks.length;
+  let cursor = 0;
+  let end = valuePoints.length;
+  if (!pattern.startsWith("*")) {
+    const prefix = chunks[first++];
+    const matched = exactAt(valuePoints, prefix, 0, budget);
+    if (matched !== true) return matched;
+    cursor = prefix.length;
+  }
+  if (!pattern.endsWith("*")) {
+    const suffix = chunks[--last];
+    const offset = end - suffix.length;
+    if (offset < cursor) return false;
+    const matched = exactAt(valuePoints, suffix, offset, budget);
+    if (matched !== true) return matched;
+    end = offset;
+  }
+  for (; first < last; first += 1) {
+    const chunk = chunks[first];
+    if (chunk.length === 0) continue;
+    const offset = findLiteralChunk(valuePoints, chunk, cursor, end, budget);
+    if (offset === null) return null;
+    if (offset < 0) return false;
+    cursor = offset + chunk.length;
+  }
+  return true;
+}
+function triAnd(left, right) {
+  if (left === 0 || right === false) return 0;
+  if (left === 2 || right === null) return 2;
+  return 1;
+}
+function triOr(left, right) {
+  if (left === 1 || right === 1) return 1;
+  if (left === 2 || right === 2) return 2;
+  return 0;
+}
+function planPathMatch(patternValue, pathValue, budget = createPlanPathMatchBudget()) {
   const pattern = parsePlanPath(patternValue, { allowPattern: true });
   const observed = parsePlanPath(pathValue, { observed: true });
   if (!pattern.ok || !observed.ok) return false;
-  const patterns = pattern.path.split("/");
+  if (!pattern.pattern) return pattern.path === observed.path;
+  if (pattern.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || observed.path.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  const patterns = pattern.path.split("/").filter(
+    (segment, index, all) => segment !== "**" || all[index - 1] !== "**"
+  );
   const values = observed.path.split("/");
-  const visit = (left, right) => {
-    if (left === patterns.length) return right === values.length;
-    if (patterns[left] === "**") {
-      return visit(left + 1, right) || right < values.length && visit(left, right + 1);
+  const stateCount = (patterns.length + 1) * (values.length + 1);
+  if (!Number.isSafeInteger(stateCount) || stateCount > MAX_PLAN_PATH_MATCH_STATES) return null;
+  let previous = new Uint8Array(values.length + 1);
+  previous[0] = 1;
+  for (const segment of patterns) {
+    const current = new Uint8Array(values.length + 1);
+    if (segment === "**") {
+      current[0] = previous[0];
+      for (let index = 1; index <= values.length; index += 1) {
+        if (!consumePlanPathMatchBudget(budget)) return null;
+        current[index] = triOr(previous[index], current[index - 1]);
+      }
+    } else {
+      for (let index = 1; index <= values.length; index += 1) {
+        if (!consumePlanPathMatchBudget(budget)) return null;
+        const prior = previous[index - 1];
+        current[index] = prior === 0 ? 0 : triAnd(prior, segmentMatches(segment, values[index - 1], budget));
+      }
     }
-    return right < values.length && segmentMatches(patterns[left], values[right]) && visit(left + 1, right + 1);
-  };
-  return visit(0, 0);
+    previous = current;
+  }
+  return previous[values.length] === 1 ? true : previous[values.length] === 2 ? null : false;
 }
 var MAX_GLOB_NFA_STATES = 8192;
 var MAX_GLOB_PRODUCT_STATES = 65536;
@@ -40525,6 +40639,13 @@ function verifyStepPacket(value) {
   if (canonicalJson(checklistLineMap(checklist.content, Number(step.total))) !== canonicalJson(checklist.stepLines)) {
     return { ok: false, reason: "step_packet.checklist stepLines do not match its exact baseline checkbox mapping" };
   }
+  const selected = Number(step.index) - 1;
+  if (checklist.stepLines[selected].length === 0 || checklist.steps[selected] !== false) {
+    return { ok: false, reason: "step_packet selected step must have at least one mapped unchecked checklist marker" };
+  }
+  if (checklist.steps.slice(0, selected).some((state) => state !== true)) {
+    return { ok: false, reason: "step_packet selected step must be the first unfinished checklist step" };
+  }
   for (const key of ["allowedFiles", "allowedSymbols", "forbiddenFiles", "negativeCases", "tests", "commands"]) {
     if (!stringArray(packet[key])) return { ok: false, reason: `step_packet.${key} must be a string array` };
   }
@@ -40554,19 +40675,49 @@ function verifyStepPacket(value) {
   }
   return { ok: true, packet };
 }
+function exactChecklistLines(content) {
+  if (content === null) return [];
+  const lines = [];
+  let start = 0;
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    if (character !== "\r" && character !== "\n") continue;
+    const terminator = character === "\r" && content[index + 1] === "\n" ? "\r\n" : character;
+    lines.push({ body: content.slice(start, index), terminator });
+    if (terminator === "\r\n") index += 1;
+    start = index + 1;
+  }
+  lines.push({ body: content.slice(start), terminator: "" });
+  return lines;
+}
+function tickedChecklistLine(before, after) {
+  const marker = /^([ \t]*[-*+][ \t]*)\[ \]/.exec(before);
+  if (!marker) return false;
+  const suffix = before.slice(marker[0].length);
+  return after === `${marker[1]}[x]${suffix}` || after === `${marker[1]}[X]${suffix}`;
+}
 function checklistOnlyTransition(packet, current) {
-  const before = packet.checklist.content?.replace(/\r\n?/g, "\n").split("\n") ?? [];
-  const after = current.content?.replace(/\r\n?/g, "\n").split("\n") ?? [];
+  const before = exactChecklistLines(packet.checklist.content);
+  const after = exactChecklistLines(current.content);
   if (before.length !== after.length) return false;
   const allowedLines = new Set(packet.checklist.stepLines[packet.step.index - 1] ?? []);
+  let transitions = 0;
   for (let index = 0; index < before.length; index += 1) {
-    if (before[index] === after[index]) continue;
-    if (!allowedLines.has(index)) return false;
-    const unticked = before[index].replace(/\[ \]/, "[x]");
-    const untickedUpper = before[index].replace(/\[ \]/, "[X]");
-    if (after[index] !== unticked && after[index] !== untickedUpper) return false;
+    const baseline = before[index];
+    const observed = after[index];
+    if (baseline.terminator !== observed.terminator) return false;
+    if (!allowedLines.has(index)) {
+      if (baseline.body !== observed.body) return false;
+      continue;
+    }
+    if (/^[ \t]*[-*+][ \t]*\[ \]/.test(baseline.body)) {
+      if (!tickedChecklistLine(baseline.body, observed.body)) return false;
+      transitions += 1;
+    } else if (baseline.body !== observed.body) {
+      return false;
+    }
   }
-  return true;
+  return transitions > 0;
 }
 function entryChanges(before, after) {
   const identities = (workspace) => {
@@ -40581,6 +40732,15 @@ function entryChanges(before, after) {
   const baseline = identities(before);
   const current = identities(after);
   return [.../* @__PURE__ */ new Set([...baseline.keys(), ...current.keys()])].filter((path132) => baseline.get(path132) !== current.get(path132));
+}
+function anyPathMatch(patterns, observed, budget) {
+  let inconclusive = false;
+  for (const pattern of patterns) {
+    const matched = planPathMatch(pattern, observed, budget);
+    if (matched === true) return true;
+    if (matched === null) inconclusive = true;
+  }
+  return inconclusive ? null : false;
 }
 function reconcileStepPacket(value, facts) {
   const verified = verifyStepPacket(value);
@@ -40653,6 +40813,7 @@ function reconcileStepPacket(value, facts) {
       ...entryChanges(packet.workspace, facts.workspace.snapshot),
       ...facts.workspace.headChanges ?? []
     ];
+    const matchBudget = createPlanPathMatchBudget();
     for (const rawPath of [...new Set(observedChanges)]) {
       const observed = parsePlanPath(rawPath, { observed: true });
       if (!observed.ok) {
@@ -40660,9 +40821,17 @@ function reconcileStepPacket(value, facts) {
         continue;
       }
       const path132 = observed.path;
-      const classification = packet.forbiddenFiles.some((pattern) => planPathMatches(pattern, path132)) ? "forbidden" : packet.allowedFiles.some((pattern) => planPathMatches(pattern, path132)) ? "allowed" : "undeclared";
+      const forbidden = anyPathMatch(packet.forbiddenFiles, path132, matchBudget);
+      const allowed = forbidden === false ? anyPathMatch(packet.allowedFiles, path132, matchBudget) : false;
+      const classification = forbidden === true ? "forbidden" : forbidden === null ? "inconclusive" : allowed === true ? "allowed" : allowed === null ? "inconclusive" : "undeclared";
       changedPaths.push({ path: path132, classification });
-      if (classification !== "allowed") failures.push({ code: classification === "forbidden" ? "STEP_PATH_FORBIDDEN" : "STEP_PATH_UNDECLARED", message: `${path132} is ${classification}.`, path: path132 });
+      if (classification === "forbidden") failures.push({ code: "STEP_PATH_FORBIDDEN", message: `${path132} is forbidden.`, path: path132 });
+      else if (classification === "undeclared") failures.push({ code: "STEP_PATH_UNDECLARED", message: `${path132} is undeclared.`, path: path132 });
+      else if (classification === "inconclusive") inconclusive.push({
+        code: "STEP_PATH_MATCH_INCONCLUSIVE",
+        message: `The bounded path matcher could not prove whether ${path132} is allowed or forbidden.`,
+        path: path132
+      });
     }
   }
   const findings = [...failures, ...inconclusive];
@@ -40694,6 +40863,25 @@ function budgetRefusal(reason) {
     }
   };
 }
+function canonicalEvidence(input) {
+  const entries = /* @__PURE__ */ new Map();
+  for (const entry of input) {
+    const key = `${entry.layer}\0${entry.group ?? ""}\0${entry.path}`;
+    const previous = entries.get(key);
+    if (!previous) {
+      entries.set(key, entry);
+      continue;
+    }
+    if (canonicalJson(previous) !== canonicalJson(entry)) {
+      return {
+        ok: false,
+        reason: `Conflicting duplicate evidence was supplied for ${entry.path}.`,
+        entries: [...entries.values()]
+      };
+    }
+  }
+  return { ok: true, entries: [...entries.values()] };
+}
 function compileStepPacket(input) {
   const inputBudget = checkStepPacketBudget(input);
   if (!inputBudget.ok) return budgetRefusal(inputBudget.reason);
@@ -40701,10 +40889,15 @@ function compileStepPacket(input) {
     return budgetRefusal(`ticket document census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`);
   }
   const { plan, checklist, select } = input;
-  const liveEvidence = input.evidence.map((entry) => ({ path: entry.path, version: entry.version }));
-  const requireEvidencePin = input.evidence.some(
+  const normalizedEvidence = canonicalEvidence(input.evidence);
+  const liveEvidence = normalizedEvidence.entries.map((entry) => ({ path: entry.path, version: entry.version }));
+  const requireEvidencePin = normalizedEvidence.entries.some(
     (entry) => entry.layer === "ticket" && /^(?:research|files)\//.test(entry.path)
   );
+  if (!normalizedEvidence.ok) {
+    const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
+    return { ok: false, reason: normalizedEvidence.reason, validation: validation2 };
+  }
   if (typeof select === "number" && (!Number.isFinite(select) || !Number.isInteger(select) || select <= 0)) {
     const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
     return { ok: false, reason: "A numeric step selection must be a finite positive integer.", validation: validation2 };
@@ -40734,13 +40927,20 @@ function compileStepPacket(input) {
   if (states[resolved - 1] === true) {
     return { ok: false, reason: `Ordered step ${resolved} is already complete in the checklist and cannot be re-issued.`, validation };
   }
+  if ((checklistSnapshot.stepLines[resolved - 1] ?? []).length === 0) {
+    return {
+      ok: false,
+      reason: `Ordered step ${resolved} requires at least one mapped unchecked checklist marker before a constrained packet can be issued.`,
+      validation
+    };
+  }
   const currentNext = nextStepIndex(plan, checklist);
   if (typeof select === "number" && currentNext !== null && select !== currentNext) {
     return { ok: false, reason: `Ordered step ${select} cannot be issued while step ${currentNext} is the current unfinished step.`, validation };
   }
   const evidence = {
-    group: input.evidence.filter((entry) => entry.layer === "group").sort((left, right) => lexicalCompare(`${left.group ?? ""}\0${left.path}`, `${right.group ?? ""}\0${right.path}`)),
-    ticket: input.evidence.filter((entry) => entry.layer === "ticket").sort((left, right) => lexicalCompare(left.path, right.path))
+    group: normalizedEvidence.entries.filter((entry) => entry.layer === "group").sort((left, right) => lexicalCompare(`${left.group ?? ""}\0${left.path}`, `${right.group ?? ""}\0${right.path}`)),
+    ticket: normalizedEvidence.entries.filter((entry) => entry.layer === "ticket").sort((left, right) => lexicalCompare(left.path, right.path))
   };
   const authority = stepPacketAuthority(plan, resolved, input.stopCondition);
   const body = {
@@ -40756,11 +40956,16 @@ function compileStepPacket(input) {
   };
   const bodyBudget = checkStepPacketBudget(body);
   if (!bodyBudget.ok) return budgetRefusal(bodyBudget.reason);
-  return {
-    ok: true,
-    packet: { ...body, packetId: stepPacketDigest(body) },
-    validation
-  };
+  const packet = { ...body, packetId: stepPacketDigest(body) };
+  const verified = verifyStepPacket(packet);
+  if (!verified.ok) {
+    return {
+      ok: false,
+      reason: `The compiled step packet failed its own strict verification: ${verified.reason}`,
+      validation
+    };
+  }
+  return { ok: true, packet: verified.packet, validation };
 }
 function deriveMembers(group, items, lastStage) {
   const members = items.filter((i) => (i.groups ?? []).includes(group.id)).map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived, profile: i.profile })).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true }));
@@ -47470,6 +47675,12 @@ function inside(root, candidate) {
   const relative = import_node_path5.default.relative(root, candidate);
   return relative !== "" && !relative.startsWith(`..${import_node_path5.default.sep}`) && relative !== ".." && !import_node_path5.default.isAbsolute(relative);
 }
+function isProtectedBoardExecutionWorktree(sourceRoot, boardRoot, candidate) {
+  const source = canonicalPath(sourceRoot);
+  const board = canonicalPath(boardRoot);
+  const worktree = canonicalPath(candidate);
+  return worktree === board || board !== source && inside(board, worktree);
+}
 async function assertPhysicalContainment(root, absolute) {
   let cursor = absolute;
   for (; ; ) {
@@ -47629,8 +47840,11 @@ async function collectWorkspaceSnapshot(input) {
     ]);
     if (!inside(physicalSource, physical)) throw new Error("recorded worktree resolves outside the physical source repository");
     const candidateTop = await (0, import_promises10.realpath)(import_node_path5.default.resolve(candidate, decode(candidateTopRaw).trim()));
-    if (canonicalPath(physical) === canonicalPath(physicalBoard) || inside(physicalBoard, physical) && canonicalPath(candidateTop) === canonicalPath(physicalBoard)) {
+    if (isProtectedBoardExecutionWorktree(physicalSource, physicalBoard, physical)) {
       throw new Error("recorded workspace is the protected board worktree or one of its children");
+    }
+    if (canonicalPath(candidateTop) !== canonicalPath(physical)) {
+      throw new Error("recorded worktree points inside a Git worktree instead of at its exact root");
     }
     const candidateCommon = await (0, import_promises10.realpath)(import_node_path5.default.resolve(candidate, decode(candidateCommonRaw).trim()));
     const sourceCommon = await (0, import_promises10.realpath)(import_node_path5.default.resolve(input.repoRoot, decode(sourceCommonRaw).trim()));
@@ -47689,9 +47903,12 @@ async function documentSample(store2, id) {
     throw new Error("counted ticket document inventory exceeds the bounded snapshot limit");
   }
   const groups = [];
-  for (const groupId of item.groups ?? []) {
+  const resolvedGroups = /* @__PURE__ */ new Set();
+  for (const groupId of [...new Set(item.groups ?? [])]) {
     const group = await store2.getGroup(groupId);
     if (!group) throw new Error(`Group "${groupId}" is missing`);
+    if (resolvedGroups.has(group.id)) continue;
+    resolvedGroups.add(group.id);
     const context = await store2.getGroupDoc(groupId, "context.md");
     groups.push({ id: group.id, kind: group.kind, title: group.title, body: group.body, context, version: context === null ? null : contentVersion(context) });
   }
@@ -47901,6 +48118,12 @@ async function unsafeExecutionWorktree(store2, project, item, workspace, batchId
       warnings: []
     };
   }
+  if (isProtectedBoardExecutionWorktree(sourceCheckout.path, boardWorktree.path, candidate.path)) {
+    return {
+      refusal: `Ticket "${item.id}" records a worktree inside the protected dedicated board worktree; this is not a resumable ticket worktree.`,
+      warnings: []
+    };
+  }
   const warnings = [];
   for (const other of await store2.listItems()) {
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
@@ -47980,7 +48203,7 @@ function unresolvedQuestion(gates) {
   return requirements.some((requirement) => requirement.type === "questions-resolved" && !requirement.satisfied);
 }
 async function groupContexts(store2, item) {
-  const groups = item.groups ?? [];
+  const groups = [...new Set(item.groups ?? [])];
   return Promise.all(
     groups.map(async (id) => {
       const group = await store2.getGroup(id);

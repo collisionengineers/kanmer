@@ -2110,7 +2110,7 @@ Second proof attempt passed; the first failure is retained.
           status: "implementing",
           profile: "feature",
           docs_todo: true,
-          groups: [epic.id],
+          groups: [epic.id, epic.id],
           body: "Packet body.",
         },
       }),
@@ -2680,6 +2680,7 @@ Second proof attempt passed; the first failure is retained.
     ].join("\n");
     for (const id of [m1, m2]) {
       await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: untakenBatchPlan } });
+      await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "checklist", content: "- [ ] Step 1 — execute the bounded batch change\n" } });
     }
     const authorizedTakenBatchPacket = JSON.parse(textOf(await client.callTool({
       name: "get_execution_packet",
@@ -3344,6 +3345,12 @@ Second proof attempt passed; the first failure is retained.
   execFileSync("git", ["worktree", "add", "-b", "dedicated-board", dedicatedBoardWorktree, expectedBoardBranch], {
     cwd: sandbox, windowsHide: true, stdio: "ignore",
   });
+  const nestedBoardBranch = "nested-board-ticket";
+  const nestedBoardWorktree = path.join(dedicatedBoardWorktree, "nested-ticket");
+  const nestedBoardWorktreeRelative = path.relative(sandbox, nestedBoardWorktree).replace(/\\/g, "/");
+  execFileSync("git", ["worktree", "add", "-b", nestedBoardBranch, nestedBoardWorktree, expectedBoardBranch], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
   const dedicatedTransport = new StdioClientTransport({
     command: runner,
     args: [serverEntry, "--root", dedicatedBoardWorktree, "--repo-root", sandbox],
@@ -3394,8 +3401,37 @@ Second proof attempt passed; the first failure is retained.
       "a dedicated-board ticket cannot resume in a child of the shared source checkout",
       refusedSourceChild.ready === false && refusedSourceChild.reason.includes("inside a Git worktree"),
     );
+    const nestedBoardId = JSON.parse(
+      textOf(await dedicatedClient.callTool({
+        name: "create_item",
+        arguments: { title: "nested board worktree refusal", status: "implementing", profile: "chore", docs_todo: true },
+      })),
+    ).id;
+    await dedicatedClient.callTool({ name: "set_ticket_doc", arguments: { id: nestedBoardId, doc: "plan", content: "# Nested board worktree" } });
+    await dedicatedClient.callTool({
+      name: "take_ticket",
+      arguments: { id: nestedBoardId, branch: nestedBoardBranch, worktree: nestedBoardWorktreeRelative, assignee: "other-agent" },
+    });
+    const nestedResume = { branch: nestedBoardBranch, worktree: nestedBoardWorktreeRelative };
+    const refusedNestedWhole = JSON.parse(textOf(await dedicatedClient.callTool({
+      name: "get_execution_packet",
+      arguments: { id: nestedBoardId, resume: nestedResume },
+    })));
+    const refusedNestedStep = JSON.parse(textOf(await dedicatedClient.callTool({
+      name: "get_execution_packet",
+      arguments: { id: nestedBoardId, step: 1, resume: nestedResume },
+    })));
+    check(
+      "whole-ticket and constrained issuance refuse a real linked worktree nested below a dedicated board",
+      refusedNestedWhole.ready === false && refusedNestedStep.ready === false &&
+        refusedNestedWhole.reason.includes("protected dedicated board worktree") &&
+        refusedNestedStep.reason.includes("protected dedicated board worktree"),
+      JSON.stringify({ whole: refusedNestedWhole.reason, step: refusedNestedStep.reason }),
+    );
   } finally {
     await dedicatedClient.close();
+    execFileSync("git", ["worktree", "remove", "--force", nestedBoardWorktree], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
+    execFileSync("git", ["branch", "-D", nestedBoardBranch], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
     execFileSync("git", ["worktree", "remove", "--force", dedicatedBoardWorktree], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
     execFileSync("git", ["branch", "-D", "dedicated-board"], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
   }
@@ -3554,7 +3590,7 @@ Second proof attempt passed; the first failure is retained.
   await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "plan", content: stepPlan } });
   await client.callTool({
     name: "set_ticket_doc",
-    arguments: { id: stepId, doc: "checklist", content: "- [ ] Step 1 — cap the loop\n- [ ] Step 2 — document the cap\n" },
+    arguments: { id: stepId, doc: "checklist", content: "# Checklist\n\nPlan approved; selected step marker not mapped yet.\n" },
   });
   await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "open-questions", content: "- [x] resolved" } });
 
@@ -3571,8 +3607,9 @@ Second proof attempt passed; the first failure is retained.
   );
   check(
     "group context carries the shared-research evidence version",
-    /^[a-f0-9]{16}$/.test(wholeTicketPacket.groupContexts?.[0]?.version ?? ""),
-    JSON.stringify(wholeTicketPacket.groupContexts?.[0]?.version),
+    wholeTicketPacket.groupContexts?.length === 1 &&
+      /^[a-f0-9]{16}$/.test(wholeTicketPacket.groupContexts?.[0]?.version ?? ""),
+    JSON.stringify(wholeTicketPacket.groupContexts),
   );
 
   // The whole-ticket packet above remains the setup route. A constrained
@@ -3616,6 +3653,22 @@ Second proof attempt passed; the first failure is retained.
     stepTaken.branch === stepBranch && stepTaken.worktree === stepWorktreeRelative,
     JSON.stringify({ branch: stepTaken.branch, worktree: stepTaken.worktree }),
   );
+
+  const refusedWithoutChecklistMarker = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: stepId, step: 1, resume: { branch: stepBranch, worktree: stepWorktreeRelative } },
+    })),
+  );
+  check(
+    "a plan-only constrained request refuses without a mapped unchecked checklist marker",
+    refusedWithoutChecklistMarker.ready === false && /mapped unchecked checklist marker/i.test(refusedWithoutChecklistMarker.reason),
+    refusedWithoutChecklistMarker.reason,
+  );
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: stepId, doc: "checklist", content: "- [ ] Step 1 — cap the loop\n- [ ] Step 2 — document the cap\n" },
+  });
 
   const stepOne = JSON.parse(
     textOf(await client.callTool({
@@ -3661,7 +3714,8 @@ Second proof attempt passed; the first failure is retained.
   );
   check(
     "a compiled step packet keeps the shared group and ticket evidence layers apart",
-    JSON.stringify(stepOne.step?.evidence?.group?.map((e) => e.path)) === JSON.stringify([`${epic.id}/context.md`]) &&
+    stepOne.step?.evidence?.group?.length === 1 &&
+      JSON.stringify(stepOne.step?.evidence?.group?.map((e) => e.path)) === JSON.stringify([`${epic.id}/context.md`]) &&
       stepOne.step?.evidence?.ticket?.some((e) => e.path === "research/research.md" && e.version === stepResearchVersion) &&
       stepOne.step?.evidence?.ticket?.some((e) => e.path === "files/files.md" && e.version === stepFilesVersion),
     JSON.stringify(stepOne.step?.evidence),

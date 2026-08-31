@@ -40,7 +40,12 @@ import { promisify } from "node:util";
 import type { ProjectIdentity } from "./project-identity.js";
 import { canonicalProjectPath } from "./project-identity.js";
 import { readTicketDocuments } from "./ticket-docs.js";
-import { collectStepDocumentSnapshot, collectWorkspaceSnapshot, stepDocumentSnapshotAuthority } from "./step-reconciliation.js";
+import {
+  collectStepDocumentSnapshot,
+  collectWorkspaceSnapshot,
+  isProtectedBoardExecutionWorktree,
+  stepDocumentSnapshotAuthority,
+} from "./step-reconciliation.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -480,6 +485,12 @@ async function unsafeExecutionWorktree(
       warnings: [],
     };
   }
+  if (isProtectedBoardExecutionWorktree(sourceCheckout.path, boardWorktree.path, candidate.path)) {
+    return {
+      refusal: `Ticket "${item.id}" records a worktree inside the protected dedicated board worktree; this is not a resumable ticket worktree.`,
+      warnings: [],
+    };
+  }
   const warnings: string[] = [];
   for (const other of await store.listItems()) {
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
@@ -574,7 +585,7 @@ function unresolvedQuestion(gates: GateReport): boolean {
 }
 
 async function groupContexts(store: KanmerStore, item: Item): Promise<ExecutionPacketGroupContext[]> {
-  const groups = item.groups ?? [];
+  const groups = [...new Set(item.groups ?? [])];
   return Promise.all(
     groups.map(async (id) => {
       const group = await store.getGroup(id);

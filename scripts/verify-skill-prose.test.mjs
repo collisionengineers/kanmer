@@ -2468,6 +2468,20 @@ test("constrained-step prose validator rejects weakened authority, path and reco
       failure: "packet-aware reconciliation derives actual Git changes and fails closed",
     },
     {
+      label: "mapped-marker",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "at least one mapped unchecked checklist\n   marker",
+      to: "an optional prose note",
+      failure: "constrained issuance requires a mapped unchecked checklist marker",
+    },
+    {
+      label: "checklist-terminators",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "CRLF/CR/LF terminator",
+      to: "normalized line terminator",
+      failure: "path matching and checklist bytes fail closed at explicit bounds",
+    },
+    {
       label: "ignored-boundary",
       file: (fixture) => skillFile(fixture, "kanmer-execute"),
       from: "Ignored paths and `.git` / common-directory metadata are",

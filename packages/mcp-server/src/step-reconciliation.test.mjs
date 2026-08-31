@@ -71,6 +71,34 @@ test("more than 256 revision-exempt scratch/reference docs do not exhaust the au
   if (result.ok) assert.equal(result.snapshot.inventory.length, 300);
 });
 
+test("stable document collection de-duplicates repeated identical ticket groups", async () => {
+  const item = {
+    id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
+    labels: [], links: [], groups: ["HZN-001", "HZN-001"], body: "",
+    created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
+  };
+  let groupReads = 0;
+  const store = {
+    getRevision: async () => ({ revision: "rev1:stable" }),
+    getItem: async () => item,
+    getDocsWithVersions: async () => [],
+    listTicketDocsWithVersions: async () => [],
+    batchState: async () => null,
+    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
+    getGroup: async () => {
+      groupReads += 1;
+      return { id: "HZN-001", kind: "horizon", title: "Release", body: "Context body" };
+    },
+    getGroupDoc: async () => "Frozen context",
+  };
+  const result = await collectStepDocumentSnapshot(store, "TICK-001");
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(groupReads, 2, "one group read in each stable sample");
+  assert.equal(result.snapshot.groups.length, 1);
+  assert.equal(result.snapshot.evidence.filter((entry) => entry.layer === "group").length, 1);
+});
+
 test("oversized counted document authority is refused before packet hashing or Git observation", async () => {
   const inventory = [{
     doc: "proof/proof.md",
@@ -112,6 +140,34 @@ test("workspace snapshot is stable, bounded and does not refresh the Git index",
   assert.match(result.snapshot.head, /^[0-9a-f]{40}$/);
   assert.deepEqual(await fs.readFile(absoluteIndex), beforeBytes);
   assert.equal((await fs.stat(absoluteIndex)).mtimeMs, before.mtimeMs);
+});
+
+test("a real linked worktree nested beneath a dedicated board worktree is protected", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-nested-board-"));
+  const board = path.join(root, ".worktrees", "dedicated-board");
+  const nested = path.join(board, "nested-ticket");
+  t.after(async () => {
+    try { execFileSync("git", ["-C", root, "worktree", "remove", "--force", nested], { windowsHide: true, stdio: "ignore" }); } catch {}
+    try { execFileSync("git", ["-C", root, "worktree", "remove", "--force", board], { windowsHide: true, stdio: "ignore" }); } catch {}
+    await removeTreeWithRetry(root);
+  });
+  git(root, "init", "-b", "main");
+  git(root, "config", "user.email", "fixture@example.invalid");
+  git(root, "config", "user.name", "Fixture");
+  await fs.writeFile(path.join(root, "tracked.txt"), "base\n");
+  git(root, "add", "tracked.txt");
+  git(root, "commit", "-m", "base");
+  git(root, "worktree", "add", "-b", "dedicated-board", board, "main");
+  git(root, "worktree", "add", "-b", "nested-ticket", nested, "main");
+
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/dedicated-board/nested-ticket",
+    branch: "nested-ticket",
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /protected board worktree or one of its children/i);
 });
 
 test("staged, mixed, untracked and exact whitespace/Unicode/newline paths are retained in lexical order", async (t) => {

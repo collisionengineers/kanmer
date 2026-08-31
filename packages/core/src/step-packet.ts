@@ -16,8 +16,9 @@
 
 import { createHash } from "node:crypto";
 import {
+  createPlanPathMatchBudget,
   parsePlanPath,
-  planPathMatches,
+  planPathMatch,
   validatePlan,
   type ParsedPlan,
   type PlanStep,
@@ -578,6 +579,13 @@ export function verifyStepPacket(value: unknown): StepPacketVerification {
   if (canonicalJson(checklistLineMap(checklist.content as string | null, Number(step.total))) !== canonicalJson(checklist.stepLines)) {
     return { ok: false, reason: "step_packet.checklist stepLines do not match its exact baseline checkbox mapping" };
   }
+  const selected = Number(step.index) - 1;
+  if ((checklist.stepLines as number[][])[selected]!.length === 0 || (checklist.steps as boolean[])[selected] !== false) {
+    return { ok: false, reason: "step_packet selected step must have at least one mapped unchecked checklist marker" };
+  }
+  if ((checklist.steps as boolean[]).slice(0, selected).some((state) => state !== true)) {
+    return { ok: false, reason: "step_packet selected step must be the first unfinished checklist step" };
+  }
   for (const key of ["allowedFiles", "allowedSymbols", "forbiddenFiles", "negativeCases", "tests", "commands"] as const) {
     if (!stringArray(packet[key])) return { ok: false, reason: `step_packet.${key} must be a string array` };
   }
@@ -608,7 +616,7 @@ export function verifyStepPacket(value: unknown): StepPacketVerification {
   return { ok: true, packet: packet as unknown as StepPacket };
 }
 
-export type StepPathClassification = "allowed" | "forbidden" | "undeclared";
+export type StepPathClassification = "allowed" | "forbidden" | "undeclared" | "inconclusive";
 export type StepReconciliationStatus = "pass" | "fail" | "inconclusive";
 
 export interface StepReconciliationFinding {
@@ -634,19 +642,58 @@ export interface StepReconciliationFacts {
   workspace: { snapshot: StepPacketWorkspace; headChanges: string[] | null } | null;
 }
 
+interface ExactChecklistLine {
+  body: string;
+  terminator: "\r\n" | "\r" | "\n" | "";
+}
+
+function exactChecklistLines(content: string | null): ExactChecklistLine[] {
+  if (content === null) return [];
+  const lines: ExactChecklistLine[] = [];
+  let start = 0;
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    if (character !== "\r" && character !== "\n") continue;
+    const terminator: ExactChecklistLine["terminator"] = character === "\r" && content[index + 1] === "\n"
+      ? "\r\n"
+      : character as "\r" | "\n";
+    lines.push({ body: content.slice(start, index), terminator });
+    if (terminator === "\r\n") index += 1;
+    start = index + 1;
+  }
+  lines.push({ body: content.slice(start), terminator: "" });
+  return lines;
+}
+
+function tickedChecklistLine(before: string, after: string): boolean {
+  const marker = /^([ \t]*[-*+][ \t]*)\[ \]/.exec(before);
+  if (!marker) return false;
+  const suffix = before.slice(marker[0].length);
+  return after === `${marker[1]}[x]${suffix}` || after === `${marker[1]}[X]${suffix}`;
+}
+
 function checklistOnlyTransition(packet: StepPacket, current: StepPacketChecklist): boolean {
-  const before = packet.checklist.content?.replace(/\r\n?/g, "\n").split("\n") ?? [];
-  const after = current.content?.replace(/\r\n?/g, "\n").split("\n") ?? [];
+  const before = exactChecklistLines(packet.checklist.content);
+  const after = exactChecklistLines(current.content);
   if (before.length !== after.length) return false;
   const allowedLines = new Set(packet.checklist.stepLines[packet.step.index - 1] ?? []);
+  let transitions = 0;
   for (let index = 0; index < before.length; index += 1) {
-    if (before[index] === after[index]) continue;
-    if (!allowedLines.has(index)) return false;
-    const unticked = before[index].replace(/\[ \]/, "[x]");
-    const untickedUpper = before[index].replace(/\[ \]/, "[X]");
-    if (after[index] !== unticked && after[index] !== untickedUpper) return false;
+    const baseline = before[index]!;
+    const observed = after[index]!;
+    if (baseline.terminator !== observed.terminator) return false;
+    if (!allowedLines.has(index)) {
+      if (baseline.body !== observed.body) return false;
+      continue;
+    }
+    if (/^[ \t]*[-*+][ \t]*\[ \]/.test(baseline.body)) {
+      if (!tickedChecklistLine(baseline.body, observed.body)) return false;
+      transitions += 1;
+    } else if (baseline.body !== observed.body) {
+      return false;
+    }
   }
-  return true;
+  return transitions > 0;
 }
 
 function entryChanges(before: StepPacketWorkspace, after: StepPacketWorkspace): string[] {
@@ -666,6 +713,20 @@ function entryChanges(before: StepPacketWorkspace, after: StepPacketWorkspace): 
   const baseline = identities(before);
   const current = identities(after);
   return [...new Set([...baseline.keys(), ...current.keys()])].filter((path) => baseline.get(path) !== current.get(path));
+}
+
+function anyPathMatch(
+  patterns: readonly string[],
+  observed: string,
+  budget: ReturnType<typeof createPlanPathMatchBudget>,
+): boolean | null {
+  let inconclusive = false;
+  for (const pattern of patterns) {
+    const matched = planPathMatch(pattern, observed, budget);
+    if (matched === true) return true;
+    if (matched === null) inconclusive = true;
+  }
+  return inconclusive ? null : false;
 }
 
 /** Pure comparison of a verified immutable packet with freshly collected facts. */
@@ -749,6 +810,7 @@ export function reconcileStepPacket(value: unknown, facts: StepReconciliationFac
       ...entryChanges(packet.workspace, facts.workspace.snapshot),
       ...(facts.workspace.headChanges ?? []),
     ];
+    const matchBudget = createPlanPathMatchBudget();
     for (const rawPath of [...new Set(observedChanges)]) {
       const observed = parsePlanPath(rawPath, { observed: true });
       if (!observed.ok) {
@@ -756,13 +818,25 @@ export function reconcileStepPacket(value: unknown, facts: StepReconciliationFac
         continue;
       }
       const path = observed.path;
-      const classification: StepPathClassification = packet.forbiddenFiles.some((pattern) => planPathMatches(pattern, path))
+      const forbidden = anyPathMatch(packet.forbiddenFiles, path, matchBudget);
+      const allowed = forbidden === false ? anyPathMatch(packet.allowedFiles, path, matchBudget) : false;
+      const classification: StepPathClassification = forbidden === true
         ? "forbidden"
-        : packet.allowedFiles.some((pattern) => planPathMatches(pattern, path))
-          ? "allowed"
-          : "undeclared";
+        : forbidden === null
+          ? "inconclusive"
+          : allowed === true
+            ? "allowed"
+            : allowed === null
+              ? "inconclusive"
+              : "undeclared";
       changedPaths.push({ path, classification });
-      if (classification !== "allowed") failures.push({ code: classification === "forbidden" ? "STEP_PATH_FORBIDDEN" : "STEP_PATH_UNDECLARED", message: `${path} is ${classification}.`, path });
+      if (classification === "forbidden") failures.push({ code: "STEP_PATH_FORBIDDEN", message: `${path} is forbidden.`, path });
+      else if (classification === "undeclared") failures.push({ code: "STEP_PATH_UNDECLARED", message: `${path} is undeclared.`, path });
+      else if (classification === "inconclusive") inconclusive.push({
+        code: "STEP_PATH_MATCH_INCONCLUSIVE",
+        message: `The bounded path matcher could not prove whether ${path} is allowed or forbidden.`,
+        path,
+      });
     }
   }
   const findings = [...failures, ...inconclusive];
@@ -797,6 +871,28 @@ function budgetRefusal(reason: string): StepPacketResult {
   };
 }
 
+function canonicalEvidence(input: readonly StepPacketEvidence[]):
+  | { ok: true; entries: StepPacketEvidence[] }
+  | { ok: false; reason: string; entries: StepPacketEvidence[] } {
+  const entries = new Map<string, StepPacketEvidence>();
+  for (const entry of input) {
+    const key = `${entry.layer}\0${entry.group ?? ""}\0${entry.path}`;
+    const previous = entries.get(key);
+    if (!previous) {
+      entries.set(key, entry);
+      continue;
+    }
+    if (canonicalJson(previous) !== canonicalJson(entry)) {
+      return {
+        ok: false,
+        reason: `Conflicting duplicate evidence was supplied for ${entry.path}.`,
+        entries: [...entries.values()],
+      };
+    }
+  }
+  return { ok: true, entries: [...entries.values()] };
+}
+
 /**
  * Compile one ordered step into a versioned, bounded packet.
  *
@@ -811,12 +907,17 @@ export function compileStepPacket(input: StepPacketInput): StepPacketResult {
     return budgetRefusal(`ticket document census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`);
   }
   const { plan, checklist, select } = input;
-  const liveEvidence = input.evidence.map((entry) => ({ path: entry.path, version: entry.version }));
+  const normalizedEvidence = canonicalEvidence(input.evidence);
+  const liveEvidence = normalizedEvidence.entries.map((entry) => ({ path: entry.path, version: entry.version }));
   // A ticket that carries its own impact research is expected to pin it; a
   // trivial one carries none and must not accrue invented research debt.
-  const requireEvidencePin = input.evidence.some(
+  const requireEvidencePin = normalizedEvidence.entries.some(
     (entry) => entry.layer === "ticket" && /^(?:research|files)\//.test(entry.path),
   );
+  if (!normalizedEvidence.ok) {
+    const validation = validatePlan(plan, { liveEvidence, requireEvidencePin });
+    return { ok: false, reason: normalizedEvidence.reason, validation };
+  }
   if (typeof select === "number" && (!Number.isFinite(select) || !Number.isInteger(select) || select <= 0)) {
     const validation = validatePlan(plan, { liveEvidence, requireEvidencePin });
     return { ok: false, reason: "A numeric step selection must be a finite positive integer.", validation };
@@ -853,14 +954,21 @@ export function compileStepPacket(input: StepPacketInput): StepPacketResult {
   if (states[resolved - 1] === true) {
     return { ok: false, reason: `Ordered step ${resolved} is already complete in the checklist and cannot be re-issued.`, validation };
   }
+  if ((checklistSnapshot.stepLines[resolved - 1] ?? []).length === 0) {
+    return {
+      ok: false,
+      reason: `Ordered step ${resolved} requires at least one mapped unchecked checklist marker before a constrained packet can be issued.`,
+      validation,
+    };
+  }
   const currentNext = nextStepIndex(plan, checklist);
   if (typeof select === "number" && currentNext !== null && select !== currentNext) {
     return { ok: false, reason: `Ordered step ${select} cannot be issued while step ${currentNext} is the current unfinished step.`, validation };
   }
 
   const evidence = {
-    group: input.evidence.filter((entry) => entry.layer === "group").sort((left, right) => lexicalCompare(`${left.group ?? ""}\0${left.path}`, `${right.group ?? ""}\0${right.path}`)),
-    ticket: input.evidence.filter((entry) => entry.layer === "ticket").sort((left, right) => lexicalCompare(left.path, right.path)),
+    group: normalizedEvidence.entries.filter((entry) => entry.layer === "group").sort((left, right) => lexicalCompare(`${left.group ?? ""}\0${left.path}`, `${right.group ?? ""}\0${right.path}`)),
+    ticket: normalizedEvidence.entries.filter((entry) => entry.layer === "ticket").sort((left, right) => lexicalCompare(left.path, right.path)),
   };
   const authority = stepPacketAuthority(plan, resolved, input.stopCondition)!;
   const body = {
@@ -877,9 +985,14 @@ export function compileStepPacket(input: StepPacketInput): StepPacketResult {
   const bodyBudget = checkStepPacketBudget(body);
   if (!bodyBudget.ok) return budgetRefusal(bodyBudget.reason);
 
-  return {
-    ok: true,
-    packet: { ...body, packetId: stepPacketDigest(body) },
-    validation,
-  };
+  const packet = { ...body, packetId: stepPacketDigest(body) };
+  const verified = verifyStepPacket(packet);
+  if (!verified.ok) {
+    return {
+      ok: false,
+      reason: `The compiled step packet failed its own strict verification: ${verified.reason}`,
+      validation,
+    };
+  }
+  return { ok: true, packet: verified.packet, validation };
 }

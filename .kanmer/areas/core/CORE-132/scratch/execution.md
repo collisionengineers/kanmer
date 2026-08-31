@@ -39,3 +39,13 @@ A clean detached Windows `npm run verify` attempt reached `mcpb:check` after bui
 ## Exact-head Windows verification PASS — `2aaab24bd62c58a43703b8cef06f431a40825c77`
 
 Fresh detached worktree, clean tracked state, `npm ci` exit 0, then one complete `npm run verify` exit 0. Results: core 647/647 (release 78/78), GUI 524/524, MCP 165/165 (release 21/21), scripts 155/155, smoke 349/349, protocol 50/50, discovery 13/13, AGENTS 31/31; build, all workspace typechecks, docs/manual, skills, headless standalone, MCPB coherence and plugin byte identity all PASS. This proves the deterministic `ce2645cb...` bundle mismatch was corrected rather than retried unchanged. Hosted exact-head checks and fresh independent review remain required before merge.
+
+## Final remediation head — 2026-08-31
+
+- Exact PR head: `e2a36b856cbb67b7dcbd2cbcee05a3f3874e40d9` on current main base `69796f35f84aab897075713672a3b28988f126b8`.
+- Full local test rail PASS: core 663/663, GUI 524/524, MCP 170/170, scripts 155/155.
+- Focused release/reconciliation PASS: core release 94/94; MCP release + reconciliation 49/49.
+- Typecheck, build, plugin parity and MCPB integrity PASS. Standalone/plugin server SHA-256: `1e62a2c3c9771d6ca4d3b8ffe5b20a5d24335b2315536e06d13fddc3580980f8`.
+- Three independent bounded delta audits found no remaining blocker or major issue after the final fixes for explicit interrupted-transaction recovery, strict schema-1 key admission, and complete ordinal-ledger validation.
+- Minor disposition: accepted-risk for this PR — the dispatch freshness regression proves source ordering rather than a protocol-level concurrent elicitation race; implementation re-reads feasibility/delivery after elicitation and the affected behavior is otherwise covered.
+- The earlier clean-checkout failure caused by a stale MCPB bundle remains retained in prior notes; rebuilding from the same source made the exact mechanism pass. No unchanged rerun was used to erase it.

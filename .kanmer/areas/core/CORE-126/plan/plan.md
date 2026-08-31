@@ -282,3 +282,26 @@ Focused failing-first and regression proof:
 - Rebuild the generated manual and committed standalone bundle, prove 41 tools/12 skills and exact bundle identity, run affected typechecks/builds and `git diff --check`, then run one clean non-overlapping Windows `npm run verify` at the committed final head.
 
 The next review is one strict delta over F-019 through F-023, F-018 regression safety, changed lines, affected callers/contracts, and these tests. It is not a new unrestricted repository review.
+
+## Final PR-provenance remediation — F-024/F-025
+
+The settled exact-head automated review and fresh independent delta review at `31dac12a8d6445de0c775e47bf709499830a5c4e` confirmed that F-019 through F-023 are fixed and F-018 remains regression-safe. They identified two remaining majors that are one protected-origin invariant:
+
+1. **F-024 — hard-bind the actual plural PR target.**
+   - Preserve singular compatibility behavior.
+   - For phase-2 plural batch evaluation only, the actual PR base must be present and exactly equal the roster's one resolved delivery target in both strict and lenient modes.
+   - A missing or wrong base is a hard error; a correct base passes. Member target agreement remains the earlier corruption/policy-drift guard.
+
+2. **F-025 — hard-bind plural PR repository provenance.**
+   - Capture `pull_request.head.repo.full_name` as optional non-enumerable `headRepository` evidence alongside the existing base/source repository identity, preserving the legacy emitted `result.pr` JSON shape.
+   - For phase-2 plural batches only, missing base or head repository evidence and a case-normalized unequal head/source repository are hard failures in both modes.
+   - Matching case variants pass because GitHub repository identity is case-insensitive. Singular fork compatibility remains unchanged.
+
+The remediation is confined to the four already-authorized files:
+
+- `packages/core/src/merge-gate.ts`
+- `packages/core/src/merge-gate.test.ts`
+- `packages/mcp-server/src/check-pr.mjs`
+- `packages/mcp-server/src/check-pr.test.mjs`
+
+Add failing-first and final strict/lenient negatives for wrong and missing base, missing and foreign head repository, plus matching target/repository controls. Retain singular lenient and fork behavior and exact legacy CLI JSON output. Run core merge-gate tests, real check-pr CLI tests, affected typechecks/builds, `git diff --check`, then one clean non-overlapping Windows `npm run verify` at the committed final head. No prose, AGENTS, manual, bundle, dependency, board-schema, credential, or unrelated change is required because the canonical batch workflow already requires exact base and same source repository.

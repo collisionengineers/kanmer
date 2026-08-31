@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Batch workspaces follow-up: merge gate accepts a batch roster, closeout roster
   discovery, batch hardening (CORE-124 review)
-status: implementing
+status: review
 area: core
 assignee: codex-release-controller
 profile: fix
@@ -26,11 +26,12 @@ refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 commits:
   - 13938b440b37a67ddc27373138e14dd6a4daa395
+  - 405a65c2736001de4adfa97f5b4a999f57348054
 prs:
   - '306'
 archived: false
 created: '2026-08-27T21:17:27.817Z'
-updated: '2026-08-31T09:17:30.533Z'
+updated: '2026-08-31T09:54:08.083Z'
 ---
 
 ## What

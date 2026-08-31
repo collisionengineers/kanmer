@@ -15,6 +15,8 @@
 
 ## Progress notes
 
-Execution packet validated and CORE-126 taken on the exact recorded worktree/branch at origin/main c1bc3be8532150832328a6d7f62ecd94cdcf6220. Independent design audit corrected the plan before focused tests: declaration plus first take is one recoverable transaction, and its active manifest remains the immutable roster through terminal clearing.
+Execution packet validated and CORE-126 taken on the exact recorded worktree/branch at origin/main `c1bc3be8532150832328a6d7f62ecd94cdcf6220`. Independent design audit corrected the plan before focused tests: declaration plus first take is one recoverable transaction, and its active manifest remains the immutable roster through terminal clearing.
 
-Focused evidence passed: build; 693 core tests; 9 check-pr tests; 355 MCP smoke checks; 50 protocol checks; workspace typechecks; skill prose; 156 script tests; generated-manual verification; and plugin source/bundle identity with the unchanged 41-tool live-base roster. The one authoritative `npm run verify` Windows rail then passed end to end from this worktree with no overlapping full rail.
+Initial implementation head `13938b440b37a67ddc27373138e14dd6a4daa395` received one consolidated fresh exact-head review. Its three majors were fixed together on the same PR: actor-plus-controller-run authority, mandatory modern batch renewal CAS, and manifest-backed fresh-closeout discovery. The minor terminal-release report overclaim was corrected.
+
+Focused evidence at remediation head `405a65c2736001de4adfa97f5b4a999f57348054` passed: build; 694 core tests; 9 check-pr tests; 360 MCP smoke checks; 50 protocol checks; workspace typechecks; skill prose; 157 script tests; generated-manual verification; and plugin source/bundle identity with the unchanged 41-tool roster. The one authoritative `npm run verify` Windows rail then passed end to end at that exact clean commit with no overlapping full rail. The earlier 683/694 core and 156/157 script fixture attempts are recorded in the post-implementation report with their corrected mechanisms.

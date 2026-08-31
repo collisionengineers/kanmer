@@ -34,3 +34,7 @@ Exact head `31dac12a8d6445de0c775e47bf709499830a5c4e` fixes F-019 through F-023 
 ## Final PR-provenance remediation progress
 
 Exact head `213209e2a3cb5a2dd572737f1b930c846b8062e8` fixes F-024 and F-025 as one fail-closed plural-PR provenance invariant. Failing-first and final focused evidence are retained in the post-implementation report. The single non-overlapping authoritative clean Windows `npm run verify` rail passed at that exact clean commit with exit 0 (711 core, 524 GUI, 172 MCP/integration, 160 scripts, 368 smoke, 50 protocol). The ticket is ready to return to Review for the bounded exact-head delta review; post-merge detached verification remains intentionally unchecked.
+
+## Final terminal-member remediation progress
+
+Exact head `8965f4eb95653edc3f182ab6cafcc354ded511da` fixes F-026 and F-027. Failing-first core, MCP smoke, and prose-contract evidence is retained in the report. Corrected focused checks passed, and the single non-overlapping authoritative clean Windows `npm run verify` rail passed with exit 0 (714 core, 524 GUI, 172 MCP/integration, 160 scripts, 371 smoke, 50 protocol). The branch is pushed and current with `origin/main`; the ticket is ready for the final bounded exact-head delta review. Post-merge detached verification remains intentionally unchecked.

@@ -187,3 +187,21 @@ Failing-first evidence was retained: merge-gate passed 34/36 before the source f
 Final focused evidence passed: merge-gate 36/36; real check-pr CLI 10/10; core and MCP typecheck/build; independent read-only diff audit; and `git diff --check`.
 
 One authoritative, non-overlapping clean Windows `npm run verify` rail then passed with exit 0 at exact commit `213209e2a3cb5a2dd572737f1b930c846b8062e8`: 711 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 368 MCP smoke checks, and 50 protocol checks, plus every build, workspace typecheck, documentation/manual, headless/discovery, MCPB, skills, AGENTS, and plugin byte-identity check. The source worktree remained clean at the exact head after the rail.
+
+## Final terminal-member remediation
+
+Exact remediation head: `8965f4eb95653edc3f182ab6cafcc354ded511da`.
+
+- F-026 fixed: `BatchState` exposes authoritative manifest lifecycle state; execution packets require an active manifest and a selected nonterminal, non-archived member; `takeTicket` re-reads the member and manifest inside the existing lease lock and refuses Done, archived, or releasing execution before any write.
+- F-027 fixed: canonical closeout guidance names `list_items include_archived: true` as the sole complete roster census. `search_items` retains its existing non-archived search behavior and is explicitly not a complete batch census.
+- No new tool, API option, stage, dependency, board schema, service, credential, or unrelated behavior was added.
+
+Failing-first evidence at `213209e2a3cb5a2dd572737f1b930c846b8062e8`:
+
+- Core claims exited 1 with 76/79: Done and archived members could be retaken and lifecycle state was absent.
+- MCP smoke exited 1 with 368/371: archived, Done, and releasing packets/takes were incorrectly allowed.
+- `verify:skills` exited 1 on the two deliberately narrowed complete-census contract checks.
+
+Corrected focused evidence passed: core claims 79/79; core and MCP typecheck/build; MCP smoke 371/371; `verify:skills`; repository scripts 160/160; AGENTS 31/31; docs/manual; plugin build/check with 41 tools, 12 skills and exact source/bundle bytes; and `git diff --check`.
+
+One authoritative non-overlapping clean Windows `npm run verify` rail passed with exit 0 at exact committed head `8965f4eb95653edc3f182ab6cafcc354ded511da`: 714 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 371 standalone MCP smoke checks, and 50 protocol checks, plus builds, workspace typechecks, documentation/manual, headless/discovery, MCPB packaging, skills, AGENTS, and plugin byte identity. The source worktree was clean and current with `origin/main` after the rail.

@@ -4,12 +4,13 @@ type: ticket
 title: >-
   Batch workspaces follow-up: merge gate accepts a batch roster, closeout roster
   discovery, batch hardening (CORE-124 review)
-status: implementing
+status: review
 area: core
 assignee: codex-release-controller
 profile: fix
 stageEntered:
   preparing: '2026-08-31T07:15:00.575Z'
+  review: '2026-08-31T08:44:05.117Z'
 taken_at: '2026-08-31T07:26:39.097Z'
 branch: core-126-batch-merge-path
 worktree: .worktrees/core-126
@@ -22,9 +23,13 @@ links:
   - CORE-125
 refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
+commits:
+  - 13938b440b37a67ddc27373138e14dd6a4daa395
+prs:
+  - '306'
 archived: false
 created: '2026-08-27T21:17:27.817Z'
-updated: '2026-08-31T07:26:39.097Z'
+updated: '2026-08-31T08:44:05.117Z'
 ---
 
 ## What

@@ -64,7 +64,7 @@ CORE-126 is the only active shared-core implementation lane; there are no open P
 5. **Contracts and shipped artifacts**
    - Update AGENTS.md, tool reference, execute/review/closeout skills and glossary in the same diff.
    - Add skill-prose assertions for complete footers, per-member attestations, include_archived roster discovery and all-terminal cleanup.
-   - Regenerate the manual and standalone MCP bundle; keep the tool roster at 39 and prove source/bundle identity.
+   - Regenerate the manual and standalone MCP bundle; keep the exact base's 41-tool roster unchanged and prove source/bundle identity.
 
 ## Expected files
 
@@ -148,6 +148,10 @@ Hosted verify and kanmer-gate must both bind to the final exact PR head after th
 - If implementation needs a file outside files/files.md, a dependency, a generic transaction abstraction, a hand-written GUI change or another workflow surface, revise the authoritative docs before coding; do not absorb it silently.
 - Known Windows host contention may receive one bounded retry only after its mechanism is identified and recorded. It never converts a deterministic source failure to PASS.
 - Do not touch or report Infisical rotation; it is outside the frozen release roster.
+
+## Acceptance correction — live-base tool inventory
+
+The original plan named 39 tools, but exact base `c1bc3be8532150832328a6d7f62ecd94cdcf6220` already exposed 41. CORE-126 adds no tool. Acceptance therefore means retaining 41 tools and proving source/bundle identity; removing two established tools merely to satisfy the stale number would violate scope and current-base compatibility.
 
 ## Stop condition
 

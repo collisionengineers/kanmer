@@ -10,7 +10,7 @@
 - [x] [pre-review] Rebuild the generated manual and standalone MCP bundle; prove 41 tools and byte identity.
 - [x] [pre-review] Run one complete clean Windows npm run verify rail at the exact final head and retain every exit.
 - [x] [pre-review] Commit, push, open one CORE-126 PR, record commit/PR and the post-implementation report, sync the board and move to Review.
-- [ ] [post-merge] Verify the exact merge SHA on a detached clean Windows worktree and write the proof before Done.
+- [x] [post-merge] Verify the exact merge SHA on a detached clean Windows worktree and write the proof before Done.
 - [x] [pre-review] Stop at Review with the worktree and lease retained for independent review.
 
 ## Progress notes

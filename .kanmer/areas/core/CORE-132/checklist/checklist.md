@@ -102,3 +102,22 @@ than rewriting.
   smoke 348/348, `smoke:headless`, `mcpb:check`, `smoke:protocol` 50/50,
   `smoke:discovery` 13/13, `verify:skills`, `verify:agents-block` 31/31,
   `plugin:check`.
+
+## 2026-08-31 review remediation and exact-head verification
+
+- [x] Rebase PR #303 onto green current main `69796f35f84aab897075713672a3b28988f126b8`.
+- [x] Fail closed on unreadable/malformed ownership and preserve existing bytes.
+- [x] Journal every multi-file release mutation and prove all interruption/replay states.
+- [x] Renew expiry whenever progress or failure is recorded.
+- [x] Preserve an already failed terminal attempt byte-for-byte when minting its successor.
+- [x] Remove caller-supplied owner authority and bind supersession to the actual per-request actor.
+- [x] Validate every required record field, enum, timestamp, SHA, relationship, safe ordinal, retry bound, and canonical filename.
+- [x] Expose complete retained attempt evidence and pending transaction state after reconnect.
+- [x] Normalize channel identity and refuse Windows case/extension collisions.
+- [x] Freeze an exhausted retry schedule at the fixed maximum.
+- [x] Bind the candidate SHA to the delivery-policy version and refuse drift inside the lock.
+- [x] Order causally by per-channel ordinal and treat incomparable channel heads as contended.
+- [x] Mechanically verify the complete 41-tool AGENTS inventory and rebuilt plugin bundle.
+- [x] Focused proof: core release 57/57; MCP release 19/19; smoke 348/348.
+- [x] Independent preflight findings fixed; bounded delta review reports no remaining blocker/major.
+- [x] Clean detached Windows `npm run verify` passed at exact head `62fe62ca163c044fd1715dd077550ff5107087b0`.

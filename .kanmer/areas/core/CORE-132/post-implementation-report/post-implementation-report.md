@@ -197,3 +197,60 @@ treating either as a regression. The `store.test.ts` / `claims.test.ts` /
 `docs.test.ts` 5s-timeout and teardown-`ENOTEMPTY` class reaches hosted CI too:
 discharge a red run with a same-SHA re-run, a diff-untouched confirmation and a
 mechanism argument, and keep the first failure.
+
+## 2026-08-31 final PR-head remediation report
+
+The report above remains the historical record for original head
+`abf707d98a2ddbde02dafb31cc652c72bbea73b6`; it is not the final acceptance
+evidence. PR #303 was rebased onto green main
+`69796f35f84aab897075713672a3b28988f126b8` and remediated as one
+release-record/ownership transaction. Final head:
+`62fe62ca163c044fd1715dd077550ff5107087b0`.
+
+### Root causes removed
+
+- Absence is now only ENOENT. Malformed, unreadable, misnamed, aliased or
+  case-colliding records fail closed.
+- A write-ahead transaction records exact before/after attempt and channel
+  images, rolls forward idempotently at every interruption point, and retains
+  conflicts without overwriting evidence.
+- Every progress-retaining mutation renews the lease.
+- Failed terminal history remains failed and byte-identical; successor identity
+  is exposed without rewriting the predecessor.
+- Supersession uses the actual MCP request actor through a call-local store;
+  the public tool accepts no owner string.
+- The complete attempt/channel/retry/journal schema is checked before a record
+  is readable.
+- Reconnected status exposes outcome, reason, verification, retries, scope,
+  tag, artifacts, policy version, and predecessor/successor evidence.
+- Channel identity is canonical on Windows; retry exhaustion freezes; policy
+  drift is refused; causal ordering uses immutable per-channel ordinals.
+- The AGENTS inventory is now mechanically compared with tool registrations.
+
+### Verification
+
+The earlier Windows EBUSY result is retained as historical evidence for the old
+head. It is not current: CORE-128 had already repaired that mechanism before
+this rebase.
+
+A clean detached Windows checkout at exact head
+`62fe62ca163c044fd1715dd077550ff5107087b0` ran `npm ci` and the complete
+`npm run verify` rail successfully:
+
+| Gate | Result |
+|---|---|
+| Core | 24 files, 619/619; release contract 57/57 |
+| GUI | 54 files, 524/524 |
+| MCP server | 163/163; focused release contract 19/19 |
+| Scripts | 155/155 |
+| MCP smoke | 348/348 |
+| Protocol / discovery | 50/50 and 13/13 |
+| Headless / MCPB | PASS; MCPB 3 files, 1,736,058 bytes |
+| Typecheck / docs / skills / AGENTS | PASS |
+| Plugin | 41 tools, bundle bytes match, isolated handshake passes |
+
+The checkout remained clean at the exact SHA after verification and its
+disposable worktree was removed. A bounded independent preflight found three
+major strictness gaps (ordinal aliases, noncanonical record filenames, and an
+over-budget retry codec); all three were fixed together and the delta review
+reported no remaining blocker or major in those changes.

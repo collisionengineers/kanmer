@@ -383,3 +383,51 @@ post-implementation report is written, and the ticket is in **Review**. Do not
 review, do not merge, do not resolve review threads, do not file follow-up
 tickets, do not start another ticket. A `BLOCKED` merge state caused by
 `required_conversation_resolution: true` is the reviewer's job, not a defect.
+
+## 2026-08-31 consolidated exact-head remediation addendum
+
+This addendum preserves the original implementation plan and records the
+single root-cause remediation requested by the PR review. The branch was
+rebased onto green `origin/main`
+`69796f35f84aab897075713672a3b28988f126b8`; the frozen final PR head is
+`62fe62ca163c044fd1715dd077550ff5107087b0`.
+
+### Remediation surfaces and symbols
+
+- `packages/core/src/{paths.ts,release.ts,store.ts}`: add the per-channel
+  `transactions/` journal; strict complete codecs; ENOENT-only absence;
+  canonical lower-case channel identity and safe decimal ordinals; fixed retry
+  maximum; delivery-policy digest; recovery before every mutation; renewable
+  progress/failure leases; failed-predecessor byte preservation.
+- `packages/mcp-server/src/{release.ts,index.ts,errors.ts}`: collect policy
+  version with the integration SHA; bind authorization to a call-local store
+  carrying the actual MCP actor; expose retained attempts and pending recovery
+  state; classify every new refusal.
+- `packages/core/src/release.test.ts` and
+  `packages/mcp-server/src/release.test.mjs`: corruption, interruption,
+  conflicting replay, actor spoofing, policy drift, retry exhaustion, ordinal
+  ordering, case collisions, reconnect evidence, and byte-preservation cases.
+- `AGENTS.md`, `scripts/check-plugin-sync.mjs`, the canonical tool
+  reference, glossary, generated manual, smoke contract, and bundled MCP:
+  mechanically pin the complete 17 read / 22 write / 2 destructive inventory
+  and the final release-record contract.
+
+### Required negative cases
+
+Malformed or unreadable ownership; journal-only, partially applied,
+fully-applied and conflicting recovery; spoofed observable owner; live foreign
+owner without operator disposition; failed predecessor supersession; policy
+drift; case-fold and extension collisions; aliased/unsafe ordinals; retry
+records above the fixed maximum; timestamp reversal; incomparable channel
+heads; and missing required fields/enums must all refuse without manufacturing
+or overwriting evidence.
+
+### Exact-head commands
+
+Focused: core release 57/57, MCP release 19/19, smoke 348/348, typecheck,
+manual/docs/skills/AGENTS checks, plugin rebuild and byte check.
+
+Authoritative: from a clean detached Windows checkout at
+`62fe62ca163c044fd1715dd077550ff5107087b0`, run `npm ci` then
+`npm run verify`. Completion requires the entire rail green and a clean
+checkout afterwards.

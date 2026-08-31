@@ -63,9 +63,9 @@
   pushed board inputs.
 - [x] Publicly disposition and resolve every current GitHub thread.
 - [x] Replace the whole-file review attestation with an exact-head PASS.
-- [ ] Sync the board and require exact-head `verify` plus `kanmer-gate` green.
-- [ ] Merge PR #304 and verify the exact merge SHA.
-- [ ] Write PASS proof, move through Verifying to Done, release the claim, and
+- [x] Sync the board and require exact-head `verify` plus `kanmer-gate` green.
+- [x] Merge PR #304 and verify the exact merge SHA.
+- [x] Write PASS proof, move through Verifying to Done, release the claim, and
   clean the workspace.
 
 ## Exact-head automated finding F-009
@@ -231,3 +231,14 @@
 - [x] Force-with-lease publish exact head
   `e7a2569982c6088ffe6ca018196a6f3089275f6c` against prior remote
   `6aeaef23fffaf8820e18bf61ee8d70a9c1246cbc`.
+
+## Closeout — SKILL-038
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-038`
+- [x] `git branch -D skill-038-blocked-dependents` (squash-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

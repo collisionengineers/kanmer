@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Keep in-roster blocked dependents selectable so a goal run can order its own
   dependency chain
-status: review
+status: done
 area: skills
 assignee: claude-code
 profile: fix
@@ -12,9 +12,8 @@ stageEntered:
   preparing: '2026-08-28T07:14:56.353Z'
   review: '2026-08-28T07:45:24.771Z'
   implementing: '2026-08-28T13:08:50.695Z'
-taken_at: '2026-08-28T07:20:16.060Z'
-branch: skill-038-blocked-dependents
-worktree: .worktrees/skill-038
+  verifying: '2026-08-31T02:32:15.819Z'
+  done: '2026-08-31T02:43:09.282Z'
 labels:
   - reliable-autonomy
 groups:
@@ -26,12 +25,12 @@ blocks:
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 commits:
-  - e7a2569982c6088ffe6ca018196a6f3089275f6c
+  - 69796f35f84aab897075713672a3b28988f126b8
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/304'
 archived: false
 created: '2026-08-28T06:35:43.709Z'
-updated: '2026-08-31T02:06:04.115Z'
+updated: '2026-08-31T02:47:16.090Z'
 ---
 
 ## What
@@ -93,3 +92,15 @@ Filed from the SKILL-036 PR #302 delta review (finding F-023, severity major, di
 - [x] Deleting the board-worktree preflight bullet fails the check that names it (N-1).
 - [x] A ticket exceeding the numeric `transient` retry bound blocks with the exact refusal instead of retrying (F-005).
 - [x] `npm run verify:skills` passes, and each new clause has a mutation proving its named check fails on deletion without failing a sibling.
+
+
+## Outcome
+
+Shipped through [PR #304](https://github.com/collisionengineers/kanmer/pull/304), squash-merged at `2026-08-31T02:31:42Z` as `69796f35f84aab897075713672a3b28988f126b8`.
+
+- In-roster blockers and dependents now remain frozen and ordered; cycles and impossible chains terminate explicitly while unrelated lanes continue.
+- Schema 3 carries the bounded transient retry contract, and legacy schema-1/2 handoff is recoverable without rewriting historical records.
+- Terminal target evidence is live-bound and revalidated before dependency feasibility and final reporting; temporary provider unavailability pauses recoverably.
+- All 29 exact-head review findings were fixed and resolved in the same six-file PR. No package, dependency, workflow, CORE-128, or unrelated feature change shipped.
+- Exact-merge local Windows verification and hosted push-to-main verification both passed.
+- Follow-ups from this ticket: none. Remaining v0.3.13 work stays on the already frozen release roster.

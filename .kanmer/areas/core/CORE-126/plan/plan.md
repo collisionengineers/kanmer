@@ -305,3 +305,26 @@ The remediation is confined to the four already-authorized files:
 - `packages/mcp-server/src/check-pr.test.mjs`
 
 Add failing-first and final strict/lenient negatives for wrong and missing base, missing and foreign head repository, plus matching target/repository controls. Retain singular lenient and fork behavior and exact legacy CLI JSON output. Run core merge-gate tests, real check-pr CLI tests, affected typechecks/builds, `git diff --check`, then one clean non-overlapping Windows `npm run verify` at the committed final head. No prose, AGENTS, manual, bundle, dependency, board-schema, credential, or unrelated change is required because the canonical batch workflow already requires exact base and same source repository.
+
+
+## Final terminal-member remediation — F-026/F-027
+
+The settled automated review and fresh independent delta review at `213209e2a3cb5a2dd572737f1b930c846b8062e8` confirmed F-024/F-025 fixed and found one final lifecycle invariant plus one prose overclaim.
+
+1. **F-026 — refuse terminal or non-active batch execution (major).**
+   - Extend `BatchState` in `packages/core/src/types.ts` and `packages/core/src/store.ts` with the authoritative manifest lifecycle state.
+   - In `packages/mcp-server/src/execution-packet.ts`, require an `active` manifest and the selected member to be nonterminal/non-archived before projecting the immutable shared branch/worktree.
+   - Inside the existing `takeTicket` lease lock, re-read and refuse a selected archived or terminal member and any non-active/releasing manifest before the first write.
+   - In `packages/core/src/claims.test.ts` and `packages/mcp-server/src/smoke.mjs`, prove zero-write refusal for archived and Done untaken members and for a releasing manifest. Preserve the valid active untaken-member packet/take path and all F-018 physical Git negatives.
+
+2. **F-027 — name one complete closeout census (minor).**
+   - Correct `AGENTS.md`, `plugins/kanmer/skills/kanmer-closeout/SKILL.md`, and `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`: `list_items include_archived:true` is the sole complete manifest-roster census; `search_items` projects batch metadata only for matching non-archived search results.
+   - Update `scripts/verify-skill-prose.mjs` and its independent negative fixture to pin that exact contract. Do not add a search API or change archive filtering.
+
+3. **Proof and handoff.**
+   - Capture failing-first focused core claims, MCP smoke, and prose-verifier evidence without weakening assertions.
+   - Run corrected focused suites, MCP typecheck/build, plugin build/check, skill/script/AGENTS checks, and `git diff --check`.
+   - Rebuild the committed MCP bundle when source changes.
+   - Commit a clean exact head; the release controller runs one non-overlapping authoritative Windows `npm run verify`, waits for exact-head automated review, and requests one bounded independent delta review of F-026/F-027 only.
+
+No delivery-policy, gate-roster, board-schema, dependency, credential, rotation, or unrelated release-roster behavior is in scope.

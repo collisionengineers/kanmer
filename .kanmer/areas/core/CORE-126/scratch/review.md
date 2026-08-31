@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "306"
-head_sha: "31dac12a8d6445de0c775e47bf709499830a5c4e"
+head_sha: "213209e2a3cb5a2dd572737f1b930c846b8062e8"
 verdict: needs-changes
 reviewer: "Codex subagent /root/core126_final_review"
 independent: true
 plan_hash: "ba95bd91f8924e4a"
-ticket_updated: "2026-08-31T14:03:15.276Z"
-board_sha: "b4c109092e561ddd3e06f03dc05cf9e85851c8fc"
+ticket_updated: "2026-08-31T14:56:41.222Z"
+board_sha: "eeabc89c85d90fe61472e63945604198ca1b5cdc"
 expected_reviewers:
   - "GitHub Codex automated review"
   - "Codex subagent /root/core126_final_review"
@@ -36,52 +36,132 @@ threads_snapshot:
   - { source: github, id: "PRRT_kwDOT2PEds6du2g_", finding: F-023, resolved: false }
   - { source: github, id: "PRRT_kwDOT2PEds6dwRez", finding: F-024, resolved: false }
   - { source: github, id: "PRRT_kwDOT2PEds6dwRe6", finding: F-025, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dxSdp", finding: F-026, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dxSdt", finding: F-027, resolved: false }
 findings:
-  - { id: F-001, severity: major, summary: "Concurrent controller runs need distinct batch authority.", disposition: fixed }
-  - { id: F-002, severity: major, summary: "Modern batch renewal needs exact lease CAS tokens.", disposition: fixed }
-  - { id: F-003, severity: major, summary: "Releasing roster evidence must remain discoverable through manifest unlink.", disposition: fixed }
-  - { id: F-004, severity: minor, summary: "Closeout prose overclaimed actor-bound terminal release.", disposition: fixed }
+  - id: F-001
+    severity: major
+    summary: "Concurrent controller runs need distinct batch authority."
+    disposition: fixed
+  - id: F-002
+    severity: major
+    summary: "Modern batch renewal needs exact lease CAS tokens."
+    disposition: fixed
+  - id: F-003
+    severity: major
+    summary: "Releasing roster evidence must remain discoverable through manifest unlink."
+    disposition: fixed
+  - id: F-004
+    severity: minor
+    summary: "Closeout prose overclaimed actor-bound terminal release."
+    disposition: fixed
   - id: F-005
     severity: major
     summary: "Older stable servers could mutate candidate-created manifest-backed batches."
     disposition: rejected-with-reason
     reason: "Public v0.3.12 has no batch implementation, and stable/candidate isolation forbids candidate writes to the live board before promotion."
-  - { id: F-006, severity: major, summary: "Manifest worktree authority was host-absolute.", disposition: fixed }
-  - { id: F-007, severity: major, summary: "Exact-roster dependencies blocked the shared PR.", disposition: fixed }
-  - { id: F-008, severity: major, summary: "Invalid batch workspaces lacked structured lease-conflict evidence.", disposition: fixed }
-  - { id: F-009, severity: major, summary: "Plural review evidence could remain non-blocking in lenient mode.", disposition: fixed }
-  - { id: F-010, severity: major, summary: "Batch renewal persisted a noncanonical controller run.", disposition: fixed }
-  - { id: F-011, severity: major, summary: "A frozen roster could mix incompatible PR targets.", disposition: fixed }
-  - { id: F-012, severity: major, summary: "The batch gate did not bind the PR to the manifest branch.", disposition: fixed }
-  - { id: F-013, severity: major, summary: "Plural reviews were not bound to each member current ticket and plan evidence.", disposition: fixed }
-  - { id: F-014, severity: major, summary: "Untaken frozen siblings lacked the immutable shared workspace in their packet.", disposition: fixed }
-  - { id: F-015, severity: major, summary: "The gate did not require each member to record the shared PR.", disposition: fixed }
-  - { id: F-016, severity: major, summary: "An untaken roster member could pass the protected batch gate.", disposition: fixed }
+  - id: F-006
+    severity: major
+    summary: "Manifest worktree authority was host-absolute."
+    disposition: fixed
+  - id: F-007
+    severity: major
+    summary: "Exact-roster dependencies blocked the shared PR."
+    disposition: fixed
+  - id: F-008
+    severity: major
+    summary: "Invalid batch workspaces lacked structured lease-conflict evidence."
+    disposition: fixed
+  - id: F-009
+    severity: major
+    summary: "Plural review evidence could remain non-blocking in lenient mode."
+    disposition: fixed
+  - id: F-010
+    severity: major
+    summary: "Batch renewal persisted a noncanonical controller run."
+    disposition: fixed
+  - id: F-011
+    severity: major
+    summary: "A frozen roster could mix incompatible PR targets."
+    disposition: fixed
+  - id: F-012
+    severity: major
+    summary: "The batch gate did not bind the PR to the manifest branch."
+    disposition: fixed
+  - id: F-013
+    severity: major
+    summary: "Plural reviews were not bound to each member current ticket and plan evidence."
+    disposition: fixed
+  - id: F-014
+    severity: major
+    summary: "Untaken frozen siblings lacked the immutable shared workspace in their packet."
+    disposition: fixed
+  - id: F-015
+    severity: major
+    summary: "The gate did not require each member to record the shared PR."
+    disposition: fixed
+  - id: F-016
+    severity: major
+    summary: "An untaken roster member could pass the protected batch gate."
+    disposition: fixed
   - id: F-017
     severity: major
     summary: "The review requested migration of alleged public-v0.3.12 pre-manifest batches."
     disposition: rejected-with-reason
     reason: "Public v0.3.12 contains no lease_batch; the pre-manifest form existed only in an unreleased candidate confined to disposable boards."
-  - { id: F-018, severity: major, summary: "Projected untaken-member workspaces bypassed physical Git validation.", disposition: fixed }
-  - { id: F-019, severity: major, summary: "A worktree-less declaration could freeze an unusable immutable batch.", disposition: fixed }
-  - { id: F-020, severity: minor, summary: "Display labels could reject an otherwise authorized batch controller.", disposition: fixed }
-  - { id: F-021, severity: major, summary: "The auto batch lane omitted the mandatory durable controller run.", disposition: fixed }
-  - { id: F-022, severity: major, summary: "Shared review advanced only one roster member after merge.", disposition: fixed }
-  - { id: F-023, severity: major, summary: "Later batch members were instructed to create a second PR.", disposition: fixed }
-  - { id: F-024, severity: major, summary: "A plural PR against the wrong configured base can pass when strict mode is unset.", disposition: open }
-  - { id: F-025, severity: major, summary: "A plural PR from a missing or foreign head repository can pass provenance checks.", disposition: open }
+  - id: F-018
+    severity: major
+    summary: "Projected untaken-member workspaces bypassed physical Git validation."
+    disposition: fixed
+  - id: F-019
+    severity: major
+    summary: "A worktree-less declaration could freeze an unusable immutable batch."
+    disposition: fixed
+  - id: F-020
+    severity: minor
+    summary: "Display labels could reject an otherwise authorized batch controller."
+    disposition: fixed
+  - id: F-021
+    severity: major
+    summary: "The auto batch lane omitted the mandatory durable controller run."
+    disposition: fixed
+  - id: F-022
+    severity: major
+    summary: "Shared review advanced only one roster member after merge."
+    disposition: fixed
+  - id: F-023
+    severity: major
+    summary: "Later batch members were instructed to create a second PR."
+    disposition: fixed
+  - id: F-024
+    severity: major
+    summary: "A plural PR against the wrong configured base can pass when strict mode is unset."
+    disposition: fixed
+  - id: F-025
+    severity: major
+    summary: "A plural PR from a missing or foreign head repository can pass provenance checks."
+    disposition: fixed
+  - id: F-026
+    severity: major
+    summary: "An untaken terminal or archived batch member can receive a ready packet and be taken, racing terminal cleanup."
+    disposition: open
+  - id: F-027
+    severity: minor
+    summary: "Canonical prose overclaims search_items as a complete archived batch-roster census."
+    disposition: open
 ---
 
 # Independent exact-head delta review — CORE-126 / PR #306
 
 ## Verdict
 
-Needs changes at exact head 31dac12a8d6445de0c775e47bf709499830a5c4e.
+Needs changes at exact head `213209e2a3cb5a2dd572737f1b930c846b8062e8`.
 
-Hosted verify passed on that exact head. F-019 through F-023 are fixed, F-018 remains regression-safe, and the affected F-001 through F-017 paths show no regression. The exact-head automated review and fresh independent reviewer agree that F-024 and F-025 are valid majors.
+Hosted verify passed on that exact head. F-024 and F-025 are fixed. The settled exact-head automated review and fresh independent reviewer identified one remaining major and one minor; no other blocker or major was found in the bounded delta.
 
 ## Required bounded remediation
 
-For phase-2 plural batches only, fail closed in strict and lenient modes unless the PR base is present and equals the one resolved delivery target, and unless the base/source and head repositories are present and case-normalize to the same GitHub repository. Preserve singular target warnings, singular fork compatibility, and the legacy emitted PR JSON shape.
+- F-026: expose manifest lifecycle state through `BatchState`; require an active manifest and a selected nonterminal member before projecting a shared workspace; recheck active/nonterminal member state inside the core lease lock before any take write; add zero-write negatives for archived, Done, and releasing members while preserving the active untaken positive and F-018 physical-worktree refusals.
+- F-027: correct canonical prose so `list_items include_archived:true` is the complete batch-roster census and `search_items` only projects matching non-archived results; pin the narrower contract with a negative prose fixture.
 
-The implementation and tests are confined to merge-gate.ts, merge-gate.test.ts, check-pr.mjs, and check-pr.test.mjs, already authorized by the versioned files document. No prose, AGENTS, manual, bundle, dependency, board-schema, credential, or unrelated work is authorized.
+No new tool, stage, service, dependency, workflow architecture, credential, rotation, or unrelated feature is authorized.

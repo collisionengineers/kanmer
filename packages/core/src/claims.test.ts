@@ -954,6 +954,87 @@ describe("batch workspaces (CORE-124)", () => {
     expect(isolatedTake.lease_batch).toBeUndefined();
   });
 
+  it.each([
+    {
+      collision: "branch",
+      holder: { branch: "occupied-declaration-branch", worktree: ".worktrees/declaration-branch-holder" },
+      requested: { branch: "occupied-declaration-branch", worktree: ".worktrees/declaration-branch-batch" },
+    },
+    {
+      collision: "worktree",
+      holder: { branch: "declaration-worktree-holder", worktree: ".worktrees/occupied-declaration-worktree" },
+      requested: { branch: "declaration-worktree-batch", worktree: ".worktrees/occupied-declaration-worktree" },
+    },
+  ])("refuses a fresh batch declaration when an unrelated live claim owns the requested $collision", async ({ collision, holder, requested }) => {
+    const unrelated = await store.createItem({ ...free, title: `${collision} holder` });
+    await store.takeTicket(unrelated.id, { ...holder, assignee: "other-controller" });
+    const a = await store.createItem({ ...free, title: `${collision} batch A` });
+    const b = await store.createItem({ ...free, title: `${collision} batch B` });
+    const batchId = `declaration-${collision}-collision`;
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(a.id, {
+      ...requested,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: batchId,
+      batchMembers: [a.id, b.id],
+    })).rejects.toThrow(new RegExp(`^WORKSPACE_OCCUPIED:.*${collision}`, "u"));
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(batchManifestFile(batchId))).rejects.toMatchObject({ code: "ENOENT" });
+
+    await expect(store.takeTicket(a.id, {
+      branch: `${batchId}-free`,
+      worktree: `.worktrees/${batchId}-free`,
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: batchId,
+      batchMembers: [a.id, b.id],
+    })).resolves.toMatchObject({ lease_batch: batchId });
+  });
+
+  it.each([
+    { collision: "branch", branch: null, worktree: ".worktrees/pending-branch-outsider" },
+    { collision: "worktree", branch: "pending-worktree-outsider", worktree: null },
+  ])("a pending WAL reserves its $collision from unrelated isolated takes and remains recoverable", async ({ collision, branch, worktree }) => {
+    const fixture = await manualPendingFixture(`pending-${collision}-reservation`);
+    const unrelated = await store.createItem({ ...free, title: `${collision} pending outsider` });
+    const before = await snapshotBoardFiles();
+
+    await expect(store.takeTicket(unrelated.id, {
+      branch: branch ?? fixture.take.branch,
+      worktree: worktree ?? fixture.take.worktree,
+      assignee: "other-controller",
+    })).rejects.toThrow(new RegExp(`^WORKSPACE_OCCUPIED:.*${collision}.*pending batch ${fixture.pending.batch_id}`, "u"));
+    expect(await snapshotBoardFiles()).toEqual(before);
+
+    await expect(retryPending(fixture)).resolves.toMatchObject({
+      id: fixture.a.id,
+      lease_batch: fixture.pending.batch_id,
+    });
+  });
+
+  it("rechecks workspace occupancy before a pending WAL recovery writes any member", async () => {
+    const fixture = await manualPendingFixture("pending-recovery-occupied");
+    const pendingRaw = await fs.readFile(fixture.manifestFile, "utf8");
+    await fs.rm(fixture.manifestFile);
+    const unrelated = await store.createItem({ ...free, title: "pre-existing recovery holder" });
+    await store.takeTicket(unrelated.id, {
+      branch: fixture.take.branch,
+      worktree: ".worktrees/pre-existing-recovery-holder",
+      assignee: "other-controller",
+    });
+    await fs.writeFile(fixture.manifestFile, pendingRaw, "utf8");
+    const before = await snapshotBoardFiles();
+
+    await expect(retryPending(fixture)).rejects.toThrow(new RegExp(
+      `^WORKSPACE_OCCUPIED:.*branch.*recorded on "${unrelated.id}"`,
+      "u",
+    ));
+    expect(await snapshotBoardFiles()).toEqual(before);
+    expect(await fs.readFile(fixture.manifestFile, "utf8")).toBe(pendingRaw);
+  });
+
   it("retains only a compact authoritative manifest and includes the caller in the all-terminal release gate", async () => {
     const { a, b, c } = await threeMemberBatch();
     const manifestDir = path.join(root, ".kanmer", "batches", "transactions");

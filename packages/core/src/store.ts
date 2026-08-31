@@ -1521,6 +1521,7 @@ export class KanmerStore {
     batchActor: string,
     batchControllerRun: string | undefined,
     siblings: Item[],
+    manifests?: BatchDeclarationJournal[],
   ): Promise<void> {
     const mine = worktree ? normalizeWorktreePath(worktree, this.paths.repoRoot) : null;
     for (const other of siblings) {
@@ -1561,6 +1562,49 @@ export class KanmerStore {
           `it is recorded on "${other.id}" (held by ${holder}${other.lease_id ? `, lease ${other.lease_id}` : ""}` +
           `${other.lease_batch ? `, batch ${other.lease_batch} — only its frozen members may take it` : ""}). ` +
           `One live writer owns a workspace: use an isolated worktree and branch, or close out "${other.id}" first.`,
+      );
+    }
+    // A pending WAL owns the requested workspace before any ticket-local
+    // claim exists. Keep that reservation authoritative through activation
+    // and releasing so an isolated take cannot occupy the gap and a recovery
+    // cannot roll forward into a second live writer.
+    for (const manifest of (manifests ?? await this.listBatchManifests())) {
+      const manifestWorktree = manifest.workspace.startsWith("worktree:")
+        ? normalizeWorktreePath(manifest.workspace.slice("worktree:".length), this.paths.repoRoot)
+        : null;
+      const sameWorktree = mine !== null && manifestWorktree !== null && mine === manifestWorktree;
+      const sameBranch = branch !== undefined && manifest.branch === branch;
+      const sameBatch = batchId !== undefined && manifest.batch_id === batchId;
+      if (sameBatch) {
+        if (manifest.controller !== batchActor) {
+          throw new Error(
+            `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to ${manifest.controller}; ` +
+              `${batchActor} cannot take its shared workspace.`,
+          );
+        }
+        if (manifest.controller_run !== batchControllerRun) {
+          throw new Error(
+            `BATCH_OWNER_MISMATCH: batch ${batchId} belongs to controller run ${manifest.controller_run}; ` +
+              `${batchControllerRun ?? "an unknown run"} cannot take its shared workspace.`,
+          );
+        }
+        if (manifestWorktree !== mine || manifest.branch !== branch) {
+          const recordedWorkspace = manifestWorktree === null
+            ? `branch ${manifest.branch}`
+            : `worktree ${manifest.workspace.slice("worktree:".length)} on branch ${manifest.branch}`;
+          throw new Error(
+            `BATCH_WORKSPACE_MISMATCH: "${id}" belongs to batch ${batchId}, whose manifest reserves ${recordedWorkspace}; ` +
+              `take that exact worktree and branch — a batch owns one workspace and a ticket occupies one.`,
+          );
+        }
+        continue;
+      }
+      if (!sameWorktree && !sameBranch) continue;
+      throw new Error(
+        `WORKSPACE_OCCUPIED: "${id}" cannot take ${sameWorktree ? `worktree ${worktree}` : `branch ${branch}`}; ` +
+          `it is reserved by ${manifest.state} batch ${manifest.batch_id} ` +
+          `(held by ${manifest.controller}, controller run ${manifest.controller_run}). ` +
+          `One live writer owns a workspace: use an isolated worktree and branch, or finish batch ${manifest.batch_id} first.`,
       );
     }
   }
@@ -1980,6 +2024,15 @@ export class KanmerStore {
     if (journal.state !== "pending") {
       throw new Error(`BATCH_TRANSACTION_INVALID: batch ${journal.batch_id} transaction ${journal.transaction_id} is not pending.`);
     }
+    await this.assertWorkspaceFree(
+      journal.take.ticket_id,
+      journal.take.worktree ?? undefined,
+      journal.branch,
+      journal.batch_id,
+      journal.controller,
+      journal.controller_run,
+      tickets,
+    );
     const frozen = KanmerStore.batchMembersOf(journal.batch_id, tickets);
     const extras = frozen.filter((member) => !journal.members.includes(member.id)).map((member) => member.id).sort();
     if (extras.length > 0) {
@@ -2197,6 +2250,16 @@ export class KanmerStore {
       requested,
       tickets,
       resolveDelivery(await this.getBoard()),
+    );
+    await this.assertWorkspaceFree(
+      id,
+      input.worktree,
+      input.branch,
+      batchId,
+      actor,
+      controllerRun,
+      tickets,
+      manifests,
     );
     const frozenAt = nowIso();
     const leaseId = randomUUID();

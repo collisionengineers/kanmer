@@ -215,3 +215,25 @@ The automated and fresh independent exact-head reviews at `4ef3c8170d9ae247cf8af
 - Execution-packet unit and standalone MCP smoke coverage prove an untaken frozen sibling receives the exact manifest branch/worktree before take, then the same controller/run can take it.
 - The public-tag history assertion is recorded in the final review disposition; no compatibility source path is added.
 - Run all affected focused suites, generated-artifact checks, and one clean authoritative Windows `npm run verify` at the final new head.
+
+
+## Final packet-safety remediation — F-018
+
+The automated exact-head review at `738e03ee2179621c347328e704134b1202ea5a8e`, independently reproduced on a disposable board, found one remediation-caused major: F-014 projects the manifest workspace only after `unsafeTakenWorktree` has returned early for an untaken member. A missing, moved, wrong-branch, board/source, or foreign-repository worktree can therefore produce `ready: true`, and the later core take checks only immutable string identity rather than physical Git state.
+
+### Root fix
+
+- Keep physical Git validation in `packages/mcp-server/src/execution-packet.ts`; do not add filesystem/Git behavior to core.
+- Refactor or reuse the existing validator so it accepts the effective branch/worktree identity.
+- Resolve and authorize the consistent manifest plus exact actor/controller run first. Then validate the projected workspace with the same repository confinement, exact worktree-root, board/source exclusion, active-ticket collision, Git common-directory, and checked-out-branch checks used for an already-taken ticket.
+- Return a refused packet before any member lease is minted when projected physical evidence is missing or invalid.
+- Preserve the truthful untaken projection and successful later take when the shared worktree is valid.
+
+### Files and tests
+
+- Modify only `packages/mcp-server/src/execution-packet.ts`, `packages/mcp-server/src/smoke.mjs`, and the regenerated committed `plugins/kanmer/mcp/kanmer-mcp.cjs`, unless an existing authorized generated artifact changes mechanically.
+- Add an untaken-batch regression that proves a moved/missing projected worktree is refused and the member stays untaken.
+- Bridge the untaken lane to existing wrong-branch, foreign-repository, board/source-checkout, root, and alias validation through the shared helper; add focused cases where needed to prove the new call path, without duplicating the validator.
+- Run MCP typecheck/build, standalone smoke, plugin build/check, `git diff --check`, and one clean non-overlapping Windows `npm run verify` rail at the committed final head.
+
+The next review is one strict delta over F-018, its changed lines, the shared physical validator, affected packet/take callers, and the new regressions. No unrelated review ideation or release-roster expansion is authorized.

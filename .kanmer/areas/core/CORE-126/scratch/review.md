@@ -1,73 +1,121 @@
 ---
 kind: review-attestation
 pr: "306"
-head_sha: "13938b440b37a67ddc27373138e14dd6a4daa395"
+head_sha: "738e03ee2179621c347328e704134b1202ea5a8e"
 verdict: needs-changes
-reviewer: "Codex subagent /root/core126_independent_review"
+reviewer: "Codex subagent /root/core126_final_review"
 independent: true
-plan_hash: "e7b4c6fd9634ea03"
-ticket_updated: "2026-08-31T08:44:05.117Z"
-board_sha: "d44b218d1e4e87fc92f88efdc7e2ddebc6cb760c"
+plan_hash: "ceafdb46ea6c825c"
+ticket_updated: "2026-08-31T12:23:36.797Z"
+board_sha: "7a1dfd57cbd2a422a86b2e2f0e7f41840f029fe5"
 expected_reviewers:
-  - "Codex subagent /root/core126_independent_review"
+  - "GitHub Codex automated review"
+  - "Codex subagent /root/core126_final_review"
 threads_snapshot:
-  - source: github
-    id: "PRRT_kwDOT2PEds6dqX94"
-    author: "chatgpt-codex-connector"
-    path: "packages/mcp-server/src/index.ts"
-    line: 1831
-    finding: F-001
-    resolved: false
-  - source: github
-    id: "PRRT_kwDOT2PEds6dqX9-"
-    author: "chatgpt-codex-connector"
-    path: "packages/core/src/store.ts"
-    line: 2818
-    finding: F-002
-    resolved: false
-  - source: github
-    id: "PRRT_kwDOT2PEds6dqX9y"
-    author: "chatgpt-codex-connector"
-    path: "packages/mcp-server/src/index.ts"
-    line: 415
-    finding: F-003
-    resolved: false
+  - { source: github, id: "PRRT_kwDOT2PEds6dqX9y", finding: F-003, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dqX94", finding: F-001, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dqX9-", finding: F-002, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6drk17", finding: F-005, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6drk2A", finding: F-006, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6drk2D", finding: F-007, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFN", finding: F-008, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFQ", finding: F-009, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFT", finding: F-010, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFW", finding: F-011, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dseFX", finding: F-012, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzL", finding: F-013, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzS", finding: F-014, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMza", finding: F-015, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzg", finding: F-016, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6dtMzm", finding: F-017, resolved: false }
+  - { source: github, id: "PRRT_kwDOT2PEds6duEUg", finding: F-018, resolved: false }
 findings:
   - id: F-001
     severity: major
-    summary: "Batch authority aliases concurrent controller sessions because the active manifest retains only the MCP client product name and discards the durable controller run."
-    disposition: open
+    summary: "Batch authority must distinguish concurrent controller runs."
+    disposition: fixed
   - id: F-002
     severity: major
-    summary: "A modern manifest-backed batch renewal can omit both lease CAS tokens and still increment the lease revision."
-    disposition: open
+    summary: "Modern batch renewal must require exact lease CAS tokens."
+    disposition: fixed
   - id: F-003
     severity: major
-    summary: "A stop after the final member projection is cleared but before manifest unlink hides the releasing roster and shared Git path from list_items."
-    disposition: open
+    summary: "Releasing roster evidence must remain discoverable through manifest unlink."
+    disposition: fixed
   - id: F-004
     severity: minor
-    summary: "The post-implementation report overclaims that terminal release is actor-bound; the implementation intentionally allows a fresh closeout agent to release after all members are terminal."
+    summary: "Closeout/report prose overclaimed actor-bound terminal release."
+    disposition: fixed
+  - id: F-005
+    severity: major
+    summary: "Older stable servers could mutate candidate-created manifest-backed batches."
+    disposition: rejected-with-reason
+    reason: "Public v0.3.12 has no batch implementation, and the fixed stable/candidate boundary forbids candidate writes to the live board before promotion."
+  - id: F-006
+    severity: major
+    summary: "Manifest worktree authority was host-absolute."
+    disposition: fixed
+  - id: F-007
+    severity: major
+    summary: "Exact-roster dependencies blocked the shared PR."
+    disposition: fixed
+  - id: F-008
+    severity: major
+    summary: "Invalid batch workspaces lacked structured lease-conflict evidence."
+    disposition: fixed
+  - id: F-009
+    severity: major
+    summary: "Plural review evidence could remain non-blocking in lenient mode."
+    disposition: fixed
+  - id: F-010
+    severity: major
+    summary: "Batch renewal persisted a noncanonical controller run."
+    disposition: fixed
+  - id: F-011
+    severity: major
+    summary: "A frozen roster could mix incompatible PR targets."
+    disposition: fixed
+  - id: F-012
+    severity: major
+    summary: "The batch gate did not bind the PR to the manifest branch."
+    disposition: fixed
+  - id: F-013
+    severity: major
+    summary: "Plural reviews were not bound to each member's current ticket and plan evidence."
+    disposition: fixed
+  - id: F-014
+    severity: major
+    summary: "Untaken frozen siblings lacked the immutable shared workspace in their packet."
+    disposition: fixed
+  - id: F-015
+    severity: major
+    summary: "The gate did not require each member to record the shared PR."
+    disposition: fixed
+  - id: F-016
+    severity: major
+    summary: "An untaken roster member could pass the protected batch gate."
+    disposition: fixed
+  - id: F-017
+    severity: major
+    summary: "The review requested migration of alleged public-v0.3.12 pre-manifest batches."
+    disposition: rejected-with-reason
+    reason: "Public v0.3.12 commit 7eed70e contains no lease_batch; the pre-manifest form existed only in a later unreleased candidate confined to copied or disposable boards."
+  - id: F-018
+    severity: major
+    summary: "The new untaken-sibling packet projection bypasses physical worktree, branch, and Git-common-directory validation."
     disposition: open
 ---
 
-# Independent consolidated review — CORE-126 / PR #306
+# Independent delta review — CORE-126 / PR #306
 
 ## Verdict
 
-Needs changes at exact head `13938b440b37a67ddc27373138e14dd6a4daa395`.
+Needs changes at exact head `738e03ee2179621c347328e704134b1202ea5a8e`.
 
-The fresh independent review and the settled automated review agree on the same three major defects. There are no additional blocker or major findings. Hosted `verify` and `kanmer-gate` are green on this head, but checks do not override the open exact-head correctness findings.
+F-013 through F-016 are fixed and F-017's rejection is supported by public-tag history. The automated exact-head review found F-018 in the changed F-014 path, and the fresh independent reviewer reproduced it on a disposable board: a nonexistent manifest worktree yielded a ready packet and successful sibling lease.
 
-## Required remediation batch
+## Required bounded remediation
 
-1. Require, persist and exact-match a nonempty durable `controller_run` together with the actual MCP actor for declaration/recovery, member take, batch renew and batch execution packets. This is the documented cooperative file-board boundary; no cryptographic capability or provider framework is required.
-2. Require both `lease_id` and `lease_revision` for every nonlegacy manifest-backed batch renewal, preserving the no-token compatibility lane only for isolated legacy claims.
-3. Project active/releasing manifest evidence into item summaries until manifest unlink, including state, complete roster, workspace and branch, so a fresh closeout can recover the final-clear interruption.
-4. Correct the report's terminal-release overclaim.
+Reuse or refactor the existing execution-packet physical Git validator after manifest projection and actor/run authorization. Validate the effective projected branch/worktree before returning ready. Keep Git checks out of core. Cover missing/moved, wrong-branch, foreign-repository, board/source-checkout, and physical-alias refusal through the shared validator, and prove the untaken member remains untaken on refusal.
 
-## Evidence and scope
-
-The reviewer inspected the exact PR head, plan version, ticket timestamp, current board tip, complete diff, authoritative FRD, focused claims/merge-gate tests, hosted checks and every exact-head thread. Focused read-only checks passed: 94/94 claims plus merge-gate tests, 9/9 check-pr tests and `git diff --check`.
-
-The remediation stays on the same branch, worktree and PR. It adds no dependency, tool, stage, board migration, provider abstraction, handwritten GUI work or unrelated backlog.
+Hosted `verify` passed at this exact head. `kanmer-gate` is red only because this needs-changes record replaces the previously stale review; source remediation is still required.

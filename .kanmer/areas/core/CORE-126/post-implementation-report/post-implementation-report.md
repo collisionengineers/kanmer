@@ -119,3 +119,21 @@ Focused evidence at `738e03ee2179621c347328e704134b1202ea5a8e`:
 Retained attempt evidence: the first final-remediation `verify:skills` run found one deterministic canonical-prose wording mismatch; the wording was corrected without weakening the assertion and the final run passed. The subagent's concurrent `test:scripts` process did not yield a terminal status, so it was recorded as inconclusive; the release controller reran that focused suite once and obtained 157/157 with exit 0.
 
 One authoritative clean Windows `npm run verify` rail passed at the exact committed head, with no overlapping rail on the host: 707 core tests, 524 GUI tests, 171 MCP/integration tests, 157 script tests, 363 MCP smoke checks, and 50 protocol checks, plus every build, typecheck, documentation, discovery/headless, MCPB, skill, AGENTS, and plugin byte-identity check.
+
+## F-018 packet-safety remediation
+
+F-018 is fixed at exact commit `b51ead6e019f11d035c66f148c311a707f123bb0`.
+
+The execution-packet validator now checks the effective batch workspace after manifest consistency and exact actor/controller-run authorization. The same physical safety path covers both already-taken tickets and projected untaken batch members: repository confinement, exact Git worktree root, source/board exclusion, active-workspace collision, Git common-directory identity, and checked-out branch. A refusal occurs before the sibling lease can be minted.
+
+The final change is confined to:
+
+- `packages/mcp-server/src/execution-packet.ts`
+- `packages/mcp-server/src/smoke.mjs`
+- regenerated `plugins/kanmer/mcp/kanmer-mcp.cjs`
+
+Failing-first evidence retained: before the shared-validator source fix, the expanded smoke suite passed 363/365 and failed exactly the new missing/moved-worktree and wrong-branch cases because both packets incorrectly remained ready. After the fix, MCP typecheck and build passed, standalone smoke passed 365/365, plugin build/check passed with 41 tools and 12 skills plus exact bundle-byte identity, and `git diff --check` passed.
+
+One authoritative Windows `npm run verify` rail then passed at the exact clean committed head: 707 core tests, 524 GUI tests, 171 MCP/integration tests, 157 script tests, 365 MCP smoke checks, and 50 protocol checks, plus every build, workspace typecheck, docs/manual, headless/discovery, MCPB, skills, AGENTS, and plugin byte-identity check. No overlapping full rail ran on this host.
+
+The first command-launch attempt requested a PTY and failed in the Windows process allocator before npm started; it produced no source-test attempt. The immediate non-PTY launch at the unchanged exact commit is the authoritative passing rail.

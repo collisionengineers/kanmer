@@ -29,3 +29,8 @@ F-018 remediation progress: exact head `b51ead6e019f11d035c66f148c311a707f123bb0
 ## Final remediation progress
 
 Exact head `31dac12a8d6445de0c775e47bf709499830a5c4e` fixes F-019 through F-023 as the bounded protected-batch lifecycle replan. Failing-first core, smoke, and prose evidence is retained in the post-implementation report. Focused suites passed, and the single non-overlapping authoritative clean Windows `npm run verify` rail passed at that exact head with exit 0. The worktree is clean and ready for the strict exact-head delta review; post-merge detached verification remains intentionally unchecked.
+
+
+## Final PR-provenance remediation progress
+
+Exact head `213209e2a3cb5a2dd572737f1b930c846b8062e8` fixes F-024 and F-025 as one fail-closed plural-PR provenance invariant. Failing-first and final focused evidence are retained in the post-implementation report. The single non-overlapping authoritative clean Windows `npm run verify` rail passed at that exact clean commit with exit 0 (711 core, 524 GUI, 172 MCP/integration, 160 scripts, 368 smoke, 50 protocol). The ticket is ready to return to Review for the bounded exact-head delta review; post-merge detached verification remains intentionally unchecked.

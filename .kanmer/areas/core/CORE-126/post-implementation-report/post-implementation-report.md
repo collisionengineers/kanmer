@@ -169,3 +169,21 @@ Focused passing evidence at `31dac12a8d6445de0c775e47bf709499830a5c4e`:
 - `git diff --check`: PASS.
 
 One authoritative, non-overlapping clean Windows `npm run verify` rail then passed with exit 0 at the exact committed head `31dac12a8d6445de0c775e47bf709499830a5c4e`: build; 708 core tests; 524 GUI tests; 171 MCP HTTP/integration tests; 160 repository script tests; all workspace typechecks; 368 MCP smoke checks; headless and discovery checks; 50 protocol checks; MCPB packaging; documentation/manual; skills; AGENTS; and plugin byte identity. The worktree remained clean at the exact head after the rail.
+
+
+## Final PR-provenance remediation
+
+Exact remediation head: `213209e2a3cb5a2dd572737f1b930c846b8062e8`.
+
+F-024 and F-025 were corrected together as one protected-batch provenance invariant:
+
+- F-024 fixed: a plural phase-2 verdict now requires the actual PR base and hard-fails in strict and lenient modes unless it equals the batch roster's one resolved delivery target. Singular target warning compatibility remains unchanged.
+- F-025 fixed: a plural phase-2 verdict now requires both source and head repository evidence and hard-fails a missing or case-insensitively foreign head repository in strict and lenient modes. A same-repository case variant remains valid, and the legacy emitted PR JSON shape remains unchanged.
+
+The remediation was confined to `packages/core/src/merge-gate.ts`, `packages/core/src/merge-gate.test.ts`, `packages/mcp-server/src/check-pr.mjs`, and `packages/mcp-server/src/check-pr.test.mjs`.
+
+Failing-first evidence was retained: merge-gate passed 34/36 before the source fix, failing exactly the missing-base and missing-source lenient cases; the real check-pr suite passed 8/10, exposing absent head-repository capture and missing-base acceptance. One intermediate fixture run passed 9/10 because its case-variant fixture also changed the fallback review URL; the fixture was narrowed to the intended provenance case without expanding production behavior.
+
+Final focused evidence passed: merge-gate 36/36; real check-pr CLI 10/10; core and MCP typecheck/build; independent read-only diff audit; and `git diff --check`.
+
+One authoritative, non-overlapping clean Windows `npm run verify` rail then passed with exit 0 at exact commit `213209e2a3cb5a2dd572737f1b930c846b8062e8`: 711 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 368 MCP smoke checks, and 50 protocol checks, plus every build, workspace typecheck, documentation/manual, headless/discovery, MCPB, skills, AGENTS, and plugin byte-identity check. The source worktree remained clean at the exact head after the rail.

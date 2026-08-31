@@ -243,3 +243,12 @@ The change is confined to `AGENTS.md`, `kanmer-closeout/SKILL.md`, the canonical
 Retained failing-first evidence: the new old-order prose contract check exited 1 before the canonical wording changed. Corrected focused evidence passed: validator exit 0; script tests 52/52; `verify:skills`; `verify:agents-block` 31/31; skill validation; and `git diff --check`.
 
 One authoritative non-overlapping Windows `npm run verify` rail passed with exit 0 at exact clean head `7a7c0a91a8cdf4f9d368be56be973450e14a9100`: 719 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 371 standalone MCP smoke checks, and 50 protocol checks, plus every build, workspace typecheck, documentation/manual, headless/discovery, MCPB, skill, AGENTS, and plugin byte-identity check. The branch and remote head match and remain based on current `origin/main`.
+
+## Final review-evidence consistency remediation
+
+Exact remediation head: `4fd3fadd154fa72f8a8e149c7381931e1b235495`.
+
+- F-030 rejected-with-reason: the authoritative CORE-126 plan explicitly specifies that duplicate normalized footer IDs collapse to one member. Exact set equality against the immutable manifest roster still rejects every omitted unique member, extra member, foreign member, or incomplete declaration; changing this would revise a frozen accepted contract without a release-safety benefit.
+- F-031 fixed: the plural protected merge path now inspects the canonical findings carried in each parsed review attestation and hard-fails `STALE_REVIEW` when a nominal PASS retains an open blocker or major. Fixed, rejected-with-reason, accepted-risk, and deferred-to-ticket blockers/majors remain dispositioned; open minor/note findings remain non-blocking. The guard is plural-only, preserving singular compatibility.
+
+Failing-first evidence showed the blocker/open/lenient batch case incorrectly remained `ok: true`. Corrected focused evidence passed: merge-gate 37/37; core typecheck/build; real check-pr 10/10 after rebuild; MCP typecheck; and `git diff --check`. The final non-overlapping authoritative Windows `npm run verify` rail at this exact head is pending before final delta review.

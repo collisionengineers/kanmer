@@ -4,7 +4,7 @@
 
 PR #304 is based on exact green main
 `add0da7fc17968796f43b3035065de400a4db2d4` and represented by one truthful
-final commit, `5d13609c39b27b99df5f586a0bb300cdf1c591cc`.
+final commit, `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`.
 
 The controller contract now:
 
@@ -95,9 +95,9 @@ attempt. The independent reviewer inspected the local delta and found no
 additional blocker or major; its wording correction about shallow-target
 blockers is incorporated above.
 
-Pushing this final head, exact-head automated-review settlement, the formal
-independent PASS attestation, public thread dispositions, merge, and exact-merge
-verification remain review/verification work and are not claimed here.
+The exact final head is pushed. Exact-head automated-review settlement, the
+formal independent PASS attestation, public thread dispositions, merge, and
+exact-merge verification remain review/verification work and are not claimed here.
 
 
 ## Final F-015 exact-head evidence
@@ -158,3 +158,47 @@ At exact immutable commit
   headless smoke, MCPB, skills, and byte-identical plugin synchronization.
 
 The source worktree and verification checkout were clean at the exact head.
+
+
+## Final F-017/F-019/F-022/F-023 correction and evidence
+
+The fresh independent exact-head review of `5d13609c39b27b99df5f586a0bb300cdf1c591cc`
+found four remaining controller-contract defects. They were corrected together
+without expanding the six-file diff:
+
+- target satisfaction now requires live evidence that the linked PR is open
+  against the recorded delivery target at its current exact head; unavailable
+  provider evidence leaves the member waiting rather than terminally satisfied;
+- expired-claim recovery records evidence only in the run ledger before calling
+  the atomic transfer, and ticket scratch is written only after the transfer's
+  locked re-check succeeds; `CLAIM_LIVE` leaves the ticket unchanged;
+- `target-reached` is an explicit terminal schema-3 disposition in both
+  exhaustive vocabularies; and
+- legacy schema-1/2 handoff resolves every missing successor field from a
+  durable audited source. Legacy fields are copied where present, schema-1
+  group identity derives its scope selector, live delivery policy and project
+  identity are checked, bounded operator values fill genuinely absent authority
+  and retry fields, and transient counts are reconstructed or fail closed at
+  the exhausted chosen limit. Missing or conflicting field resolution makes
+  the intent malformed. The old record remains under its own schema and may
+  receive only an event valid under that schema; it is never restamped as
+  schema 3.
+
+At exact immutable head
+`a7acf99b5ae669ddee0d7782f188fac5ebc959d0`:
+
+- `node scripts/verify-skill-prose.mjs`: PASS.
+- mutation suite: PASS, 45/45.
+- `npm run test:scripts`: PASS, 153/153.
+- `npm run verify:skills`: PASS.
+- `git diff --check`: PASS.
+- Mandatory stop predicates: 1,877 UTF-8 bytes, SHA-256
+  `03796a0e22ae67a371b1ddb58bbccdf4f08b3d5d9442eb47f59a27c6e9e19b38`.
+- One complete clean Windows `npm run verify` rail: PASS from detached
+  standalone checkout
+  `C:\\Users\\Alex\\Documents\\GitHub\\kanmer-verify-skill038-a7acf99b`
+  with the canonical GitHub origin. It passed core 562/562, GUI 524/524, MCP
+  HTTP 144/144, scripts 153/153, MCP smoke 338/338, protocol 50/50, discovery
+  13/13, AGENTS 31/31, typecheck, documentation, headless smoke, MCPB, skills,
+  and byte-identical plugin synchronization. The checkout and source worktree
+  were clean at that SHA.

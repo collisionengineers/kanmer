@@ -55,9 +55,9 @@
 
 ## Review, merge, and verification
 
-- [ ] Push exact final head `5d13609c39b27b99df5f586a0bb300cdf1c591cc`
-  with lease against remote head `1d319fd86e9f5ab74684fe6d9d46538b01a0ad20`.
-- [ ] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
+- [x] Push exact final head `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`
+  with lease against remote head `5d13609c39b27b99df5f586a0bb300cdf1c591cc`.
+- [x] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
 - [ ] Wait for every expected automated reviewer on the exact head.
 - [ ] Obtain one fresh independent delta review bound to the exact head and
   pushed board inputs.
@@ -135,3 +135,15 @@
 - [x] Fail closed on missing, malformed or conflicting successor intent.
 - [x] Mirror and mutation-pin every clause in AGENTS and the validator.
 - [x] Re-run focused checks and one clean complete Windows rail at the amended head.
+
+
+## Final exact-head corrections F-017/F-019/F-022/F-023
+
+- [x] Require live open-PR evidence at the current head and recorded delivery target before a member is classified target-reached.
+- [x] Record expired-claim evidence in the run ledger and defer all ticket mutation until the atomic transfer succeeds.
+- [x] Add `target-reached` to both exhaustive schema-3 terminal-disposition vocabularies.
+- [x] Resolve every schema-1/2 successor field from audited legacy evidence, live policy/project evidence, or an explicit operator decision; refuse missing or conflicting resolution.
+- [x] Preserve legacy records without schema-3 restamping while allowing their own valid terminal event append.
+- [x] Mutation-pin all four corrections without weakening prior assertions.
+- [x] Run focused validation: mutation suite 45/45, scripts 153/153, `verify:skills` PASS, and `git diff --check` PASS.
+- [x] Run one complete clean Windows `npm run verify` rail at exact head `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`: PASS.

@@ -59,7 +59,7 @@ The single non-overlapping authoritative Windows `npm run verify` rail completed
 - [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/core-126`
-- [ ] `git branch -d core-126-batch-merge-path` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/core-126`
+- [x] `git branch -d core-126-batch-merge-path` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

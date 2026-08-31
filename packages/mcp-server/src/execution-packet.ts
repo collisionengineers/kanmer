@@ -38,9 +38,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type { ProjectIdentity } from "./project-identity.js";
 import { canonicalProjectPath } from "./project-identity.js";
-import { readTicketDocuments } from "./ticket-docs.js";
 import {
-  collectCanonicalGroupContexts,
   collectStepDocumentSnapshot,
   collectWorkspaceSnapshot,
   isProtectedBoardExecutionWorktree,
@@ -584,21 +582,6 @@ function unresolvedQuestion(gates: GateReport): boolean {
   return requirements.some((requirement) => requirement.type === "questions-resolved" && !requirement.satisfied);
 }
 
-async function groupContexts(
-  store: KanmerStore,
-  item: Item,
-  countedDocumentCount: number,
-): Promise<{ ids: string[]; contexts: ExecutionPacketGroupContext[] }> {
-  const census = await collectCanonicalGroupContexts(store, item.groups, countedDocumentCount);
-  return {
-    ids: census.ids,
-    contexts: census.groups.map((group) => ({
-      ...group,
-      ...(group.context === null ? { warning: `Group "${group.id}" has no context.md.` } : {}),
-    })),
-  };
-}
-
 function indexDocuments(results: TicketDocumentWithVersion[]): Record<"plan" | "checklist" | "files", ExecutionPacketDocument> {
   const byDoc = new Map(results.map((result) => [result.doc, result]));
   const entry = (doc: "plan" | "checklist" | "files"): ExecutionPacketDocument => {
@@ -638,26 +621,18 @@ export async function getExecutionPacket(input: {
   priorStepPacket?: unknown;
 }): Promise<ExecutionPacket> {
   const { store, id, actor, controllerRun, project, resume, logical, step, priorStepPacket } = input;
-  let item = await store.getItem(id);
-  if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
+  const stable = await collectStepDocumentSnapshot(store, id, step === undefined ? 1 : 2);
+  if (!stable.ok) {
+    return refuse(project, `A bounded execution-authority snapshot could not be collected: ${stable.reason}`, []);
+  }
+  let item = stable.snapshot.item;
   if (item.type !== "ticket") {
     return refuse(project, `"${id}" is a ${item.type}, not a ticket; execution packets are ticket-only.`, []);
   }
 
-  let gates = await store.getDocGates(id);
+  let gates = stable.snapshot.gates;
   if (!gates) {
     return refuse(project, `"${id}" uses a legacy layout without a format-3 ticket folder.`, [], item);
-  }
-  // A constrained request begins with one stable item/gate/document/group/
-  // batch sample. The matching post-Git sample below brackets the workspace
-  // observation so no packet is minted from a hybrid of two live revisions.
-  const stable = step === undefined ? null : await collectStepDocumentSnapshot(store, id);
-  if (stable && !stable.ok) {
-    return refuse(project, `A stable step evidence snapshot could not be collected: ${stable.reason}`, [], item, gates);
-  }
-  if (stable?.ok) {
-    item = stable.snapshot.item;
-    gates = stable.snapshot.gates!;
   }
   if (gates.profile === "spike") {
     return refuse(project, `Profile "spike" is research-first; execution packets are not available for spikes.`, [], item, gates);
@@ -707,7 +682,7 @@ export async function getExecutionPacket(input: {
   }
   let batch: Awaited<ReturnType<KanmerStore["batchState"]>>;
   try {
-    batch = stable?.ok ? stable.snapshot.batch : await store.batchState(id);
+    batch = stable.snapshot.batch;
   } catch (error) {
     return refuse(
       project,
@@ -850,12 +825,7 @@ export async function getExecutionPacket(input: {
     );
   }
 
-  const [fixed, inventory] = stable?.ok
-    ? [stable.snapshot.fixed, stable.snapshot.inventory]
-    : await Promise.all([
-        readTicketDocuments(store, id, ["plan", "checklist", "files"]),
-        store.listTicketDocsWithVersions(id),
-      ]);
+  const [fixed, inventory] = [stable.snapshot.fixed, stable.snapshot.inventory];
   const planDoc = fixed.find((doc) => doc.doc === "plan");
   const plan = planDoc?.content ?? null;
   const checklist = fixed.find((doc) => doc.doc === "checklist")?.content ?? null;
@@ -867,53 +837,24 @@ export async function getExecutionPacket(input: {
     .map((doc) => ({ path: doc.doc, version: doc.version! }))
     .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
 
-  let contexts: ExecutionPacketGroupContext[];
-  if (stable?.ok) {
-    contexts = stable.snapshot.groups.map((context) => ({
-        id: context.id,
-        kind: context.kind,
-        title: context.title,
-        body: context.body,
-        context: context.context,
-        version: context.version,
-        ...(context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}),
-      }));
-  } else {
-    try {
-      const census = await groupContexts(store, item, ticketDocuments.length);
-      item = item.groups === undefined ? item : { ...item, groups: census.ids };
-      contexts = census.contexts;
-    } catch (error) {
-      return refuse(
-        project,
-        `Ticket "${id}" has invalid or unbounded group authority: ${error instanceof Error ? error.message : String(error)}`,
-        [],
-        item,
-        gates,
-      );
-    }
-  }
+  const contexts: ExecutionPacketGroupContext[] = stable.snapshot.groups.map((context) => ({
+    id: context.id,
+    kind: context.kind,
+    title: context.title,
+    body: context.body,
+    context: context.context,
+    version: context.version,
+    ...(context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}),
+  }));
   // FRD-033's two evidence layers: shared group research, and this ticket's own
   // impact research. Both carry the exact content version they were read at, so
   // a later reconciliation can tell whether the packet went stale.
-  const evidence: StepPacketEvidence[] = stable?.ok ? stable.snapshot.evidence : [
-    ...contexts
-      .filter((context): context is ExecutionPacketGroupContext & { version: string } => context.version !== null)
-      .map((context) => ({
-        layer: "group" as const,
-        group: context.id,
-        path: `${context.id}/context.md`,
-        version: context.version,
-      })),
-    ...(inventory ?? [])
-      .filter((doc) => /^(?:research|files)\//.test(doc.doc))
-      .map((doc) => ({ layer: "ticket" as const, group: null, path: doc.doc, version: doc.version! })),
-  ];
+  const evidence: StepPacketEvidence[] = stable.snapshot.evidence;
   const liveEvidence = evidence.map((entry) => ({ path: entry.path, version: entry.version }));
   const requireEvidencePin = evidence.some((entry) => entry.layer === "ticket");
   const parsedPlan = parsePlan(plan ?? "");
   const stopCondition = sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK);
-  const revision = stable?.ok ? stable.snapshot.revision : (await store.getRevision(id))?.revision ?? null;
+  const revision = stable.snapshot.revision;
 
   let validation = validatePlan(parsedPlan, { liveEvidence, requireEvidencePin });
   let compiled: StepPacket | undefined;
@@ -941,7 +882,7 @@ export async function getExecutionPacket(input: {
       return refuse(project, `The recorded workspace is inconclusive for constrained execution: ${observedWorkspace.reason}`, [], item, gates);
     }
     const confirmedStable = await collectStepDocumentSnapshot(store, id);
-    if (!confirmedStable.ok || !stable?.ok ||
+    if (!confirmedStable.ok ||
         JSON.stringify(stepDocumentSnapshotAuthority(confirmedStable.snapshot)) !== JSON.stringify(stepDocumentSnapshotAuthority(stable.snapshot))) {
       const reason = confirmedStable.ok
         ? "ticket, gate, document, group or batch facts changed around the Git observation"

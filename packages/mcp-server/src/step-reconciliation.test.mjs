@@ -65,6 +65,38 @@ test("index-flag census preserves raw NUL paths and rejects malformed or unbound
   );
 });
 
+const baseAuthorityItem = {
+  id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
+  labels: [], links: [], body: "", created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
+};
+
+function authorityStore({ item = baseAuthorityItem, inventory = [], groups = [], error = null } = {}) {
+  let snapshots = 0;
+  let batchReads = 0;
+  return {
+    reads: () => ({ snapshots, batchReads }),
+    store: {
+      getExecutionAuthoritySnapshot: async () => {
+        snapshots += 1;
+        if (error) throw new Error(error);
+        return {
+          item,
+          revision: { revision: "rev1:stable", updated: item.updated, documents: 0 },
+          gates: { profile: "custom", boundaries: [] },
+          fixed: [],
+          inventory,
+          groups,
+        };
+      },
+      batchStateFromExecutionAuthority: async (boundedItem) => {
+        batchReads += 1;
+        assert.equal(boundedItem.id, item.id);
+        return null;
+      },
+    },
+  };
+}
+
 test("more than 256 revision-exempt scratch/reference docs do not exhaust the authority census", async () => {
   const inventory = Array.from({ length: 300 }, (_, index) => ({
     doc: `${index % 2 ? "scratch" : "reference"}/note-${String(index).padStart(3, "0")}.md`,
@@ -72,183 +104,43 @@ test("more than 256 revision-exempt scratch/reference docs do not exhaust the au
     content: "note",
     version: "a".repeat(16),
   }));
-  const item = { id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium", labels: [], links: [], body: "", created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z" };
-  const store = {
-    getRevision: async () => ({ revision: "rev1:stable" }),
-    getItem: async () => item,
-    getDocsWithVersions: async () => [],
-    listTicketDocsWithVersions: async () => inventory,
-    batchState: async () => null,
-    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
-    getGroup: async () => null,
-    getGroupDoc: async () => null,
-  };
-  const result = await collectStepDocumentSnapshot(store, "TICK-001");
+  const fixture = authorityStore({ inventory });
+  const result = await collectStepDocumentSnapshot(fixture.store, "TICK-001");
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.snapshot.inventory.length, 300);
+  assert.deepEqual(fixture.reads(), { snapshots: 2, batchReads: 2 });
 });
 
-test("stable document collection de-duplicates repeated identical ticket groups", async () => {
-  const item = {
-    id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
-    labels: [], links: [], groups: ["HZN-001", "HZN-001"], body: "",
-    created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
-  };
-  let groupReads = 0;
-  const store = {
-    getRevision: async () => ({ revision: "rev1:stable" }),
-    getItem: async () => item,
-    getDocsWithVersions: async () => [],
-    listTicketDocsWithVersions: async () => [],
-    batchState: async () => null,
-    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
-    getGroup: async () => {
-      groupReads += 1;
-      return { id: "HZN-001", kind: "horizon", title: "Release", body: "Context body" };
-    },
-    getGroupDoc: async () => "Frozen context",
-  };
-  const result = await collectStepDocumentSnapshot(store, "TICK-001");
+test("stable document collection consumes the store's de-duplicated bounded group authority", async () => {
+  const item = { ...baseAuthorityItem, groups: ["HZN-001", "HZN-001"] };
+  const groups = [{
+    group: { id: "HZN-001", kind: "horizon", title: "Release", body: "Context body" },
+    context: "Frozen context",
+    contextVersion: "b".repeat(16),
+  }];
+  const fixture = authorityStore({ item, groups });
+  const result = await collectStepDocumentSnapshot(fixture.store, "TICK-001");
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.equal(groupReads, 2, "one group read in each stable sample");
+  assert.deepEqual(fixture.reads(), { snapshots: 2, batchReads: 2 });
+  assert.deepEqual(result.snapshot.item.groups, ["HZN-001"]);
   assert.equal(result.snapshot.groups.length, 1);
   assert.equal(result.snapshot.evidence.filter((entry) => entry.layer === "group").length, 1);
 });
 
-test("group authority is bounded on its unique census before any group or context read", async () => {
-  const groupLimit = STEP_PACKET_LIMITS.maxDocuments;
-  const makeStore = (groups) => {
-    let groupReads = 0;
-    let contextReads = 0;
-    const item = {
-      id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
-      labels: [], links: [], groups, body: "",
-      created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
-    };
-    return {
-      reads: () => ({ groupReads, contextReads }),
-      store: {
-        getRevision: async () => ({ revision: "rev1:stable" }),
-        getItem: async () => item,
-        getDocsWithVersions: async () => [],
-        listTicketDocsWithVersions: async () => [],
-        batchState: async () => null,
-        getDocGates: async () => ({ profile: "custom", boundaries: [] }),
-        getGroup: async (id) => {
-          groupReads += 1;
-          return { id, kind: "horizon", title: id, body: "Context body" };
-        },
-        getGroupDoc: async () => {
-          contextReads += 1;
-          return "Frozen context";
-        },
-      },
-    };
-  };
-
-  const atLimit = makeStore(Array.from({ length: groupLimit }, (_, index) => `HZN-${String(index).padStart(3, "0")}`));
-  const accepted = await collectStepDocumentSnapshot(atLimit.store, "TICK-001");
-  assert.equal(accepted.ok, true);
-  assert.deepEqual(atLimit.reads(), { groupReads: groupLimit * 2, contextReads: groupLimit * 2 });
-
-  const overLimit = makeStore(Array.from({ length: groupLimit + 1 }, (_, index) => `HZN-${String(index).padStart(3, "0")}`));
-  const refused = await collectStepDocumentSnapshot(overLimit.store, "TICK-001");
-  assert.equal(refused.ok, false);
-  assert.match(refused.reason, /group.*census|group.*limit|array.*entries/i);
-  assert.deepEqual(overLimit.reads(), { groupReads: 0, contextReads: 0 });
-
-  const duplicates = makeStore(Array.from({ length: groupLimit * 4 }, () => "HZN-001"));
-  const collapsed = await collectStepDocumentSnapshot(duplicates.store, "TICK-001");
-  assert.equal(collapsed.ok, true);
-  assert.deepEqual(duplicates.reads(), { groupReads: 2, contextReads: 2 });
-  if (collapsed.ok) assert.deepEqual(collapsed.snapshot.item.groups, ["HZN-001"]);
-
-  const oneCountedDocument = makeStore(Array.from({ length: groupLimit }, (_, index) => `HZN-${String(index).padStart(3, "0")}`));
-  oneCountedDocument.store.listTicketDocsWithVersions = async () => [{
-    doc: "proof/proof.md", exists: true, content: "proof", version: "a".repeat(16),
-  }];
-  const combinedOverflow = await collectStepDocumentSnapshot(oneCountedDocument.store, "TICK-001");
-  assert.equal(combinedOverflow.ok, false);
-  assert.match(combinedOverflow.reason, /combined counted-document and unique-group census/i);
-  assert.deepEqual(oneCountedDocument.reads(), { groupReads: 0, contextReads: 0 });
-});
-
-test("a missing group after a valid bounded census refuses before a context read", async () => {
-  let groupReads = 0;
-  let contextReads = 0;
-  const store = {
-    getRevision: async () => ({ revision: "rev1:stable" }),
-    getItem: async () => ({
-      id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
-      labels: [], links: [], groups: ["HZN-001"], body: "",
-      created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
-    }),
-    getDocsWithVersions: async () => [],
-    listTicketDocsWithVersions: async () => [],
-    batchState: async () => null,
-    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
-    getGroup: async () => { groupReads += 1; return null; },
-    getGroupDoc: async () => { contextReads += 1; return null; },
-  };
-  const result = await collectStepDocumentSnapshot(store, "TICK-001");
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /group.*missing/i);
-  assert.equal(groupReads, 1);
-  assert.equal(contextReads, 0);
-});
-
-test("a conflicting resolved group identity refuses before a context read", async () => {
-  let groupReads = 0;
-  let contextReads = 0;
-  const store = {
-    getRevision: async () => ({ revision: "rev1:stable" }),
-    getItem: async () => ({
-      id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium",
-      labels: [], links: [], groups: ["HZN-001"], body: "",
-      created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
-    }),
-    getDocsWithVersions: async () => [],
-    listTicketDocsWithVersions: async () => [],
-    batchState: async () => null,
-    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
-    getGroup: async () => {
-      groupReads += 1;
-      return { id: "HZN-OTHER", kind: "horizon", title: "Wrong group", body: "Conflicting authority" };
-    },
-    getGroupDoc: async () => {
-      contextReads += 1;
-      return "must not be read";
-    },
-  };
-  const result = await collectStepDocumentSnapshot(store, "TICK-001");
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /conflicting identity/i);
-  assert.equal(groupReads, 1);
-  assert.equal(contextReads, 0);
-});
-
-test("oversized counted document authority is refused before packet hashing or Git observation", async () => {
-  const inventory = [{
-    doc: "proof/proof.md",
-    exists: true,
-    content: "x".repeat(STEP_PACKET_LIMITS.maxStringBytes + 1),
-    version: "a".repeat(16),
-  }];
-  const item = { id: "TICK-001", type: "ticket", title: "fixture", status: "implementing", priority: "medium", labels: [], links: [], body: "", created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z" };
-  const store = {
-    getRevision: async () => ({ revision: "rev1:stable" }),
-    getItem: async () => item,
-    getDocsWithVersions: async () => [],
-    listTicketDocsWithVersions: async () => inventory,
-    batchState: async () => null,
-    getDocGates: async () => ({ profile: "custom", boundaries: [] }),
-    getGroup: async () => null,
-    getGroupDoc: async () => null,
-  };
-  const result = await collectStepDocumentSnapshot(store, "TICK-001");
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /bounded snapshot|encoded bytes/i);
+test("bounded store authority refusal stops before batch projection or later packet work", async () => {
+  for (const reason of [
+    "combined counted-document and unique-group census exceeds 256 entries",
+    "group record HZN-001 is missing",
+    "Group HZN-001 resolved as conflicting identity HZN-OTHER",
+    `ticket document proof/proof.md exceeds ${STEP_PACKET_LIMITS.maxStringBytes} pre-read bytes`,
+  ]) {
+    const fixture = authorityStore({ error: reason });
+    const result = await collectStepDocumentSnapshot(fixture.store, "TICK-001");
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.match(result.reason, new RegExp(reason.split(" ")[0], "i"));
+    assert.deepEqual(fixture.reads(), { snapshots: 1, batchReads: 0 });
+  }
 });
 
 test("workspace snapshot is stable, bounded and does not refresh the Git index", async (t) => {

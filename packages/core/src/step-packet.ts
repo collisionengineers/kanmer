@@ -800,6 +800,7 @@ export function reconcileStepPacket(value: unknown, facts: StepReconciliationFac
     failures.push({ code: "STEP_TICKET_REVISION_STALE", message: "The ticket revision changed without the exact authorised checklist transition." });
   }
   const changedPaths: StepReconciliationResult["changedPaths"] = [];
+  let observedChangeCount = 0;
   if (!facts.workspace) inconclusive.push({ code: "STEP_WORKSPACE_UNAVAILABLE", message: "The recorded workspace could not be inspected." });
   else if (facts.workspace.snapshot.branch !== packet.workspace.branch || facts.workspace.snapshot.worktree !== packet.workspace.worktree) {
     failures.push({ code: "STEP_WORKSPACE_MISMATCH", message: "The live workspace branch or worktree does not match the packet." });
@@ -812,7 +813,9 @@ export function reconcileStepPacket(value: unknown, facts: StepReconciliationFac
       ...(facts.workspace.headChanges ?? []),
     ];
     const matchBudget = createPlanPathMatchBudget();
-    for (const rawPath of [...new Set(observedChanges)]) {
+    const distinctObservedChanges = [...new Set(observedChanges)];
+    observedChangeCount = distinctObservedChanges.length;
+    for (const rawPath of distinctObservedChanges) {
       const observed = parsePlanPath(rawPath, { observed: true });
       if (!observed.ok) {
         inconclusive.push({ code: "STEP_CHANGED_PATH_INVALID", message: observed.reason, path: rawPath });
@@ -839,6 +842,13 @@ export function reconcileStepPacket(value: unknown, facts: StepReconciliationFac
         path,
       });
     }
+  }
+  if (observedChangeCount > 0 && packet.allowedSymbols.length > 0) {
+    inconclusive.push({
+      code: "STEP_SYMBOL_SCOPE_INCONCLUSIVE",
+      message:
+        "The packet declares free-form symbol authority, but the language-neutral collector cannot prove changed source ranges against those symbols.",
+    });
   }
   const findings = [...failures, ...inconclusive];
   return {

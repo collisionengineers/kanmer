@@ -433,8 +433,33 @@ describe("reconcileStepPacket", () => {
     };
   }
 
-  it("passes only complete current evidence and allowed changes", () => {
-    expect(reconcileStepPacket(packet(), facts())).toMatchObject({ status: "pass", changedPaths: [{ path: "src/queue.ts", classification: "allowed" }] });
+  it("fails closed when actual changes have free-form symbol authority", () => {
+    const result = reconcileStepPacket(packet(), facts());
+    expect(result).toMatchObject({ status: "inconclusive", changedPaths: [{ path: "src/queue.ts", classification: "allowed" }] });
+    expect(result.findings.map((finding) => finding.code)).toContain("STEP_SYMBOL_SCOPE_INCONCLUSIVE");
+  });
+
+  it("does not invent a symbol-scope finding when the workspace has no actual changes", () => {
+    const current = facts({ workspace: { snapshot: packet().workspace, headChanges: [] } });
+    const result = reconcileStepPacket(packet(), current);
+    expect(result.changedPaths).toEqual([]);
+    expect(result.findings.map((finding) => finding.code)).not.toContain("STEP_SYMBOL_SCOPE_INCONCLUSIVE");
+  });
+
+  it("retains file-scoped PASS when the current plan declares no symbols", () => {
+    const symbolFreePlan = parsePlan(PLAN.replace("- Symbols: `enqueue`, `QUEUE_MAX_RETRIES`\n", ""));
+    const compiled = compileStepPacket(input({ plan: symbolFreePlan }));
+    if (!compiled.ok) throw new Error(compiled.reason);
+    const current = facts({
+      plan: {
+        ...compiled.packet.plan,
+        authority: stepPacketAuthority(symbolFreePlan, 1, "Stop when the PR is open."),
+      },
+    });
+    expect(reconcileStepPacket(compiled.packet, current)).toMatchObject({
+      status: "pass",
+      changedPaths: [{ path: "src/queue.ts", classification: "allowed" }],
+    });
   });
 
   function reconcileChecklistBytes(before: string, after: string) {
@@ -541,7 +566,7 @@ describe("reconcileStepPacket", () => {
     const unknownMiss = `${unknownMatch}/never`;
     const reconcile = (allowedFiles: string[], forbiddenFiles: string[]) => {
       const { packetId: _ignored, ...body } = base;
-      const changedBody = { ...body, allowedFiles, forbiddenFiles };
+      const changedBody = { ...body, allowedFiles, allowedSymbols: [], forbiddenFiles };
       const forged = { ...changedBody, packetId: stepPacketDigest(changedBody) };
       const authority = stepPacketAuthority(parsePlan(PLAN), 1, "Stop when the PR is open.");
       if (!authority) throw new Error("missing step authority");
@@ -549,7 +574,7 @@ describe("reconcileStepPacket", () => {
         project: forged.project,
         ticket: { ...forged.ticket, revision: "rev1:after-checklist" },
         batch: forged.batch,
-        plan: { ...forged.plan, authority: { ...authority, allowedFiles, forbiddenFiles } },
+        plan: { ...forged.plan, authority: { ...authority, allowedFiles, allowedSymbols: [], forbiddenFiles } },
         checklist: stepChecklistSnapshot(
           parsePlan(PLAN),
           base.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? null,
@@ -637,7 +662,8 @@ describe("reconcileStepPacket", () => {
       PLAN
         .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/**` | retry sources |")
         .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
-        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`"),
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`")
+        .replace("- Symbols: `enqueue`, `QUEUE_MAX_RETRIES`\n", ""),
     );
     const compiled = compileStepPacket(input({ plan: patterned }));
     if (!compiled.ok) throw new Error(compiled.reason);

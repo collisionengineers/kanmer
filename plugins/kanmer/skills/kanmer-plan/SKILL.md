@@ -57,7 +57,8 @@ resolve time, so its `profiles:` block is not the effective set.
    worker, write each ordered step as its own `### Step N — <title>`
    sub-section with the template's labelled bullets, and pin the evidence
    versions in Starting state. That is what `get_execution_packet id: <ID>,
-   step: <n>` compiles into a `step-packet/2` limited to that step's files and symbols;
+   step: <n>` compiles into a `step-packet/2` limited to that step's files and
+   carrying any declared symbols as descriptive, fail-closed authority;
    a plan without it still executes normally, it simply cannot be compiled.
    Every `Expected files`, `Do not modify`, and ordered-step `Files` entry is a
    canonical repository-relative POSIX path: use literals, `*` within one path
@@ -70,6 +71,13 @@ resolve time, so its `profiles:` block is not the effective set.
    iterative and explicitly bounded. The one shared budget is charged before
    raw path parsing and before every literal or wildcard comparison;
    exhaustion is `INCONCLUSIVE`, never permission or an undeclared-path claim.
+   Plan-time glob containment and intersection use one aggregate proof context
+   that charges alphabet construction, NFA closure/transitions, caches and
+   queues; exhaustion is the blocking `PLAN_GLOB_COMPLEXITY` finding. Free-form
+   `Symbols` cannot be proved from Git path evidence: after an actual change,
+   non-empty `allowedSymbols` yields `STEP_SYMBOL_SCOPE_INCONCLUSIVE`. Omit
+   `Symbols` when file-scoped reconciliation is the complete mechanical bound;
+   forbidden and undeclared file failures still take precedence.
    `get_execution_packet` also returns an advisory `validation` report for any
    plan — read its findings, but they remain advisory, not a gate.
 5. **Resolve planner decisions before dispatch.** In Required changes, words

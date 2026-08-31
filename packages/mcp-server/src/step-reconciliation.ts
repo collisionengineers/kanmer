@@ -5,10 +5,8 @@ import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 import {
   checkStepPacketBudget,
-  contentVersion,
   parsePlanPath,
   revisionCountsDocument,
-  STEP_PACKET_LIMITS,
   type Item,
   type KanmerStore,
   type StepPacketEvidence,
@@ -508,65 +506,6 @@ export type StepDocumentSnapshotResult =
   | { ok: true; snapshot: StepDocumentSnapshot }
   | { ok: false; reason: string };
 
-export interface CanonicalGroupContext {
-  id: string;
-  kind: string;
-  title: string;
-  body: string;
-  context: string | null;
-  version: string | null;
-}
-
-/**
- * Resolve one canonical, bounded group census. The unique-id/document bound is
- * checked before the first group or context read, and identities are validated
- * as a complete phase before any context bytes are read.
- */
-export async function collectCanonicalGroupContexts(
-  store: Pick<KanmerStore, "getGroup" | "getGroupDoc">,
-  rawGroupIds: readonly string[] | undefined,
-  countedDocumentCount: number,
-): Promise<{ ids: string[]; groups: CanonicalGroupContext[] }> {
-  if (!Number.isSafeInteger(countedDocumentCount) || countedDocumentCount < 0 || countedDocumentCount > STEP_PACKET_LIMITS.maxDocuments) {
-    throw new Error(`counted ticket document census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`);
-  }
-  const ids = [...new Set(rawGroupIds ?? [])].sort(lexicalCompare);
-  if (countedDocumentCount + ids.length > STEP_PACKET_LIMITS.maxDocuments) {
-    throw new Error(
-      `combined counted-document and unique-group census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`,
-    );
-  }
-  const censusBudget = checkStepPacketBudget({ groups: ids });
-  if (!censusBudget.ok) throw new Error(`unique-group census is outside its bounded snapshot: ${censusBudget.reason}`);
-
-  const resolved = [] as Array<Awaited<ReturnType<KanmerStore["getGroup"]>> & {}>;
-  const resolvedIds = new Set<string>();
-  for (const requestedId of ids) {
-    const group = await store.getGroup(requestedId);
-    if (!group) throw new Error(`Group "${requestedId}" is missing`);
-    if (group.id !== requestedId) {
-      throw new Error(`Group "${requestedId}" resolved as conflicting identity "${group.id}"`);
-    }
-    if (resolvedIds.has(group.id)) throw new Error(`Group identity "${group.id}" was resolved more than once`);
-    resolvedIds.add(group.id);
-    resolved.push(group);
-  }
-
-  const groups: CanonicalGroupContext[] = [];
-  for (const group of resolved) {
-    const context = await store.getGroupDoc(group.id, "context.md");
-    groups.push({
-      id: group.id,
-      kind: group.kind,
-      title: group.title,
-      body: group.body,
-      context,
-      version: context === null ? null : contentVersion(context),
-    });
-  }
-  return { ids, groups };
-}
-
 /** Authority projection used when bracketing Git; scratch/reference are exempt. */
 export function stepDocumentSnapshotAuthority(snapshot: StepDocumentSnapshot): unknown {
   return {
@@ -576,36 +515,40 @@ export function stepDocumentSnapshotAuthority(snapshot: StepDocumentSnapshot): u
 }
 
 async function documentSample(store: KanmerStore, id: string): Promise<StepDocumentSnapshot> {
-  const before = await store.getRevision(id);
-  const item = await store.getItem(id);
+  const authority = await store.getExecutionAuthoritySnapshot(id);
+  if (!authority) throw new Error(`No ticket with id "${id}"`);
+  const { item, revision, gates, fixed, inventory } = authority;
   if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
-  const [fixed, inventory, batch, gates] = await Promise.all([
-    store.getDocsWithVersions(id, ["plan", "checklist", "files"]),
-    store.listTicketDocsWithVersions(id),
-    store.batchState(id),
-    store.getDocGates(id),
-  ]);
+  const batch = await store.batchStateFromExecutionAuthority(item);
   if (!gates) throw new Error(`Ticket "${id}" has no document-gate report`);
-  const countedDocuments = (inventory ?? []).filter((document) => revisionCountsDocument(document.doc));
-  const groupCensus = await collectCanonicalGroupContexts(store, item.groups, countedDocuments.length);
-  const canonicalItem = item.groups === undefined ? item : { ...item, groups: groupCensus.ids };
-  const groups = groupCensus.groups;
-  const after = await store.getRevision(id);
-  if (before?.revision !== after?.revision) throw new Error("ticket revision changed during document collection");
+  const groups = authority.groups.map(({ group, context, contextVersion }) => ({
+    id: group.id,
+    kind: group.kind,
+    title: group.title,
+    body: group.body,
+    context,
+    version: contextVersion,
+  }));
+  const canonicalItem = item.groups === undefined ? item : { ...item, groups: groups.map((group) => group.id) };
   const evidence: StepPacketEvidence[] = [
     ...groups.filter((group) => group.version !== null).map((group) => ({ layer: "group" as const, group: group.id, path: `${group.id}/context.md`, version: group.version! })),
-    ...(inventory ?? []).filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket" as const, group: null, path: doc.doc, version: doc.version! })),
+    ...inventory.filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket" as const, group: null, path: doc.doc, version: doc.version! })),
   ];
-  const snapshot = { item: canonicalItem, revision: after?.revision ?? null, gates, fixed, inventory: inventory ?? [], evidence, groups, batch, batchId: batch?.id ?? null };
+  const snapshot = { item: canonicalItem, revision: revision?.revision ?? null, gates, fixed, inventory, evidence, groups, batch, batchId: batch?.id ?? null };
   const authorityBudget = checkStepPacketBudget(stepDocumentSnapshotAuthority(snapshot));
   if (!authorityBudget.ok) throw new Error(`step document authority is outside its bounded snapshot: ${authorityBudget.reason}`);
   return snapshot;
 }
 
 /** Accept only two identical, document-inclusive samples. */
-export async function collectStepDocumentSnapshot(store: KanmerStore, id: string): Promise<StepDocumentSnapshotResult> {
+export async function collectStepDocumentSnapshot(
+  store: KanmerStore,
+  id: string,
+  samples: 1 | 2 = 2,
+): Promise<StepDocumentSnapshotResult> {
   try {
     const first = await documentSample(store, id);
+    if (samples === 1) return { ok: true, snapshot: first };
     const second = await documentSample(store, id);
     if (JSON.stringify(stepDocumentSnapshotAuthority(first)) !== JSON.stringify(stepDocumentSnapshotAuthority(second))) {
       throw new Error("ticket, counted documents or group context changed during the bounded double-sample");

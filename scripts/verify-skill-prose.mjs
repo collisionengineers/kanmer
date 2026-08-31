@@ -1584,6 +1584,40 @@ check(
   "whole-ticket and constrained paths share one pre-I/O unique-group authority bound",
 );
 check(
+  "packet issuance binds a metadata-first capped board snapshot",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /canonical\s+(?:document\/group\s+)?metadata\s+census/.test(body) &&
+    /per-file\s+and\s+aggregate\s+byte\s+bounds?/.test(body) &&
+    /identity-bound\s+capped\s+handles/i.test(body) &&
+    /replacement,\s+growth,\s+symlink,\s+special-file\s+or\s+hard-link\s+evidence\s+refuses/i.test(body) &&
+    /physical\s+confinement\s+is\s+anchored\s+at\s+the\s+configured\s+project\s+root[\s\S]*?symlink\s+or\s+junction[\s\S]*?refuses/i.test(body) &&
+    /scratch\s+and\s+reference\s+(?:documents\s+)?(?:remain|stay)\s+revision-exempt/i.test(body),
+  ),
+  "ticket, document, group and context bytes are bounded and identity-bound before packet authority",
+);
+check(
+  "free-form symbol authority fails closed on actual changes",
+  constrainedDocs.every((body) =>
+    /allowedSymbols/.test(body) && /non-empty/.test(body) &&
+    /STEP_SYMBOL_SCOPE_INCONCLUSIVE/.test(body) &&
+    /forbidden\s+(?:or|and)\s+undeclared\s+(?:file\s+|path\s+)?(?:FAIL|failures?)(?:\s+still)?\s+takes?\s+precedence/i.test(body),
+  ) &&
+    [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+      /[Nn]o-change\s+(?:invents|does not invent)\s+no\s+symbol\s+finding/.test(body) &&
+      /empty\s+symbols\s+preserve\s+file-scoped\s+PASS/.test(body),
+    ),
+  "symbols remain descriptive until a language-aware mechanism can prove their exact changed ranges",
+);
+check(
+  "plan glob proof work shares one aggregate bounded context",
+  [agentsGuide, planSkill, toolReference].every((body) =>
+    /Plan-time glob containment and intersection/.test(body) &&
+    /alphabet construction, NFA closure\/transitions, caches and\s+queues/.test(body) &&
+    /PLAN_GLOB_COMPLEXITY/.test(body),
+  ),
+  "containment and forbidden-overlap proof cannot grow unbounded or silently misclassify exhaustion",
+);
+check(
   "path matching charges parsing and each comparison to one shared budget",
   [agentsGuide, planSkill, executeSkill, autoSkill, toolReference].every((body) =>
     /budget\s+is\s+charged\s+before\s+raw\s+path\s+parsing\s+and\s+before\s+every\s+literal\s+or\s+wildcard\s+comparison/i.test(body),

@@ -480,7 +480,15 @@ unchecked checklist marker for the selected ordered step; a plan-only or
 unrelated checklist cannot become worker authority. Whole-ticket and
 constrained issuance share one lexical, de-duplicated group census: counted
 ticket documents plus unique group ids are capped at 256 before any group or
-context read, and missing or conflicting resolved identity refuses.
+context read, and missing or conflicting resolved identity refuses. Core binds
+the requested ticket record, completes the canonical metadata census and
+preflights per-file and aggregate byte bounds before opening ticket-document,
+group-record or context content. Replacement, growth, symlink, special-file or
+hard-link evidence refuses through identity-bound capped handles; scratch and
+reference stay revision-exempt but consume inventory and aggregate bounds.
+Physical confinement is anchored at the configured project root: a junction at
+that root is allowed, but any symlink or junction below it, including `.kanmer`
+and ticket, document or group directories, refuses.
 
 On every result or timeout, the controller:
 
@@ -501,6 +509,10 @@ On every result or timeout, the controller:
    size facts must agree, and the handle closes on every result. Checklist
    reconciliation preserves every raw CRLF/CR/LF terminator and final-newline
    state outside the selected marker;
+   any actual change with non-empty free-form `allowedSymbols` adds
+   `STEP_SYMBOL_SCOPE_INCONCLUSIVE`; forbidden or undeclared path FAIL takes
+   precedence, no-change invents no symbol finding, and empty symbols preserve
+   file-scoped PASS;
 5. records the worker result, reconciliation, discrepancy, and one next action
    in the ledger/event log; and
 6. writes and reads back the run record before selecting another action.

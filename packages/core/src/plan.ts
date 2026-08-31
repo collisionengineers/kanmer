@@ -432,6 +432,23 @@ export function planPathMatches(patternValue: string, pathValue: string): boolea
 
 const MAX_GLOB_NFA_STATES = 8_192;
 const MAX_GLOB_PRODUCT_STATES = 65_536;
+const MAX_GLOB_CACHE_ENTRIES = 65_536;
+const MAX_GLOB_QUEUE_ENTRIES = 65_536;
+export const GLOB_PROOF_MAX_OPERATIONS = 1_000_000;
+
+interface GlobProofContext {
+  work: PlanPathMatchBudget;
+  cacheEntries: number;
+  queueEntries: number;
+}
+
+function createGlobProofContext(maxOperations = GLOB_PROOF_MAX_OPERATIONS): GlobProofContext {
+  return { work: createPlanPathMatchBudget(maxOperations), cacheEntries: 0, queueEntries: 0 };
+}
+
+function consumeGlobProofWork(context: GlobProofContext, amount = 1): boolean {
+  return consumePlanPathMatchBudget(context.work, amount);
+}
 
 type GlobTransition =
   | { kind: "epsilon"; to: number }
@@ -452,14 +469,17 @@ interface GlobFragment {
 class GlobAutomatonLimitError extends Error {}
 
 /** Compile one canonical path glob to an epsilon-NFA over path characters. */
-function compileGlobNfa(pattern: string): GlobNfa | null {
+function compileGlobNfa(pattern: string, context: GlobProofContext): GlobNfa | null {
   const transitions: GlobTransition[][] = [];
   const state = (): number => {
-    if (transitions.length >= MAX_GLOB_NFA_STATES) throw new GlobAutomatonLimitError();
+    if (transitions.length >= MAX_GLOB_NFA_STATES || !consumeGlobProofWork(context)) {
+      throw new GlobAutomatonLimitError();
+    }
     transitions.push([]);
     return transitions.length - 1;
   };
   const connect = (from: number, transition: GlobTransition): void => {
+    if (!consumeGlobProofWork(context)) throw new GlobAutomatonLimitError();
     transitions[from]!.push(transition);
   };
   const epsilon = (): GlobFragment => {
@@ -551,29 +571,40 @@ function compileGlobNfa(pattern: string): GlobNfa | null {
   }
 }
 
-function epsilonClosure(nfa: GlobNfa, seed: readonly number[]): number[] {
+function epsilonClosure(nfa: GlobNfa, seed: readonly number[], context: GlobProofContext): number[] | null {
+  if (!consumeGlobProofWork(context, Math.max(1, seed.length))) return null;
   const closure = new Set(seed);
   const queue = [...seed];
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
     const current = queue[cursor]!;
     for (const transition of nfa.transitions[current]!) {
+      if (!consumeGlobProofWork(context)) return null;
       if (transition.kind !== "epsilon" || closure.has(transition.to)) continue;
       closure.add(transition.to);
       queue.push(transition.to);
     }
   }
+  if (!consumeGlobProofWork(context, Math.max(1, closure.size))) return null;
   return [...closure].sort((left, right) => left - right);
 }
 
-function globAlphabet(left: GlobNfa, right: GlobNfa): Array<string | null> {
+function globAlphabet(left: GlobNfa, right: GlobNfa, context: GlobProofContext): Array<string | null> | null {
   const literals = new Set<string>();
   for (const nfa of [left, right]) {
     for (const transitions of nfa.transitions) {
+      if (!consumeGlobProofWork(context)) return null;
       for (const transition of transitions) {
-        if (transition.kind === "literal" && transition.value !== "/") literals.add(transition.value);
+        if (!consumeGlobProofWork(context)) return null;
+        if (transition.kind === "literal" && transition.value !== "/" && !literals.has(transition.value)) {
+          if (!consumeGlobProofWork(context)) return null;
+          literals.add(transition.value);
+        }
       }
     }
   }
+  const sortCost = literals.size <= 1 ? 1 : literals.size * Math.ceil(Math.log2(literals.size));
+  if (!Number.isSafeInteger(sortCost) || !consumeGlobProofWork(context, sortCost)) return null;
   const ordered = [...literals].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   // `null` is the equivalence class for every non-slash code point not named
   // literally by either automaton. Together with slash and the literals, this
@@ -586,14 +617,17 @@ function globMove(
   states: readonly number[],
   character: string | null,
   cache: Map<string, number[]>,
-): number[] {
+  context: GlobProofContext,
+): number[] | null {
+  if (!consumeGlobProofWork(context, Math.max(1, states.length))) return null;
   const characterKey = character === null ? "other" : `literal:${character}`;
   const key = `${states.join(",")}|${characterKey}`;
-  const cached = cache.get(key);
-  if (cached) return cached;
+  if (cache.has(key)) return cache.get(key)!;
   const next = new Set<number>();
   for (const current of states) {
+    if (!consumeGlobProofWork(context)) return null;
     for (const transition of nfa.transitions[current]!) {
+      if (!consumeGlobProofWork(context)) return null;
       if (transition.kind === "literal") {
         if (character !== null && transition.value === character) next.add(transition.to);
       } else if (transition.kind === "non-slash" && character !== "/") {
@@ -601,94 +635,120 @@ function globMove(
       }
     }
   }
-  const result = epsilonClosure(nfa, [...next]);
+  const result = epsilonClosure(nfa, [...next], context);
+  if (!result) return null;
+  if (context.cacheEntries >= MAX_GLOB_CACHE_ENTRIES || !consumeGlobProofWork(context)) return null;
+  context.cacheEntries += 1;
   cache.set(key, result);
   return result;
 }
 
 /** Exact requested-language containment; `null` means the bounded proof exhausted its state budget. */
-function globLanguageContained(authority: GlobNfa, requested: GlobNfa): boolean | null {
-  const alphabet = globAlphabet(authority, requested);
+function globLanguageContained(authority: GlobNfa, requested: GlobNfa, context: GlobProofContext): boolean | null {
+  const alphabet = globAlphabet(authority, requested, context);
+  if (!alphabet) return null;
   const authorityCache = new Map<string, number[]>();
   const requestedCache = new Map<string, number[]>();
-  const queue: Array<{ authority: number[]; requested: number[] }> = [{
-    authority: epsilonClosure(authority, [authority.start]),
-    requested: epsilonClosure(requested, [requested.start]),
-  }];
-  const seen = new Set<string>();
+  const authorityStart = epsilonClosure(authority, [authority.start], context);
+  const requestedStart = epsilonClosure(requested, [requested.start], context);
+  if (!authorityStart || !requestedStart) return null;
+  const queue: Array<{ authority: number[]; requested: number[] }> = [];
+  const queued = new Set<string>();
+  const enqueue = (entry: { authority: number[]; requested: number[] }): boolean => {
+    if (!consumeGlobProofWork(context, Math.max(1, entry.authority.length + entry.requested.length))) return false;
+    const key = `${entry.authority.join(",")}|${entry.requested.join(",")}`;
+    if (queued.has(key)) return true;
+    if (context.queueEntries >= MAX_GLOB_QUEUE_ENTRIES || queued.size >= MAX_GLOB_PRODUCT_STATES || !consumeGlobProofWork(context)) return false;
+    context.queueEntries += 1;
+    queued.add(key);
+    queue.push(entry);
+    return true;
+  };
+  if (!enqueue({ authority: authorityStart, requested: requestedStart })) return null;
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
     const current = queue[cursor]!;
-    const key = `${current.authority.join(",")}|${current.requested.join(",")}`;
-    if (seen.has(key)) continue;
-    if (seen.size >= MAX_GLOB_PRODUCT_STATES) return null;
-    seen.add(key);
+    if (!consumeGlobProofWork(context, current.authority.length + current.requested.length)) return null;
     if (current.requested.includes(requested.accept) && !current.authority.includes(authority.accept)) {
       return false;
     }
     for (const character of alphabet) {
-      const nextRequested = globMove(requested, current.requested, character, requestedCache);
+      if (!consumeGlobProofWork(context)) return null;
+      const nextRequested = globMove(requested, current.requested, character, requestedCache, context);
+      if (!nextRequested) return null;
       if (nextRequested.length === 0) continue;
-      queue.push({
-        authority: globMove(authority, current.authority, character, authorityCache),
-        requested: nextRequested,
-      });
+      const nextAuthority = globMove(authority, current.authority, character, authorityCache, context);
+      if (!nextAuthority || !enqueue({ authority: nextAuthority, requested: nextRequested })) return null;
     }
   }
   return true;
 }
 
 /** Exact language intersection; `null` means the bounded proof exhausted its state budget. */
-function globLanguagesOverlap(left: GlobNfa, right: GlobNfa): boolean | null {
-  const alphabet = globAlphabet(left, right);
+function globLanguagesOverlap(left: GlobNfa, right: GlobNfa, context: GlobProofContext): boolean | null {
+  const alphabet = globAlphabet(left, right, context);
+  if (!alphabet) return null;
   const leftCache = new Map<string, number[]>();
   const rightCache = new Map<string, number[]>();
-  const queue: Array<{ left: number[]; right: number[] }> = [{
-    left: epsilonClosure(left, [left.start]),
-    right: epsilonClosure(right, [right.start]),
-  }];
-  const seen = new Set<string>();
+  const leftStart = epsilonClosure(left, [left.start], context);
+  const rightStart = epsilonClosure(right, [right.start], context);
+  if (!leftStart || !rightStart) return null;
+  const queue: Array<{ left: number[]; right: number[] }> = [];
+  const queued = new Set<string>();
+  const enqueue = (entry: { left: number[]; right: number[] }): boolean => {
+    if (!consumeGlobProofWork(context, Math.max(1, entry.left.length + entry.right.length))) return false;
+    const key = `${entry.left.join(",")}|${entry.right.join(",")}`;
+    if (queued.has(key)) return true;
+    if (context.queueEntries >= MAX_GLOB_QUEUE_ENTRIES || queued.size >= MAX_GLOB_PRODUCT_STATES || !consumeGlobProofWork(context)) return false;
+    context.queueEntries += 1;
+    queued.add(key);
+    queue.push(entry);
+    return true;
+  };
+  if (!enqueue({ left: leftStart, right: rightStart })) return null;
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
     const current = queue[cursor]!;
-    const key = `${current.left.join(",")}|${current.right.join(",")}`;
-    if (seen.has(key)) continue;
-    if (seen.size >= MAX_GLOB_PRODUCT_STATES) return null;
-    seen.add(key);
+    if (!consumeGlobProofWork(context, current.left.length + current.right.length)) return null;
     if (current.left.includes(left.accept) && current.right.includes(right.accept)) return true;
     for (const character of alphabet) {
-      const nextLeft = globMove(left, current.left, character, leftCache);
+      if (!consumeGlobProofWork(context)) return null;
+      const nextLeft = globMove(left, current.left, character, leftCache, context);
+      if (!nextLeft) return null;
       if (nextLeft.length === 0) continue;
-      const nextRight = globMove(right, current.right, character, rightCache);
+      const nextRight = globMove(right, current.right, character, rightCache, context);
+      if (!nextRight) return null;
       if (nextRight.length === 0) continue;
-      queue.push({ left: nextLeft, right: nextRight });
+      if (!enqueue({ left: nextLeft, right: nextRight })) return null;
     }
   }
   return false;
 }
 
 /** Prove that one declaration grants no less path authority than another. */
-function declarationCovers(authorityValue: string, requestedValue: string): boolean | null {
+function declarationCovers(authorityValue: string, requestedValue: string, context: GlobProofContext): boolean | null {
   const authority = parsePlanPath(authorityValue, { allowPattern: true });
   const requested = parsePlanPath(requestedValue, { allowPattern: true });
   if (!authority.ok || !requested.ok) return false;
   // Equality is already a complete proof and must not consume the automaton
   // budget merely because both canonical declarations are unusually long.
   if (authority.path === requested.path) return true;
-  const authorityNfa = compileGlobNfa(authority.path);
-  const requestedNfa = compileGlobNfa(requested.path);
+  const authorityNfa = compileGlobNfa(authority.path, context);
+  const requestedNfa = compileGlobNfa(requested.path, context);
   if (!authorityNfa || !requestedNfa) return null;
-  return globLanguageContained(authorityNfa, requestedNfa);
+  return globLanguageContained(authorityNfa, requestedNfa, context);
 }
 
 /** Fail-closed intersection for the supported segment `*` / path `**` subset. */
-function declarationsOverlap(leftValue: string, rightValue: string): boolean | null {
+function declarationsOverlap(leftValue: string, rightValue: string, context: GlobProofContext): boolean | null {
   const left = parsePlanPath(leftValue, { allowPattern: true });
   const right = parsePlanPath(rightValue, { allowPattern: true });
   if (!left.ok || !right.ok) return true;
   if (left.path === right.path) return true;
-  const leftNfa = compileGlobNfa(left.path);
-  const rightNfa = compileGlobNfa(right.path);
+  const leftNfa = compileGlobNfa(left.path, context);
+  const rightNfa = compileGlobNfa(right.path, context);
   if (!leftNfa || !rightNfa) return null;
-  return globLanguagesOverlap(leftNfa, rightNfa);
+  return globLanguagesOverlap(leftNfa, rightNfa, context);
 }
 
 function sectionContent(sections: AtxSection[], title: string): string | null {
@@ -956,6 +1016,8 @@ export interface ValidatePlanOptions {
    * invented deep-research debt.
    */
   requireEvidencePin?: boolean;
+  /** Optional smaller deterministic budget for callers/tests; defaults to the shipped aggregate bound. */
+  maxGlobProofOperations?: number;
 }
 
 /** The sections whose prose is scanned for unresolved vague instructions. */
@@ -1142,7 +1204,12 @@ function evidenceFindings(
   return findings;
 }
 
-function stepFindings(plan: ParsedPlan, severity: PlanFindingSeverity, selected: number | undefined): PlanFinding[] {
+function stepFindings(
+  plan: ParsedPlan,
+  severity: PlanFindingSeverity,
+  selected: number | undefined,
+  proofContext: GlobProofContext,
+): PlanFinding[] {
   const findings: PlanFinding[] = [];
   if (plan.steps.length === 0) {
     findings.push({
@@ -1207,7 +1274,12 @@ function stepFindings(plan: ParsedPlan, severity: PlanFindingSeverity, selected:
       }
     }
     for (const file of step.files) {
-      const declarationProofs = declared.map((authority) => declarationCovers(authority, file));
+      const declarationProofs: Array<boolean | null> = [];
+      for (const authority of declared) {
+        const proof = declarationCovers(authority, file, proofContext);
+        declarationProofs.push(proof);
+        if (proof === true) break;
+      }
       if (!declarationProofs.includes(true) && declarationProofs.includes(null)) {
         findings.push({
           code: "PLAN_GLOB_COMPLEXITY",
@@ -1229,7 +1301,12 @@ function stepFindings(plan: ParsedPlan, severity: PlanFindingSeverity, selected:
           detail: file,
         });
       }
-      const forbiddenProofs = forbidden.map((pattern) => declarationsOverlap(pattern, file));
+      const forbiddenProofs: Array<boolean | null> = [];
+      for (const pattern of forbidden) {
+        const proof = declarationsOverlap(pattern, file, proofContext);
+        forbiddenProofs.push(proof);
+        if (proof === true) break;
+      }
       if (forbiddenProofs.includes(true)) {
         findings.push({
           code: "PLAN_STEP_FILE_FORBIDDEN",
@@ -1273,6 +1350,7 @@ function acceptanceIsUsable(check: string): boolean {
 export function validatePlan(plan: ParsedPlan, options: ValidatePlanOptions = {}): PlanValidation {
   const structural: PlanFindingSeverity = options.step === undefined ? "advisory" : "blocker";
   const findings: PlanFinding[] = [];
+  const proofContext = createGlobProofContext(options.maxGlobProofOperations);
 
   for (const title of PLAN_SECTIONS) {
     if (sectionContent(plan.sections, title) === null) {
@@ -1326,7 +1404,7 @@ export function validatePlan(plan: ParsedPlan, options: ValidatePlanOptions = {}
   }
 
   findings.push(...evidenceFindings(plan, structural, options));
-  findings.push(...stepFindings(plan, structural, options.step));
+  findings.push(...stepFindings(plan, structural, options.step, proofContext));
 
   const blockers = findings.filter((finding) => finding.severity === "blocker").length;
   return { ok: blockers === 0, blockers, advisories: findings.length - blockers, findings };

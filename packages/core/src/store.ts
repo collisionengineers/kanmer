@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { constants as fsConstants } from "node:fs";
+import { constants as fsConstants, type BigIntStats } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -53,6 +53,7 @@ import {
   CAPTURE_PROFILE_ID,
   GOVERNING_DOC,
   QUESTIONS_RESOLVED,
+  TICKET_DIRS,
   isCaptureDisposition,
   isCaptureItem,
   resolveProfileId,
@@ -70,6 +71,8 @@ import {
   documentInventory,
   docDirIn,
   docPathIn,
+  isGateExempt,
+  PARKED_HEADING_RE,
   listDocs,
   listFilesRecursive,
   listReferences,
@@ -78,10 +81,13 @@ import {
 } from "./docpaths.js";
 import {
   deriveMembers,
+  groupDir,
+  groupFile,
   groupDocPath,
   listGroups,
   maxGroupNumberForPrefix,
   readGroup,
+  parseGroup,
   serialiseGroup,
   writeGroup,
   type Group,
@@ -94,6 +100,7 @@ import {
   allocateProjectRecord,
   computeRevision,
   readProjectRecord,
+  revisionCountsDocument,
   type ProjectRecord,
 } from "./project.js";
 import { repoDocKindOf } from "./docs.js";
@@ -177,6 +184,7 @@ import {
 import { createHash, randomUUID } from "node:crypto";
 import { normalizeWorktreePath } from "./worktree-guard.js";
 import { parseReviewAttestation } from "./review-attestation.js";
+import { STEP_PACKET_LIMITS } from "./step-packet.js";
 
 const ITEM_TYPES: ItemType[] = ["ticket", "plan", "research"];
 
@@ -216,6 +224,226 @@ function nowIso(): string {
 type ItemLocation =
   | { kind: "v2"; file: string; dir: string; areaFolder: string }
   | { kind: "v1"; file: string; type: ItemType };
+
+export const EXECUTION_AUTHORITY_LIMITS = {
+  maxInventoryEntries: STEP_PACKET_LIMITS.maxAggregateEntries,
+  maxCountedDocuments: STEP_PACKET_LIMITS.maxDocuments,
+  maxAggregateBytes: STEP_PACKET_LIMITS.maxEncodedBytes,
+  maxFileBytes: STEP_PACKET_LIMITS.maxStringBytes,
+  maxChecklistBytes: STEP_PACKET_LIMITS.maxChecklistBytes,
+} as const;
+
+export interface ExecutionAuthorityGroup {
+  group: Group;
+  context: string | null;
+  contextVersion: string | null;
+}
+
+export interface ExecutionAuthoritySnapshot {
+  item: Item;
+  revision: TicketRevision | null;
+  gates: GateReport | null;
+  fixed: TicketDocumentWithVersion[];
+  inventory: TicketDocumentWithVersion[];
+  groups: ExecutionAuthorityGroup[];
+}
+
+interface AuthorityFileMetadata {
+  file: string;
+  label: string;
+  facts: ReturnType<typeof authorityFileFacts>;
+  physical: string;
+  confinement: AuthorityConfinement;
+}
+
+interface AuthorityDirectoryMetadata {
+  directory: string;
+  label: string;
+  facts: ReturnType<typeof authorityFileFacts>;
+  physical: string;
+  confinement: AuthorityConfinement;
+}
+
+interface AuthorityConfinement {
+  lexicalRoot: string;
+  physicalRoot: string;
+}
+
+function authorityFileFacts(stat: BigIntStats) {
+  return {
+    dev: stat.dev,
+    ino: stat.ino,
+    mode: stat.mode,
+    nlink: stat.nlink,
+    size: stat.size,
+    regular: stat.isFile(),
+    directory: stat.isDirectory(),
+    symbolicLink: stat.isSymbolicLink(),
+  };
+}
+
+function sameAuthorityFileFacts(
+  left: ReturnType<typeof authorityFileFacts>,
+  right: ReturnType<typeof authorityFileFacts>,
+): boolean {
+  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode &&
+    left.nlink === right.nlink && left.size === right.size && left.regular === right.regular &&
+    left.directory === right.directory && left.symbolicLink === right.symbolicLink;
+}
+
+function authorityPathKey(value: string): string {
+  const resolved = path.resolve(value).replace(/\\/g, "/");
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+async function confinedAuthorityPhysicalPath(
+  candidate: string,
+  label: string,
+  confinement: AuthorityConfinement,
+): Promise<string> {
+  const absolute = path.resolve(candidate);
+  const relative = path.relative(confinement.lexicalRoot, absolute);
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`${label} is outside canonical board storage`);
+  }
+  const expected = path.resolve(confinement.physicalRoot, relative);
+  const physical = await fs.realpath(absolute);
+  if (authorityPathKey(physical) !== authorityPathKey(expected)) {
+    throw new Error(`${label} escapes canonical board storage through a symbolic-link or junction component`);
+  }
+  return physical;
+}
+
+async function authorityFileMetadata(
+  file: string,
+  label: string,
+  maxBytes: number,
+  confinement: AuthorityConfinement,
+  optional = false,
+): Promise<AuthorityFileMetadata | null> {
+  let stat: BigIntStats;
+  try {
+    stat = await fs.lstat(file, { bigint: true });
+  } catch (error) {
+    if (optional && (error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+  const facts = authorityFileFacts(stat);
+  if (facts.symbolicLink || !facts.regular) throw new Error(`${label} is not a regular file`);
+  if (facts.nlink !== 1n) throw new Error(`${label} has more than one filesystem link`);
+  if (facts.size > BigInt(maxBytes)) throw new Error(`${label} exceeds ${maxBytes} pre-read bytes`);
+  const physical = await confinedAuthorityPhysicalPath(file, label, confinement);
+  return { file, label, facts, physical, confinement };
+}
+
+async function authorityDirectoryMetadata(
+  directory: string,
+  label: string,
+  confinement: AuthorityConfinement,
+  optional = false,
+): Promise<AuthorityDirectoryMetadata | null> {
+  let stat: BigIntStats;
+  try {
+    stat = await fs.lstat(directory, { bigint: true });
+  } catch (error) {
+    if (optional && (error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+  const facts = authorityFileFacts(stat);
+  if (facts.symbolicLink || !facts.directory) throw new Error(`${label} is not a regular directory`);
+  const physical = await confinedAuthorityPhysicalPath(directory, label, confinement);
+  return { directory, label, facts, physical, confinement };
+}
+
+async function confirmAuthorityDirectory(metadata: AuthorityDirectoryMetadata): Promise<void> {
+  const after = authorityFileFacts(await fs.lstat(metadata.directory, { bigint: true }));
+  const physical = await confinedAuthorityPhysicalPath(metadata.directory, metadata.label, metadata.confinement);
+  if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
+    throw new Error(`${metadata.label} changed identity during its bounded census`);
+  }
+}
+
+async function readAuthorityText(metadata: AuthorityFileMetadata): Promise<string> {
+  const noFollow = typeof fsConstants.O_NOFOLLOW === "number" ? fsConstants.O_NOFOLLOW : 0;
+  let handle: Awaited<ReturnType<typeof fs.open>> | null = null;
+  try {
+    handle = await fs.open(metadata.file, fsConstants.O_RDONLY | noFollow);
+    const before = authorityFileFacts(await handle.stat({ bigint: true }));
+    if (!sameAuthorityFileFacts(metadata.facts, before)) {
+      throw new Error(`${metadata.label} changed identity before its bounded read`);
+    }
+    const size = Number(metadata.facts.size);
+    if (!Number.isSafeInteger(size)) throw new Error(`${metadata.label} has an unsupported size`);
+    const buffer = Buffer.alloc(size + 1);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset, offset);
+      if (bytesRead === 0) break;
+      offset += bytesRead;
+    }
+    if (offset !== size) {
+      throw new Error(`${metadata.label} changed size during its bounded read`);
+    }
+    const afterHandle = authorityFileFacts(await handle.stat({ bigint: true }));
+    const afterPath = authorityFileFacts(await fs.lstat(metadata.file, { bigint: true }));
+    const afterPhysical = await confinedAuthorityPhysicalPath(metadata.file, metadata.label, metadata.confinement);
+    if (!sameAuthorityFileFacts(metadata.facts, afterHandle) || !sameAuthorityFileFacts(metadata.facts, afterPath) ||
+        authorityPathKey(metadata.physical) !== authorityPathKey(afterPhysical)) {
+      throw new Error(`${metadata.label} changed identity during its bounded read`);
+    }
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, size));
+    } catch {
+      throw new Error(`${metadata.label} is not valid UTF-8`);
+    }
+  } finally {
+    await handle?.close();
+  }
+}
+
+async function boundedAuthorityInventory(
+  ticketDir: string,
+  confinement: AuthorityConfinement,
+): Promise<{ allFiles: string[]; documents: string[] }> {
+  const allFiles: string[] = [];
+  let entries = 0;
+  const walk = async (absolute: string, relative: string): Promise<void> => {
+    const metadata = await authorityDirectoryMetadata(
+      absolute,
+      `ticket authority directory ${relative}`,
+      confinement,
+      true,
+    );
+    if (!metadata) return;
+    const directory = await fs.opendir(absolute);
+    for await (const entry of directory) {
+      entries += 1;
+      if (entries > EXECUTION_AUTHORITY_LIMITS.maxInventoryEntries) {
+        throw new Error(`ticket authority inventory exceeds ${EXECUTION_AUTHORITY_LIMITS.maxInventoryEntries} entries`);
+      }
+      const rel = relative ? `${relative}/${entry.name}` : entry.name;
+      const child = path.join(absolute, entry.name);
+      const stat = await fs.lstat(child, { bigint: true });
+      const facts = authorityFileFacts(stat);
+      if (facts.directory) {
+        if (facts.symbolicLink) throw new Error(`ticket authority directory ${rel} is a symbolic link`);
+        await walk(child, rel);
+      } else {
+        if (facts.symbolicLink || !facts.regular) {
+          throw new Error(`ticket authority inventory entry ${rel} is not a regular file`);
+        }
+        if (facts.nlink !== 1n) {
+          throw new Error(`ticket authority inventory entry ${rel} has more than one filesystem link`);
+        }
+        allFiles.push(rel.replace(/\\/g, "/"));
+      }
+    }
+    await confirmAuthorityDirectory(metadata);
+  };
+  for (const type of TICKET_DIRS) await walk(docDirIn(ticketDir, type), type);
+  allFiles.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  return { allFiles, documents: allFiles.filter((file) => file.toLowerCase().endsWith(".md")) };
+}
 
 const BATCH_DECLARATION_SCHEMA = 1 as const;
 
@@ -535,6 +763,194 @@ export class KanmerStore {
   }
 
   /**
+   * Collect the exact bounded ticket, document and group bytes that authorize
+   * an execution packet. Legacy-layout tickets expose only their parsed item.
+   */
+  async getExecutionAuthoritySnapshot(id: string): Promise<ExecutionAuthoritySnapshot | null> {
+    const loc = await this.locateItem(id);
+    if (!loc) return null;
+    const confinement: AuthorityConfinement = {
+      lexicalRoot: path.resolve(this.paths.projectRoot),
+      physicalRoot: await fs.realpath(this.paths.projectRoot),
+    };
+    const ticketDirectory = loc.kind === "v2"
+      ? await authorityDirectoryMetadata(loc.dir, `ticket directory ${id}`, confinement)
+      : null;
+
+    const ticketMetadata = await authorityFileMetadata(
+      loc.file,
+      `ticket record ${id}`,
+      EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+      confinement,
+    );
+    const ticketText = await readAuthorityText(ticketMetadata!);
+    const item = parseItem(ticketText);
+    if (item.id !== id || item.type !== "ticket") {
+      throw new Error(`Ticket record "${id}" resolved as ${item.type} identity "${item.id}"`);
+    }
+    if (loc.kind !== "v2") {
+      return { item, revision: null, gates: null, fixed: [], inventory: [], groups: [] };
+    }
+
+    const census = await boundedAuthorityInventory(loc.dir, confinement);
+    const countedDocuments = census.documents.filter(revisionCountsDocument);
+    const groupIds = [...new Set(item.groups ?? [])].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    if (countedDocuments.length + groupIds.length > EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments) {
+      throw new Error(
+        `combined counted-document and unique-group census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments} entries`,
+      );
+    }
+
+    let aggregateBytes = Number(ticketMetadata!.facts.size);
+    const charge = (metadata: AuthorityFileMetadata | null): void => {
+      if (!metadata) return;
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxAggregateBytes) {
+        throw new Error(`execution authority exceeds ${EXECUTION_AUTHORITY_LIMITS.maxAggregateBytes} aggregate pre-read bytes`);
+      }
+      aggregateBytes += size;
+    };
+
+    const documentMetadata: Array<{ doc: string; metadata: AuthorityFileMetadata }> = [];
+    for (const doc of census.documents) {
+      const maxBytes = doc === "checklist/checklist.md"
+        ? EXECUTION_AUTHORITY_LIMITS.maxChecklistBytes
+        : EXECUTION_AUTHORITY_LIMITS.maxFileBytes;
+      const metadata = await authorityFileMetadata(
+        docPathIn(loc.dir, doc),
+        `ticket document ${doc}`,
+        maxBytes,
+        confinement,
+      );
+      charge(metadata);
+      documentMetadata.push({ doc, metadata: metadata! });
+    }
+
+    const groupMetadata: Array<{
+      id: string;
+      directory: AuthorityDirectoryMetadata;
+      record: AuthorityFileMetadata;
+      context: AuthorityFileMetadata | null;
+    }> = [];
+    for (const groupId of groupIds) {
+      const directory = await authorityDirectoryMetadata(
+        groupDir(this.paths, groupId),
+        `group directory ${groupId}`,
+        confinement,
+      );
+      const record = await authorityFileMetadata(
+        groupFile(this.paths, groupId),
+        `group record ${groupId}`,
+        EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+        confinement,
+      );
+      const context = await authorityFileMetadata(
+        groupDocPath(this.paths, groupId, "context.md"),
+        `group context ${groupId}/context.md`,
+        EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+        confinement,
+        true,
+      );
+      charge(record);
+      charge(context);
+      groupMetadata.push({ id: groupId, directory: directory!, record: record!, context });
+    }
+
+    const inventory: TicketDocumentWithVersion[] = [];
+    for (const { doc, metadata } of documentMetadata) {
+      const content = await readAuthorityText(metadata);
+      inventory.push({ doc, exists: true, content, version: contentVersion(content) });
+    }
+    const byDocument = new Map(inventory.map((document) => [document.doc, document]));
+    const fixed = ["plan", "checklist", "files"].map((doc) => {
+      const stored = byDocument.get(`${doc}/${doc}.md`);
+      return stored
+        ? { ...stored, doc }
+        : { doc, exists: false, content: null, version: null };
+    });
+
+    const groups: ExecutionAuthorityGroup[] = [];
+    for (const entry of groupMetadata) {
+      const group = parseGroup(await readAuthorityText(entry.record));
+      if (group.id !== entry.id) {
+        throw new Error(`Group "${entry.id}" resolved as conflicting identity "${group.id}"`);
+      }
+      const context = entry.context ? await readAuthorityText(entry.context) : null;
+      groups.push({ group, context, contextVersion: context === null ? null : contentVersion(context) });
+      await confirmAuthorityDirectory(entry.directory);
+    }
+
+    const board = await this.getBoard();
+    const gates = await this.gateReportFromExecutionAuthority(board, item, inventory, census.allFiles);
+    const documentVersions = inventory
+      .filter((document) => revisionCountsDocument(document.doc))
+      .map((document) => ({ path: document.doc, version: document.version! }));
+    await confirmAuthorityDirectory(ticketDirectory!);
+    return {
+      item,
+      revision: {
+        revision: computeRevision(ticketText, documentVersions),
+        updated: item.updated,
+        documents: documentVersions.length,
+      },
+      gates,
+      fixed,
+      inventory,
+      groups,
+    };
+  }
+
+  private async gateReportFromExecutionAuthority(
+    board: BoardConfig,
+    item: Item,
+    inventory: readonly TicketDocumentWithVersion[],
+    allFiles: readonly string[],
+  ): Promise<GateReport> {
+    const area = board.areas.find((candidate) => candidate.id === item.area);
+    const profileId = resolveProfileId(
+      item.profile,
+      (area as { defaultProfile?: string } | undefined)?.defaultProfile,
+      board.defaultProfile,
+    );
+    const documentsOfType = (type: string) => inventory.filter((document) => document.doc.startsWith(`${type}/`));
+    return evaluateProfileGates({
+      profiles: resolveProfiles(board),
+      profileId,
+      inlineRequires: item.requires,
+      stage: item.status,
+      evidence: {
+        hasType: async (type) => !isGateExempt(type) && documentsOfType(type).length > 0,
+        hasNamed: async (type, named) => {
+          if (isGateExempt(type)) return false;
+          const wanted = named.toLowerCase().replace(/\.md$/, "");
+          return documentsOfType(type).some((document) =>
+            document.doc.slice(type.length + 1).toLowerCase().replace(/\.md$/, "") === wanted
+          );
+        },
+        hasGoverningDoc: () => {
+          if (item.docs_todo === true) return true;
+          return (item.refs ?? []).some((rel) => repoDocKindOf(board, rel) !== null);
+        },
+        hasProofImages: async () => allFiles.some((file) => /^proof\/.*\.(?:png|jpe?g|gif|webp|svg|bmp)$/i.test(file)),
+        unresolvedQuestions: async () => {
+          let checked = 0;
+          let total = 0;
+          for (const document of documentsOfType("open-questions")) {
+            for (const line of (document.content ?? "").split("\n")) {
+              if (PARKED_HEADING_RE.test(line)) break;
+              const match = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
+              if (!match) continue;
+              total += 1;
+              if (match[1] !== " ") checked += 1;
+            }
+          }
+          return total - checked;
+        },
+      },
+    });
+  }
+
+  /**
    * The document-inclusive revision of a ticket (FRD-029): changes whenever
    * the ticket file or any pipeline document (plan, proof, review record…)
    * changes; null for legacy-layout items which have no document folder.
@@ -792,6 +1208,13 @@ export class KanmerStore {
   async listItemsWithWarnings(
     filter: ItemFilter = {},
   ): Promise<{ items: Item[]; warnings: ItemWarning[] }> {
+    return this.listItemsWithWarningsInternal(filter);
+  }
+
+  private async listItemsWithWarningsInternal(
+    filter: ItemFilter,
+    authoritativeItem?: Item,
+  ): Promise<{ items: Item[]; warnings: ItemWarning[] }> {
     const items: Item[] = [];
     const warnings: ItemWarning[] = [];
 
@@ -816,7 +1239,9 @@ export class KanmerStore {
         const file = path.join(areaPath, ticketFolder, `${ticketFolder}.md`);
         if (!(await pathExists(file))) continue;
         try {
-          const item = parseItem(await readText(file));
+          const item = authoritativeItem?.id === ticketFolder
+            ? authoritativeItem
+            : parseItem(await readText(file));
           if (item.id !== ticketFolder) {
             warnings.push({
               file,
@@ -858,8 +1283,10 @@ export class KanmerStore {
         if (!name.endsWith(".md")) continue;
         const file = path.join(dir, name);
         try {
-          const item = parseItem(await readText(file));
           const fromName = path.basename(name, ".md");
+          const item = authoritativeItem?.id === fromName && authoritativeItem.type === type
+            ? authoritativeItem
+            : parseItem(await readText(file));
           if (item.id !== fromName) {
             warnings.push({
               file,
@@ -1740,8 +2167,11 @@ export class KanmerStore {
     }
   }
 
-  private async batchTicketCensus(): Promise<Item[]> {
-    const listed = await this.listItemsWithWarnings({ type: "ticket", includeArchived: true });
+  private async batchTicketCensus(authoritativeItem?: Item): Promise<Item[]> {
+    const listed = await this.listItemsWithWarningsInternal(
+      { type: "ticket", includeArchived: true },
+      authoritativeItem,
+    );
     if (listed.warnings.length > 0) {
       throw new Error(
         `BATCH_INCONSISTENT: complete ticket census has ${listed.warnings.length} unreadable item file(s): ` +
@@ -1751,12 +2181,20 @@ export class KanmerStore {
     return listed.items;
   }
 
-  private async readManifestMembers(manifest: BatchDeclarationJournal, census?: Item[]): Promise<Item[]> {
+  private async readManifestMembers(
+    manifest: BatchDeclarationJournal,
+    census?: Item[],
+    authoritativeItem?: Item,
+  ): Promise<Item[]> {
     // A census proves no hidden duplicate/extra stamp; direct reads bind every
     // authoritative endpoint to bytes observed inside the caller's lock.
     if (!census) await this.batchTicketCensus();
     const members: Item[] = [];
     for (const id of manifest.members) {
+      if (authoritativeItem?.id === id) {
+        members.push(authoritativeItem);
+        continue;
+      }
       const loc = await this.locateItem(id);
       if (!loc) throw new Error(`BATCH_INCONSISTENT: manifest member "${id}" is missing from batch ${manifest.batch_id}.`);
       const member = parseItem(await readText(loc.file));
@@ -1852,11 +2290,29 @@ export class KanmerStore {
   async batchState(id: string): Promise<BatchState | null> {
     const item = await this.getItem(id);
     if (!item || item.type !== "ticket") return null;
-    const tickets = await this.batchTicketCensus();
+    return this.batchStateForItem(item);
+  }
+
+  /** Resolve batch authority while retaining an already identity-bound ticket record. */
+  async batchStateFromExecutionAuthority(item: Item): Promise<BatchState | null> {
+    if (item.type !== "ticket") return null;
+    return this.batchStateForItem(item, true);
+  }
+
+  private async batchStateForItem(item: Item, boundedItem = false): Promise<BatchState | null> {
+    const authoritativeItem = boundedItem ? item : undefined;
     const manifests = await this.listBatchManifests();
+    const manifestForItem = manifests.find((manifest) => manifest.members.includes(item.id)) ?? null;
+    if (!item.lease_batch && !manifestForItem) {
+      if (hasBatchOwnership(item)) {
+        throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      }
+      return null;
+    }
+    const tickets = await this.batchTicketCensus(authoritativeItem);
     if (item.lease_batch) {
       const manifest = manifests.find((entry) => entry.batch_id === item.lease_batch) ?? null;
-       const direct = manifest ? await this.readManifestMembers(manifest, tickets) : [];
+      const direct = manifest ? await this.readManifestMembers(manifest, tickets, authoritativeItem) : [];
       const directById = new Map(direct.map((member) => [member.id, member]));
       const state = this.batchStateOf(
         item.lease_batch,
@@ -1865,19 +2321,17 @@ export class KanmerStore {
       );
       return manifest ? state : { ...state, declaration: "inconsistent" };
     }
-    for (const manifest of manifests) {
-      if (manifest.members.includes(id)) {
-        const direct = await this.readManifestMembers(manifest, tickets);
-        const directById = new Map(direct.map((member) => [member.id, member]));
-        return this.batchStateOf(
-          manifest.batch_id,
-          tickets.map((ticket) => directById.get(ticket.id) ?? ticket),
-          manifest,
-        );
-      }
+    if (manifestForItem) {
+      const direct = await this.readManifestMembers(manifestForItem, tickets, authoritativeItem);
+      const directById = new Map(direct.map((member) => [member.id, member]));
+      return this.batchStateOf(
+        manifestForItem.batch_id,
+        tickets.map((ticket) => directById.get(ticket.id) ?? ticket),
+        manifestForItem,
+      );
     }
     if (hasBatchOwnership(item)) {
-      throw new Error(`BATCH_INCONSISTENT: "${id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
     }
     return null;
   }

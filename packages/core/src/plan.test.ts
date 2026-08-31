@@ -394,6 +394,36 @@ describe("validatePlan with a selected step", () => {
     expect(exhausted.findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
   });
 
+  it("shares one bounded glob-proof budget across containment and forbidden relations", () => {
+    const plan = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", "| Modify | `src/*a*.ts` | retry sources |")
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("`src/vendor/bundle.js`", "`src/*z*.ts`")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*ab*.ts`"),
+    );
+    const report = validatePlan(plan, { step: 1, maxGlobProofOperations: 8 });
+    expect(report.findings.some(
+      (finding) => finding.code === "PLAN_GLOB_COMPLEXITY" && finding.severity === "blocker",
+    )).toBe(true);
+    expect(report.findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(false);
+  });
+
+  it("bounds a large distinct-Unicode alphabet before product caches can grow without limit", () => {
+    const alphabet = Array.from({ length: 1_200 }, (_, index) => String.fromCodePoint(0x400 + index)).join("");
+    const authority = `${alphabet}*`;
+    const requested = `${alphabet.slice(1)}*`;
+    const plan = parsePlan(
+      GOOD_PLAN
+        .replace("| Modify | `src/queue.ts` | retry loop |", `| Modify | \`${authority}\` | retry sources |`)
+        .replace("| Add | `src/queue.test.ts` | retry proof |\n", "")
+        .replace("- `src/vendor/bundle.js` — generated output.", "- No generated paths are in scope.")
+        .replace("- Files: `src/queue.ts`, `src/queue.test.ts`", `- Files: \`${requested}\``),
+    );
+    const report = validatePlan(plan, { step: 1 });
+    expect(report.findings.some((finding) => finding.code === "PLAN_GLOB_COMPLEXITY")).toBe(true);
+  });
+
   it("does not let narrow Expected-files literals authorize a broader step glob", () => {
     const plan = parsePlan(GOOD_PLAN.replace("- Files: `src/queue.ts`, `src/queue.test.ts`", "- Files: `src/*.ts`"));
     expect(validatePlan(plan, { step: 1 }).findings.some((finding) => finding.code === "PLAN_STEP_FILE_UNDECLARED")).toBe(true);

@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeTreeWithRetry } from "./io.js";
-import { KanmerStore } from "./store.js";
+import { EXECUTION_AUTHORITY_LIMITS, KanmerStore } from "./store.js";
 import { STAGE_IDS } from "./stages.js";
 import { lastStageId } from "./board.js";
 import { getLinkGraph, linkItems } from "./links.js";
@@ -625,6 +625,285 @@ describe("format v2", () => {
     expect(listed?.every((doc) => doc.exists && doc.version && doc.content)).toBe(true);
     expect(listed?.find((doc) => doc.doc === "research/alpha.md")?.version).toMatch(/^[a-f0-9]{16}$/);
     expect(activityAfter).toBe(activityBefore);
+  });
+
+  it("collects one identity-bound execution authority snapshot and keeps exempt documents out of revision", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Authority" });
+    await store.setDoc(ticket.id, "research", "bounded research");
+    const group = await store.createGroup("epic", "Shared authority", "Group body");
+    await store.setGroupDoc(group.id, "context.md", "Shared context");
+    await store.updateItem(ticket.id, { groups: [group.id, group.id] });
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const scratchDir = path.join(ticketDir, "scratch");
+    const referenceDir = path.join(ticketDir, "reference");
+    await fs.mkdir(scratchDir, { recursive: true });
+    await fs.mkdir(referenceDir, { recursive: true });
+    await Promise.all(Array.from({ length: 300 }, (_, index) =>
+      fs.writeFile(
+        path.join(index % 2 === 0 ? scratchDir : referenceDir, `exempt-${String(index).padStart(3, "0")}.md`),
+        `exempt ${index}\n`,
+        "utf8",
+      )
+    ));
+
+    const first = await store.getExecutionAuthoritySnapshot(ticket.id);
+    expect(first?.inventory).toHaveLength(301);
+    expect(first?.groups).toMatchObject([{
+      group: { id: group.id, title: "Shared authority" },
+      context: "Shared context\n",
+    }]);
+    expect(first?.revision?.documents).toBe(1);
+
+    await fs.writeFile(path.join(scratchDir, "exempt-000.md"), "changed scratch\n", "utf8");
+    const second = await store.getExecutionAuthoritySnapshot(ticket.id);
+    expect(second?.revision).toEqual(first?.revision);
+    expect(second?.inventory.find((doc) => doc.doc === "scratch/exempt-000.md")?.content).toBe("changed scratch\n");
+  });
+
+  it("refuses a counted-document census over the limit before opening any document", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Count bound" });
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const researchDir = path.join(ticketDir, "research");
+    await fs.mkdir(researchDir, { recursive: true });
+    await Promise.all(Array.from({ length: EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments + 1 }, (_, index) =>
+      fs.writeFile(path.join(researchDir, `evidence-${String(index).padStart(3, "0")}.md`), "x\n", "utf8")
+    ));
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(String(args[0]));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/counted-document.*exceeds 256/i);
+      expect(opened).toEqual([path.join(ticketDir, `${ticket.id}.md`)]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("accepts the exact unique-group limit and refuses limit plus one before group I/O", async () => {
+    const limit = EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments;
+    const ticket = await store.createItem({ type: "ticket", title: "Group bound" });
+    const groupIds = Array.from({ length: limit + 1 }, (_, index) => `HZN-${String(index).padStart(3, "0")}`);
+    const groupsRoot = path.join(root, ".kanmer", "groups");
+    await Promise.all(groupIds.map(async (id) => {
+      const dir = path.join(groupsRoot, id);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, `${id}.md`), [
+        "---", `id: ${id}`, "kind: horizon", `title: ${id}`, "archived: false",
+        'created: "2026-08-31T00:00:00.000Z"', 'updated: "2026-08-31T00:00:00.000Z"', "---", "context", "",
+      ].join("\n"), "utf8");
+    }));
+    await store.updateItem(ticket.id, { groups: groupIds.slice(0, limit) });
+    expect((await store.getExecutionAuthoritySnapshot(ticket.id))?.groups).toHaveLength(limit);
+
+    const overflow = await store.createItem({ type: "ticket", title: "Group overflow" });
+    await store.updateItem(overflow.id, { groups: groupIds });
+    const originalLstat = fs.lstat.bind(fs);
+    let groupStats = 0;
+    const lstatSpy = vi.spyOn(fs, "lstat").mockImplementation(async (...args) => {
+      if (path.resolve(String(args[0])).startsWith(path.resolve(groupsRoot) + path.sep)) groupStats += 1;
+      return originalLstat(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(overflow.id)).rejects.toThrow(/unique-group census exceeds 256/i);
+      expect(groupStats).toBe(0);
+    } finally {
+      lstatSpy.mockRestore();
+    }
+  });
+
+  it("preflights per-file and aggregate execution authority bounds before document reads", async () => {
+    const oversized = await store.createItem({ type: "ticket", title: "Oversized" });
+    const oversizedDir = path.join(root, ".kanmer", "areas", "_none", oversized.id);
+    await fs.mkdir(path.join(oversizedDir, "research"), { recursive: true });
+    const oversizedDoc = path.join(oversizedDir, "research", "oversized.md");
+    await fs.writeFile(oversizedDoc, "x".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(oversized.id)).rejects.toThrow(/pre-read bytes/);
+
+    const aggregate = await store.createItem({ type: "ticket", title: "Aggregate" });
+    const aggregateDir = path.join(root, ".kanmer", "areas", "_none", aggregate.id);
+    const aggregateResearch = path.join(aggregateDir, "research");
+    await fs.mkdir(aggregateResearch, { recursive: true });
+    const chunk = "y".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes - 512);
+    for (let index = 0; index < 9; index += 1) {
+      await fs.writeFile(path.join(aggregateResearch, `part-${index}.md`), chunk, "utf8");
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(String(args[0]));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(aggregate.id)).rejects.toThrow(/aggregate pre-read bytes/);
+      expect(opened).toEqual([path.join(aggregateDir, `${aggregate.id}.md`)]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("preflights oversized ticket, group-record and group-context authority", async () => {
+    const oversizedTicket = await store.createItem({ type: "ticket", title: "Large ticket" });
+    const ticketFile = path.join(root, ".kanmer", "areas", "_none", oversizedTicket.id, `${oversizedTicket.id}.md`);
+    await fs.appendFile(ticketFile, "t".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(oversizedTicket.id)).rejects.toThrow(/ticket record.*pre-read bytes/i);
+
+    const groupRecordTicket = await store.createItem({ type: "ticket", title: "Large group record" });
+    const recordGroup = await store.createGroup("epic", "Large record");
+    await store.updateItem(groupRecordTicket.id, { groups: [recordGroup.id] });
+    const recordFile = path.join(root, ".kanmer", "groups", recordGroup.id, `${recordGroup.id}.md`);
+    await fs.appendFile(recordFile, "g".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(groupRecordTicket.id)).rejects.toThrow(/group record.*pre-read bytes/i);
+
+    const groupContextTicket = await store.createItem({ type: "ticket", title: "Large group context" });
+    const contextGroup = await store.createGroup("epic", "Large context");
+    await store.setGroupDoc(contextGroup.id, "context.md", "small");
+    await store.updateItem(groupContextTicket.id, { groups: [contextGroup.id] });
+    const contextFile = path.join(root, ".kanmer", "groups", contextGroup.id, "context.md");
+    await fs.writeFile(contextFile, "c".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(groupContextTicket.id)).rejects.toThrow(/group context.*pre-read bytes/i);
+  });
+
+  it("rejects a document identity replacement between metadata and handle read and closes the handle", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Race" });
+    await store.setDoc(ticket.id, "research", "original");
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const target = path.join(ticketDir, "research", "research.md");
+    const displaced = `${target}.old`;
+    const originalOpen = fs.open.bind(fs);
+    let replaced = false;
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      if (!replaced && path.resolve(String(args[0])) === path.resolve(target)) {
+        replaced = true;
+        await fs.rename(target, displaced);
+        await fs.writeFile(target, "replacement\n", "utf8");
+      }
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/changed identity before its bounded read/);
+    } finally {
+      openSpy.mockRestore();
+    }
+    await expect(fs.unlink(target)).resolves.toBeUndefined();
+    await fs.rename(displaced, target);
+  });
+
+  it("rejects in-place document growth during the bounded handle read and closes the handle", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Growth race" });
+    await store.setDoc(ticket.id, "research", "original");
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const target = path.join(ticketDir, "research", "research.md");
+    const originalOpen = fs.open.bind(fs);
+    let wrapped = false;
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      const handle = await originalOpen(...args);
+      if (!wrapped && path.resolve(String(args[0])) === path.resolve(target)) {
+        wrapped = true;
+        const originalRead = handle.read.bind(handle);
+        let grown = false;
+        handle.read = async (...readArgs: Parameters<typeof handle.read>) => {
+          if (!grown) {
+            grown = true;
+            await fs.appendFile(target, "growth", "utf8");
+          }
+          return originalRead(...readArgs);
+        };
+      }
+      return handle;
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/changed size during its bounded read/);
+    } finally {
+      openSpy.mockRestore();
+    }
+    await expect(fs.rename(target, `${target}.closed`)).resolves.toBeUndefined();
+    await fs.rename(`${target}.closed`, target);
+  });
+
+  it("rejects conflicting ticket identity and unsafe non-Markdown gate evidence", async () => {
+    const identity = await store.createItem({ type: "ticket", title: "Identity" });
+    const identityFile = path.join(root, ".kanmer", "areas", "_none", identity.id, `${identity.id}.md`);
+    const original = await fs.readFile(identityFile, "utf8");
+    await fs.writeFile(identityFile, original.replace(`id: ${identity.id}`, "id: TICK-999"), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(identity.id)).rejects.toThrow(/conflicting identity|resolved as ticket identity/i);
+
+    const evidence = await store.createItem({ type: "ticket", title: "Evidence" });
+    const evidenceDir = path.join(root, ".kanmer", "areas", "_none", evidence.id, "proof");
+    await fs.mkdir(evidenceDir, { recursive: true });
+    const outside = path.join(root, "outside.png");
+    await fs.writeFile(outside, "image", "utf8");
+    try {
+      await fs.symlink(outside, path.join(evidenceDir, "proof.png"), "file");
+    } catch (error) {
+      if (["EPERM", "EACCES", "ENOTSUP"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
+      throw error;
+    }
+    await expect(store.getExecutionAuthoritySnapshot(evidence.id)).rejects.toThrow(/not a regular file|symbolic link/i);
+  });
+
+  it("anchors authority at the physical project root and refuses internal directory junctions", async () => {
+    const junctionType = process.platform === "win32" ? "junction" : "dir";
+    const linkDirectory = async (target: string, link: string): Promise<boolean> => {
+      try {
+        await fs.symlink(target, link, junctionType);
+        return true;
+      } catch (error) {
+        if (["EPERM", "EACCES", "ENOTSUP"].includes((error as NodeJS.ErrnoException).code ?? "")) return false;
+        throw error;
+      }
+    };
+
+    const documentTicket = await store.createItem({ type: "ticket", title: "Document junction" });
+    const documentTicketDir = path.join(root, ".kanmer", "areas", "_none", documentTicket.id);
+    const outsideResearch = path.join(root, "outside-research");
+    await fs.mkdir(outsideResearch, { recursive: true });
+    await fs.writeFile(path.join(outsideResearch, "research.md"), "external authority\n", "utf8");
+    if (!await linkDirectory(outsideResearch, path.join(documentTicketDir, "research"))) return;
+    await expect(store.getExecutionAuthoritySnapshot(documentTicket.id)).rejects.toThrow(/canonical board storage|regular directory/i);
+
+    const ticket = await store.createItem({ type: "ticket", title: "Ticket junction" });
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const outsideTicket = path.join(root, "outside-ticket");
+    await fs.rename(ticketDir, outsideTicket);
+    await fs.symlink(outsideTicket, ticketDir, junctionType);
+    await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/canonical board storage|regular directory/i);
+
+    const groupTicket = await store.createItem({ type: "ticket", title: "Group junction" });
+    const group = await store.createGroup("epic", "Junction group");
+    await store.updateItem(groupTicket.id, { groups: [group.id] });
+    const groupDirectory = path.join(root, ".kanmer", "groups", group.id);
+    const outsideGroup = path.join(root, "outside-group");
+    await fs.rename(groupDirectory, outsideGroup);
+    await fs.symlink(outsideGroup, groupDirectory, junctionType);
+    await expect(store.getExecutionAuthoritySnapshot(groupTicket.id)).rejects.toThrow(/canonical board storage|regular directory/i);
+
+    const externalBoardRoot = path.join(root, "external-board");
+    const externalStore = new KanmerStore(externalBoardRoot);
+    await externalStore.init();
+    const externalTicket = await externalStore.createItem({ type: "ticket", title: "External board" });
+    const linkedBoardRoot = path.join(root, "linked-board");
+    await fs.mkdir(linkedBoardRoot, { recursive: true });
+    await fs.symlink(
+      path.join(externalBoardRoot, ".kanmer"),
+      path.join(linkedBoardRoot, ".kanmer"),
+      junctionType,
+    );
+    await expect(new KanmerStore(linkedBoardRoot).getExecutionAuthoritySnapshot(externalTicket.id)).rejects.toThrow(
+      /canonical board storage|regular directory/i,
+    );
+
+    const physicalProjectRoot = path.join(root, "physical-project");
+    const physicalStore = new KanmerStore(physicalProjectRoot);
+    await physicalStore.init();
+    const physicalTicket = await physicalStore.createItem({ type: "ticket", title: "Physical project" });
+    const projectAlias = path.join(root, "project-alias");
+    await fs.symlink(physicalProjectRoot, projectAlias, junctionType);
+    await expect(new KanmerStore(projectAlias).getExecutionAuthoritySnapshot(physicalTicket.id)).resolves.toMatchObject({
+      item: { id: physicalTicket.id },
+    });
   });
 
   it("setDoc rejects a stale expectedVersion and leaves the file alone", async () => {

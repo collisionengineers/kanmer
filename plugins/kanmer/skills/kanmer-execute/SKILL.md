@@ -108,15 +108,24 @@ uncommitted work.
 A controller driving a constrained worker adds `step` to the same call —
 `get_execution_packet id: <ID>, step: <n>` for a 1-based ordered step, or
 `step: "next"` for the first step the checklist has not ticked. The response
-gains a `step` block: a versioned packet naming the only files and symbols that
-step may touch, the files it must not, its exact tests, commands, expected
+gains a `step` block: a versioned packet naming the only files that step may
+touch and any descriptive symbols, the files it must not, its exact tests, commands, expected
 output, done condition, deviation stop, and a stop condition that ends the work
 after that one step. Issuance requires at least one mapped unchecked checklist
 marker for the selected ordered step; a plan-only or unrelated checklist
 refuses normally while the whole-ticket setup packet remains available. Both
 routes use one lexical, de-duplicated group census: counted ticket documents
 plus unique group ids are capped at 256 before any group or context read, and a
-missing or conflicting resolved identity refuses.
+missing or conflicting resolved identity refuses. Core binds the requested
+ticket record, completes a canonical metadata census and preflights per-file
+and aggregate byte bounds before opening ticket-document, group-record or
+context content. It reads those bytes through identity-bound capped handles;
+replacement, growth, symlink, special-file or hard-link evidence refuses.
+Physical confinement is anchored at the configured project root: a junction at
+that root is allowed, but any symlink or junction below it, including `.kanmer`
+and ticket, document or group directories, refuses.
+Scratch and reference documents stay revision-exempt but still consume the
+inventory and aggregate bounds.
 Execute exactly that step, then stop and report so the
 controller can reconcile the actual changes before another packet is issued.
 The controller, not the worker, retains the exact full `step-packet/2` object
@@ -141,6 +150,11 @@ handle closes on every result. The only permitted ticket-document change is the
 selected checklist marker from unchecked to checked: every other raw line body,
 CRLF/CR/LF terminator, final-newline state, ticket authority field and counted
 document remains bound.
+Free-form symbol names are not mechanically provable from Git paths. Any
+actual change while `allowedSymbols` is non-empty adds
+`STEP_SYMBOL_SCOPE_INCONCLUSIVE`; forbidden or undeclared path FAIL takes
+precedence. No-change invents no symbol finding, and empty symbols preserve
+file-scoped PASS.
 This Git evidence covers tracked, staged, unstaged and untracked paths plus both
 rename endpoints. Every sample also hashes one bounded NUL `git ls-files -v -z`
 index-flag census: assume-unchanged or skip-worktree entries refuse without
@@ -378,7 +392,8 @@ but never creates a second one.
 ## Work only the packet
 
 - Work only the packet's `files` scope — and, when a `step` block is present,
-  only that step's `allowedFiles` and `allowedSymbols`. Do not absorb another
+  only that step's `allowedFiles`; treat any `allowedSymbols` as a narrower
+  descriptive boundary that reconciliation will fail closed on. Do not absorb another
   ticket, repair unrelated failures, or redesign the workflow.
 - Tick checklist boxes with `set_ticket_doc` using the version returned by the
   packet/read. Use `append_scratch` for running notes only; preserve failed

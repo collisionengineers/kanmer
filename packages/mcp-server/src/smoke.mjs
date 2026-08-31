@@ -3481,6 +3481,30 @@ Second proof attempt passed; the first failure is retained.
     refusedIncompleteTaken.ready === false && refusedIncompleteTaken.reason.includes("incomplete taken-ticket metadata"),
   );
 
+  const oversizedAuthorityId = JSON.parse(
+    textOf(await client.callTool({
+      name: "create_item",
+      arguments: { title: "oversized execution authority", status: "implementing", profile: "chore", docs_todo: true },
+    })),
+  ).id;
+  const oversizedResearchDir = path.join(sandbox, ".kanmer", "areas", "_none", oversizedAuthorityId, "research");
+  fs.mkdirSync(oversizedResearchDir, { recursive: true });
+  fs.writeFileSync(path.join(oversizedResearchDir, "research.md"), "x".repeat(70_000), "utf8");
+  const oversizedWhole = JSON.parse(textOf(await client.callTool({
+    name: "get_execution_packet",
+    arguments: { id: oversizedAuthorityId },
+  })));
+  const oversizedConstrained = JSON.parse(textOf(await client.callTool({
+    name: "get_execution_packet",
+    arguments: { id: oversizedAuthorityId, step: 1 },
+  })));
+  check(
+    "whole-ticket and constrained issuance fail closed on oversized board authority before packet compilation",
+    oversizedWhole.ready === false && oversizedConstrained.ready === false &&
+      /pre-read bytes/i.test(oversizedWhole.reason) && /pre-read bytes/i.test(oversizedConstrained.reason),
+    JSON.stringify({ whole: oversizedWhole.reason, constrained: oversizedConstrained.reason }),
+  );
+
   // CORE-118 / FRD-033: an approved plan compiles into one bounded step packet.
   // The whole-ticket packet is unchanged apart from an ADVISORY validation
   // report; only a `step` request makes structural findings blocking.
@@ -3540,7 +3564,6 @@ Second proof attempt passed; the first failure is retained.
     "### Step 1 — Bound the retry loop",
     "- Preconditions: `enqueue` retries forever.",
     "- Files: `src/queue.ts`, `src/queue.test.ts`",
-    "- Symbols: `enqueue`, `QUEUE_MAX_RETRIES`",
     "- Change: cap the loop at `QUEUE_MAX_RETRIES`.",
     "- Preserved behaviour: a first-attempt success returns immediately.",
     "- Negative cases: a permanent failure stops after three attempts",
@@ -3677,10 +3700,10 @@ Second proof attempt passed; the first failure is retained.
     })),
   );
   check(
-    "a compiled step packet limits the worker to that step's allowed files and symbols",
+    "a compiled step packet limits the worker to that step's allowed files and omits unenforceable free-form symbols",
     stepOne.ready === true &&
       JSON.stringify(stepOne.step?.allowedFiles) === JSON.stringify(["src/queue.ts", "src/queue.test.ts"]) &&
-      JSON.stringify(stepOne.step?.allowedSymbols) === JSON.stringify(["enqueue", "QUEUE_MAX_RETRIES"]) &&
+      JSON.stringify(stepOne.step?.allowedSymbols) === JSON.stringify([]) &&
       JSON.stringify(stepOne.step?.forbiddenFiles) === JSON.stringify(["src/vendor/bundle.js"]) &&
       !stepOne.step?.allowedFiles.includes("docs/queue.md"),
     JSON.stringify(stepOne.step?.allowedFiles ?? stepOne.reason),

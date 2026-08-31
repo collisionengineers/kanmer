@@ -39629,16 +39629,28 @@ function planPathMatch(patternValue, pathValue, budget = createPlanPathMatchBudg
 }
 var MAX_GLOB_NFA_STATES = 8192;
 var MAX_GLOB_PRODUCT_STATES = 65536;
+var MAX_GLOB_CACHE_ENTRIES = 65536;
+var MAX_GLOB_QUEUE_ENTRIES = 65536;
+var GLOB_PROOF_MAX_OPERATIONS = 1e6;
+function createGlobProofContext(maxOperations = GLOB_PROOF_MAX_OPERATIONS) {
+  return { work: createPlanPathMatchBudget(maxOperations), cacheEntries: 0, queueEntries: 0 };
+}
+function consumeGlobProofWork(context, amount = 1) {
+  return consumePlanPathMatchBudget(context.work, amount);
+}
 var GlobAutomatonLimitError = class extends Error {
 };
-function compileGlobNfa(pattern) {
+function compileGlobNfa(pattern, context) {
   const transitions = [];
   const state = () => {
-    if (transitions.length >= MAX_GLOB_NFA_STATES) throw new GlobAutomatonLimitError();
+    if (transitions.length >= MAX_GLOB_NFA_STATES || !consumeGlobProofWork(context)) {
+      throw new GlobAutomatonLimitError();
+    }
     transitions.push([]);
     return transitions.length - 1;
   };
   const connect = (from, transition) => {
+    if (!consumeGlobProofWork(context)) throw new GlobAutomatonLimitError();
     transitions[from].push(transition);
   };
   const epsilon = () => {
@@ -39718,39 +39730,52 @@ function compileGlobNfa(pattern) {
     throw error2;
   }
 }
-function epsilonClosure(nfa, seed) {
+function epsilonClosure(nfa, seed, context) {
+  if (!consumeGlobProofWork(context, Math.max(1, seed.length))) return null;
   const closure = new Set(seed);
   const queue = [...seed];
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
     const current = queue[cursor];
     for (const transition of nfa.transitions[current]) {
+      if (!consumeGlobProofWork(context)) return null;
       if (transition.kind !== "epsilon" || closure.has(transition.to)) continue;
       closure.add(transition.to);
       queue.push(transition.to);
     }
   }
+  if (!consumeGlobProofWork(context, Math.max(1, closure.size))) return null;
   return [...closure].sort((left, right) => left - right);
 }
-function globAlphabet(left, right) {
+function globAlphabet(left, right, context) {
   const literals = /* @__PURE__ */ new Set();
   for (const nfa of [left, right]) {
     for (const transitions of nfa.transitions) {
+      if (!consumeGlobProofWork(context)) return null;
       for (const transition of transitions) {
-        if (transition.kind === "literal" && transition.value !== "/") literals.add(transition.value);
+        if (!consumeGlobProofWork(context)) return null;
+        if (transition.kind === "literal" && transition.value !== "/" && !literals.has(transition.value)) {
+          if (!consumeGlobProofWork(context)) return null;
+          literals.add(transition.value);
+        }
       }
     }
   }
+  const sortCost = literals.size <= 1 ? 1 : literals.size * Math.ceil(Math.log2(literals.size));
+  if (!Number.isSafeInteger(sortCost) || !consumeGlobProofWork(context, sortCost)) return null;
   const ordered = [...literals].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
   return ["/", ...ordered, null];
 }
-function globMove(nfa, states, character, cache) {
+function globMove(nfa, states, character, cache, context) {
+  if (!consumeGlobProofWork(context, Math.max(1, states.length))) return null;
   const characterKey = character === null ? "other" : `literal:${character}`;
   const key = `${states.join(",")}|${characterKey}`;
-  const cached3 = cache.get(key);
-  if (cached3) return cached3;
+  if (cache.has(key)) return cache.get(key);
   const next = /* @__PURE__ */ new Set();
   for (const current of states) {
+    if (!consumeGlobProofWork(context)) return null;
     for (const transition of nfa.transitions[current]) {
+      if (!consumeGlobProofWork(context)) return null;
       if (transition.kind === "literal") {
         if (character !== null && transition.value === character) next.add(transition.to);
       } else if (transition.kind === "non-slash" && character !== "/") {
@@ -39758,84 +39783,110 @@ function globMove(nfa, states, character, cache) {
       }
     }
   }
-  const result = epsilonClosure(nfa, [...next]);
+  const result = epsilonClosure(nfa, [...next], context);
+  if (!result) return null;
+  if (context.cacheEntries >= MAX_GLOB_CACHE_ENTRIES || !consumeGlobProofWork(context)) return null;
+  context.cacheEntries += 1;
   cache.set(key, result);
   return result;
 }
-function globLanguageContained(authority, requested) {
-  const alphabet = globAlphabet(authority, requested);
+function globLanguageContained(authority, requested, context) {
+  const alphabet = globAlphabet(authority, requested, context);
+  if (!alphabet) return null;
   const authorityCache = /* @__PURE__ */ new Map();
   const requestedCache = /* @__PURE__ */ new Map();
-  const queue = [{
-    authority: epsilonClosure(authority, [authority.start]),
-    requested: epsilonClosure(requested, [requested.start])
-  }];
-  const seen = /* @__PURE__ */ new Set();
+  const authorityStart = epsilonClosure(authority, [authority.start], context);
+  const requestedStart = epsilonClosure(requested, [requested.start], context);
+  if (!authorityStart || !requestedStart) return null;
+  const queue = [];
+  const queued = /* @__PURE__ */ new Set();
+  const enqueue = (entry) => {
+    if (!consumeGlobProofWork(context, Math.max(1, entry.authority.length + entry.requested.length))) return false;
+    const key = `${entry.authority.join(",")}|${entry.requested.join(",")}`;
+    if (queued.has(key)) return true;
+    if (context.queueEntries >= MAX_GLOB_QUEUE_ENTRIES || queued.size >= MAX_GLOB_PRODUCT_STATES || !consumeGlobProofWork(context)) return false;
+    context.queueEntries += 1;
+    queued.add(key);
+    queue.push(entry);
+    return true;
+  };
+  if (!enqueue({ authority: authorityStart, requested: requestedStart })) return null;
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
     const current = queue[cursor];
-    const key = `${current.authority.join(",")}|${current.requested.join(",")}`;
-    if (seen.has(key)) continue;
-    if (seen.size >= MAX_GLOB_PRODUCT_STATES) return null;
-    seen.add(key);
+    if (!consumeGlobProofWork(context, current.authority.length + current.requested.length)) return null;
     if (current.requested.includes(requested.accept) && !current.authority.includes(authority.accept)) {
       return false;
     }
     for (const character of alphabet) {
-      const nextRequested = globMove(requested, current.requested, character, requestedCache);
+      if (!consumeGlobProofWork(context)) return null;
+      const nextRequested = globMove(requested, current.requested, character, requestedCache, context);
+      if (!nextRequested) return null;
       if (nextRequested.length === 0) continue;
-      queue.push({
-        authority: globMove(authority, current.authority, character, authorityCache),
-        requested: nextRequested
-      });
+      const nextAuthority = globMove(authority, current.authority, character, authorityCache, context);
+      if (!nextAuthority || !enqueue({ authority: nextAuthority, requested: nextRequested })) return null;
     }
   }
   return true;
 }
-function globLanguagesOverlap(left, right) {
-  const alphabet = globAlphabet(left, right);
+function globLanguagesOverlap(left, right, context) {
+  const alphabet = globAlphabet(left, right, context);
+  if (!alphabet) return null;
   const leftCache = /* @__PURE__ */ new Map();
   const rightCache = /* @__PURE__ */ new Map();
-  const queue = [{
-    left: epsilonClosure(left, [left.start]),
-    right: epsilonClosure(right, [right.start])
-  }];
-  const seen = /* @__PURE__ */ new Set();
+  const leftStart = epsilonClosure(left, [left.start], context);
+  const rightStart = epsilonClosure(right, [right.start], context);
+  if (!leftStart || !rightStart) return null;
+  const queue = [];
+  const queued = /* @__PURE__ */ new Set();
+  const enqueue = (entry) => {
+    if (!consumeGlobProofWork(context, Math.max(1, entry.left.length + entry.right.length))) return false;
+    const key = `${entry.left.join(",")}|${entry.right.join(",")}`;
+    if (queued.has(key)) return true;
+    if (context.queueEntries >= MAX_GLOB_QUEUE_ENTRIES || queued.size >= MAX_GLOB_PRODUCT_STATES || !consumeGlobProofWork(context)) return false;
+    context.queueEntries += 1;
+    queued.add(key);
+    queue.push(entry);
+    return true;
+  };
+  if (!enqueue({ left: leftStart, right: rightStart })) return null;
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
     const current = queue[cursor];
-    const key = `${current.left.join(",")}|${current.right.join(",")}`;
-    if (seen.has(key)) continue;
-    if (seen.size >= MAX_GLOB_PRODUCT_STATES) return null;
-    seen.add(key);
+    if (!consumeGlobProofWork(context, current.left.length + current.right.length)) return null;
     if (current.left.includes(left.accept) && current.right.includes(right.accept)) return true;
     for (const character of alphabet) {
-      const nextLeft = globMove(left, current.left, character, leftCache);
+      if (!consumeGlobProofWork(context)) return null;
+      const nextLeft = globMove(left, current.left, character, leftCache, context);
+      if (!nextLeft) return null;
       if (nextLeft.length === 0) continue;
-      const nextRight = globMove(right, current.right, character, rightCache);
+      const nextRight = globMove(right, current.right, character, rightCache, context);
+      if (!nextRight) return null;
       if (nextRight.length === 0) continue;
-      queue.push({ left: nextLeft, right: nextRight });
+      if (!enqueue({ left: nextLeft, right: nextRight })) return null;
     }
   }
   return false;
 }
-function declarationCovers(authorityValue, requestedValue) {
+function declarationCovers(authorityValue, requestedValue, context) {
   const authority = parsePlanPath(authorityValue, { allowPattern: true });
   const requested = parsePlanPath(requestedValue, { allowPattern: true });
   if (!authority.ok || !requested.ok) return false;
   if (authority.path === requested.path) return true;
-  const authorityNfa = compileGlobNfa(authority.path);
-  const requestedNfa = compileGlobNfa(requested.path);
+  const authorityNfa = compileGlobNfa(authority.path, context);
+  const requestedNfa = compileGlobNfa(requested.path, context);
   if (!authorityNfa || !requestedNfa) return null;
-  return globLanguageContained(authorityNfa, requestedNfa);
+  return globLanguageContained(authorityNfa, requestedNfa, context);
 }
-function declarationsOverlap(leftValue, rightValue) {
+function declarationsOverlap(leftValue, rightValue, context) {
   const left = parsePlanPath(leftValue, { allowPattern: true });
   const right = parsePlanPath(rightValue, { allowPattern: true });
   if (!left.ok || !right.ok) return true;
   if (left.path === right.path) return true;
-  const leftNfa = compileGlobNfa(left.path);
-  const rightNfa = compileGlobNfa(right.path);
+  const leftNfa = compileGlobNfa(left.path, context);
+  const rightNfa = compileGlobNfa(right.path, context);
   if (!leftNfa || !rightNfa) return null;
-  return globLanguagesOverlap(leftNfa, rightNfa);
+  return globLanguagesOverlap(leftNfa, rightNfa, context);
 }
 function sectionContent(sections, title) {
   const wanted = title.toLocaleLowerCase();
@@ -40155,7 +40206,7 @@ function evidenceFindings(plan, severity, options2) {
   }
   return findings;
 }
-function stepFindings(plan, severity, selected) {
+function stepFindings(plan, severity, selected, proofContext) {
   const findings = [];
   if (plan.steps.length === 0) {
     findings.push({
@@ -40216,7 +40267,12 @@ function stepFindings(plan, severity, selected) {
       }
     }
     for (const file of step.files) {
-      const declarationProofs = declared.map((authority) => declarationCovers(authority, file));
+      const declarationProofs = [];
+      for (const authority of declared) {
+        const proof = declarationCovers(authority, file, proofContext);
+        declarationProofs.push(proof);
+        if (proof === true) break;
+      }
       if (!declarationProofs.includes(true) && declarationProofs.includes(null)) {
         findings.push({
           code: "PLAN_GLOB_COMPLEXITY",
@@ -40236,7 +40292,12 @@ function stepFindings(plan, severity, selected) {
           detail: file
         });
       }
-      const forbiddenProofs = forbidden.map((pattern) => declarationsOverlap(pattern, file));
+      const forbiddenProofs = [];
+      for (const pattern of forbidden) {
+        const proof = declarationsOverlap(pattern, file, proofContext);
+        forbiddenProofs.push(proof);
+        if (proof === true) break;
+      }
       if (forbiddenProofs.includes(true)) {
         findings.push({
           code: "PLAN_STEP_FILE_FORBIDDEN",
@@ -40266,6 +40327,7 @@ function acceptanceIsUsable(check2) {
 function validatePlan(plan, options2 = {}) {
   const structural = options2.step === void 0 ? "advisory" : "blocker";
   const findings = [];
+  const proofContext = createGlobProofContext(options2.maxGlobProofOperations);
   for (const title of PLAN_SECTIONS) {
     if (sectionContent(plan.sections, title) === null) {
       findings.push({
@@ -40314,7 +40376,7 @@ function validatePlan(plan, options2 = {}) {
     });
   }
   findings.push(...evidenceFindings(plan, structural, options2));
-  findings.push(...stepFindings(plan, structural, options2.step));
+  findings.push(...stepFindings(plan, structural, options2.step, proofContext));
   const blockers = findings.filter((finding2) => finding2.severity === "blocker").length;
   return { ok: blockers === 0, blockers, advisories: findings.length - blockers, findings };
 }
@@ -40815,6 +40877,7 @@ function reconcileStepPacket(value, facts) {
     failures.push({ code: "STEP_TICKET_REVISION_STALE", message: "The ticket revision changed without the exact authorised checklist transition." });
   }
   const changedPaths = [];
+  let observedChangeCount = 0;
   if (!facts.workspace) inconclusive.push({ code: "STEP_WORKSPACE_UNAVAILABLE", message: "The recorded workspace could not be inspected." });
   else if (facts.workspace.snapshot.branch !== packet.workspace.branch || facts.workspace.snapshot.worktree !== packet.workspace.worktree) {
     failures.push({ code: "STEP_WORKSPACE_MISMATCH", message: "The live workspace branch or worktree does not match the packet." });
@@ -40827,7 +40890,9 @@ function reconcileStepPacket(value, facts) {
       ...facts.workspace.headChanges ?? []
     ];
     const matchBudget = createPlanPathMatchBudget();
-    for (const rawPath of [...new Set(observedChanges)]) {
+    const distinctObservedChanges = [...new Set(observedChanges)];
+    observedChangeCount = distinctObservedChanges.length;
+    for (const rawPath of distinctObservedChanges) {
       const observed = parsePlanPath(rawPath, { observed: true });
       if (!observed.ok) {
         inconclusive.push({ code: "STEP_CHANGED_PATH_INVALID", message: observed.reason, path: rawPath });
@@ -40846,6 +40911,12 @@ function reconcileStepPacket(value, facts) {
         path: path132
       });
     }
+  }
+  if (observedChangeCount > 0 && packet.allowedSymbols.length > 0) {
+    inconclusive.push({
+      code: "STEP_SYMBOL_SCOPE_INCONCLUSIVE",
+      message: "The packet declares free-form symbol authority, but the language-neutral collector cannot prove changed source ranges against those symbols."
+    });
   }
   const findings = [...failures, ...inconclusive];
   return {
@@ -43112,6 +43183,156 @@ function referencePath(dir, name) {
 function nowIso() {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
+var EXECUTION_AUTHORITY_LIMITS = {
+  maxInventoryEntries: STEP_PACKET_LIMITS.maxAggregateEntries,
+  maxCountedDocuments: STEP_PACKET_LIMITS.maxDocuments,
+  maxAggregateBytes: STEP_PACKET_LIMITS.maxEncodedBytes,
+  maxFileBytes: STEP_PACKET_LIMITS.maxStringBytes,
+  maxChecklistBytes: STEP_PACKET_LIMITS.maxChecklistBytes
+};
+function authorityFileFacts(stat) {
+  return {
+    dev: stat.dev,
+    ino: stat.ino,
+    mode: stat.mode,
+    nlink: stat.nlink,
+    size: stat.size,
+    regular: stat.isFile(),
+    directory: stat.isDirectory(),
+    symbolicLink: stat.isSymbolicLink()
+  };
+}
+function sameAuthorityFileFacts(left, right) {
+  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.nlink === right.nlink && left.size === right.size && left.regular === right.regular && left.directory === right.directory && left.symbolicLink === right.symbolicLink;
+}
+function authorityPathKey(value) {
+  const resolved = import_path11.default.resolve(value).replace(/\\/g, "/");
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+async function confinedAuthorityPhysicalPath(candidate, label, confinement) {
+  const absolute = import_path11.default.resolve(candidate);
+  const relative = import_path11.default.relative(confinement.lexicalRoot, absolute);
+  if (relative === ".." || relative.startsWith(`..${import_path11.default.sep}`) || import_path11.default.isAbsolute(relative)) {
+    throw new Error(`${label} is outside canonical board storage`);
+  }
+  const expected = import_path11.default.resolve(confinement.physicalRoot, relative);
+  const physical = await import_promises8.default.realpath(absolute);
+  if (authorityPathKey(physical) !== authorityPathKey(expected)) {
+    throw new Error(`${label} escapes canonical board storage through a symbolic-link or junction component`);
+  }
+  return physical;
+}
+async function authorityFileMetadata(file, label, maxBytes, confinement, optional2 = false) {
+  let stat;
+  try {
+    stat = await import_promises8.default.lstat(file, { bigint: true });
+  } catch (error2) {
+    if (optional2 && error2.code === "ENOENT") return null;
+    throw error2;
+  }
+  const facts = authorityFileFacts(stat);
+  if (facts.symbolicLink || !facts.regular) throw new Error(`${label} is not a regular file`);
+  if (facts.nlink !== 1n) throw new Error(`${label} has more than one filesystem link`);
+  if (facts.size > BigInt(maxBytes)) throw new Error(`${label} exceeds ${maxBytes} pre-read bytes`);
+  const physical = await confinedAuthorityPhysicalPath(file, label, confinement);
+  return { file, label, facts, physical, confinement };
+}
+async function authorityDirectoryMetadata(directory, label, confinement, optional2 = false) {
+  let stat;
+  try {
+    stat = await import_promises8.default.lstat(directory, { bigint: true });
+  } catch (error2) {
+    if (optional2 && error2.code === "ENOENT") return null;
+    throw error2;
+  }
+  const facts = authorityFileFacts(stat);
+  if (facts.symbolicLink || !facts.directory) throw new Error(`${label} is not a regular directory`);
+  const physical = await confinedAuthorityPhysicalPath(directory, label, confinement);
+  return { directory, label, facts, physical, confinement };
+}
+async function confirmAuthorityDirectory(metadata) {
+  const after = authorityFileFacts(await import_promises8.default.lstat(metadata.directory, { bigint: true }));
+  const physical = await confinedAuthorityPhysicalPath(metadata.directory, metadata.label, metadata.confinement);
+  if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
+    throw new Error(`${metadata.label} changed identity during its bounded census`);
+  }
+}
+async function readAuthorityText(metadata) {
+  const noFollow = typeof import_fs5.constants.O_NOFOLLOW === "number" ? import_fs5.constants.O_NOFOLLOW : 0;
+  let handle = null;
+  try {
+    handle = await import_promises8.default.open(metadata.file, import_fs5.constants.O_RDONLY | noFollow);
+    const before = authorityFileFacts(await handle.stat({ bigint: true }));
+    if (!sameAuthorityFileFacts(metadata.facts, before)) {
+      throw new Error(`${metadata.label} changed identity before its bounded read`);
+    }
+    const size = Number(metadata.facts.size);
+    if (!Number.isSafeInteger(size)) throw new Error(`${metadata.label} has an unsupported size`);
+    const buffer = Buffer.alloc(size + 1);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset, offset);
+      if (bytesRead === 0) break;
+      offset += bytesRead;
+    }
+    if (offset !== size) {
+      throw new Error(`${metadata.label} changed size during its bounded read`);
+    }
+    const afterHandle = authorityFileFacts(await handle.stat({ bigint: true }));
+    const afterPath = authorityFileFacts(await import_promises8.default.lstat(metadata.file, { bigint: true }));
+    const afterPhysical = await confinedAuthorityPhysicalPath(metadata.file, metadata.label, metadata.confinement);
+    if (!sameAuthorityFileFacts(metadata.facts, afterHandle) || !sameAuthorityFileFacts(metadata.facts, afterPath) || authorityPathKey(metadata.physical) !== authorityPathKey(afterPhysical)) {
+      throw new Error(`${metadata.label} changed identity during its bounded read`);
+    }
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, size));
+    } catch {
+      throw new Error(`${metadata.label} is not valid UTF-8`);
+    }
+  } finally {
+    await handle?.close();
+  }
+}
+async function boundedAuthorityInventory(ticketDir, confinement) {
+  const allFiles = [];
+  let entries = 0;
+  const walk = async (absolute, relative) => {
+    const metadata = await authorityDirectoryMetadata(
+      absolute,
+      `ticket authority directory ${relative}`,
+      confinement,
+      true
+    );
+    if (!metadata) return;
+    const directory = await import_promises8.default.opendir(absolute);
+    for await (const entry of directory) {
+      entries += 1;
+      if (entries > EXECUTION_AUTHORITY_LIMITS.maxInventoryEntries) {
+        throw new Error(`ticket authority inventory exceeds ${EXECUTION_AUTHORITY_LIMITS.maxInventoryEntries} entries`);
+      }
+      const rel = relative ? `${relative}/${entry.name}` : entry.name;
+      const child = import_path11.default.join(absolute, entry.name);
+      const stat = await import_promises8.default.lstat(child, { bigint: true });
+      const facts = authorityFileFacts(stat);
+      if (facts.directory) {
+        if (facts.symbolicLink) throw new Error(`ticket authority directory ${rel} is a symbolic link`);
+        await walk(child, rel);
+      } else {
+        if (facts.symbolicLink || !facts.regular) {
+          throw new Error(`ticket authority inventory entry ${rel} is not a regular file`);
+        }
+        if (facts.nlink !== 1n) {
+          throw new Error(`ticket authority inventory entry ${rel} has more than one filesystem link`);
+        }
+        allFiles.push(rel.replace(/\\/g, "/"));
+      }
+    }
+    await confirmAuthorityDirectory(metadata);
+  };
+  for (const type of TICKET_DIRS) await walk(docDirIn(ticketDir, type), type);
+  allFiles.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  return { allFiles, documents: allFiles.filter((file) => file.toLowerCase().endsWith(".md")) };
+}
 var BATCH_DECLARATION_SCHEMA = 1;
 function sha256(value) {
   return (0, import_crypto7.createHash)("sha256").update(value, "utf8").digest("hex");
@@ -43280,6 +43501,166 @@ var KanmerStore = class _KanmerStore {
       ]);
     }
     return result;
+  }
+  /**
+   * Collect the exact bounded ticket, document and group bytes that authorize
+   * an execution packet. Legacy-layout tickets expose only their parsed item.
+   */
+  async getExecutionAuthoritySnapshot(id) {
+    const loc = await this.locateItem(id);
+    if (!loc) return null;
+    const confinement = {
+      lexicalRoot: import_path11.default.resolve(this.paths.projectRoot),
+      physicalRoot: await import_promises8.default.realpath(this.paths.projectRoot)
+    };
+    const ticketDirectory = loc.kind === "v2" ? await authorityDirectoryMetadata(loc.dir, `ticket directory ${id}`, confinement) : null;
+    const ticketMetadata = await authorityFileMetadata(
+      loc.file,
+      `ticket record ${id}`,
+      EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+      confinement
+    );
+    const ticketText = await readAuthorityText(ticketMetadata);
+    const item = parseItem(ticketText);
+    if (item.id !== id || item.type !== "ticket") {
+      throw new Error(`Ticket record "${id}" resolved as ${item.type} identity "${item.id}"`);
+    }
+    if (loc.kind !== "v2") {
+      return { item, revision: null, gates: null, fixed: [], inventory: [], groups: [] };
+    }
+    const census = await boundedAuthorityInventory(loc.dir, confinement);
+    const countedDocuments = census.documents.filter(revisionCountsDocument);
+    const groupIds = [...new Set(item.groups ?? [])].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    if (countedDocuments.length + groupIds.length > EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments) {
+      throw new Error(
+        `combined counted-document and unique-group census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments} entries`
+      );
+    }
+    let aggregateBytes = Number(ticketMetadata.facts.size);
+    const charge = (metadata) => {
+      if (!metadata) return;
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxAggregateBytes) {
+        throw new Error(`execution authority exceeds ${EXECUTION_AUTHORITY_LIMITS.maxAggregateBytes} aggregate pre-read bytes`);
+      }
+      aggregateBytes += size;
+    };
+    const documentMetadata = [];
+    for (const doc of census.documents) {
+      const maxBytes = doc === "checklist/checklist.md" ? EXECUTION_AUTHORITY_LIMITS.maxChecklistBytes : EXECUTION_AUTHORITY_LIMITS.maxFileBytes;
+      const metadata = await authorityFileMetadata(
+        docPathIn(loc.dir, doc),
+        `ticket document ${doc}`,
+        maxBytes,
+        confinement
+      );
+      charge(metadata);
+      documentMetadata.push({ doc, metadata });
+    }
+    const groupMetadata = [];
+    for (const groupId of groupIds) {
+      const directory = await authorityDirectoryMetadata(
+        groupDir(this.paths, groupId),
+        `group directory ${groupId}`,
+        confinement
+      );
+      const record22 = await authorityFileMetadata(
+        groupFile(this.paths, groupId),
+        `group record ${groupId}`,
+        EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+        confinement
+      );
+      const context = await authorityFileMetadata(
+        groupDocPath(this.paths, groupId, "context.md"),
+        `group context ${groupId}/context.md`,
+        EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+        confinement,
+        true
+      );
+      charge(record22);
+      charge(context);
+      groupMetadata.push({ id: groupId, directory, record: record22, context });
+    }
+    const inventory = [];
+    for (const { doc, metadata } of documentMetadata) {
+      const content = await readAuthorityText(metadata);
+      inventory.push({ doc, exists: true, content, version: contentVersion(content) });
+    }
+    const byDocument = new Map(inventory.map((document) => [document.doc, document]));
+    const fixed = ["plan", "checklist", "files"].map((doc) => {
+      const stored = byDocument.get(`${doc}/${doc}.md`);
+      return stored ? { ...stored, doc } : { doc, exists: false, content: null, version: null };
+    });
+    const groups = [];
+    for (const entry of groupMetadata) {
+      const group = parseGroup(await readAuthorityText(entry.record));
+      if (group.id !== entry.id) {
+        throw new Error(`Group "${entry.id}" resolved as conflicting identity "${group.id}"`);
+      }
+      const context = entry.context ? await readAuthorityText(entry.context) : null;
+      groups.push({ group, context, contextVersion: context === null ? null : contentVersion(context) });
+      await confirmAuthorityDirectory(entry.directory);
+    }
+    const board = await this.getBoard();
+    const gates = await this.gateReportFromExecutionAuthority(board, item, inventory, census.allFiles);
+    const documentVersions = inventory.filter((document) => revisionCountsDocument(document.doc)).map((document) => ({ path: document.doc, version: document.version }));
+    await confirmAuthorityDirectory(ticketDirectory);
+    return {
+      item,
+      revision: {
+        revision: computeRevision(ticketText, documentVersions),
+        updated: item.updated,
+        documents: documentVersions.length
+      },
+      gates,
+      fixed,
+      inventory,
+      groups
+    };
+  }
+  async gateReportFromExecutionAuthority(board, item, inventory, allFiles) {
+    const area = board.areas.find((candidate) => candidate.id === item.area);
+    const profileId = resolveProfileId(
+      item.profile,
+      area?.defaultProfile,
+      board.defaultProfile
+    );
+    const documentsOfType = (type) => inventory.filter((document) => document.doc.startsWith(`${type}/`));
+    return evaluateGateReport({
+      profiles: resolveProfiles(board),
+      profileId,
+      inlineRequires: item.requires,
+      stage: item.status,
+      evidence: {
+        hasType: async (type) => !isGateExempt(type) && documentsOfType(type).length > 0,
+        hasNamed: async (type, named) => {
+          if (isGateExempt(type)) return false;
+          const wanted = named.toLowerCase().replace(/\.md$/, "");
+          return documentsOfType(type).some(
+            (document) => document.doc.slice(type.length + 1).toLowerCase().replace(/\.md$/, "") === wanted
+          );
+        },
+        hasGoverningDoc: () => {
+          if (item.docs_todo === true) return true;
+          return (item.refs ?? []).some((rel) => repoDocKindOf(board, rel) !== null);
+        },
+        hasProofImages: async () => allFiles.some((file) => /^proof\/.*\.(?:png|jpe?g|gif|webp|svg|bmp)$/i.test(file)),
+        unresolvedQuestions: async () => {
+          let checked = 0;
+          let total = 0;
+          for (const document of documentsOfType("open-questions")) {
+            for (const line of (document.content ?? "").split("\n")) {
+              if (PARKED_HEADING_RE.test(line)) break;
+              const match = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
+              if (!match) continue;
+              total += 1;
+              if (match[1] !== " ") checked += 1;
+            }
+          }
+          return total - checked;
+        }
+      }
+    });
   }
   /**
    * The document-inclusive revision of a ticket (FRD-029): changes whenever
@@ -43494,6 +43875,9 @@ var KanmerStore = class _KanmerStore {
    * and tickets whose folder disagrees with their frontmatter area.
    */
   async listItemsWithWarnings(filter = {}) {
+    return this.listItemsWithWarningsInternal(filter);
+  }
+  async listItemsWithWarningsInternal(filter, authoritativeItem) {
     const items = [];
     const warnings = [];
     let areaFolders = [];
@@ -43515,7 +43899,7 @@ var KanmerStore = class _KanmerStore {
         const file = import_path11.default.join(areaPath, ticketFolder, `${ticketFolder}.md`);
         if (!await pathExists(file)) continue;
         try {
-          const item = parseItem(await readText(file));
+          const item = authoritativeItem?.id === ticketFolder ? authoritativeItem : parseItem(await readText(file));
           if (item.id !== ticketFolder) {
             warnings.push({
               file,
@@ -43551,8 +43935,8 @@ var KanmerStore = class _KanmerStore {
         if (!name.endsWith(".md")) continue;
         const file = import_path11.default.join(dir, name);
         try {
-          const item = parseItem(await readText(file));
           const fromName = import_path11.default.basename(name, ".md");
+          const item = authoritativeItem?.id === fromName && authoritativeItem.type === type ? authoritativeItem : parseItem(await readText(file));
           if (item.id !== fromName) {
             warnings.push({
               file,
@@ -44209,8 +44593,11 @@ ${entry}`;
       );
     }
   }
-  async batchTicketCensus() {
-    const listed = await this.listItemsWithWarnings({ type: "ticket", includeArchived: true });
+  async batchTicketCensus(authoritativeItem) {
+    const listed = await this.listItemsWithWarningsInternal(
+      { type: "ticket", includeArchived: true },
+      authoritativeItem
+    );
     if (listed.warnings.length > 0) {
       throw new Error(
         `BATCH_INCONSISTENT: complete ticket census has ${listed.warnings.length} unreadable item file(s): ` + listed.warnings.map((warning) => `${warning.file}: ${warning.message}`).join("; ")
@@ -44218,10 +44605,14 @@ ${entry}`;
     }
     return listed.items;
   }
-  async readManifestMembers(manifest, census) {
+  async readManifestMembers(manifest, census, authoritativeItem) {
     if (!census) await this.batchTicketCensus();
     const members = [];
     for (const id of manifest.members) {
+      if (authoritativeItem?.id === id) {
+        members.push(authoritativeItem);
+        continue;
+      }
       const loc = await this.locateItem(id);
       if (!loc) throw new Error(`BATCH_INCONSISTENT: manifest member "${id}" is missing from batch ${manifest.batch_id}.`);
       const member = parseItem(await readText(loc.file));
@@ -44295,11 +44686,27 @@ ${entry}`;
   async batchState(id) {
     const item = await this.getItem(id);
     if (!item || item.type !== "ticket") return null;
-    const tickets = await this.batchTicketCensus();
+    return this.batchStateForItem(item);
+  }
+  /** Resolve batch authority while retaining an already identity-bound ticket record. */
+  async batchStateFromExecutionAuthority(item) {
+    if (item.type !== "ticket") return null;
+    return this.batchStateForItem(item, true);
+  }
+  async batchStateForItem(item, boundedItem = false) {
+    const authoritativeItem = boundedItem ? item : void 0;
     const manifests = await this.listBatchManifests();
+    const manifestForItem = manifests.find((manifest) => manifest.members.includes(item.id)) ?? null;
+    if (!item.lease_batch && !manifestForItem) {
+      if (hasBatchOwnership(item)) {
+        throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      }
+      return null;
+    }
+    const tickets = await this.batchTicketCensus(authoritativeItem);
     if (item.lease_batch) {
       const manifest = manifests.find((entry) => entry.batch_id === item.lease_batch) ?? null;
-      const direct = manifest ? await this.readManifestMembers(manifest, tickets) : [];
+      const direct = manifest ? await this.readManifestMembers(manifest, tickets, authoritativeItem) : [];
       const directById = new Map(direct.map((member) => [member.id, member]));
       const state = this.batchStateOf(
         item.lease_batch,
@@ -44308,19 +44715,17 @@ ${entry}`;
       );
       return manifest ? state : { ...state, declaration: "inconsistent" };
     }
-    for (const manifest of manifests) {
-      if (manifest.members.includes(id)) {
-        const direct = await this.readManifestMembers(manifest, tickets);
-        const directById = new Map(direct.map((member) => [member.id, member]));
-        return this.batchStateOf(
-          manifest.batch_id,
-          tickets.map((ticket) => directById.get(ticket.id) ?? ticket),
-          manifest
-        );
-      }
+    if (manifestForItem) {
+      const direct = await this.readManifestMembers(manifestForItem, tickets, authoritativeItem);
+      const directById = new Map(direct.map((member) => [member.id, member]));
+      return this.batchStateOf(
+        manifestForItem.batch_id,
+        tickets.map((ticket) => directById.get(ticket.id) ?? ticket),
+        manifestForItem
+      );
     }
     if (hasBatchOwnership(item)) {
-      throw new Error(`BATCH_INCONSISTENT: "${id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
     }
     return null;
   }
@@ -47986,44 +48391,6 @@ async function collectWorkspaceSnapshot(input) {
     return { ok: false, reason: error2 instanceof Error ? error2.message : String(error2) };
   }
 }
-async function collectCanonicalGroupContexts(store2, rawGroupIds, countedDocumentCount) {
-  if (!Number.isSafeInteger(countedDocumentCount) || countedDocumentCount < 0 || countedDocumentCount > STEP_PACKET_LIMITS.maxDocuments) {
-    throw new Error(`counted ticket document census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`);
-  }
-  const ids = [...new Set(rawGroupIds ?? [])].sort(lexicalCompare2);
-  if (countedDocumentCount + ids.length > STEP_PACKET_LIMITS.maxDocuments) {
-    throw new Error(
-      `combined counted-document and unique-group census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`
-    );
-  }
-  const censusBudget = checkStepPacketBudget({ groups: ids });
-  if (!censusBudget.ok) throw new Error(`unique-group census is outside its bounded snapshot: ${censusBudget.reason}`);
-  const resolved = [];
-  const resolvedIds = /* @__PURE__ */ new Set();
-  for (const requestedId of ids) {
-    const group = await store2.getGroup(requestedId);
-    if (!group) throw new Error(`Group "${requestedId}" is missing`);
-    if (group.id !== requestedId) {
-      throw new Error(`Group "${requestedId}" resolved as conflicting identity "${group.id}"`);
-    }
-    if (resolvedIds.has(group.id)) throw new Error(`Group identity "${group.id}" was resolved more than once`);
-    resolvedIds.add(group.id);
-    resolved.push(group);
-  }
-  const groups = [];
-  for (const group of resolved) {
-    const context = await store2.getGroupDoc(group.id, "context.md");
-    groups.push({
-      id: group.id,
-      kind: group.kind,
-      title: group.title,
-      body: group.body,
-      context,
-      version: context === null ? null : contentVersion(context)
-    });
-  }
-  return { ids, groups };
-}
 function stepDocumentSnapshotAuthority(snapshot) {
   return {
     ...snapshot,
@@ -48031,34 +48398,34 @@ function stepDocumentSnapshotAuthority(snapshot) {
   };
 }
 async function documentSample(store2, id) {
-  const before = await store2.getRevision(id);
-  const item = await store2.getItem(id);
+  const authority = await store2.getExecutionAuthoritySnapshot(id);
+  if (!authority) throw new Error(`No ticket with id "${id}"`);
+  const { item, revision, gates, fixed, inventory } = authority;
   if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
-  const [fixed, inventory, batch, gates] = await Promise.all([
-    store2.getDocsWithVersions(id, ["plan", "checklist", "files"]),
-    store2.listTicketDocsWithVersions(id),
-    store2.batchState(id),
-    store2.getDocGates(id)
-  ]);
+  const batch = await store2.batchStateFromExecutionAuthority(item);
   if (!gates) throw new Error(`Ticket "${id}" has no document-gate report`);
-  const countedDocuments = (inventory ?? []).filter((document) => revisionCountsDocument(document.doc));
-  const groupCensus = await collectCanonicalGroupContexts(store2, item.groups, countedDocuments.length);
-  const canonicalItem = item.groups === void 0 ? item : { ...item, groups: groupCensus.ids };
-  const groups = groupCensus.groups;
-  const after = await store2.getRevision(id);
-  if (before?.revision !== after?.revision) throw new Error("ticket revision changed during document collection");
+  const groups = authority.groups.map(({ group, context, contextVersion }) => ({
+    id: group.id,
+    kind: group.kind,
+    title: group.title,
+    body: group.body,
+    context,
+    version: contextVersion
+  }));
+  const canonicalItem = item.groups === void 0 ? item : { ...item, groups: groups.map((group) => group.id) };
   const evidence = [
     ...groups.filter((group) => group.version !== null).map((group) => ({ layer: "group", group: group.id, path: `${group.id}/context.md`, version: group.version })),
-    ...(inventory ?? []).filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket", group: null, path: doc.doc, version: doc.version }))
+    ...inventory.filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket", group: null, path: doc.doc, version: doc.version }))
   ];
-  const snapshot = { item: canonicalItem, revision: after?.revision ?? null, gates, fixed, inventory: inventory ?? [], evidence, groups, batch, batchId: batch?.id ?? null };
+  const snapshot = { item: canonicalItem, revision: revision?.revision ?? null, gates, fixed, inventory, evidence, groups, batch, batchId: batch?.id ?? null };
   const authorityBudget = checkStepPacketBudget(stepDocumentSnapshotAuthority(snapshot));
   if (!authorityBudget.ok) throw new Error(`step document authority is outside its bounded snapshot: ${authorityBudget.reason}`);
   return snapshot;
 }
-async function collectStepDocumentSnapshot(store2, id) {
+async function collectStepDocumentSnapshot(store2, id, samples = 2) {
   try {
     const first = await documentSample(store2, id);
+    if (samples === 1) return { ok: true, snapshot: first };
     const second = await documentSample(store2, id);
     if (JSON.stringify(stepDocumentSnapshotAuthority(first)) !== JSON.stringify(stepDocumentSnapshotAuthority(second))) {
       throw new Error("ticket, counted documents or group context changed during the bounded double-sample");
@@ -48335,16 +48702,6 @@ function unresolvedQuestion(gates) {
   const requirements = gates.boundaries.flatMap((boundary) => boundary.requirements);
   return requirements.some((requirement) => requirement.type === "questions-resolved" && !requirement.satisfied);
 }
-async function groupContexts(store2, item, countedDocumentCount) {
-  const census = await collectCanonicalGroupContexts(store2, item.groups, countedDocumentCount);
-  return {
-    ids: census.ids,
-    contexts: census.groups.map((group) => ({
-      ...group,
-      ...group.context === null ? { warning: `Group "${group.id}" has no context.md.` } : {}
-    }))
-  };
-}
 function indexDocuments(results) {
   const byDoc = new Map(results.map((result) => [result.doc, result]));
   const entry = (doc) => {
@@ -48364,22 +48721,17 @@ function sectionFromPlan(plan, titles, fallback) {
 }
 async function getExecutionPacket(input) {
   const { store: store2, id, actor, controllerRun, project, resume, logical, step, priorStepPacket } = input;
-  let item = await store2.getItem(id);
-  if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
+  const stable = await collectStepDocumentSnapshot(store2, id, step === void 0 ? 1 : 2);
+  if (!stable.ok) {
+    return refuse(project, `A bounded execution-authority snapshot could not be collected: ${stable.reason}`, []);
+  }
+  let item = stable.snapshot.item;
   if (item.type !== "ticket") {
     return refuse(project, `"${id}" is a ${item.type}, not a ticket; execution packets are ticket-only.`, []);
   }
-  let gates = await store2.getDocGates(id);
+  let gates = stable.snapshot.gates;
   if (!gates) {
     return refuse(project, `"${id}" uses a legacy layout without a format-3 ticket folder.`, [], item);
-  }
-  const stable = step === void 0 ? null : await collectStepDocumentSnapshot(store2, id);
-  if (stable && !stable.ok) {
-    return refuse(project, `A stable step evidence snapshot could not be collected: ${stable.reason}`, [], item, gates);
-  }
-  if (stable?.ok) {
-    item = stable.snapshot.item;
-    gates = stable.snapshot.gates;
   }
   if (gates.profile === "spike") {
     return refuse(project, `Profile "spike" is research-first; execution packets are not available for spikes.`, [], item, gates);
@@ -48418,7 +48770,7 @@ async function getExecutionPacket(input) {
   }
   let batch;
   try {
-    batch = stable?.ok ? stable.snapshot.batch : await store2.batchState(id);
+    batch = stable.snapshot.batch;
   } catch (error2) {
     return refuse(
       project,
@@ -48538,55 +48890,27 @@ async function getExecutionPacket(input) {
       gates
     );
   }
-  const [fixed, inventory] = stable?.ok ? [stable.snapshot.fixed, stable.snapshot.inventory] : await Promise.all([
-    readTicketDocuments(store2, id, ["plan", "checklist", "files"]),
-    store2.listTicketDocsWithVersions(id)
-  ]);
+  const [fixed, inventory] = [stable.snapshot.fixed, stable.snapshot.inventory];
   const planDoc = fixed.find((doc) => doc.doc === "plan");
   const plan = planDoc?.content ?? null;
   const checklist = fixed.find((doc) => doc.doc === "checklist")?.content ?? null;
   const extraDocs = (inventory ?? []).filter((doc) => !["plan/plan.md", "checklist/checklist.md", "files/files.md"].includes(doc.doc)).map((doc) => ({ path: doc.doc, version: doc.version }));
   const ticketDocuments = (inventory ?? []).filter((doc) => revisionCountsDocument(doc.doc)).map((doc) => ({ path: doc.doc, version: doc.version })).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
-  let contexts;
-  if (stable?.ok) {
-    contexts = stable.snapshot.groups.map((context) => ({
-      id: context.id,
-      kind: context.kind,
-      title: context.title,
-      body: context.body,
-      context: context.context,
-      version: context.version,
-      ...context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}
-    }));
-  } else {
-    try {
-      const census = await groupContexts(store2, item, ticketDocuments.length);
-      item = item.groups === void 0 ? item : { ...item, groups: census.ids };
-      contexts = census.contexts;
-    } catch (error2) {
-      return refuse(
-        project,
-        `Ticket "${id}" has invalid or unbounded group authority: ${error2 instanceof Error ? error2.message : String(error2)}`,
-        [],
-        item,
-        gates
-      );
-    }
-  }
-  const evidence = stable?.ok ? stable.snapshot.evidence : [
-    ...contexts.filter((context) => context.version !== null).map((context) => ({
-      layer: "group",
-      group: context.id,
-      path: `${context.id}/context.md`,
-      version: context.version
-    })),
-    ...(inventory ?? []).filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket", group: null, path: doc.doc, version: doc.version }))
-  ];
+  const contexts = stable.snapshot.groups.map((context) => ({
+    id: context.id,
+    kind: context.kind,
+    title: context.title,
+    body: context.body,
+    context: context.context,
+    version: context.version,
+    ...context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}
+  }));
+  const evidence = stable.snapshot.evidence;
   const liveEvidence = evidence.map((entry) => ({ path: entry.path, version: entry.version }));
   const requireEvidencePin = evidence.some((entry) => entry.layer === "ticket");
   const parsedPlan = parsePlan(plan ?? "");
   const stopCondition = sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK);
-  const revision = stable?.ok ? stable.snapshot.revision : (await store2.getRevision(id))?.revision ?? null;
+  const revision = stable.snapshot.revision;
   let validation = validatePlan(parsedPlan, { liveEvidence, requireEvidencePin });
   let compiled;
   if (step !== void 0) {
@@ -48613,7 +48937,7 @@ async function getExecutionPacket(input) {
       return refuse(project, `The recorded workspace is inconclusive for constrained execution: ${observedWorkspace.reason}`, [], item, gates);
     }
     const confirmedStable = await collectStepDocumentSnapshot(store2, id);
-    if (!confirmedStable.ok || !stable?.ok || JSON.stringify(stepDocumentSnapshotAuthority(confirmedStable.snapshot)) !== JSON.stringify(stepDocumentSnapshotAuthority(stable.snapshot))) {
+    if (!confirmedStable.ok || JSON.stringify(stepDocumentSnapshotAuthority(confirmedStable.snapshot)) !== JSON.stringify(stepDocumentSnapshotAuthority(stable.snapshot))) {
       const reason = confirmedStable.ok ? "ticket, gate, document, group or batch facts changed around the Git observation" : confirmedStable.reason;
       return refuse(project, `The constrained execution snapshot is inconclusive: ${reason}`, [], item, gates);
     }

@@ -926,6 +926,34 @@ describe("batch workspaces (CORE-124)", () => {
     expect(await snapshotBoardFiles()).toEqual(before);
   });
 
+  it("requires a concrete batch worktree before any declaration write while preserving isolated branch-only takes", async () => {
+    const a = await store.createItem({ ...free, title: "Missing worktree A" });
+    const b = await store.createItem({ ...free, title: "Missing worktree B" });
+    const transactionDir = path.join(root, ".kanmer", "batches", "transactions");
+    const before = await snapshotBoardFiles();
+    const declaration = {
+      branch: "batch-missing-worktree",
+      assignee: "ctl-a",
+      controllerRun: "controller-run",
+      batch: "batch-missing-worktree",
+      batchMembers: [a.id, b.id],
+    };
+
+    await expect(store.takeTicket(a.id, declaration)).rejects.toThrow(/^BATCH_WORKSPACE_INVALID:/u);
+    await expect(store.takeTicket(a.id, { ...declaration, worktree: "   " })).rejects.toThrow(/^BATCH_WORKSPACE_INVALID:/u);
+    expect(await snapshotBoardFiles()).toEqual(before);
+    await expect(fs.stat(transactionDir)).rejects.toMatchObject({ code: "ENOENT" });
+
+    const isolated = await store.createItem({ ...free, title: "Isolated branch-only" });
+    const isolatedTake = await store.takeTicket(isolated.id, {
+      branch: "isolated-branch-only",
+      assignee: "ctl-isolated",
+    });
+    expect(isolatedTake.branch).toBe("isolated-branch-only");
+    expect(isolatedTake.worktree).toBeUndefined();
+    expect(isolatedTake.lease_batch).toBeUndefined();
+  });
+
   it("retains only a compact authoritative manifest and includes the caller in the all-terminal release gate", async () => {
     const { a, b, c } = await threeMemberBatch();
     const manifestDir = path.join(root, ".kanmer", "batches", "transactions");

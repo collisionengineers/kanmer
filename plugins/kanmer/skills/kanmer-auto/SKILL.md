@@ -435,8 +435,15 @@ Each lane uses its own `.worktrees/<id>` worktree and branch. The one
 exception is a deliberate batch lane (FRD-030): two or more small related
 tickets the run record names as one batch share one worktree, branch and PR,
 declared and frozen by the first member's `take_ticket` with `batch` and
-`batch_members`; the lane is not cleared until every member is terminal, and
-no other ticket may join it or take its workspace. No lane may touch
+`batch_members` plus `controller_run: "<run_id>"`; the lane is not cleared
+until every member is terminal, and no other ticket may join it or take its
+workspace. Use the automation ledger's immutable schema-3 `run_id` as the
+batch `controller_run`; never a worker id, session id, reconnect id, or
+per-call id. Pass it unchanged on the first batch declaration, an exact
+pending-declaration recovery, every packet-first `get_execution_packet`, every
+later member `take_ticket`, and every `take_ticket action: "renew"` together
+with the current `lease_id` and `lease_revision` CAS pair. Retain it across
+reconnects, restarts and worker handoffs. No lane may touch
 `.worktrees/kanmer`, which is the board worktree on the board branch and is
 never a lane, rebase target, or cleanup target. A ticket runs through the
 existing phase skills only: `kanmer-research` → `kanmer-plan` →
@@ -643,6 +650,11 @@ active or immediately queued verification attempt, and a known proof state.
 Anything else is an unexplained state, and it is reconciled before the run
 reports anything: a merged PR still sitting in Review is moved on through its
 own gates, and a PASS proof still sitting in Verifying is moved and closed out.
+For a merged batch PR, re-read the active manifest and resume
+`kanmer-review`'s immutable-roster handoff instead of reconciling only the
+current member: Review advances exactly to Verifying, already-Verifying is the
+idempotent no-op, and any other member state stops. Dispatch no batch verifier
+until the complete roster re-read is Verifying.
 Verifying is not a holding column. The run is never reported as `completed`
 while a selected ticket sits in an unexplained Review or Verifying state, and a
 standup summary of the rest of the roster does not substitute for that.

@@ -769,7 +769,11 @@ export async function getExecutionPacket(input: {
       pending: batch.members.filter((m) => !m.terminal).map((m) => m.id),
     };
   }
-  if (item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
+  // A consistent batch manifest's actor/controller-run pair is the authority;
+  // assignee and claim_controller remain display projections only. All batch
+  // actor/run and physical-worktree checks have already passed above. The
+  // ordinary isolated occupancy contract remains unchanged.
+  if (!batch && item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
     const location = [item.branch && `branch ${item.branch}`, item.worktree && `worktree ${item.worktree}`]
       .filter(Boolean)

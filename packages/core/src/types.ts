@@ -718,7 +718,7 @@ export type MovePosition = "top" | "bottom" | { after: string };
 export interface TakeTicketInput {
   /** The branch the work happens on (required — it's the point of taking). */
   branch: string;
-  /** Worktree path, when working in one. */
+  /** Worktree path; optional for isolated takes, required and nonblank on a batch declaration. */
   worktree?: string;
   /** Stage to move to; defaults to the board's `implementing` stage if it has one. */
   stage?: string;

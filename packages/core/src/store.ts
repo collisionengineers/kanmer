@@ -2294,6 +2294,16 @@ export class KanmerStore {
    * before touching code so the human's board shows who is where.
    */
   async takeTicket(id: string, input: TakeTicketInput): Promise<Item> {
+    // A batch manifest projects one physical workspace to every member. A
+    // branch-only declaration can never produce a safe execution packet, so
+    // reject it before taking the board lock or creating a WAL sidecar. The
+    // isolated lane deliberately retains its branch-only compatibility.
+    if (input.batchMembers !== undefined && (input.worktree === undefined || input.worktree.trim() === "")) {
+      throw new Error(
+        `BATCH_WORKSPACE_INVALID: a batch declaration requires a nonempty shared worktree; ` +
+          `isolated branch-only takes may omit worktree.`,
+      );
+    }
     if (!input.branch || input.branch.trim() !== input.branch) {
       throw new Error(`WORKSPACE_INVALID: branch must be non-empty and must not have leading or trailing whitespace.`);
     }

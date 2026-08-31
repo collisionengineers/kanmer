@@ -637,6 +637,46 @@ const protectedBatchContract = [
     ),
   ],
   [
+    "kanmer-auto maps its immutable run_id to every batch controller_run call",
+    /automation ledger's immutable schema-3 `run_id` as the\s+batch `controller_run`/i.test(autoSkill) &&
+      /never a worker id, session id, reconnect id, or\s+per-call id/i.test(autoSkill) &&
+      /first batch declaration/i.test(autoSkill) &&
+      /pending-declaration recovery/i.test(autoSkill) &&
+      /every packet-first `get_execution_packet`/i.test(autoSkill) &&
+      /every\s+later member `take_ticket`/i.test(autoSkill) &&
+      /every `take_ticket action: "renew"`/i.test(autoSkill) &&
+      /current `lease_id` and `lease_revision` CAS pair/i.test(autoSkill),
+  ],
+  [
+    "kanmer-execute creates or recovers exactly one shared batch PR",
+    /first batch member alone is the sole PR creator/i.test(executeSkill) &&
+      /zero matching open PRs means create\s+the one shared PR/i.test(executeSkill) &&
+      /exactly one\s+match means validate and reuse it/i.test(executeSkill) &&
+      /more than one match is ambiguous and must stop/i.test(executeSkill) &&
+      /later member pushes the same\s+manifest branch and never calls `gh pr create`/i.test(executeSkill) &&
+      /resolved source\s+repository for both base and head/i.test(executeSkill) &&
+      /base `delivery\.prTarget`/i.test(executeSkill) &&
+      /head branch `claim\.batch\.branch`/i.test(executeSkill) &&
+      /current pushed head SHA/i.test(executeSkill) &&
+      /exact complete frozen footer roster/i.test(executeSkill) &&
+      /current member's\s+own `prs\[\]`/i.test(executeSkill),
+  ],
+  [
+    "kanmer-review advances the complete merged batch roster idempotently",
+    /After a confirmed shared batch merge/i.test(reviewSkill) &&
+      /re-read `list_items include_archived:\s+true`/i.test(reviewSkill) &&
+      /active manifest projection/i.test(reviewSkill) &&
+      /immutable\s+manifest order/i.test(reviewSkill) &&
+      /member\s+is in Review, call its `get_doc_gates`/i.test(reviewSkill) &&
+      /move exactly Review → Verifying/i.test(reviewSkill) &&
+      /current `expected_updated`/i.test(reviewSkill) &&
+      /already Verifying[\s\S]{0,80}idempotent no-op/i.test(reviewSkill) &&
+      /Any other stage[\s\S]{0,100}is a stop/i.test(reviewSkill) &&
+      /re-read the complete roster/i.test(reviewSkill) &&
+      /every member is Verifying/i.test(reviewSkill) &&
+      /Review must never write\s+proof/i.test(reviewSkill),
+  ],
+  [
     "kanmer-closeout retains manifest discovery through unlink and permits a fresh terminal releaser",
     /authoritative manifest is `active` or `releasing`[\s\S]{0,180}`list_items` and `search_items`[\s\S]{0,160}until\s+manifest unlink[\s\S]{0,300}`batch\.state`[\s\S]{0,120}`batch\.members`[\s\S]{0,120}`batch\.workspace`[\s\S]{0,80}`batch\.branch`/i.test(
       closeoutSkill,

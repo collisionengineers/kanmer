@@ -316,6 +316,25 @@ review attestation, review mapping, and proof. Never `release` a member while
 `claim.batch.pending` names a non-terminal sibling — the shared workspace is
 still theirs.
 
+The first batch member alone is the sole PR creator. After pushing the shared
+manifest branch, query open PRs in the resolved source repository for that
+branch. For the designated first member, zero matching open PRs means create
+the one shared PR with the exact complete frozen footer roster; exactly one
+match means validate and reuse it after an interrupted create or lost response;
+more than one match is ambiguous and must stop. A later member pushes the same
+manifest branch and never calls `gh pr create`: zero matches is missing and
+must stop, exactly one is validated and reused, and more than one must stop.
+
+Validation is fail-closed. The live PR must belong to the resolved source
+repository for both base and head, be open, have base `delivery.prTarget`, have
+head branch `claim.batch.branch`, expose a current pushed head SHA matching the
+shared branch, and contain the exact complete frozen footer roster with no
+omission or extra. A repository, state, base, head, SHA, or roster mismatch
+stops in Implementing. Record the validated shared PR in the current member's
+own `prs[]` and record the head in its execute report/scratch before moving it
+to Review; every later member repeats that validation and records the same PR,
+but never creates a second one.
+
 ## Work only the packet
 
 - Work only the packet's `files` scope — and, when a `step` block is present,
@@ -342,10 +361,12 @@ still theirs.
    follow-ups, and tell `kanmer-verify` which checks belong on the merged
    result. `proof.md` is not an execution document and is written only after a
    review merge.
-2. Record the reachable implementation commit(s) and PR with `update_item`
-   (`commits`, and the PR number or URL in `prs`). The `prs` entry is what lets
-   a later `needs-changes` attestation return this ticket to Implementing on
-   the same PR; a ticket without it cannot take the sanctioned return.
+2. Record the reachable implementation commit(s) with `update_item`. Immediately
+   after step 3 creates, resolves or validates the PR, record its number or URL
+   in this ticket's `prs[]` (every batch member records the same shared PR in
+   its own array). The `prs` entry is what lets a later `needs-changes`
+   attestation return this ticket to Implementing on the same PR; a ticket
+   without it cannot take the sanctioned return.
    Link governing docs only when the packet authorizes the link; do not invent
    refs. Keep all writes project-bound when the capability was advertised.
 3. Push the ticket branch and open the PR with the ticket title and
@@ -360,7 +381,9 @@ still theirs.
    `--base` is not optional: without it `gh` falls back to the repository's
    default branch, which is the integration branch only by coincidence. The
    merge gate reports `WRONG_TARGET` when a pull request misses the configured
-   target.
+   target. The batch lane above replaces this generic creation command: only
+   its first member may create the shared PR, while every later member must
+   resolve, validate, reuse and record that one PR.
 
 4. Read `get_doc_gates <id>` immediately before `move_item`. Move one gated
    boundary only, from `implementing` to `review`, and record the PR URL in

@@ -152,6 +152,10 @@ manifest projection from the summaries: `batch.state` must be `active`,
 only currently taken tickets or matching owner labels. A pending,
 inconsistent, or missing projection is a stop. Confirm every projected member
 is in Review, names that exact PR in `prs[]`, and is bound to the same head.
+Also validate the live PR itself: its base and head repositories are the
+resolved source repository, its base is the configured `delivery.prTarget`,
+its head branch is `batch.branch`, its full head SHA is the pushed shared head,
+and its standalone `Kanmer: <ID>` footers equal `batch.members` exactly.
 Treat a dependency whose blocker is another member of that exact manifest
 roster as internal ordering already covered by the shared PR. An external or
 dangling blocker remains a stop, and the ordinary single-ticket rule is
@@ -288,9 +292,24 @@ gh pr merge <pr> --squash --delete-branch=false
 
 If the merge fails or GitHub reports a non-merged state, preserve the exact
 failure, leave the ticket in Review, and do not move it. After a confirmed
-merge, call `get_doc_gates` and move exactly one gated boundary, one stage,
-`review` → `verifying`.
-The merged SHA belongs to `kanmer-verify`; do not write proof here.
+ordinary merge, call `get_doc_gates` and move exactly one gated boundary, one
+stage, `review` → `verifying`.
+
+After a confirmed shared batch merge, re-read `list_items include_archived:
+true` and require the active manifest projection to retain the exact roster,
+PR branch and workspace just reviewed. Process `batch.members` in immutable
+manifest order. Re-read each member immediately before acting. If the member
+is in Review, call its `get_doc_gates` and move exactly Review → Verifying with
+its current `expected_updated`. If it is already Verifying, that is the
+idempotent no-op for an interrupted prior scan. Any other stage, a changed
+manifest, or a refused move is a stop; retain the exact member resume point and
+do not skip ahead. Re-running the same ordered scan safely skips members it
+already advanced. Finally re-read the complete roster and hand off to
+verification only when every member is Verifying. Review must never write
+proof; the merged SHA and per-member proof belong to `kanmer-verify`.
+
+For both ordinary and batch merges, the merged SHA belongs to
+`kanmer-verify`; do not write proof here.
 
 Review feedback that needs implementation goes back through the sanctioned
 return above on the same ticket and PR; it does not become a separate PR

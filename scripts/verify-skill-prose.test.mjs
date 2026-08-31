@@ -575,6 +575,57 @@ const expectPass = (stdout, name) =>
   assert.ok(stdout.includes(`PASS  ${name}`), `expected PASS for check: ${name}\n${stdout}`);
 const runOn = (fixture) => spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
 
+test("protected batch validator independently rejects replacing the automation run_id authority", () => {
+  const fixture = goalFixture("kanmer-batch-run-id-contract-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-auto"),
+      "automation ledger's immutable schema-3 `run_id` as the\nbatch `controller_run`",
+      "current controller label as the batch owner",
+    );
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto maps its immutable run_id to every batch controller_run call");
+    expectPass(result.stdout, "kanmer-execute binds all batch work authority to actor plus durable controller_run");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("protected batch validator independently rejects allowing every member to create a PR", () => {
+  const fixture = goalFixture("kanmer-batch-single-pr-contract-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-execute"),
+      "The first batch member alone is the sole PR creator.",
+      "Every batch member may create a PR.",
+    );
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-execute creates or recovers exactly one shared batch PR");
+    expectPass(result.stdout, "kanmer-execute emits the complete frozen batch footer roster");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("protected batch validator independently rejects a non-idempotent merged-roster handoff", () => {
+  const fixture = goalFixture("kanmer-batch-review-handoff-contract-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-review"),
+      "If it is already Verifying, that is the\nidempotent no-op for an interrupted prior scan.",
+      "If it is already Verifying, move it again.",
+    );
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-review advances the complete merged batch roster idempotently");
+    expectPass(result.stdout, "kanmer-review writes one member-owned exact-head pass attestation per roster ticket");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
 // F1: each declared scope must lose its own named check when its resolution
 // step goes, and must not be propped up by a neighbouring scope's step.
 const scopeMutations = [

@@ -2576,6 +2576,31 @@ Second proof attempt passed; the first failure is retained.
       controller: "ctl-batch-label",
       controller_run: "smoke-controller-run",
     };
+    const missingWorktreeA = await member("batch missing worktree 1");
+    const missingWorktreeB = await member("batch missing worktree 2");
+    for (const id of [missingWorktreeA, missingWorktreeB]) {
+      await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: "# Missing worktree batch" } });
+    }
+    const beforeMissingWorktreeBatch = treeSnapshot(sandbox);
+    const missingWorktreeBatch = await client.callTool({
+      name: "take_ticket",
+      arguments: {
+        id: missingWorktreeA,
+        branch: "batch-missing-worktree",
+        assignee: batchTake.assignee,
+        controller: batchTake.controller,
+        controller_run: batchTake.controller_run,
+        batch: "smoke-batch-missing-worktree",
+        batch_members: [missingWorktreeA, missingWorktreeB],
+      },
+    });
+    check(
+      "a missing batch worktree is a structured LEASE_CONFLICT and leaves the complete board tree unchanged",
+      missingWorktreeBatch.isError === true && textOf(missingWorktreeBatch).includes("BATCH_WORKSPACE_INVALID") &&
+        missingWorktreeBatch.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeMissingWorktreeBatch),
+      textOf(missingWorktreeBatch),
+    );
     const beforeOutsideBatch = treeSnapshot(sandbox);
     const outsideBatch = await client.callTool({
       name: "take_ticket",
@@ -2644,7 +2669,19 @@ Second proof attempt passed; the first failure is retained.
       "Stop after this step.",
       "",
     ].join("\n");
-    await client.callTool({ name: "set_ticket_doc", arguments: { id: m2, doc: "plan", content: untakenBatchPlan } });
+    for (const id of [m1, m2]) {
+      await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: untakenBatchPlan } });
+    }
+    const authorizedTakenBatchPacket = JSON.parse(textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: m1, controller_run: batchTake.controller_run, step: 1 },
+    })));
+    check(
+      "an exactly authorized batch controller obtains a taken member packet despite non-authoritative display-owner labels",
+      authorizedTakenBatchPacket.ready === true && authorizedTakenBatchPacket.ticket?.taken?.assignee === batchTake.assignee &&
+        authorizedTakenBatchPacket.claim?.controller === batchTake.controller,
+      JSON.stringify({ ready: authorizedTakenBatchPacket.ready, reason: authorizedTakenBatchPacket.reason, taken: authorizedTakenBatchPacket.ticket?.taken, claim: authorizedTakenBatchPacket.claim }),
+    );
 
     const movedBatchWorktree = path.join(sandbox, ".worktrees", "batch-moved");
     execFileSync("git", ["worktree", "move", batchWorktree, movedBatchWorktree], {
@@ -2823,6 +2860,31 @@ Second proof attempt passed; the first failure is retained.
       );
     } finally {
       await foreignBatchClient.close();
+    }
+    const foreignActorTransport = new StdioClientTransport({
+      command: runner,
+      args: [serverEntry, "--root", sandbox],
+      env: runnerEnv,
+    });
+    const foreignActorClient = new Client({ name: "foreign-batch-actor", version: "0.0.0" });
+    try {
+      await foreignActorClient.connect(foreignActorTransport);
+      const foreignActorPacket = JSON.parse(textOf(await foreignActorClient.callTool({
+        name: "get_execution_packet",
+        arguments: {
+          id: m1,
+          controller_run: batchTake.controller_run,
+          resume: { branch: batchTake.branch, worktree: batchTake.worktree },
+        },
+      })));
+      check(
+        "get_execution_packet refuses the correct batch run from a wrong actor even with an exact resume",
+        foreignActorPacket.ready === false && foreignActorPacket.reason.includes("controlled by smoke") &&
+          foreignActorPacket.reason.includes("foreign-batch-actor cannot obtain"),
+        foreignActorPacket.reason,
+      );
+    } finally {
+      await foreignActorClient.close();
     }
     const second = JSON.parse(textOf(await client.callTool({
       name: "take_ticket",

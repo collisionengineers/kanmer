@@ -56,8 +56,23 @@ Review body
 `;
 }
 
-function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40)) {
-  return { pull_request: { number, body, head: { sha: headSha, ref }, base: { sha: baseSha, ref: "main" } } };
+function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40), identity = {}) {
+  const base = {
+    sha: baseSha,
+    ref: "main",
+    ...(identity.repository ? { repo: { full_name: identity.repository } } : {}),
+  };
+  const pull_request = {
+    number,
+    body,
+    head: { sha: headSha, ref },
+    base,
+    ...(identity.url ? { html_url: identity.url } : {}),
+  };
+  return {
+    pull_request,
+    ...(identity.repository ? { repository: { full_name: identity.repository } } : {}),
+  };
 }
 
 test("review attestation parsing requires the complete machine schema", () => {
@@ -87,10 +102,30 @@ Review body
 test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
   const { board, store, ticket, event } = await fixture();
   try {
-    await fs.writeFile(event, JSON.stringify(pullRequestEvent(1, `Kanmer: ${ticket.id}`, "a".repeat(40), "wrong-branch")));
+    const realEvent = pullRequestEvent(
+      1,
+      `Kanmer: ${ticket.id}`,
+      "a".repeat(40),
+      "wrong-branch",
+      "b".repeat(40),
+      {
+        repository: "collisionengineers/kanmer",
+        url: "https://github.com/collisionengineers/kanmer/pull/1",
+      },
+    );
+    await fs.writeFile(event, JSON.stringify(realEvent));
     const pass = run(board, event);
     assert.equal(pass.status, 0);
-    assert.equal(JSON.parse(pass.stdout).ok, true);
+    const passResult = JSON.parse(pass.stdout);
+    assert.equal(passResult.ok, true);
+    assert.deepEqual(passResult.pr, {
+      number: 1,
+      headSha: "a".repeat(40),
+      baseSha: "b".repeat(40),
+      branch: "wrong-branch",
+      body: `Kanmer: ${ticket.id}`,
+      baseRef: "main",
+    });
     assert.equal(pass.stdout.trim().split("\n").length, 1);
     assert.match(pass.stderr, /::warning title=kanmer\/gate \[NO_REVIEW_RECORD\]::/);
 
@@ -197,6 +232,82 @@ test("attestation checks warn by default and block under KANMER_GATE_STRICT", as
       details: { state: "unrecorded", boardSha: null, diagnostic: passResult.checks.find((check) => check.code === "SYNC_REQUIRED").details.diagnostic },
     });
     assert.equal(passResult.checks.at(-1).code, "SYNC_REQUIRED");
+  } finally {
+    await removeTreeWithRetry(board);
+  }
+});
+
+test("strict check-pr accepts only the complete frozen batch with per-member PR/head attestations", async () => {
+  const board = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-check-pr-batch-"));
+  try {
+    const store = new KanmerStore(board, { actor: "batch-controller" });
+    await store.init();
+    const free = { type: "ticket", profile: "custom", requires: {}, status: "implementing" };
+    const tickets = [];
+    for (const title of ["A", "B", "C"]) tickets.push(await store.createItem({ ...free, title }));
+    await store.takeTicket(tickets[0].id, {
+      branch: "batch-pr",
+      worktree: ".worktrees/batch-pr",
+      actor: "batch-controller",
+      batch: "batch-pr",
+      batchMembers: tickets.map((ticket) => ticket.id),
+    });
+    const head = "a".repeat(40);
+    for (const ticket of tickets) {
+      await store.moveItem(ticket.id, { status: "review" });
+      await store.setDoc(
+        ticket.id,
+        "scratch/review",
+        attestation(head).replace('pr: "1"', 'pr: "https://github.com/collisionengineers/kanmer/pull/1"'),
+      );
+    }
+    const event = path.join(board, "event.json");
+    const body = tickets.map((ticket) => `Kanmer: ${ticket.id}`).join("\n");
+    const repositoryEvent = pullRequestEvent(
+      1,
+      body,
+      head,
+      "batch-pr",
+      "b".repeat(40),
+      { repository: "collisionengineers/kanmer" },
+    );
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
+    const pass = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(pass.status, 0, pass.stderr);
+    const result = JSON.parse(pass.stdout);
+    assert.equal(result.ticketId, null);
+    assert.equal(result.batchId, "batch-pr");
+    assert.deepEqual(result.ticketIds, tickets.map((ticket) => ticket.id).sort());
+    assert.equal(result.findings.length, 0);
+
+    await fs.writeFile(
+      event,
+      JSON.stringify(pullRequestEvent(
+        1,
+        `Kanmer: ${tickets[0].id}`,
+        head,
+        "batch-pr",
+        "b".repeat(40),
+        { repository: "collisionengineers/kanmer" },
+      )),
+    );
+    const incomplete = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(incomplete.status, 1);
+    assert.deepEqual(JSON.parse(incomplete.stdout).findings.map((finding) => finding.code), ["BATCH_ROSTER"]);
+
+    await fs.writeFile(event, JSON.stringify(repositoryEvent));
+
+    await store.setDoc(
+      tickets[1].id,
+      "scratch/review",
+      attestation(head).replace('pr: "1"', 'pr: "https://github.com/foreign/repository/pull/1"'),
+    );
+    const fail = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(fail.status, 1);
+    const adverse = JSON.parse(fail.stdout);
+    assert.deepEqual(adverse.findings.map((finding) => [finding.code, finding.details.ticketId]), [
+      ["STALE_REVIEW", tickets[1].id],
+    ]);
   } finally {
     await removeTreeWithRetry(board);
   }

@@ -639,6 +639,38 @@ export async function getExecutionPacket(input: {
   const worktreeSafety = await unsafeTakenWorktree(store, project, item);
   if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
 
+  let batch: Awaited<ReturnType<KanmerStore["batchState"]>>;
+  try {
+    batch = await store.batchState(id);
+  } catch (error) {
+    return refuse(
+      project,
+      `Ticket "${id}" has unreadable batch ownership evidence: ${error instanceof Error ? error.message : String(error)}`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && batch.declaration !== "consistent") {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, whose declaration is ${batch.declaration}; recover or reconcile the complete manifest before execution.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  if (batch && batch.controller !== actor) {
+    return refuse(
+      project,
+      `Ticket "${id}" belongs to batch ${batch.id}, controlled by ${batch.controller ?? "an unknown actor"}; ` +
+        `${actor} cannot obtain its execution packet even with an exact branch/worktree resume.`,
+      [],
+      item,
+      gates,
+    );
+  }
+
   // MCP client names are not durable agent identities. A later session must
   // deliberately name the exact branch and worktree already recorded before
   // it may resume; every other occupied-ticket request remains refused.
@@ -665,7 +697,6 @@ export async function getExecutionPacket(input: {
     commandMaxMinutes: timing.commandMaxMinutes,
     batch: null,
   };
-  const batch = await store.batchState(id);
   if (batch) {
     claim.batch = {
       id: batch.id,

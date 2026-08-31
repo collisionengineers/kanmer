@@ -141,6 +141,22 @@ threads moved), unmet acceptance checks, or an unresolved security,
 data-loss or destructive risk. Dispositioned minor and note findings are
 residual risk, recorded in the body, and do not block.
 
+### Batch PRs
+
+A frozen batch receives one fresh independent review of the shared PR at its
+exact full head SHA, not one repeated review per ticket. Before recording a
+pass, use the complete frozen roster and confirm every member is in Review,
+names that exact PR in `prs[]`, and is bound to the same head.
+
+Then write a separate, member-owned whole-file `scratch/review.md` attestation
+for every member in the complete frozen roster. Every record must truthfully
+say `independent: true` and `verdict: pass`, use the exact shared `pr` and full
+`head_sha`, and carry that member's own `plan_hash`, `ticket_updated`, thread
+mapping, findings, and dispositions. One shared attestation, a leader-only
+record, or a record copied with another member's versions is not batch proof.
+The protected merge gate accepts the batch only when the complete roster has
+these valid exact-PR, exact-head attestations.
+
 ## The whole-file review attestation
 
 Read `get_ticket_doc(id: <ID>, doc: "scratch/review")` first. Replace it with

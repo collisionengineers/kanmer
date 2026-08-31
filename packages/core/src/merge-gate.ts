@@ -1,9 +1,10 @@
 import { deliveryTargets, resolveDelivery } from "./board.js";
-import type { DeliveryPolicy } from "./types.js";
+import type { BatchState, DeliveryPolicy, Item } from "./types.js";
 import type { KanmerStore, OpenQuestionCount } from "./index.js";
 
 export type MergeGateFindingCode =
   | "NO_TICKET"
+  | "BATCH_ROSTER"
   | "OPEN_QUESTIONS"
   | "WRONG_STAGE"
   | "DEPENDENCY_BLOCKED"
@@ -29,6 +30,10 @@ export interface MergeGatePrInput {
    * guessed `main` would be exactly the hardcoding FRD-031 removes.
    */
   baseRef?: string;
+  /** Canonical GitHub PR URL when the event supplies it. */
+  url?: string;
+  /** Canonical owner/repository identity when the event supplies it. */
+  repository?: string;
 }
 
 /** A result that is useful to operators as well as the annotation adapter. */
@@ -51,6 +56,8 @@ export interface MergeGateReviewValid {
   state: "valid";
   headSha: string;
   verdict?: string;
+  pr?: string;
+  independent?: boolean;
   /** Board branch tip the reviewer attested to (CORE-123); absent on older records. */
   boardSha?: string;
   details?: Record<string, unknown>;
@@ -106,9 +113,37 @@ export interface MergeGatePhase2Evidence {
   board?: MergeGateBoardEvidence;
 }
 
+export interface MergeGateBatchMemberEvidence {
+  ticketId: string;
+  /** Ticket bytes from the CLI's one warning-free, archived-inclusive census. */
+  item: Item | null;
+  /** Question count gathered for this exact member; null is inconclusive. */
+  questions: OpenQuestionCount | null;
+  evidence: MergeGatePhase2Evidence;
+}
+
+/** Roster evidence gathered from one warning-free board snapshot by the CLI. */
+export interface MergeGateBatchEvidence {
+  kind: "batch";
+  reviewStageId: string;
+  finalStageId: string;
+  strict?: boolean;
+  /** Delivery policy resolved from the same captured board.yml. */
+  policy: DeliveryPolicy;
+  /** Authoritative manifest state classified against that same item census. */
+  batch: BatchState | null;
+  /** Fail-closed manifest read/validation error captured by the CLI boundary. */
+  batchError?: string;
+  members: readonly MergeGateBatchMemberEvidence[];
+}
+
 export interface MergeGateResult {
   ok: boolean;
   ticketId: string | null;
+  /** Normalised explicit roster; one id for the ordinary singular path. */
+  ticketIds?: string[];
+  /** Frozen batch identity for a valid multi-ticket roster, otherwise null. */
+  batchId?: string | null;
   source: MergeGateTicketSource;
   pr: MergeGatePrInput;
   findings: MergeGateFinding[];
@@ -138,11 +173,23 @@ function normalizeTicketId(value: string): string | null {
 
 function normalizeSha(value: string): string { return value.trim().toLowerCase(); }
 
+function reviewPrMatches(value: string, pr: MergeGatePrInput): boolean {
+  const identity = value.trim();
+  if (identity === String(pr.number)) return true;
+  const repository = pr.repository?.trim();
+  const canonicalUrl = pr.url?.trim() ?? (
+    repository && /^[^/\s]+\/[^/\s]+$/.test(repository)
+      ? `https://github.com/${repository}/pull/${pr.number}`
+      : null
+  );
+  return Boolean(canonicalUrl && identity === canonicalUrl);
+}
+
 /** Resolve a PR to a ticket, with an explicit footer taking precedence. */
 export function resolveMergeGateTicket(
   body: string | null | undefined,
   branch: string,
-): { ticketId: string | null; source: MergeGateTicketSource; error?: string } {
+): { ticketId: string | null; ticketIds?: string[]; source: MergeGateTicketSource; error?: string } {
   const lines = (body ?? "").split(/\r?\n/);
   const footerLines = lines
     .map((line, index) => ({ line, index, match: FOOTER_LINE_RE.exec(line) }))
@@ -152,13 +199,16 @@ export function resolveMergeGateTicket(
   if (footerLines.length > 0) {
     const ids = footerLines.map((entry) => normalizeTicketId(entry.match?.[1] ?? ""));
     if (ids.some((id) => id === null)) return { ticketId: null, source: null, error: "explicit Kanmer footer is invalid" };
-    const distinct = [...new Set(ids as string[])];
-    if (distinct.length > 1) return { ticketId: null, source: null, error: "multiple distinct Kanmer footers are ambiguous" };
-    return { ticketId: distinct[0] ?? null, source: "footer" };
+    const distinct = [...new Set(ids as string[])].sort((a, b) => a.localeCompare(b));
+    return distinct.length === 1
+      ? { ticketId: distinct[0]!, source: "footer" }
+      : { ticketId: null, ticketIds: distinct, source: "footer" };
   }
 
   const branchId = normalizeTicketId(BRANCH_ID_RE.exec(branch)?.[1] ?? "");
-  return branchId ? { ticketId: branchId, source: "branch" } : { ticketId: null, source: null };
+  return branchId
+    ? { ticketId: branchId, source: "branch" }
+    : { ticketId: null, source: null };
 }
 
 function noTicket(pr: MergeGatePrInput, message: string): MergeGateResult {
@@ -215,7 +265,11 @@ function fail(code: MergeGateFindingCode, level: MergeGateFindingLevel, message:
   return { code, level, outcome: level === "warning" ? "warn" : "fail", message, ...(details ? { details } : {}) };
 }
 
-function reviewChecks(pr: MergeGatePrInput, evidence: MergeGatePhase2Evidence): { checks: MergeGateCheck[]; findings: MergeGateFinding[] } {
+function reviewChecks(
+  pr: MergeGatePrInput,
+  evidence: MergeGatePhase2Evidence,
+  requireRosterIdentity = false,
+): { checks: MergeGateCheck[]; findings: MergeGateFinding[] } {
   const checks: MergeGateCheck[] = [];
   const findings: MergeGateFinding[] = [];
   const review = evidence.review;
@@ -235,13 +289,35 @@ function reviewChecks(pr: MergeGatePrInput, evidence: MergeGatePhase2Evidence): 
   } else {
     const actual = normalizeSha(review.headSha);
     const expected = normalizeSha(pr.headSha);
+    const attestedPr = review.pr?.trim() ?? (typeof review.details?.pr === "string" ? review.details.pr.trim() : "");
+    const independent = review.independent ?? review.details?.independent === true;
     checks.push(pass("NO_REVIEW_RECORD", soft, "review attestation is present"));
     if (!FULL_SHA_RE.test(actual) || !FULL_SHA_RE.test(expected) || actual !== expected) {
       const finding = fail("STALE_REVIEW", soft, `review attestation head ${actual || "(missing)"} does not match PR head ${expected || "(missing)"}`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
       checks.push(finding);
       findings.push(finding);
-    } else if (review.verdict?.toLowerCase() === "needs-changes") {
-      const finding = fail("STALE_REVIEW", soft, "review attestation has verdict needs-changes; it is not an approval", { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
+    } else if (requireRosterIdentity && !reviewPrMatches(attestedPr, pr)) {
+      const finding = fail("STALE_REVIEW", soft, `review attestation names PR ${attestedPr || "(missing)"}, not current PR ${pr.number}`, {
+        attestedHeadSha: actual,
+        attestedPr: attestedPr || null,
+        pr: pr.number,
+        verdict: review.verdict,
+        independent,
+      });
+      checks.push(finding);
+      findings.push(finding);
+    } else if (requireRosterIdentity && !independent) {
+      const finding = fail("STALE_REVIEW", soft, "review attestation is not an independent review", {
+        attestedHeadSha: actual,
+        attestedPr,
+        pr: pr.number,
+        verdict: review.verdict,
+        independent,
+      });
+      checks.push(finding);
+      findings.push(finding);
+    } else if (review.verdict?.toLowerCase() === "needs-changes" || (requireRosterIdentity && review.verdict?.toLowerCase() !== "pass")) {
+      const finding = fail("STALE_REVIEW", soft, `review attestation has verdict ${review.verdict ?? "(missing)"}; batch members require pass`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
       checks.push(finding);
       findings.push(finding);
     } else {
@@ -352,6 +428,7 @@ function evaluatePhase2(
   questions: OpenQuestionCount,
   evidence: MergeGatePhase2Evidence,
   policy: DeliveryPolicy,
+  requireRosterIdentity = false,
 ): MergeGateResult {
   const checks: MergeGateCheck[] = [pass("NO_TICKET", "error", `Kanmer ticket ${item.id} resolved`)];
   const findings: MergeGateFinding[] = [];
@@ -386,11 +463,208 @@ function evaluatePhase2(
   checks.push(target);
   if (target.outcome === "fail" || target.outcome === "warn") findings.push(target as MergeGateFinding);
 
-  const review = reviewChecks(pr, evidence);
+  const review = reviewChecks(pr, evidence, requireRosterIdentity);
   checks.push(...review.checks);
   findings.push(...review.findings);
 
   return { ok: mergeGateOk(findings), ticketId: item.id, source: null, pr, questions, findings, checks, boardSha: evidence.board?.sha ?? null, strict: evidence.strict === true };
+}
+
+function batchRosterFailure(
+  pr: MergeGatePrInput,
+  ticketIds: string[],
+  source: MergeGateTicketSource,
+  message: string,
+  details: Record<string, unknown> = {},
+  evidence?: MergeGateBatchEvidence,
+): MergeGateResult {
+  const finding = fail("BATCH_ROSTER", "error", message, { ticketIds, ...details });
+  return {
+    ok: false,
+    ticketId: null,
+    ticketIds,
+    batchId: typeof details.batchId === "string" ? details.batchId : null,
+    source,
+    pr,
+    questions: null,
+    findings: [finding],
+    checks: [finding],
+    boardSha: evidence?.members[0]?.evidence.board?.sha ?? null,
+    strict: evidence?.strict === true,
+  };
+}
+
+async function evaluateBatch(
+  store: KanmerStore,
+  pr: MergeGatePrInput,
+  ticketIds: string[],
+  source: MergeGateTicketSource,
+  evidence?: MergeGateBatchEvidence,
+): Promise<MergeGateResult> {
+  let items: Array<Item | null | undefined>;
+  let census: Item[] | undefined;
+  let state: BatchState | null;
+  let questions: Array<OpenQuestionCount | null>;
+  let policy: DeliveryPolicy | undefined;
+
+  if (evidence) {
+    const evidenceById = new Map(evidence.members.map((member) => [member.ticketId, member]));
+    const evidenceIds = [...evidenceById.keys()].sort((a, b) => a.localeCompare(b));
+    const boardShas = new Set(evidence.members.map((member) => member.evidence.board?.sha ?? null));
+    if (
+      evidenceIds.length !== evidence.members.length || evidenceIds.join("\0") !== ticketIds.join("\0") ||
+      evidence.members.some((member) =>
+        member.evidence.reviewStageId !== evidence.reviewStageId ||
+        member.evidence.finalStageId !== evidence.finalStageId ||
+        (member.evidence.strict === true) !== (evidence.strict === true)
+      ) ||
+      boardShas.size > 1
+    ) {
+      return batchRosterFailure(
+        pr,
+        ticketIds,
+        source,
+        "phase-2 evidence does not cover one coherent snapshot of the exact batch roster",
+        { evidenceTicketIds: evidenceIds, boardShas: [...boardShas] },
+        evidence,
+      );
+    }
+    items = ticketIds.map((id) => evidenceById.get(id)?.item);
+    questions = ticketIds.map((id) => evidenceById.get(id)?.questions ?? null);
+    state = evidence.batch;
+    policy = evidence.policy;
+    if (evidence.batchError) {
+      return batchRosterFailure(pr, ticketIds, source, evidence.batchError, {}, evidence);
+    }
+  } else {
+    const listed = await store.listItemsWithWarnings({ includeArchived: true });
+    if (listed.warnings.length > 0) {
+      return batchRosterFailure(
+        pr,
+        ticketIds,
+        source,
+        "the complete Kanmer ticket census is unreadable; batch membership cannot be proven",
+        { warnings: listed.warnings.map((warning) => ({ file: warning.file, message: warning.message })) },
+      );
+    }
+    census = listed.items;
+    const byId = new Map(listed.items.map((item) => [item.id, item]));
+    items = ticketIds.map((id) => byId.get(id));
+    questions = await Promise.all(ticketIds.map((id) => store.getOpenQuestionCount(id)));
+    state = null;
+  }
+
+  const missing = ticketIds.filter((_, index) => !items[index] || items[index]?.type !== "ticket");
+  if (missing.length > 0) {
+    return batchRosterFailure(pr, ticketIds, source, `explicit Kanmer batch roster names missing or non-ticket members: ${missing.join(", ")}`, { missing }, evidence);
+  }
+  const batchIds = [...new Set(items.map((item) => item?.lease_batch).filter((id): id is string => Boolean(id)))];
+  if (batchIds.length !== 1 || items.some((item) => !item?.lease_batch)) {
+    return batchRosterFailure(
+      pr,
+      ticketIds,
+      source,
+      "multiple Kanmer footers are accepted only when every referenced ticket belongs to one frozen batch",
+      { recordedBatchIds: batchIds },
+      evidence,
+    );
+  }
+  const batchId = batchIds[0]!;
+  if (!evidence) {
+    try {
+      state = await store.batchStateFromSnapshot(ticketIds[0]!, census!);
+    } catch (error) {
+      return batchRosterFailure(pr, ticketIds, source, error instanceof Error ? error.message : `batch ${batchId} could not be read`, { batchId });
+    }
+  }
+  const recordedIds = state?.members.map((member) => member.id).sort((a, b) => a.localeCompare(b)) ?? [];
+  if (
+    !state || state.id !== batchId || state.declaration !== "consistent" || !state.controller || !state.frozenAt ||
+    recordedIds.join("\0") !== ticketIds.join("\0")
+  ) {
+    return batchRosterFailure(
+      pr,
+      ticketIds,
+      source,
+      `explicit Kanmer footer roster does not exactly match the complete consistent frozen batch ${batchId}`,
+      {
+        batchId,
+        recordedTicketIds: recordedIds,
+        declaration: state?.declaration ?? null,
+        controller: state?.controller ?? null,
+        frozenAt: state?.frozenAt ?? null,
+      },
+      evidence,
+    );
+  }
+
+  if (questions.some((count) => count === null)) {
+    return batchRosterFailure(pr, ticketIds, source, `one or more members of batch ${batchId} are unreadable in the current board layout`, { batchId }, evidence);
+  }
+
+  // The legacy phase-1 library call still validates the complete roster and
+  // each member's questions. The production CLI always supplies phase 2.
+  if (!evidence) {
+    const checks: MergeGateCheck[] = [pass("BATCH_ROSTER", "error", `explicit roster exactly matches frozen batch ${batchId}`, {
+      batchId,
+      ticketIds,
+      controller: state.controller,
+      frozenAt: state.frozenAt,
+    })];
+    const findings: MergeGateFinding[] = [];
+    for (const [index, id] of ticketIds.entries()) {
+      const count = questions[index]!;
+      if (count!.open > 0) {
+        const finding = fail("OPEN_QUESTIONS", "error", `Kanmer ticket ${id} has ${count!.open} open question${count!.open === 1 ? "" : "s"} (${count!.checked}/${count!.total} checked)`, {
+          ticketId: id,
+          ...count,
+        });
+        checks.push(finding);
+        findings.push(finding);
+      } else {
+        checks.push(pass("OPEN_QUESTIONS", "error", `Kanmer ticket ${id} has no open questions`, { ticketId: id, ...count! }));
+      }
+    }
+    return { ok: mergeGateOk(findings), ticketId: null, ticketIds, batchId, source, pr, questions: null, findings, checks };
+  }
+
+  const evidenceById = new Map(evidence.members.map((member) => [member.ticketId, member.evidence]));
+  const checks: MergeGateCheck[] = [pass("BATCH_ROSTER", "error", `explicit roster exactly matches frozen batch ${batchId}`, {
+    batchId,
+    ticketIds,
+    controller: state.controller,
+    frozenAt: state.frozenAt,
+  })];
+  const findings: MergeGateFinding[] = [];
+  let boardSha: string | null = null;
+  for (const [index, id] of ticketIds.entries()) {
+    const memberEvidence = evidenceById.get(id)!;
+    const member = items[index]!;
+    const result = evaluatePhase2(member!, pr, questions[index]!, memberEvidence, policy!, true);
+    if (boardSha === null) boardSha = memberEvidence.board?.sha ?? null;
+    for (const check of result.checks ?? []) {
+      const decorated = {
+        ...check,
+        message: `[${id}] ${check.message}`,
+        details: { ticketId: id, ...(check.details ?? {}) },
+      };
+      checks.push(decorated);
+      if (decorated.outcome === "fail" || decorated.outcome === "warn") findings.push(decorated as MergeGateFinding);
+    }
+  }
+  return {
+    ok: mergeGateOk(findings),
+    ticketId: null,
+    ticketIds,
+    batchId,
+    source,
+    pr,
+    questions: null,
+    findings,
+    checks,
+    boardSha,
+    strict: evidence.strict === true,
+  };
 }
 
 /**
@@ -398,23 +672,81 @@ function evaluatePhase2(
  * phase-1's result shape for older callers; the production CLI passes the
  * complete phase-2 evidence packet.
  */
-export async function evaluateMergeGate(store: KanmerStore, pr: MergeGatePrInput, phase2?: MergeGatePhase2Evidence): Promise<MergeGateResult> {
+export async function evaluateMergeGate(
+  store: KanmerStore,
+  pr: MergeGatePrInput,
+  phase2?: MergeGatePhase2Evidence | MergeGateBatchEvidence,
+): Promise<MergeGateResult> {
   const resolved = resolveMergeGateTicket(pr.body, pr.branch);
+  if (resolved.ticketIds && resolved.ticketIds.length > 1) {
+    return evaluateBatch(store, pr, resolved.ticketIds, resolved.source, phase2 && "kind" in phase2 ? phase2 : undefined);
+  }
   if (!resolved.ticketId) {
-    return phase2 ? phase2NoTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference", null, null, phase2) : noTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference");
+    const singular = phase2 && !("kind" in phase2) ? phase2 : undefined;
+    return singular ? phase2NoTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference", null, null, singular) : noTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference");
+  }
+
+  if (phase2 && "kind" in phase2) {
+    const item = phase2.members.find((member) => member.ticketId === resolved.ticketId)?.item ?? null;
+    const batchId = phase2.batch?.id ?? item?.lease_batch ?? null;
+    if (phase2.batchError) {
+      return batchRosterFailure(pr, [resolved.ticketId], resolved.source, phase2.batchError, {
+        ...(batchId ? { batchId } : {}),
+      }, phase2);
+    }
+    const state = phase2.batch;
+    return batchRosterFailure(
+      pr,
+      [resolved.ticketId],
+      resolved.source,
+      state
+        ? `Kanmer ticket ${resolved.ticketId} is one member of batch ${state.id}; the PR must name the complete manifest roster`
+        : `Kanmer ticket ${resolved.ticketId} has incomplete batch evidence; the PR roster cannot be proven`,
+      {
+        ...(batchId ? { batchId } : {}),
+        recordedTicketIds: state?.members.map((member) => member.id) ?? [],
+        declaration: state?.declaration ?? null,
+      },
+      phase2,
+    );
   }
 
   const item = await store.getItem(resolved.ticketId);
   if (!item || item.type !== "ticket") {
     const base = noTicket(pr, `Kanmer ticket ${resolved.ticketId} was not found on the fetched board`);
-    if (!phase2) return { ...base, ticketId: resolved.ticketId, source: resolved.source };
+    if (!phase2 || "kind" in phase2) return { ...base, ticketId: resolved.ticketId, source: resolved.source };
     return phase2NoTicket(pr, `Kanmer ticket ${resolved.ticketId} was not found on the fetched board`, resolved.source, resolved.ticketId, phase2);
+  }
+
+  let singularBatch;
+  try {
+    singularBatch = await store.batchState(resolved.ticketId);
+  } catch (error) {
+    return batchRosterFailure(
+      pr,
+      [resolved.ticketId],
+      resolved.source,
+      error instanceof Error ? error.message : `batch ownership for ${resolved.ticketId} could not be read`,
+    );
+  }
+  if (singularBatch) {
+    return batchRosterFailure(
+      pr,
+      [resolved.ticketId],
+      resolved.source,
+      `Kanmer ticket ${resolved.ticketId} is one member of batch ${singularBatch.id}; the PR must name the complete manifest roster`,
+      {
+        batchId: singularBatch.id,
+        recordedTicketIds: singularBatch.members.map((member) => member.id),
+        declaration: singularBatch.declaration,
+      },
+    );
   }
 
   const questions = await store.getOpenQuestionCount(resolved.ticketId);
   if (!questions) throw new Error(`Kanmer ticket ${resolved.ticketId} is not readable in the current board layout`);
 
-  if (!phase2) {
+  if (!phase2 || "kind" in phase2) {
     const findings: MergeGateFinding[] = [];
     if (questions.open > 0) findings.push({ code: "OPEN_QUESTIONS", level: "error", outcome: "fail", message: `Kanmer ticket ${resolved.ticketId} has ${questions.open} open question${questions.open === 1 ? "" : "s"} (${questions.checked}/${questions.total} checked)` });
     return { ok: mergeGateOk(findings), ticketId: resolved.ticketId, source: resolved.source, pr, questions, findings };

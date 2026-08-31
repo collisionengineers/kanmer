@@ -1093,6 +1093,7 @@ try {
     "archived",
     "area",
     "assignee",
+    "batch",
     "blocked",
     "capture",
     "capture_disposition",
@@ -2567,7 +2568,12 @@ Second proof attempt passed; the first failure is retained.
     execFileSync("git", ["worktree", "add", "-b", "batch-branch", path.join(sandbox, ".worktrees", "batch"), expectedBoardBranch], {
       cwd: sandbox, windowsHide: true, stdio: "ignore",
     });
-    const batchTake = { branch: "batch-branch", worktree: ".worktrees/batch", assignee: "ctl-batch" };
+    const batchTake = {
+      branch: "batch-branch",
+      worktree: ".worktrees/batch",
+      assignee: "ctl-batch",
+      controller: "ctl-batch-label",
+    };
     const first = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: m1, ...batchTake, batch: "smoke-batch", batch_members: [m1, m2, m3] } })));
     const frozenSibling = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m3 } })));
     check(
@@ -2576,6 +2582,77 @@ Second proof attempt passed; the first failure is retained.
         frozenSibling.lease_batch_frozen_at === first.taken_at && !frozenSibling.taken_at && !frozenSibling.lease_id,
       JSON.stringify({ first: first.lease_batch, sibling: frozenSibling.lease_batch, siblingTaken: frozenSibling.taken_at ?? null }),
     );
+    const replayedFirst = JSON.parse(textOf(await client.callTool({
+      name: "take_ticket",
+      arguments: { id: m1, ...batchTake, batch: "smoke-batch", batch_members: [m1, m2, m3] },
+    })));
+    check(
+      "an exact first-take replay is response-loss idempotent and returns the original lease",
+      replayedFirst.taken_at === first.taken_at && replayedFirst.lease_id === first.lease_id &&
+        replayedFirst.lease_revision === first.lease_revision,
+      JSON.stringify({
+        first: { taken_at: first.taken_at, lease_id: first.lease_id, lease_revision: first.lease_revision },
+        replay: { taken_at: replayedFirst.taken_at, lease_id: replayedFirst.lease_id, lease_revision: replayedFirst.lease_revision },
+      }),
+    );
+
+    // CORE-126: caller-supplied labels are observable state, not authority. A
+    // second MCP process can copy all of them, but its actual MCP client name
+    // still cannot take, renew or resume the primary client's frozen batch.
+    const foreignBatchTransport = new StdioClientTransport({
+      command: runner,
+      args: [serverEntry, "--root", sandbox],
+      env: runnerEnv,
+    });
+    const foreignBatchClient = new Client({ name: "batch-foreign-smoke", version: "0.0.0" });
+    try {
+      await foreignBatchClient.connect(foreignBatchTransport);
+      const secondBeforeForeignTake = textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } }));
+      const foreignTake = await foreignBatchClient.callTool({
+        name: "take_ticket",
+        arguments: { id: m2, ...batchTake, batch: "smoke-batch" },
+      });
+      const secondAfterForeignTake = textOf(await client.callTool({ name: "get_item", arguments: { id: m2 } }));
+      check(
+        "a foreign MCP actor cannot take a batch member by copying its branch, worktree, assignee and controller label",
+        foreignTake.isError === true && textOf(foreignTake).includes("BATCH_OWNER_MISMATCH") &&
+          foreignTake.structuredContent?.error?.code === "LEASE_CONFLICT" && secondAfterForeignTake === secondBeforeForeignTake,
+        textOf(foreignTake),
+      );
+
+      const firstBeforeForeignRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+      const foreignRenew = await foreignBatchClient.callTool({
+        name: "take_ticket",
+        arguments: {
+          id: m1,
+          action: "renew",
+          assignee: batchTake.assignee,
+          lease_id: firstBeforeForeignRenew.lease_id,
+          lease_revision: firstBeforeForeignRenew.lease_revision,
+        },
+      });
+      const firstAfterForeignRenew = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+      check(
+        "a foreign MCP actor cannot renew a batch lease by copying its assignee and exact lease tokens",
+        foreignRenew.isError === true && textOf(foreignRenew).includes("BATCH_OWNER_MISMATCH") &&
+          foreignRenew.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+          firstAfterForeignRenew.lease_revision === firstBeforeForeignRenew.lease_revision,
+        textOf(foreignRenew),
+      );
+
+      const foreignPacket = JSON.parse(textOf(await foreignBatchClient.callTool({
+        name: "get_execution_packet",
+        arguments: { id: m1, resume: { branch: batchTake.branch, worktree: batchTake.worktree } },
+      })));
+      check(
+        "get_execution_packet refuses an exact batch resume from the foreign MCP actor and names both controllers",
+        foreignPacket.ready === false && foreignPacket.reason.includes("controlled by smoke") &&
+          foreignPacket.reason.includes("batch-foreign-smoke cannot obtain"),
+        foreignPacket.reason,
+      );
+    } finally {
+      await foreignBatchClient.close();
+    }
     const second = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: m2, ...batchTake, batch: "smoke-batch" } })));
     check(
       "a frozen member takes the batch's worktree and branch and gets its own lease on the shared workspace",
@@ -2614,6 +2691,27 @@ Second proof attempt passed; the first failure is retained.
         earlyRelease.structuredContent?.error?.code === "LEASE_CONFLICT" && stillTaken.taken_at === first.taken_at && stillTaken.lease_batch === "smoke-batch",
       textOf(earlyRelease),
     );
+    await client.callTool({ name: "update_item", arguments: { id: m3, archived: true } });
+    const archivedRoster = JSON.parse(textOf(await client.callTool({ name: "list_items", arguments: { include_archived: true } })))
+      .filter((item) => [m1, m2, m3].includes(item.id));
+    check(
+      "list_items include_archived discovers every frozen member with the compact batch identity used by closeout",
+      archivedRoster.length === 3 && archivedRoster.every((item) =>
+        item.batch?.id === "smoke-batch" && item.batch.controller && item.batch.frozenAt === first.taken_at
+      ),
+      JSON.stringify(archivedRoster.map((item) => ({ id: item.id, archived: item.archived, batch: item.batch }))),
+    );
+    const malformedDir = path.join(sandbox, ".kanmer", "areas", "_none", "BROKEN-999");
+    fs.mkdirSync(malformedDir, { recursive: true });
+    fs.writeFileSync(path.join(malformedDir, "BROKEN-999.md"), "---\nid: BROKEN-999\ntype: ticket\nstatus: [\n---\n", "utf8");
+    const warnedListing = JSON.parse(textOf(await client.callTool({ name: "list_items", arguments: { include_archived: true } })));
+    check(
+      "list_items preserves its valid summaries and warnings when an unrelated item is malformed",
+      Array.isArray(warnedListing.items) && warnedListing.items.some((item) => item.id === m1 && item.batch?.id === "smoke-batch") &&
+        warnedListing.warnings?.some((warning) => String(warning.file).includes("BROKEN-999")),
+      JSON.stringify({ items: warnedListing.items?.length, warnings: warnedListing.warnings }),
+    );
+    fs.rmSync(malformedDir, { recursive: true, force: true });
     const isolated = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: stranger, branch: "stranger-branch", assignee: "ctl-batch" } })));
     check("isolated mode stays the default: the stranger takes its own branch with no batch record", Boolean(isolated.taken_at) && !isolated.lease_batch, JSON.stringify({ taken: isolated.taken_at, batch: isolated.lease_batch ?? null }));
   }

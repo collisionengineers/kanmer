@@ -107,17 +107,25 @@ export async function assertGitRepository({ cwd, run = execFile }) {
  * is not a Git checkout degrades to `unrecorded` (nothing to compare) or
  * `unknown` (an attested SHA that cannot be corroborated).
  */
-export async function collectBoardEvidence({ boardRoot, attestedSha, run = execFile }) {
+export async function collectBoardEvidence({ boardRoot, attestedSha, capturedSha, run = execFile }) {
   const options = { cwd: boardRoot, timeout: 15_000, windowsHide: true, maxBuffer: 32 * 1024 };
   const attested = attestedSha ? String(attestedSha).trim().toLowerCase() : undefined;
   let sha = null;
   let diagnostic;
-  try {
-    const { stdout } = await run("git", ["rev-parse", "--verify", "HEAD^{commit}"], options);
-    sha = String(stdout).trim().toLowerCase();
-    if (!FULL_SHA_RE.test(sha)) { sha = null; diagnostic = "board HEAD is not a full Git object id"; }
-  } catch (error) {
-    diagnostic = String(error?.stderr || error?.message || "board HEAD could not be read").replace(/[\r\n]+/g, " ").slice(0, 240);
+  if (capturedSha !== undefined) {
+    sha = capturedSha === null ? null : String(capturedSha).trim().toLowerCase();
+    if (sha !== null && !FULL_SHA_RE.test(sha)) {
+      sha = null;
+      diagnostic = "captured board HEAD is not a full Git object id";
+    }
+  } else {
+    try {
+      const { stdout } = await run("git", ["rev-parse", "--verify", "HEAD^{commit}"], options);
+      sha = String(stdout).trim().toLowerCase();
+      if (!FULL_SHA_RE.test(sha)) { sha = null; diagnostic = "board HEAD is not a full Git object id"; }
+    } catch (error) {
+      diagnostic = String(error?.stderr || error?.message || "board HEAD could not be read").replace(/[\r\n]+/g, " ").slice(0, 240);
+    }
   }
   if (!attested) {
     return { sha, state: "unrecorded", ...(diagnostic ? { diagnostic } : {}) };

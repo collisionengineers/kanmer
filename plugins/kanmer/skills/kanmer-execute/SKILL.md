@@ -242,11 +242,22 @@ member's take declares and freezes the membership in one call —
 — and every later member is taken on that exact recorded worktree and branch
 with `batch: "<batch>"` (any other workspace is `BATCH_WORKSPACE_MISMATCH`;
 adding a ticket later is `BATCH_FROZEN`). The packet's `claim.batch` lists the
-members and which are still pending. A batch ships one PR whose body carries a
-`Kanmer: <ID>` line for every member, and review binds one attestation head;
-each member still writes its own post-implementation report, review mapping
-and proof. Never `release` a member while `claim.batch.pending` names a
-sibling — the shared workspace is still theirs.
+complete frozen roster and which members are still non-terminal.
+
+Batch ownership is the actual MCP request actor recorded as the batch
+controller, never an `assignee`, `controller`, or other caller-supplied label.
+Only that actual batch controller may add or take a frozen member on the shared
+workspace, or recover a `pending` declaration by repeating the exact original
+declaring take. Another actor, member list, declaring ticket, branch, or
+worktree is refused; after activation nobody may add a member, and per-member
+transfer is not a recovery path.
+
+A batch ships one PR whose body contains one standalone `Kanmer: <ID>` footer
+for every member in the complete frozen roster, with no omission or extra
+ticket. Each member still writes its own post-implementation report, exact-head
+review attestation, review mapping, and proof. Never `release` a member while
+`claim.batch.pending` names a non-terminal sibling — the shared workspace is
+still theirs.
 
 ## Work only the packet
 

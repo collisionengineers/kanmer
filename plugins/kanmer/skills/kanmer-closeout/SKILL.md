@@ -7,10 +7,11 @@ description: Close out a verified Done ticket or an explicitly retired post-merg
 
 Closeout is what stops the two slow leaks: tickets that sit taken forever,
 and worktrees/branches that outlive their PR. It runs in a fixed order —
-**kanmer record-keeping first, git cleanup second, release dead last** —
-because proof evidence may still need the worktree alive, a git snag must
-not strand the board, and a lingering ⛏ badge on a done ticket is a visible
-prompt to finish cleanup, unlike a silently orphaned directory.
+**Kanmer record-keeping first**. An isolated ticket then cleans Git and releases
+last. A batch instead completes every member's record, releases every member
+idempotently, and deletes its one shared worktree and branch only after those
+releases. Proof evidence therefore stays available until every member is
+terminal, while an interrupted batch closeout can resume from its manifest.
 
 Start by appending `assets/closeout-checklist.md` to the ticket's
 checklist.md (`set_ticket_doc append: true`) so the human watches cleanup
@@ -75,20 +76,31 @@ git worktree prune
 If the host repo doesn't auto-delete merged branches:
 `git push origin --delete <id>-<slug>`.
 
-**Batch members share one worktree and branch (FRD-030).** When the ticket
-carries `lease_batch`, closeout refuses to remove the worktree or delete the
-branch while any member of that batch is not yet Done or archived: read every
-member off `list_items` (same `lease_batch`), finish their Kanmer halves, and
-only run the git half once after the last member is terminal. `release` on a
-member with a non-terminal sibling refuses `BATCH_ACTIVE` for the same reason.
+**Batch members share one worktree and branch (FRD-030).** Before any batch
+cleanup action, first call `list_items include_archived: true`. Use the
+summaries' `batch.id` to discover every ticket with the exact same batch id;
+never infer membership from a matching branch, worktree, or only the active
+board. Surface listing warnings and refuse a pending or inconsistent
+declaration instead of guessing the roster. Capture the manifest's immutable
+roster and its shared worktree/branch, finish the Kanmer half for every member,
+and require every immutable-roster member to be terminal — Done, or archived
+under the accepted retired non-success shape — before cleanup starts.
+
+After that all-terminal check, call `take_ticket action: "release"` for every
+roster member. Release is idempotent across the manifest's `releasing` phase:
+after an interruption, repeat the remaining releases until the manifest is
+gone. Only then remove the one shared worktree and delete the shared branch.
+An early release refuses `BATCH_ACTIVE`; an unreadable, incomplete, or changed
+roster is a stop rather than permission to clean Git.
 
 ## 3. Release, last
 
 `take_ticket action: "release"` — issued only once nothing is actually in
 flight. Success stays Done; retired non-success stays archived in Verifying.
 In both cases Git shows nothing left and the live board has no stale taken work.
-For a batch, release every member after the shared git cleanup; the last
-release clears the batch record.
+For a batch, use the exception above: release every member idempotently before
+the shared git cleanup; the manifest makes an interrupted `releasing` pass
+resumable.
 
 ## Edge cases
 

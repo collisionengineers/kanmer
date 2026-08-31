@@ -85,9 +85,13 @@ predecessor/successor rather than relying on wall-clock timestamps.
 
 **Batch workspace** — a deliberate exception to "one ticket, one workspace":
 two or more small related tickets that share one branch, worktree and pull
-request. The batch is frozen when its first member is taken, no other ticket
-can join it or use its workspace, each member still gets its own review and
-proof, and cleanup waits until every member is finished.
+request. Its first take records the complete roster in a hash-bound manifest:
+`pending` can roll an interrupted declaration forward, `active` protects that
+immutable roster, and `releasing` makes cleanup resumable. One actual controller
+owns the batch; supplied owner labels cannot take it over. The pull request must
+name every member, each member keeps its own exact-head review attestation and
+merged proof, and only after every member is terminal are releases completed
+and the shared worktree and branch removed.
 
 **Profile** — how much evidence a ticket owes. `fix` is the default; `chore`,
 `feature`, `spike` and `custom` are the others.

@@ -592,11 +592,42 @@ for (const [name, ok] of remediationContract) {
   check(name, ok, ok ? "contract present" : "SKILL-037 remediation-loop wording missing");
 }
 
-console.log("\n=== 19. SKILL-036 durable `/goal` orchestration contract ===");
+console.log("\n=== 19. CORE-126 protected batch workflow contract ===");
+const protectedBatchContract = [
+  [
+    "kanmer-execute emits the complete frozen batch footer roster",
+    /one standalone `Kanmer: <ID>` footer\s+for every member in the complete frozen roster[\s\S]{0,120}no omission or extra/i.test(
+      executeSkill,
+    ),
+  ],
+  [
+    "kanmer-review writes one member-owned exact-head pass attestation per roster ticket",
+    /one fresh independent review of the shared PR at its\s+exact full head SHA[\s\S]{0,500}member-owned whole-file `scratch\/review\.md` attestation\s+for every member in the complete frozen roster[\s\S]{0,500}`independent: true`[\s\S]{0,80}`verdict: pass`[\s\S]{0,120}exact shared `pr` and full\s+`head_sha`/i.test(
+      reviewSkill,
+    ),
+  ],
+  [
+    "kanmer-closeout discovers archived batch members by exact batch id",
+    /Before any batch\s+cleanup action, first call `list_items include_archived: true`[\s\S]{0,220}`batch\.id`[\s\S]{0,120}exact same batch id/i.test(
+      closeoutSkill,
+    ),
+  ],
+  [
+    "kanmer-closeout releases an all-terminal roster before shared Git cleanup",
+    /require every immutable-roster member to be terminal[\s\S]{0,700}release[^\n]*every\s+roster member[\s\S]{0,180}idempotent[\s\S]{0,450}Only then remove the one shared worktree and delete the shared branch/i.test(
+      closeoutSkill,
+    ),
+  ],
+];
+for (const [name, ok] of protectedBatchContract) {
+  check(name, ok, ok ? "contract present" : "CORE-126 protected-batch wording missing");
+}
+
+console.log("\n=== 20. SKILL-036 durable `/goal` orchestration contract ===");
 // FRD-034's controller is `kanmer-auto` extended, not a second orchestrator: the
 // durable run record, the status vocabulary, the reconciliation loop and the
 // stop predicates are already checks 13 and 14's, and forking them was the
-// explicit non-goal. What check 19 adds is the part FRD-034 asks for that no
+// explicit non-goal. What check 20 adds is the part FRD-034 asks for that no
 // tool reports and check 13 cannot see — the frozen roster, the preflight, the
 // overlap breadth, the sync-before-gate rule, the escalation boundary, the
 // active-stage invariants, and the evidence rules a two-day multi-controller

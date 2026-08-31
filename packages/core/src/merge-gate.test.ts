@@ -4,8 +4,17 @@ import os from "node:os";
 import path from "node:path";
 import { removeTreeWithRetry } from "./io.js";
 import { KanmerStore } from "./store.js";
-import { evaluateMergeGate, mergeGateOk, resolveMergeGateTicket } from "./merge-gate.js";
+import {
+  evaluateMergeGate,
+  mergeGateOk,
+  resolveMergeGateTicket,
+  type MergeGateBatchEvidence,
+  type MergeGateBatchMemberEvidence,
+  type MergeGateBoardEvidence,
+  type MergeGateReviewEvidence,
+} from "./merge-gate.js";
 import { linkItems } from "./links.js";
+import { resolveDelivery } from "./board.js";
 
 let root: string;
 let store: KanmerStore;
@@ -28,12 +37,12 @@ describe("resolveMergeGateTicket", () => {
     });
   });
 
-  it("accepts identical repeated footers and rejects distinct or invalid explicit footers", () => {
+  it("normalizes duplicate footers, carries a distinct provisional roster, and rejects invalid explicit footers", () => {
     expect(resolveMergeGateTicket("Kanmer: CORE-024\nKanmer: core-024", "CORE-999").ticketId).toBe("CORE-024");
-    expect(resolveMergeGateTicket("Kanmer: CORE-024\nKanmer: CORE-025", "CORE-999")).toMatchObject({
+    expect(resolveMergeGateTicket("Kanmer: CORE-025\nKanmer: core-024", "CORE-999")).toEqual({
       ticketId: null,
-      source: null,
-      error: expect.stringContaining("ambiguous"),
+      ticketIds: ["CORE-024", "CORE-025"],
+      source: "footer",
     });
     expect(resolveMergeGateTicket("Kanmer: CORE_024", "CORE-024-fix")).toMatchObject({
       ticketId: null,
@@ -114,7 +123,7 @@ describe("KanmerStore.getOpenQuestionCount and evaluateMergeGate", () => {
     ]);
   });
 
-  it("reports NO_TICKET for missing, ambiguous, invalid, and non-ticket references without branch fallback", async () => {
+  it("reports linkage/roster failures for missing, distinct unproven, and invalid references without branch fallback", async () => {
     const missing = await evaluateMergeGate(store, {
       number: 1,
       headSha: "a",
@@ -130,7 +139,8 @@ describe("KanmerStore.getOpenQuestionCount and evaluateMergeGate", () => {
       body: "Kanmer: CORE-001\nKanmer: CORE-002",
     });
     expect(ambiguous.ticketId).toBeNull();
-    expect(ambiguous.findings[0]?.message).toMatch(/ambiguous/);
+    expect(ambiguous.findings[0]).toMatchObject({ code: "BATCH_ROSTER", level: "error", outcome: "fail" });
+    expect(ambiguous.findings[0]?.message).toMatch(/missing or non-ticket members/);
 
     const invalid = await evaluateMergeGate(store, {
       number: 3,
@@ -171,6 +181,399 @@ describe("phase-2 merge-gate evidence", () => {
     review: { state: "valid", headSha: head, verdict: "pass" },
     commits: [],
     ...overrides,
+  });
+
+  async function batchPacket(overrides: { member?: string; evidence?: Record<string, unknown>; questions?: Record<string, number> } = {}) {
+    const free = { type: "ticket" as const, profile: "custom", requires: {}, status: "implementing" };
+    const tickets = await Promise.all(["A", "B", "C"].map((title) => store.createItem({ ...free, title })));
+    await store.takeTicket(tickets[0]!.id, {
+      branch: "batch-gate",
+      worktree: ".worktrees/batch-gate",
+      actor: "gate-controller",
+      batch: "batch-gate",
+      batchMembers: tickets.map((ticket) => ticket.id),
+    });
+    for (const ticket of tickets) await store.moveItem(ticket.id, { status: "review" });
+    const listed = await store.listItemsWithWarnings({ type: "ticket", includeArchived: true });
+    expect(listed.warnings).toEqual([]);
+    const byId = new Map(listed.items.map((item) => [item.id, item]));
+    const batch = await store.batchStateFromSnapshot(tickets[0]!.id, listed.items);
+    const memberEvidence = tickets.map((ticket) => ({
+      ticketId: ticket.id,
+      item: byId.get(ticket.id)!,
+      questions: overrides.member === ticket.id && overrides.questions
+        ? { checked: overrides.questions.checked ?? 0, total: overrides.questions.total ?? 0, open: overrides.questions.open ?? 0 }
+        : { checked: 0, total: 0, open: 0 },
+      evidence: evidence({
+        strict: true,
+        review: { state: "valid", headSha: head, verdict: "pass", pr: "77", independent: true },
+        board: { sha: null, state: "unrecorded" },
+        ...(overrides.member === ticket.id ? overrides.evidence : {}),
+      }),
+    }));
+    return {
+      tickets,
+      pr: {
+        number: 77,
+        headSha: head,
+        branch: "batch-gate",
+        body: tickets.map((ticket) => `Kanmer: ${ticket.id}`).join("\n"),
+        url: "https://github.com/collisionengineers/kanmer/pull/77",
+      },
+      packet: {
+        kind: "batch" as const,
+        reviewStageId: "review",
+        finalStageId: "done",
+        strict: true,
+        policy: resolveDelivery(await store.getBoard()),
+        batch,
+        members: memberEvidence,
+      },
+    };
+  }
+
+  const updateBatchMember = (
+    packet: MergeGateBatchEvidence,
+    ticketId: string,
+    update: (member: MergeGateBatchMemberEvidence) => MergeGateBatchMemberEvidence,
+  ): MergeGateBatchEvidence => ({
+    ...packet,
+    members: packet.members.map((member) => member.ticketId === ticketId ? update(member) : member),
+  });
+
+  const setBatchStrict = (packet: MergeGateBatchEvidence, strict: boolean): MergeGateBatchEvidence => ({
+    ...packet,
+    strict,
+    members: packet.members.map((member) => ({
+      ...member,
+      evidence: { ...member.evidence, strict },
+    })),
+  });
+
+  it("passes an exact three-member roster from a self-contained packet without rereading the store", async () => {
+    const { tickets, pr, packet } = await batchPacket();
+    const throwingStore = new Proxy({}, {
+      get: (_target, name) => () => { throw new Error(`unexpected store read ${String(name)}`); },
+    }) as KanmerStore;
+    const result = await evaluateMergeGate(throwingStore, pr, packet);
+    expect(result).toMatchObject({
+      ok: true,
+      ticketId: null,
+      ticketIds: tickets.map((ticket) => ticket.id).sort(),
+      batchId: "batch-gate",
+      source: "footer",
+      strict: true,
+    });
+    expect(result.findings).toEqual([]);
+    expect(result.checks?.[0]).toMatchObject({ code: "BATCH_ROSTER", outcome: "pass" });
+    expect(result.checks?.slice(1).every((check) => typeof check.details?.ticketId === "string")).toBe(true);
+  });
+
+  it("hard-fails superset, mixed-batch, and unbatched explicit rosters", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const mixed = updateBatchMember(first.packet, selectedId, (member) => ({
+      ...member,
+      item: { ...member.item!, lease_batch: "different-batch" },
+    }));
+    const unbatched = updateBatchMember(first.packet, selectedId, (member) => {
+      const { lease_batch: _batch, ...item } = member.item!;
+      return { ...member, item };
+    });
+    const cases: Array<{ name: string; pr: typeof first.pr; packet: MergeGateBatchEvidence }> = [
+      {
+        name: "superset footer",
+        pr: { ...first.pr, body: `${first.pr.body}\nKanmer: EXTRA-999` },
+        packet: first.packet,
+      },
+      { name: "mixed batch ids", pr: first.pr, packet: mixed },
+      { name: "unbatched member", pr: first.pr, packet: unbatched },
+    ];
+
+    for (const testCase of cases) {
+      const result = await evaluateMergeGate({} as KanmerStore, testCase.pr, testCase.packet);
+      expect(result.ok, testCase.name).toBe(false);
+      expect(result.findings, testCase.name).toHaveLength(1);
+      expect(result.findings[0], testCase.name).toMatchObject({
+        code: "BATCH_ROSTER",
+        level: "error",
+        outcome: "fail",
+      });
+    }
+  });
+
+  it("hard-fails recoverably pending and inconsistent batch manifests", async () => {
+    const first = await batchPacket();
+    for (const declaration of ["pending", "inconsistent"] as const) {
+      const packet: MergeGateBatchEvidence = {
+        ...first.packet,
+        batch: { ...first.packet.batch!, declaration },
+      };
+      const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+      expect(result.ok, declaration).toBe(false);
+      expect(result.findings).toEqual([
+        expect.objectContaining({ code: "BATCH_ROSTER", level: "error", outcome: "fail" }),
+      ]);
+      expect(result.findings[0]?.details).toMatchObject({
+        batchId: "batch-gate",
+        declaration,
+      });
+    }
+  });
+
+  it("binds deterministic member identity and check order despite reversed evidence and footers", async () => {
+    const first = await batchPacket();
+    const ticketIds = first.tickets.map((ticket) => ticket.id).sort((a, b) => a.localeCompare(b));
+    const packet: MergeGateBatchEvidence = {
+      ...first.packet,
+      members: [...first.packet.members].reverse(),
+    };
+    const result = await evaluateMergeGate({} as KanmerStore, {
+      ...first.pr,
+      body: [...ticketIds].reverse().map((id) => `Kanmer: ${id}`).join("\n"),
+    }, packet);
+
+    expect(result.ok).toBe(true);
+    expect(result.ticketIds).toEqual(ticketIds);
+    expect(result.checks?.slice(1).map((check) => check.details?.ticketId)).toEqual(
+      ticketIds.flatMap((id) => Array.from({ length: 9 }, () => id)),
+    );
+  });
+
+  it("blocks an incomplete roster and aggregates a non-leading member's question and canonical PR failures", async () => {
+    const first = await batchPacket();
+    const throwingStore = new Proxy({}, {
+      get: (_target, name) => () => { throw new Error(`unexpected store read ${String(name)}`); },
+    }) as KanmerStore;
+    const lone = await evaluateMergeGate(throwingStore, {
+      ...first.pr,
+      body: `Kanmer: ${first.tickets[0]!.id}`,
+    }, first.packet);
+    expect(lone.findings[0]).toMatchObject({ code: "BATCH_ROSTER", level: "error" });
+    expect(lone.findings[0]?.message).toContain("complete manifest roster");
+
+    const badId = first.tickets[1]!.id;
+    const badPacket = {
+      ...first.packet,
+      members: first.packet.members.map((member) => member.ticketId === badId
+        ? {
+            ...member,
+            questions: { checked: 0, total: 1, open: 1 },
+            evidence: {
+              ...member.evidence,
+              review: {
+                state: "valid" as const,
+                headSha: head,
+                verdict: "pass",
+                pr: "https://github.com/foreign/repo/pull/77",
+                independent: true,
+              },
+            },
+          }
+        : member),
+    };
+    const adverse = await evaluateMergeGate({} as KanmerStore, first.pr, badPacket);
+    expect(adverse.ok).toBe(false);
+    expect(adverse.findings.map((finding) => [finding.code, finding.details?.ticketId])).toEqual([
+      ["OPEN_QUESTIONS", badId],
+      ["STALE_REVIEW", badId],
+    ]);
+  });
+
+  it("blocks an archived or non-Review member and identifies the exact member", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const cases = [
+      { name: "archived", item: { archived: true, status: "review" } },
+      { name: "non-review", item: { archived: false, status: "implementing" } },
+    ];
+
+    for (const testCase of cases) {
+      const packet = updateBatchMember(first.packet, selectedId, (member) => ({
+        ...member,
+        item: { ...member.item!, ...testCase.item },
+      }));
+      const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+      expect(result.ok, testCase.name).toBe(false);
+      expect(result.findings).toContainEqual(expect.objectContaining({
+        code: "WRONG_STAGE",
+        level: "error",
+        outcome: "fail",
+        details: expect.objectContaining({ ticketId: selectedId }),
+      }));
+    }
+  });
+
+  it("blocks live and dangling blockers recorded for a non-leading member", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const packet = updateBatchMember(first.packet, selectedId, (member) => ({
+      ...member,
+      evidence: {
+        ...member.evidence,
+        blockers: [
+          { id: "DEP-003", status: "done", archived: false, exists: true },
+          { id: "DEP-002", exists: false },
+          { id: "DEP-001", status: "implementing", archived: false, exists: true },
+        ],
+      },
+    }));
+    const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+    expect(result.ok).toBe(false);
+    expect(result.findings).toContainEqual(expect.objectContaining({
+      code: "DEPENDENCY_BLOCKED",
+      level: "error",
+      outcome: "fail",
+      details: { ticketId: selectedId, blockers: ["DEP-001", "DEP-002"] },
+    }));
+  });
+
+  it("requires every member's independent PASS review for this exact PR head", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const valid = { state: "valid", headSha: head, verdict: "pass", pr: "77", independent: true } as const;
+    const cases: Array<{ name: string; review: MergeGateReviewEvidence; code: "NO_REVIEW_RECORD" | "STALE_REVIEW" }> = [
+      { name: "absent", review: { state: "absent" }, code: "NO_REVIEW_RECORD" },
+      { name: "invalid", review: { state: "invalid", reason: "malformed attestation" }, code: "STALE_REVIEW" },
+      { name: "needs changes", review: { ...valid, verdict: "needs-changes" }, code: "STALE_REVIEW" },
+      { name: "non-pass", review: { ...valid, verdict: "approved" }, code: "STALE_REVIEW" },
+      { name: "stale head", review: { ...valid, headSha: "b".repeat(40) }, code: "STALE_REVIEW" },
+      { name: "not independent", review: { ...valid, independent: false }, code: "STALE_REVIEW" },
+      { name: "wrong PR", review: { ...valid, pr: "78" }, code: "STALE_REVIEW" },
+    ];
+
+    for (const testCase of cases) {
+      const packet = updateBatchMember(first.packet, selectedId, (member) => ({
+        ...member,
+        evidence: { ...member.evidence, review: testCase.review },
+      }));
+      const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+      expect(result.ok, testCase.name).toBe(false);
+      expect(result.findings, testCase.name).toContainEqual(expect.objectContaining({
+        code: testCase.code,
+        level: "error",
+        outcome: "fail",
+        details: expect.objectContaining({ ticketId: selectedId }),
+      }));
+    }
+  });
+
+  it("applies strict-versus-lenient reachability and board-freshness behavior per member", async () => {
+    const first = await batchPacket();
+    const selectedId = first.tickets[1]!.id;
+    const commitSha = "c".repeat(40);
+
+    for (const state of ["unreachable", "indeterminate"] as const) {
+      for (const strict of [false, true]) {
+        const base = setBatchStrict(first.packet, strict);
+        const packet = updateBatchMember(base, selectedId, (member) => ({
+          ...member,
+          evidence: { ...member.evidence, commits: [{ sha: commitSha, state }] },
+        }));
+        const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+        expect(result.ok, `${state}/${strict}`).toBe(!strict);
+        expect(result.findings).toContainEqual(expect.objectContaining({
+          code: "COMMITS_UNREACHABLE",
+          level: strict ? "error" : "warning",
+          outcome: strict ? "fail" : "warn",
+          details: expect.objectContaining({ ticketId: selectedId }),
+        }));
+      }
+    }
+
+    const boardTip = "d".repeat(40);
+    const oldTip = "e".repeat(40);
+    for (const testCase of [
+      { state: "stale" as const, strict: false, outcome: "warn", ok: true },
+      { state: "stale" as const, strict: true, outcome: "fail", ok: false },
+      { state: "unrecorded" as const, strict: false, outcome: "pass", ok: true },
+      { state: "unrecorded" as const, strict: true, outcome: "pass", ok: true },
+    ]) {
+      const base = setBatchStrict(first.packet, testCase.strict);
+      const packet: MergeGateBatchEvidence = {
+        ...base,
+        members: base.members.map((member) => {
+          const board: MergeGateBoardEvidence = member.ticketId === selectedId
+            ? {
+                sha: boardTip,
+                state: testCase.state,
+                ...(testCase.state === "stale" ? { attestedSha: oldTip } : {}),
+              }
+            : { sha: boardTip, state: "current", attestedSha: boardTip };
+          return { ...member, evidence: { ...member.evidence, board } };
+        }),
+      };
+      const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
+      const check = result.checks?.find((entry) =>
+        entry.code === "SYNC_REQUIRED" && entry.details?.ticketId === selectedId
+      );
+      expect(result.ok, `${testCase.state}/${testCase.strict}`).toBe(testCase.ok);
+      expect(check, `${testCase.state}/${testCase.strict}`).toMatchObject({
+        outcome: testCase.outcome,
+        level: testCase.strict ? "error" : "warning",
+      });
+    }
+  });
+
+  it("uses the full captured census for plural phase-1 batch classification", async () => {
+    const first = await batchPacket();
+    const outsider = await store.createItem({ type: "ticket", title: "Unexpected stamped ticket" });
+    const listed = await store.listItemsWithWarnings({ includeArchived: true });
+    expect(listed.warnings).toEqual([]);
+    const rogue = {
+      ...outsider,
+      lease_batch: first.packet.batch!.id,
+      lease_batch_controller: first.packet.batch!.controller!,
+      lease_batch_frozen_at: first.packet.batch!.frozenAt!,
+    };
+    const census = listed.items.map((item) => item.id === outsider.id ? rogue : item);
+    const phase1Store = {
+      listItemsWithWarnings: async () => ({ items: census, warnings: [] }),
+      getOpenQuestionCount: store.getOpenQuestionCount.bind(store),
+      batchStateFromSnapshot: store.batchStateFromSnapshot.bind(store),
+    } as unknown as KanmerStore;
+
+    const result = await evaluateMergeGate(phase1Store, first.pr);
+    expect(result.ok).toBe(false);
+    expect(result.findings[0]).toMatchObject({ code: "BATCH_ROSTER", level: "error" });
+    expect(result.findings[0]?.details).toMatchObject({ declaration: "inconsistent" });
+  });
+
+  it("matches an exact canonical URL from repository plus number and rejects a foreign repository", async () => {
+    const first = await batchPacket();
+    const pr = {
+      ...first.pr,
+      url: undefined,
+      repository: "collisionengineers/kanmer",
+    };
+    const canonical = `https://github.com/collisionengineers/kanmer/pull/${pr.number}`;
+    const sameRepository = {
+      ...first.packet,
+      members: first.packet.members.map((member) => ({
+        ...member,
+        evidence: {
+          ...member.evidence,
+          review: { ...member.evidence.review, pr: canonical },
+        },
+      })),
+    };
+    const accepted = await evaluateMergeGate({} as KanmerStore, pr, sameRepository);
+    expect(accepted.ok).toBe(true);
+
+    const foreign = {
+      ...sameRepository,
+      members: sameRepository.members.map((member, index) => index === 1
+        ? {
+            ...member,
+            evidence: {
+              ...member.evidence,
+              review: { ...member.evidence.review, pr: `https://github.com/foreign/repository/pull/${pr.number}` },
+            },
+          }
+        : member),
+    };
+    const rejected = await evaluateMergeGate({} as KanmerStore, pr, foreign);
+    expect(rejected.findings.map((finding) => finding.code)).toEqual(["STALE_REVIEW"]);
   });
 
   it("fails every non-review stage and passes the exact semantic review stage", async () => {

@@ -300,6 +300,54 @@ test("skill prose validator rejects a review flow that parks needs-changes in Re
   }
 });
 
+test("skill prose validator rejects incomplete protected-batch execution, review, and closeout contracts", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-protected-batch-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    const review = join(fixture, "plugins", "kanmer", "skills", "kanmer-review", "SKILL.md");
+    const closeout = join(fixture, "plugins", "kanmer", "skills", "kanmer-closeout", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8").replace(
+        "one standalone `Kanmer: <ID>` footer\nfor every member in the complete frozen roster",
+        "one leader-only Kanmer footer",
+      ),
+    );
+    writeFileSync(
+      review,
+      readFileSync(review, "utf8").replace(
+        "a separate, member-owned whole-file `scratch/review.md` attestation\nfor every member in the complete frozen roster",
+        "one shared review record for the batch leader",
+      ),
+    );
+    writeFileSync(
+      closeout,
+      readFileSync(closeout, "utf8")
+        .replace("first call `list_items include_archived: true`", "inspect only the active board")
+        .replace(
+          "Only then remove the one shared worktree and delete the shared branch.",
+          "Delete the shared worktree before the members are released.",
+        ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-execute emits the complete frozen batch footer roster/);
+    assert.match(result.stdout, /FAIL {2}kanmer-review writes one member-owned exact-head pass attestation per roster ticket/);
+    assert.match(result.stdout, /FAIL {2}kanmer-closeout discovers archived batch members by exact batch id/);
+    assert.match(result.stdout, /FAIL {2}kanmer-closeout releases an all-terminal roster before shared Git cleanup/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
 test("skill prose validator rejects a resumed flow without reference inputs or an implementation boundary", () => {
   const fixture = mkdtempSync(join(tmpdir(), "kanmer-resume-stage-reference-contract-"));
   try {

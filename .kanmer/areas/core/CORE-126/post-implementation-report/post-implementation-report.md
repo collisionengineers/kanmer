@@ -205,3 +205,20 @@ Failing-first evidence at `213209e2a3cb5a2dd572737f1b930c846b8062e8`:
 Corrected focused evidence passed: core claims 79/79; core and MCP typecheck/build; MCP smoke 371/371; `verify:skills`; repository scripts 160/160; AGENTS 31/31; docs/manual; plugin build/check with 41 tools, 12 skills and exact source/bundle bytes; and `git diff --check`.
 
 One authoritative non-overlapping clean Windows `npm run verify` rail passed with exit 0 at exact committed head `8965f4eb95653edc3f182ab6cafcc354ded511da`: 714 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 371 standalone MCP smoke checks, and 50 protocol checks, plus builds, workspace typechecks, documentation/manual, headless/discovery, MCPB packaging, skills, AGENTS, and plugin byte identity. The source worktree was clean and current with `origin/main` after the rail.
+
+## Final workspace-reservation remediation
+
+Exact remediation head: `54f8a2940a23847d8936e380c6f4647b7c9ec11c`.
+
+The exact-head automated and independent delta reviews agreed on F-028: the declaration path returned through `declareBatchAndTake` before the ordinary workspace-occupancy check, allowing a fresh batch to overlap an unrelated live branch/worktree. The root-cause correction keeps one central admission invariant:
+
+- fresh declaration checks the warning-aware complete ticket census before persisting its WAL;
+- pending, active and releasing manifests themselves reserve their exact branch/worktree;
+- only the exact same batch, actor, durable controller run, branch and worktree may share that reservation;
+- pending recovery rechecks occupancy before any member write, so interruption cannot roll forward into a second live writer.
+
+Failing-first core evidence at `8965f4eb95653edc3f182ab6cafcc354ded511da` exited 1 with 5 failed / 79 passed: occupied branch and worktree declarations activated, pending WAL branch/worktree reservations admitted unrelated isolated takes, and a pending recovery rolled forward over an existing branch holder.
+
+Corrected focused evidence passed at `54f8a2940a23847d8936e380c6f4647b7c9ec11c`: core claims 84/84; MCP smoke 371/371; core and MCP typechecks; root build; plugin rebuild/check with 41 tools, 12 skills and byte-identical source/bundle; and `git diff --check`.
+
+The first attempt to launch the authoritative rail through the host PTY failed before PowerShell or npm started. The identical command was started without PTY. That one authoritative, non-overlapping clean Windows `npm run verify` rail completed with exit 0 at exact head `54f8a2940a23847d8936e380c6f4647b7c9ec11c`: 719 core tests, 524 GUI tests, 172 MCP HTTP/integration tests, 160 repository script tests, 371 standalone MCP smoke checks and 50 protocol checks, plus builds, workspace typechecks, docs/manual, headless/discovery, MCPB, skills, AGENTS and plugin byte identity. The worktree remained clean and based on current `origin/main`.

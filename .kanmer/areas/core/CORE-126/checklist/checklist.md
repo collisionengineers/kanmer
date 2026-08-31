@@ -38,3 +38,7 @@ Exact head `213209e2a3cb5a2dd572737f1b930c846b8062e8` fixes F-024 and F-025 as o
 ## Final terminal-member remediation progress
 
 Exact head `8965f4eb95653edc3f182ab6cafcc354ded511da` fixes F-026 and F-027. Failing-first core, MCP smoke, and prose-contract evidence is retained in the report. Corrected focused checks passed, and the single non-overlapping authoritative clean Windows `npm run verify` rail passed with exit 0 (714 core, 524 GUI, 172 MCP/integration, 160 scripts, 371 smoke, 50 protocol). The branch is pushed and current with `origin/main`; the ticket is ready for the final bounded exact-head delta review. Post-merge detached verification remains intentionally unchecked.
+
+## Final workspace-reservation remediation progress
+
+Exact head `54f8a2940a23847d8936e380c6f4647b7c9ec11c` fixes F-028 as the central one-writer invariant. Fresh declarations preflight the complete census before WAL creation; pending, active and releasing manifests reserve their exact branch/worktree; pending recovery rechecks before any member write; exact same-batch actor/run/workspace admission remains valid. Five failing-first collision cases became 84/84 core claims tests. One authoritative non-overlapping Windows `npm run verify` rail passed at that exact clean head (719 core, 524 GUI, 172 MCP/integration, 160 scripts, 371 smoke, 50 protocol). Post-merge detached verification remains intentionally unchecked.

@@ -25,14 +25,19 @@ The implementation starts only after CORE-127 and CORE-133 merge, then rebases o
 | Modify | `packages/core/src/reconciliation.test.ts` | Valid PASS/FAIL/INCONCLUSIVE and inconsistent-state routing |
 | Modify | `packages/mcp-server/src/reconciliation.ts` | Replace the independent decoder with the shared parser |
 | Modify | `packages/mcp-server/src/reconciliation.test.mjs` | Parser integration, exact-SHA routing and read-only evidence collection |
-| Modify | `packages/mcp-server/src/index.ts` | Describe validated proof/census policy through existing tools; no new tool |
+| Modify | `packages/mcp-server/src/index.ts` | Describe validated proof/census policy and expose resolved `get_status.proofValidation`; no new tool |
 | Modify | `packages/mcp-server/src/smoke.mjs` | End-to-end report/strict contradictory-proof and valid-PASS cases |
 | Modify | `plugins/kanmer/skills/kanmer-verify/SKILL.md` | Current proof schema, authoritative attempt ledger and whole-file rerun rules |
 | Modify | `plugins/kanmer/skills/kanmer-closeout/SKILL.md` | Require the shared validated current proof state before success closeout |
 | Modify | `plugins/kanmer/skills/kanmer-auto/SKILL.md` | Controller reads validated result and never advances contradictory/legacy strict evidence |
+| Modify | `plugins/kanmer/skills/kanmer-setup/SKILL.md` | Existing format-migration consumer performs report → dry-run digest → strict cutover deliberately |
 | Modify | `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` | Proof schema, gate diagnostics and migration census contract |
 | Modify | `AGENTS.md` | Canonical proof-attempt authority and strict-cutover contract |
+| Modify | `docs/functional/frd/FRD-002-requirement-profiles.md` | Replace existence-only proof authority with explicit report/strict profile semantics |
+| Modify | `docs/functional/frd/FRD-006-typed-proof.md` | Define current typed proof authority, compatibility reporting and strict Done behavior |
 | Modify | `docs/manual/proof.md` | User-visible typed proof and migration/report behavior |
+| Modify | `docs/manual/gates.md` | Explain report warnings versus strict proof gating |
+| Modify | `docs/manual/first-ticket.md` | Ensure first-ticket guidance creates a current valid proof on strict fresh boards |
 | Regenerate | `apps/gui/src/renderer/src/manual/chapters.generated.ts` | Generated manual mirror |
 | Modify | `scripts/verify-skill-prose.mjs` | Pin the new proof authority/cutover prose |
 | Modify | `scripts/verify-skill-prose.test.mjs` | Prose regression coverage |

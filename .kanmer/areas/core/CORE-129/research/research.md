@@ -25,22 +25,26 @@ A read-only census of the live board found 298 `proof/proof.md` files:
 - Zero records carry schema 2 or the final authority markers.
 - A raw scan finds 30 top-level/last-entry differences among parseable ledgers. The earlier 28 count excluded blank or non-contract verdict shapes; neither number is authority. The implementation must emit deterministic valid/legacy/invalid buckets and a digest from the shared parser.
 - Five records resemble single-attempt PASS candidates, but all remain legacy because none carries the final versioned authority contract.
+- The likely final parser census is 296 legacy, two invalid and zero current-valid records: 286 Done, five live Verifying, six archived Verifying and one archived Review. Strict cutover affects future transitions only; the five live Verifying records are CORE-036, CORE-042, GUI-141, MCP-028 and MCP-051.
 
 Historical records must not be rewritten, reopened or silently reclassified. A free-form prose heuristic is not safe enough to convert old bodies into machine authority. CORE-042 and GUI-141 must instead be reported as legacy/unvalidated by the census and refused as new Done authority once strict mode is deliberately enabled.
+
+## Governing correction
+
+`FRD-002` G5/AC1 and `FRD-006` R4/AC1-2 currently define proof existence—including a FAIL document—as sufficient for the structural gate. That text was correct for the earlier existence-only design but contradicts the frozen v0.3.13 acceptance and the central parser proposed here. Because FRDs outrank AGENTS, CORE-129 must update and link both FRDs in the same PR: report mode preserves historical existence compatibility, while strict mode requires canonical validated PASS authority. The user manual and kanmer-setup migration path must state the same report → census/digest → strict transition.
 
 ## Central proof-record contract
 
 Add one core parser shared by the gate and reconciliation. A current record is versioned and contains:
 
-- exact `kind`, schema, merged SHA, verified timestamp and top-level `PASS | FAIL | INCONCLUSIVE`;
-- a non-empty ordered `attempts[]` ledger;
-- per-attempt `attempted_at`, `result`, `authority: authoritative | supporting`, summary, and optional command/cwd/exit fields;
-- at least one authoritative attempt;
-- valid enums, SHA/timestamps, all-or-none command/cwd/exit evidence, and strictly increasing attempt timestamps with ties refused;
-- exit/result consistency when an exit is present: PASS requires zero and FAIL requires non-zero;
-- top-level result equal to the latest authoritative attempt, with compatible failure-class authority (PASS omits it; FAIL uses implementation, plan or transient; INCONCLUSIVE uses inconclusive).
+- exact `kind`, schema, merged SHA, nonempty `environment`, verified timestamp and top-level `PASS | FAIL | INCONCLUSIVE`;
+- a non-empty ordered `attempts[]` ledger whose final entry is authoritative; supporting entries may precede it but can never trail the verdict;
+- per-attempt `attempted_at`, `result`, `authority: authoritative | supporting`, summary, compatible `failure_class`, and explicit process evidence (`command`, `cwd`, integer `exit_code`) or an explicit manual/no-process form with `exit_code: null`;
+- strict objects with no unknown authority fields, valid enums, SHA/timestamps, deterministic diagnostics, all-or-none process evidence, and strictly increasing attempt timestamps with ties refused;
+- exit/result consistency when a process exit is present: PASS requires zero and FAIL requires non-zero;
+- `verified_at` equal to the final authoritative attempt timestamp, top-level result equal to that attempt, and any top-level `failure_class` equal to the attempt copy (PASS omits it; FAIL uses implementation, plan or transient; INCONCLUSIVE uses inconclusive).
 
-A later authoritative FAIL or INCONCLUSIVE invalidates an earlier PASS. A later supporting command does not replace the authoritative verdict. A valid current-schema single authoritative PASS remains valid. Consistent FAIL/INCONCLUSIVE records remain writable and stay Verifying.
+Because the final ledger entry must be authoritative, a later FAIL or INCONCLUSIVE can never sit behind an earlier PASS as merely supporting prose: it must become the final authoritative verdict or the record is invalid. Supporting entries may appear only before that final verdict. A valid current-schema single authoritative PASS remains valid. Consistent FAIL/INCONCLUSIVE records remain writable and stay Verifying.
 
 Natural-language proof prose remains explanatory only. Every rerun that can affect the verdict must append a typed attempt and replace the whole frontmatter-backed record.
 
@@ -49,15 +53,17 @@ Natural-language proof prose remains explanatory only. Every rerun that can affe
 Use the existing board-upgrade path rather than a second workflow tool or a process-local flag:
 
 - Add one optional board proof-validation policy. Fresh boards default to strict; an existing board with the field absent resolves to report mode.
-- Extend the existing `migrate_board` dry run to return the proof census and exact legacy/invalid ticket diagnostics without writing.
-- Dry run returns a deterministic digest over the ordered census. A real report-to-strict migration requires that exact digest, repeats the census immediately, and refuses without writing when the digest drifted.
-- A successful real migration writes the policy only; it never rewrites proof documents or item stages.
+- An older-format board first completes the ordinary format migration. Proof-policy cutover is never combined with a format migration.
+- On a current-format board, extend the existing `migrate_board` dry run to return the proof census and exact legacy/invalid ticket diagnostics without writing.
+- The digest binds a parser/census version plus each ordered ticket identity/stage, raw canonical-proof size/SHA-256, parsed state and deterministic diagnostics. Any listing, inventory or read failure makes the census incomplete and forbids cutover.
+- A real report-to-strict migration requires that exact digest, repeats the census and writes the board policy under the same ticket-write lock, and refuses without writing when the digest or completeness changes. Calling `migrate_board` without the digest never silently enables strict.
+- A successful real migration writes the policy only; it never rewrites proof documents, tickets, stages or activity.
 - In report mode, legacy/invalid records remain visible with warnings and preserve historical Done state.
 - In strict mode, entering Done requires a valid current-schema PASS. Legacy, invalid, contradictory, FAIL and INCONCLUSIVE records are not satisfied.
 - Existing Done tickets are not re-opened; the gate applies only to a future transition.
 - The v0.3.13 release process will run the census first on copied/live-safe board state, record it, then deliberately enable strict policy during candidate promotion.
 
-This keeps MCP and GUI behavior identical because the policy lives in `board.yml` and the central store gate reads it; there is no host-specific environment bypass.
+This keeps MCP and GUI behavior identical because the policy lives in `board.yml` and the central store gate reads it; there is no host-specific environment bypass. `get_status.proofValidation` reports the resolved mode and whether its source is an explicit board field or the legacy default, so an older server stripping the key is observable.
 
 ## Reconciliation result
 
@@ -76,7 +82,8 @@ Replace the MCP-only proof decoder with the shared core parser.
 - Top-level result disagreeing with the latest authoritative attempt is invalid.
 - Empty attempts, no authoritative attempt, malformed entry, invalid enum/SHA/timestamp/exit pairing, result/exit contradiction, timestamp ties or reversals, and incompatible failure class are refused.
 - Strict authority comes only from canonical `proof/proof.md`; another Markdown file in the proof folder cannot satisfy the gate.
-- A later supporting-only attempt does not replace the authoritative verdict.
+- A supporting entry may precede the final authority; a trailing supporting entry is invalid because the final ledger entry must be authoritative.
+- Missing/blank environment, verified/final timestamp drift, top/attempt failure-class drift, unknown keys and ambiguous manual/process evidence are invalid.
 - Consistent FAIL/INCONCLUSIVE remains Verifying and existing failure-class routing remains intact.
 - Legacy CORE-042-like and GUI-141-like records are reported before cutover and cannot authorise a new Done move under strict policy.
 - Census/migration never changes proof bytes, ticket bytes, stages or historical Done state.

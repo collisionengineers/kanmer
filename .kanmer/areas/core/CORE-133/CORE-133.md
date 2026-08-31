@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Reconciliation classifier: recover abandoned claims with a missing or
   unrecorded workspace, and bind FAIL routing to the merge SHA
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-31T17:53:36.025Z'
 labels:
   - reliable-autonomy
 groups:
@@ -18,7 +20,7 @@ refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-08-28T06:03:50.873Z'
-updated: '2026-08-28T06:54:01.746Z'
+updated: '2026-08-31T17:55:01.571Z'
 ---
 
 Filed by the independent review of [[CORE-131]] (PR #301, head `abeb16978a4b3f8fece6e98d6bdf54e541544a1b`). Two classifier gaps found in `packages/core/src/reconciliation.ts`; neither is unsafe, both leave FRD-028 behaviour unserved. Both were **independently re-confirmed by the post-merge verification** of CORE-131 (proof `b8dc5101d0c90fba` at merge SHA `45215955`).
@@ -70,11 +72,13 @@ A Verifying ticket whose FAIL proof names a merge SHA from an earlier verificati
 
 **Fix:** reject a FAIL proof whose `merged_sha` is not the selected PR's merge SHA before routing, mirroring the PASS path.
 
-## 3. Stale tool description (one-line, carried in from CORE-131 verification)
+## 3. Stale tool description (already fixed on current main; regression proof remains)
 
 `packages/mcp-server/src/index.ts:957` still tells clients "there is no apply surface" on the `reconcile_ticket` description, which CORE-131 made false when it shipped `apply_reconciliation`. Recorded as R-004 and dispositioned accepted residual risk there rather than filed separately.
 
 It is folded in here — not as new scope, but because this ticket is the next thing to touch `reconcile_ticket` and **nothing else will catch it**: the description ships inside the plugin bundle, and `check-plugin-sync.mjs` compares tool *names* only, so no rail flags a stale description. Fix it in passing.
+
+**Current disposition (2026-08-31): already-fixed.** Exact main `4fda54b4489fa4bc4b6b091c2af67715245ffa08` contains the corrected description from CORE-132 merge `c1bc3be8532150832328a6d7f62ecd94cdcf6220`: it names `apply_reconciliation` and the obsolete phrase is absent. CORE-133 will add a regression assertion and will edit production prose only if CORE-127 regresses it.
 
 ## Not in scope
 

@@ -295,3 +295,46 @@ After the F-006–F-009 remediation, exact-head automation and a fresh independe
 - F-011 makes symbol authority fail closed: non-empty symbols plus actual changes cannot PASS without a future versioned parser/range contract, while path failures retain FAIL precedence.
 - F-012 proves real pre-allocation refusal and derives revision/evidence versions only from bounded exact bytes in both packet paths.
 - Update canonical prose and its existing assertions, regenerate the MCP bundle, run the complete focused matrix, and stop on one clean commit in the existing branch/PR. The controller will then require fresh automated settlement, one final independent delta review, one fresh clean Windows rail, hosted `verify`, synced-board `kanmer-gate`, merge and exact-merge verification.
+
+
+## Third exact-head root-cause remediation — review head `7d899869523ac5b55ef2debbf67d0324ebe4fb78`
+
+The exact-head Windows and hosted verification rails passed, but the expected automated reviewer and a fresh independent exact-head reviewer confirmed F-014 through F-016 as merge-blocking authority gaps. They share one invariant: a packet may authorize the next worker action only when its checklist bytes, board bytes and complete tracked-workspace identity describe the same confined state. F-001 through F-012 remain fixed. F-013 remains rejected-with-reason in the exact-head attestation. This section is one consolidated root-cause correction; it adds no tool, writer, stage, dependency, schema or persisted state.
+
+### RC-8 — Enforce one checklist frontier from exact content (F-014)
+
+- Files/symbols: `packages/core/src/step-packet.ts::compileStepPacket`, `verifyStepPacket`, `checklistBoxes`, `boxesByStep`, `checklistStepLines`, `checklistLineMap`; `packages/core/src/step-packet.test.ts`; existing execution-packet/smoke callers only when an integration assertion is needed.
+- Keep the generic next-step selector reusable, but make constrained packet compilation and strict verification reject any checked marker mapped to a step after the selected step. Earlier mapped steps must be complete and the selected step must contain unchecked work.
+- During verification, derive marker states from the exact checklist content and validated step-line mapping, then compare those derived states with the packet's stored checklist states before trusting either. Recomputing a digest over contradictory stored state must not make it authoritative.
+- Preserve multi-marker steps: the selected step may contain partial progress at issuance only when at least one of its own markers is unchecked; no successor marker may be checked.
+- Negative cases: named and positional selection of step 1 from `[false, true]`; a partially prechecked later step; a re-digested forged packet; content checked while stored state says false; normal contiguous progress still compiles and strict-verifies.
+- Focused command: `npm exec --workspace @kanmer/core -- vitest run src/step-packet.test.ts --no-file-parallelism`.
+- Done when no sequence can become complete without every successor having first received and reconciled its own exact packet.
+
+### RC-9 — Preserve byte-identical UTF-8 BOM authority (F-015)
+
+- Files/symbols: `packages/core/src/store.ts::readAuthorityText` and bounded snapshot version/revision calculation; `packages/core/src/store.test.ts`; the checklist parsers named in RC-8 and their tests.
+- Decode bounded UTF-8 with fatal invalid-byte handling while preserving an initial BOM (for Node's `TextDecoder`, use the option whose semantics retain the BOM). The bounded ticket/document/group strings, content versions and document-inclusive revision must equal the canonical store readers for the same bytes.
+- Make checklist parsing tolerate exactly one leading U+FEFF on the first line without deleting or normalizing it from the content hashed into packet identity. The authorised marker transition must require the same BOM prefix before and after.
+- Negative cases: BOM-prefixed ticket, checklist, research and group-context evidence; normal-versus-bounded version/revision equality; exact returned tokens succeeding in `updateItem`/`setDoc` CAS; invalid UTF-8 still refusing; BOM addition/removal during reconciliation refusing; ordinary BOM-free evidence unchanged.
+- Focused commands: `npm exec --workspace @kanmer/core -- vitest run src/store.test.ts src/step-packet.test.ts --no-file-parallelism`, then `npm run build:core`.
+- Done when one byte sequence has one authority identity across normal reads, bounded snapshots, packet compilation, verification and CAS.
+
+### RC-10 — Census tracked modes and prove link confinement (F-016)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::parseIndexFlagCensus`, `captureOnce`, `collectWorkspaceSnapshot` and focused bounded helpers; `packages/mcp-server/src/step-reconciliation.test.mjs`; issuance/reconciliation integration tests and canonical prose only where the observable contract changes.
+- Replace the flag-only census with one bounded NUL-delimited `git ls-files -v -s -z --full-name --` census. Parse and retain flag, mode, object id, stage and raw repository-relative path; keep the existing assume-unchanged/skip-worktree refusal and charge raw bytes, total entries and tracked-link entries before further work.
+- Include the canonical index mode/object census in both workspace samples so mode, OID or representation drift cannot pass. Reject non-stage-zero entries and Git mode `160000` gitlinks as unprovable worker-file authority.
+- For Git mode `120000`, inspect the actual representation with capped `lstat`, `readlink` and physical resolution. A traversable link is accepted only when its resolved target is provably the physical worktree root or a descendant; escaping, chained escape, dangling, unreadable, unstable or budget-exhausted targets are INCONCLUSIVE/refused before issuance or PASS. Include link bytes, representation, object id and resolved physical identity in the double-sample digest.
+- A Git-for-Windows checkout that represents a mode-`120000` entry as an ordinary non-traversable placeholder remains bounded by its mode/OID/representation facts; any placeholder edit must still surface through ordinary Git status. Do not follow it as a link.
+- Do not ban a clean internal symlink merely for existing: it may remain supported only when physical confinement is proved and a write through it is surfaced by the in-worktree target/status evidence. If that cannot be proved with the existing bounded collector, fail closed and record the exact fixture.
+- Negative cases: clean absolute, parent-relative and chained external links; clean confined link and write-through; dangling/unreadable link; link or index-mode/OID drift between samples; malformed, oversized and too-many-entry census; mode-`160000`; ordinary tracked, staged and untracked files remain accepted; no index mutation.
+- Focused commands: `npm run build:server`, `node --test packages/mcp-server/src/step-reconciliation.test.mjs`, `node --test packages/mcp-server/src/reconciliation.test.mjs`, `node packages/mcp-server/src/smoke.mjs`, `npm run smoke:protocol`.
+- Done when every clean tracked path is either ordinary bounded Git authority or a physically confined, identity-bound link; no invisible write can escape the repository.
+
+### Third-remediation acceptance and stop
+
+- Update only already-authorised canonical prose/tests if the externally stated confinement/frontier contract needs clarification, then regenerate `plugins/kanmer/mcp/kanmer-mcp.cjs`; never hand-edit the bundle or weaken an assertion.
+- Run the core focused matrix, collector, reconciliation, MCP smoke, protocol, scripts/prose/AGENTS, claims/batch regression, builds, typecheck, plugin byte check and `git diff --check`. Do not run a duplicate full Windows rail inside implementation; the release controller owns one fresh rail after the new source head is published.
+- Commit one coherent root-cause remediation on the existing branch and PR. Update the post-implementation report and checklist, record the commit, and stop in Review without pushing, reviewing, merging, verifying or starting CORE-133.
+- The controller will publish the source head, require exact-head automated settlement, one independent delta review over F-001 through F-016 plus changed callers/tests, a fresh clean Windows `npm run verify`, hosted `verify`, synced-board `kanmer-gate`, merge and exact-merge verification.

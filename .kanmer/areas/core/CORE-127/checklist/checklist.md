@@ -23,6 +23,13 @@
 - [x] Step 13 — Add the metadata-first, handle-capped core execution-authority snapshot and route both packet paths through its exact bytes.
 - [x] Step 14 — Update canonical prose/tests, regenerate the bundle and pass the complete focused matrix on one clean remediation commit.
 
+## Third exact-head root-cause remediation
+
+- [ ] Step 15 — Reject prechecked successor markers during compilation and strict verification, deriving all packet checklist states from the exact content.
+- [ ] Step 16 — Preserve UTF-8 BOM bytes across bounded authority versions/revisions and BOM-aware checklist transitions while retaining fatal invalid-UTF-8 refusal.
+- [ ] Step 17 — Add the bounded tracked-index mode/object/link census and prove external, dangling, unstable and gitlink authority fails closed without index mutation.
+- [ ] Step 18 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
+
 ## Acceptance census
 
 - [x] Escaping/absolute/unsupported paths fail closed; literal, `*` and `**` semantics are pinned by tests.

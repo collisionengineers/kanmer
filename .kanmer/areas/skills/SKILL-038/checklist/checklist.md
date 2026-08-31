@@ -55,7 +55,7 @@
 
 ## Review, merge, and verification
 
-- [x] Push exact final head `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`
+- [x] Push prior exact head `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`
   with lease against remote head `5d13609c39b27b99df5f586a0bb300cdf1c591cc`.
 - [x] Confirm fresh `verify` and `kanmer-gate` are required on the new head.
 - [ ] Wait for every expected automated reviewer on the exact head.
@@ -147,3 +147,28 @@
 - [x] Mutation-pin all four corrections without weakening prior assertions.
 - [x] Run focused validation: mutation suite 45/45, scripts 153/153, `verify:skills` PASS, and `git diff --check` PASS.
 - [x] Run one complete clean Windows `npm run verify` rail at exact head `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`: PASS.
+
+## Final exact-head terminal-state corrections F-024–F-026
+
+- [x] Exempt every terminal `target-reached` member from external-blocker,
+  cycle/downstream, and shallow-target pruning while retaining its outgoing
+  live blocker edges.
+- [x] Immediately before terminal run status and reporting, re-gather
+  target-specific item, gate, delivery, Git, PR, check, and proof evidence for
+  every `target-reached` member.
+- [x] Replace stale, unavailable, or contradictory terminal evidence with an
+  explicit terminal blocked disposition that preserves the conflicting facts;
+  do not reopen or dispatch the member.
+- [x] Mirror the final-evidence mutation and target-reached exemption in root
+  `AGENTS.md`.
+- [x] Mutation-pin all three corrections without weakening earlier assertions.
+- [x] Run focused validation at exact head `6130dd123460f06926347e0264628848960e51d2`: mutation suite
+  47/47, scripts 155/155, `verify:skills` PASS, and `git diff --check` PASS.
+- [x] Run one complete clean Windows `npm run verify` rail at exact head
+  `6130dd123460f06926347e0264628848960e51d2`: PASS, including core 562/562, GUI 524/524,
+  MCP HTTP 144/144, scripts 155/155, MCP smoke 338/338, protocol 50/50,
+  discovery 13/13, AGENTS 31/31, typecheck, documentation, headless smoke,
+  MCPB, skills, and byte-identical plugin synchronization.
+- [x] Force-with-lease publish exact head `6130dd123460f06926347e0264628848960e51d2` against prior remote
+  `a7acf99b5ae669ddee0d7782f188fac5ebc959d0` and confirm GitHub requires
+  fresh `verify` and `kanmer-gate`.

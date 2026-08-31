@@ -4,7 +4,7 @@
 
 PR #304 is based on exact green main
 `add0da7fc17968796f43b3035065de400a4db2d4` and represented by one truthful
-final commit, `a7acf99b5ae669ddee0d7782f188fac5ebc959d0`.
+final commit, `6130dd123460f06926347e0264628848960e51d2`.
 
 The controller contract now:
 
@@ -202,3 +202,37 @@ At exact immutable head
   13/13, AGENTS 31/31, typecheck, documentation, headless smoke, MCPB, skills,
   and byte-identical plugin synchronization. The checkout and source worktree
   were clean at that SHA.
+
+---
+
+## Final exact-head amendment — F-024 through F-026
+
+Automated and independent review of prior head
+`a7acf99b5ae669ddee0d7782f188fac5ebc959d0` identified one remaining
+terminal-state root cause: target satisfaction was terminal in the run ledger
+but later dependency pruning and final reporting still treated it as provisional.
+
+At exact head `6130dd123460f06926347e0264628848960e51d2`:
+
+- dependency pruning operates only on nonterminal members that still need
+  advancement. A `target-reached` member is never replaced by an external,
+  cyclic, downstream, or shallow-target disposition, while its outgoing board
+  edge remains available when evaluating another unsatisfied member;
+- immediately before terminal run status and the final report, the controller
+  re-gathers each target-reached member's item revision, gates, target-specific
+  delivery state, Git/PR/check evidence, and exact proof. Valid evidence is
+  refreshed. Missing, stale, unavailable, or contradictory evidence preserves
+  the old and current facts and becomes an explicit terminal
+  `target evidence stale:` blocked disposition, without reopening or
+  dispatching the member;
+- root `AGENTS.md`, the canonical validator, and isolated mutation fixtures
+  bind both invariants and the required recorded PR, target, head SHA, and
+  observation time.
+
+Focused proof passed with 47/47 mutation tests and 155/155 script tests,
+`verify:skills`, and `git diff --check`. One clean complete Windows
+`npm run verify` rail passed at the exact detached SHA, including core
+562/562, GUI 524/524, MCP HTTP 144/144, MCP smoke 338/338, protocol 50/50,
+discovery 13/13, AGENTS 31/31, typecheck, documentation, headless smoke, MCPB,
+skills, and byte-identical plugin synchronization. The source worktree and
+verification checkout were tracked-clean at that SHA.

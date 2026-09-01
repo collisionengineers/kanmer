@@ -64,3 +64,30 @@ error during build:
 ```
 
 No branch pushed, no PR, no tag. Clone reset: `git checkout -- . && git switch main && git branch -D release/v0.4.0` (notes commit retained). Root cause and fix filed as [[GUI-146]] (release blocker, HZN-008). Prepare attempt 3 follows GUI-146's merge; the clone will be fast-forwarded first and the notes commit re-applied on top.
+
+## Promotion step 1 — board backup (2026-09-01T22:32:47Z)
+
+- Archive: `C:\Users\Alex\Documents\KanmerBackups\kanmer-board-20260901T223247Z.zip` (6,155,447 bytes)
+- SHA-256: `90fbb8438ef0ea6aad2226837de1b38b9f4dbea597e017bf75c6e14be2ef6539`
+- Board commit at backup: `41f795f9100d27b39f34262417362d626ade7a2b` (= `origin/kanmer-board`; worktree clean)
+- Retained rollback installer: `C:\Users\Alex\Documents\KanmerBackups\installers\Kanmer-Setup-0.3.12.exe` (sha256 prefix `82b6fcd73f299aa2`, downloaded from the v0.3.12 GitHub release with its `latest.yml`)
+
+## Release commit
+
+PR #309 squash-merged as `7e114cd117ef720c20797e2bf9f5cf58643a94e6` (contains CORE-127 `a744fd76`, GUI-146 `3a98bf7c`, notes, 0.4.0 manifests). Publish phase: `npm run release -- 0.4.0 --publish --release-commit 7e114cd1…` from the clone's `main` at 7e114cd1 with `GH_TOKEN` from the operator's `gh auth token`; log `C:\Users\Alex\Documents\KanmerBackups\release-publish-0.4.0.log`.
+
+## Publish (2026-09-01T22:33–22:53Z) — PASS
+
+`npm run release -- 0.4.0 --publish --release-commit 7e114cd117ef720c20797e2bf9f5cf58643a94e6` from the clone's `main` at 7e114cd1, exit 0 (`release-publish-0.4.0.log`): verify rail green (incl. GUI build); GUI built; `git tag v0.4.0` (→ 7e114cd1) pushed; one `--publish never` package (`Kanmer-Setup-0.4.0.exe`, blockmap, `latest.yml`, `kanmer-0.4.0.mcpb`); draft release created, 4 assets uploaded and verified byte-identical, then published: https://github.com/collisionengineers/kanmer/releases/tag/v0.4.0 (non-draft, non-prerelease, published 2026-09-01).
+
+## Promotion step 8 — independent release verification
+
+- `node scripts/verify-release-assets.mjs 0.4.0 --remote-coherent` → exit 0: "PASS: v0.4.0 is complete and its public manifest matches the published installer bytes".
+- `node scripts/check-updater-package.mjs --out apps/gui/release` → exit 0: "updater package OK (8 checks)".
+- Tag workflow `release.yml` run 33567978927 (push v0.4.0): in progress at time of writing; result recorded below when it completes.
+
+## Promotion step 9a/9b — packaged boot and copied-board smoke (2026-09-01T22:56Z)
+
+- Board copy: backup zip expanded to `%TEMP%\kanmer-board-copy-0.4.0` (`.kanmer/data/board.yml` present, areas `_none core docs gui mcp-server skills`).
+- Packaged boot: `apps/gui/release/win-unpacked/Kanmer.exe --user-data-dir=<fresh>` with `KANMER_SMOKE=1 KANMER_OPEN=<copy>` → exit 0, renderer PNG 118,602 bytes captured at `%TEMP%\kanmer-smoke-0.4.0-renderer.png`.
+- Standalone bundle at 7e114cd1 carries `SERVER_VERSION "0.4.0"`; `KANMER_ROOT=<copy> npm run smoke:headless` → exit 0 (explicit board root reported; headless write/read; host files untouched).

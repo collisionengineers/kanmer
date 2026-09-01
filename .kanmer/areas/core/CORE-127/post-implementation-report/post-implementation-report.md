@@ -381,3 +381,29 @@ Hosted verification, independent exact-head review, public finding dispositions,
 - `packages/mcp-server/src/step-reconciliation.test.mjs`
 - `plugins/kanmer/mcp/kanmer-mcp.cjs`
 - canonical Kanmer execution/planning/tool-reference prose and their mutation guards
+
+
+## Ninth remediation — the one budgeted batch (2026-09-01)
+
+Under the HZN-008 review-budget rule adopted 2026-09-01 this is the single allowed remediation batch (`review_round: 1` of `remediation_budget: 1`). Commit `171c3697413461d127d90909820d6aa7b8c61f93` on the existing branch and PR #307, +119/−10 across five files, all inside the plan's Expected files:
+
+- **F-035 (minor, fixed)** — `packages/core/src/step-packet.ts` `NAMED_CHECKLIST_STEP`: a named marker's integer must end at end-of-label, whitespace or a documented separator not followed by a digit, so `Step 1.5`, `Step 1-2`, `Step 1a` and `Step 10` no longer resolve to Step 1. One parser serves `nextStepIndex`, `checklistStepStates`, `checklistStepLines` and `checklistLineMap`. Nine-row table test failed first on `Step 1.5` and `Step 1-2`.
+- **F-036 (minor, rejected-with-reason)** — moving `collectReconciliationEvidence` after the invalid-packet / `provenanceBlocksStepObservation` returns would drop the ordinary delivery/claim recommendation that plan §Required change 4 requires (`reconcile_ticket` "appends the typed step result while leaving the existing delivery/claim recommendation unchanged") and that `reconciliation.test.mjs` pins at :1073 and :1092. The property the finding cares about — no *step* Git or workspace work for a doomed packet — already holds and is proven by the injected throwing `stepRun` in those tests. No code change.
+- **F-037 (major, fixed; root-cause consolidation of the path-grammar class)** — `packages/core/src/plan.ts` exports `classifyPlanPath(span): "path" | "symbol" | "empty"`; `parseDoNotModify` uses it instead of the ad-hoc `/`-or-`.` test, so `` `LICENSE` `` and `` `Makefile` `` become forbidden files while `parsePlan()`, `KanmerStore#setDoc` and `Foo::bar` stay symbols. Eleven-case fixture table plus a `parsePlan` regression, both failed first. `parseExpectedFiles` reads a typed table and was left unchanged.
+- `plugins/kanmer/mcp/kanmer-mcp.cjs` regenerated; diff contains only the two source changes. Tool roster 41.
+
+### Evidence at the committed source (worktree with its own `npm ci` node_modules)
+
+| Command | Exit | Result |
+|---|---|---|
+| focused `vitest run src/plan.test.ts src/step-packet.test.ts` (before fix) | 1 | 3 failed / 126 passed — retained |
+| same after fix | 0 | 129 passed |
+| `npm test` | 0 | core 826 passed (24 files); GUI 524 passed (54 files); `test:http` 236 pass / 0 fail / 1 Windows skip; scripts 161 pass |
+| `npm run typecheck` | 0 | core, mcp-server, ui, gui clean |
+| `npm run build` | 0 | ESM + CJS standalone |
+| `node packages/mcp-server/src/smoke.mjs` | 0 | 381/381 |
+| `node packages/mcp-server/src/smoke-protocol.mjs` | 0 | 50/50 |
+| `npm run plugin:build` / `npm run plugin:check` | 0 | 41 tools, bundle bytes match, isolated handshake 41 tools |
+| `git diff --check` | 0 | clean |
+
+No Windows timing flake occurred; no re-run was needed. Hosted `verify`, one independent delta review at exact head `171c3697`, public dispositions and resolution of all threads, synced-board `kanmer-gate`, merge and exact-merge verification remain controller work. A further blocker/major from the delta review freezes the ticket (Preparing, one replan) rather than opening another round.

@@ -30,7 +30,7 @@ Operators coordinating Kanmer projects, constrained implementation agents, indep
 - **project_id**: stable logical project identity; **location fingerprint**: machine-local repository/board path, machine, branch and origin identity.
 - **workspace**: one active writer's isolated or frozen explicit batch worktree/branch; **lease**: renewable CAS-protected ownership record.
 - **workflow stage**: six existing board stages; **delivery state**: independent integration/release/deployment progress.
-- **stable**: released v0.3.12 controlling the live board; **candidate**: unreleased work tested only in normal workspaces or disposable/copied boards.
+- **stable**: released v0.4.0 (promoted 2026-09-01; previously v0.3.12) controlling the live board; **candidate**: unreleased work tested only in normal workspaces or disposable/copied boards.
 - **current review**: fresh independent attestation bound to the exact PR head; **verification**: proof bound to the exact merged target SHA.
 
 ## Shared decisions and constraints
@@ -139,6 +139,9 @@ Order from 2026-09-01: land [[CORE-127]] in one bounded round, hand-reconcile st
 | [[GUI-144]] | GUI multi-project registry health | 6 |
 | [[SKILL-036]] | Durable `/goal`, review and verification control | 6 |
 | [[CORE-127]] | Constrained step reconciliation | 6 |
+| [[GUI-146]] | Release blocker: renderer core import, GUI build in the verify rail | 6 |
+| [[CORE-136]] | v0.4.0 release and promotion to live control plane | 6 |
+| [[SKILL-039]] | Anti-churn amendment in skills/core | 7 |
 | [[CORE-119]] | Golden-board and promotion/rollback proof | 7 |
 
 ## Rollout & rollback

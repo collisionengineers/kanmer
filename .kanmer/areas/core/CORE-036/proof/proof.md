@@ -1,3 +1,42 @@
+---
+kind: proof-record
+merged_sha: "470b2fad5d16ca4edcc9833b3f674460f994e73d"
+environment: "Windows 11 10.0.26200 / GitHub Actions release.yml on tag v0.4.0 / controller session claude-code 2026-09-01"
+verified_at: "2026-09-01T23:10:00Z"
+result: PASS
+attempts:
+  - attempted_at: "2026-08-21T00:00:00Z"
+    command: "npm run verify (merged main 1b5ae0d4)"
+    cwd: "."
+    exit_code: 1
+    result: FAIL
+    summary: "Historical: core migration test 5 s timeout + ENOTEMPTY (the Windows timing class later removed by CORE-128). Retained below."
+  - attempted_at: "2026-08-24T00:00:00Z"
+    command: "disposable tag workflow attempt"
+    cwd: "."
+    exit_code: 1
+    result: INCONCLUSIVE
+    summary: "Historical: no authorised real v<semver> tag was available; see the dated section below."
+  - attempted_at: "2026-09-01T22:47:35Z"
+    command: "npm run release -- 0.4.0 --publish --release-commit 7e114cd117ef720c20797e2bf9f5cf58643a94e6 (CORE-136) -> tag v0.4.0 pushed"
+    cwd: "kanmer-release-0.4.0"
+    exit_code: 0
+    result: PASS
+    summary: "A real immutable v0.4.0 tag was pushed by the governed publisher after the release PR merge."
+  - attempted_at: "2026-09-01T22:59:00Z"
+    command: "gh run watch 33567978927 (.github/workflows/release.yml release-verify, push tag v0.4.0)"
+    cwd: "."
+    exit_code: 0
+    result: PASS
+    summary: "The tag-push release verification workflow this ticket shipped ran on a real tag and concluded success: independent package build, then --remote-coherent asset verification against the public release."
+  - attempted_at: "2026-09-01T22:55:00Z"
+    command: "node scripts/verify-release-assets.mjs 0.4.0 --remote-coherent"
+    cwd: "kanmer-release-0.4.0"
+    exit_code: 0
+    result: PASS
+    summary: "PASS: v0.4.0 is complete and its public manifest matches the published installer bytes."
+---
+
 # Proof — CORE-036
 
 ## Merged artifact
@@ -59,3 +98,8 @@ A disposable public GitHub test repository was used so this did not create or al
 - The disposable prerelease and temporary tag were deleted after the runs; API checks confirmed both were absent. CI had read-only contents permission and no workflow step published, edited, repaired, or deleted a release.
 
 **Disposition:** the remaining green-run and asset-negative acceptance checks are blocked by the pre-existing Windows core timeout. CORE-036 remains Verifying; the blocker is recorded rather than bypassed.
+
+
+## v0.4.0 real tag-push evidence — 2026-09-01 (closes the external boundary)
+
+The external proof this ticket waited for since 2026-08-21 — a real `v<semver>` tag driving `.github/workflows/release.yml` to a green terminal run — happened with the v0.4.0 release ([[CORE-136]]): tag `v0.4.0` = `7e114cd117ef720c20797e2bf9f5cf58643a94e6` was pushed by the governed publisher at 2026-09-01T22:47Z, Actions run 33567978927 (`release-verify`) concluded **success**, and the independent `--remote-coherent` verifier exited 0 against the public release. The Windows timing failures recorded above were removed by CORE-128 and did not recur in any of the four full `npm run verify` runs performed for CORE-127, GUI-146 and CORE-136 on 2026-09-01. Result: PASS. The controller (claude-code session, operator-approved disposition 2026-09-01) moves CORE-036 to Done on this evidence.

@@ -57,6 +57,13 @@ findings:
   - id: F-003
     severity: minor
     disposition: accepted-risk
+    summary: >-
+      Round 0: the "fully readable by a v0.3.12 server" sentence, next to a
+      rollback instruction, read as an endorsement of write-through rollback;
+      the instruction itself was fixed under F-001 and the surviving sentence is
+      accurate. Summary field supplied by the controller from the reviewer's
+      body text after kanmer-gate reported findings[2].summary empty; no
+      disposition or reason changed.
     reason: >-
       The surviving sentence — "boards written by this release stay fully
       readable by a v0.3.12 server" — is literally true of the code, and

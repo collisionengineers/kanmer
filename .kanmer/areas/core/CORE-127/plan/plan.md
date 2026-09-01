@@ -338,3 +338,17 @@ The exact-head Windows and hosted verification rails passed, but the expected au
 - Run the core focused matrix, collector, reconciliation, MCP smoke, protocol, scripts/prose/AGENTS, claims/batch regression, builds, typecheck, plugin byte check and `git diff --check`. Do not run a duplicate full Windows rail inside implementation; the release controller owns one fresh rail after the new source head is published.
 - Commit one coherent root-cause remediation on the existing branch and PR. Update the post-implementation report and checklist, record the commit, and stop in Review without pushing, reviewing, merging, verifying or starting CORE-133.
 - The controller will publish the source head, require exact-head automated settlement, one independent delta review over F-001 through F-016 plus changed callers/tests, a fresh clean Windows `npm run verify`, hosted `verify`, synced-board `kanmer-gate`, merge and exact-merge verification.
+
+
+## Authoritative-rail correction discovered during CORE-119 preflight
+
+Read-only preflight at exact source head `7d899869523ac5b55ef2debbf67d0324ebe4fb78` confirmed that the new collector suite `packages/mcp-server/src/step-reconciliation.test.mjs` is not named by the explicit `test:http` script in `packages/mcp-server/package.json`. Direct focused runs proved it, but root `npm run verify` and hosted `verify` reach MCP integration tests through that explicit list, so the clean and hosted passes at 7d899 did not exercise the collector. That is an unmet CORE-127 acceptance criterion, not new product scope.
+
+### RC-11 — Put the existing collector suite on the existing verify rail
+
+- File/symbol: `packages/mcp-server/package.json` existing `scripts.test:http` entry only.
+- Add `src/step-reconciliation.test.mjs` to the existing explicit Node test command, preserving every current test, script name, workspace contract and package metadata. Do not add a script, runner, dependency or workflow.
+- Keep the direct collector command for focused diagnosis. Also run `npm run test:http -w @kanmer/mcp-server` and confirm its output includes the collector negatives alongside the existing MCP integration suites.
+- If any checked-in expectation counts the MCP test total, report its exact path before editing unless that path is already authorized by `files/files.md`; do not weaken or delete a count.
+- The controller's next clean Windows `npm run verify` and hosted `verify` at the final published head must both prove this registration. Historical rails at 7d899 remain honest but incomplete for the collector.
+- Done when the exact F-016 external-link, malformed/oversized census and ordinary-file regressions execute through the same existing command used by local and hosted authoritative verification.

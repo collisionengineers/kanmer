@@ -12,6 +12,7 @@ Exact authorised implementation surface after rebasing onto the CORE-126 merge. 
 | Modify | `packages/core/src/store.test.ts` | Real per-file, aggregate, identity-race and pre-allocation refusal coverage for the bounded snapshot |
 | Add | `packages/mcp-server/src/step-reconciliation.ts` | Bounded Git workspace/symbol facts and consumption of the core execution-authority snapshot shared by the two existing read-only tools |
 | Add | `packages/mcp-server/src/step-reconciliation.test.mjs` | Real fixture-worktree snapshot, rename/untracked/hash/error and read-only cases |
+| Modify | `packages/mcp-server/package.json` | Register the collector suite in the existing `test:http` path reached by local and hosted `npm run verify` |
 | Modify | `packages/mcp-server/src/execution-packet.ts` | Stable document snapshot, proven worktree baseline, prior-packet gate and next-packet issuance |
 | Modify | `packages/mcp-server/src/reconciliation.ts` | Add optional packet-aware inspection while preserving the existing delivery/claim recommendation |
 | Modify | `packages/mcp-server/src/reconciliation.test.mjs` | Packet-aware response integration, missing evidence and no-write assertions |

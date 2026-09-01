@@ -28,7 +28,8 @@
 - [ ] Step 15 — Reject prechecked successor markers during compilation and strict verification, deriving all packet checklist states from the exact content.
 - [ ] Step 16 — Preserve UTF-8 BOM bytes across bounded authority versions/revisions and BOM-aware checklist transitions while retaining fatal invalid-UTF-8 refusal.
 - [ ] Step 17 — Add the bounded tracked-index mode/object/link census and prove external, dangling, unstable and gitlink authority fails closed without index mutation.
-- [ ] Step 18 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
+- [ ] Step 18 — Register the existing collector suite in `packages/mcp-server`'s existing `test:http` command and prove it runs through that authoritative workspace test path.
+- [ ] Step 19 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
 
 ## Acceptance census
 
@@ -40,4 +41,4 @@
 - [x] Board, ticket and activity bytes are unchanged by packet-aware reconciliation.
 - [x] Tool roster remains 41 and no new apply action, workflow stage, board field or dependency appears.
 - [x] F-010 proof work, F-011 symbol fail-closed behavior and F-012 pre-allocation evidence bounds pass their real negative cases.
-- [ ] Focused tests, `npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact final head. Exact-head `5302e445dc70714e89762dc19fb96754490e3fa9` passed local and hosted verification but is historical needs-changes evidence; all earlier full rails are likewise retained, not final-head proof.
+- [ ] Focused tests—including the collector through workspace `test:http`—`npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact final head. Exact-head `7d899869523ac5b55ef2debbf67d0324ebe4fb78` passed local and hosted verification but is historical needs-changes evidence and did not include the collector in the authoritative rail; all earlier rails are retained, not final-head proof.

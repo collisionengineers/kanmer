@@ -75,7 +75,7 @@
 
 ## Eighth exact-head root-cause remediation
 
-- [ ] Step 36 — Replace name-only intervening history with a bounded raw mode-and-path census; prove reverted symbolic-link and Git-link modes fail closed.
-- [ ] Step 37 — Anchor named checklist markers at the start of checkbox labels and share that parser across selection, states and authorised line mapping.
-- [ ] Step 38 — Admit only exact level-three structured Step headings and block duplicate, skipped or out-of-order declared numbering.
-- [ ] Step 39 — Update canonical prose/tests, regenerate the bundle, pass focused and authoritative checks, update the report, commit/push, and return the same PR to Review.
+- [x] Step 36 — Replace name-only intervening history with a bounded raw mode-and-path census; prove reverted symbolic-link and Git-link modes fail closed.
+- [x] Step 37 — Anchor named checklist markers at the start of checkbox labels and share that parser across selection, states and authorised line mapping.
+- [x] Step 38 — Admit only exact level-three structured Step headings and block duplicate, skipped or out-of-order declared numbering.
+- [x] Step 39 — Update canonical prose/tests, regenerate the bundle, pass focused and authoritative checks, update the report, commit/push, and return the same PR to Review.

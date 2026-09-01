@@ -61,12 +61,42 @@ un-accepts the risk that was just accepted.
   [[GUI-145]] were deferred out of HZN-008 on exactly this test. They remain
   open on the board; none is lost, and none gates this horizon.
 
+## Review budget and root-cause rule (adopted 2026-09-01)
+
+[[CORE-127]] was returned Review → Implementing nine times in nineteen hours
+with 34 findings, nearly all variants of one parsing-authority mechanism. That
+is the loop this section forbids.
+
+- **Budget:** one consolidated independent review, one remediation batch, one
+  delta review. The delta review examines only the prior findings, the changed
+  lines, their direct callers and contracts, and the relevant tests. It never
+  restarts repository-wide ideation. A further blocker or major after the delta
+  review means one controlled replan (Preparing) or an explicit blocked
+  outcome — never a third round.
+- **Root-cause classes:** when two findings arise from one underlying
+  mechanism, stop patching examples. Record one class and choose exactly one
+  of: replace the implementation approach; revise the plan; narrow the
+  approved contract with a stated threat model; defer the whole class to one
+  follow-up ticket. Never one patch or one ticket per example.
+- **What consumes no budget:** re-auditing an unchanged head, a restated
+  finding, an outdated GitHub thread, a disposition edit, PR metadata, or a new
+  minor/note. A finding is `blocker | major | minor | note` by actual impact on
+  the approved acceptance; an external P1/P2 label is not a severity.
+- **Outdated threads:** a GitHub thread marked outdated is dispositioned
+  `obsolete-after-change` (record it as `accepted-risk` with the text
+  "superseded by <sha>" until the attestation schema carries that value) unless
+  a reviewer reasserts the same defect against the current head. It is never a
+  current open finding.
+- **Terminal pass with residual risk:** green required checks at the exact
+  head, no open blocker/major, every minor/note with a durable disposition, and
+  any deferred class linked to one follow-up. Zero observations is not required.
+
 ## Interim ownership and remediation rule (v0.3.12, until the bootstrap ownership contract merges)
 
 - A claim older than 30 minutes with no pause/resume note in `scratch/` and no live controller run record is treated as expired.
 - Transferring an expired claim requires an operator note in the ticket's `scratch/` naming the old controller, the new controller, the recorded branch and worktree. Agents never use `force`; the operator releases via the GUI or `take_ticket action: "release"` after recording the worktree location.
 - A `needs-changes` attestation bound to the current PR head is the only agent-side authority to move Review → Implementing; the move keeps the same branch, worktree and PR, and the ticket's remediation budget is one batch plus one delta review unless an operator note extends it.
-- A review attestation is authoritative only after every expected automated reviewer has posted on the exact head; if a reviewer posts later on the same head, the attestation is replaced, not appended.
+- `expected_reviewers` are the independent subagent reviewer identities the controller dispatched, and nothing else. Codex, GitHub code-review bots and similar automated commenters are **never** expected reviewers and never a gate (kanmer-review on `main`, "Expected reviewers and the settle rule"). A bot thread that appears on an already-attested head is ordinary evidence: map it to a finding, disposition it, resolve it. It does not by itself invalidate the attestation or start another review round. *Corrected 2026-09-01: the previous wording ("every expected automated reviewer has posted") contradicted the merged skill and drove the nine CORE-127 rounds.*
 - The recurring Windows timing failures (`store.test.ts`/`claims.test.ts`/`docs.test.ts` 5s timeouts and teardown `ENOTEMPTY`; the `antigravity-plugin-config.test.mjs` `EBUSY` pair) **also reach hosted CI** — corrected 2026-08-28 when the push run at CORE-116's merge SHA failed 548/549 on `store.test.ts`. "Judge the rail by hosted CI" is therefore necessary but **not sufficient**: a single red hosted run is not proof of a regression any more than a single green local run is proof of correctness. Discharge it with evidence, not assertion — re-run the same job at the same SHA with no code change, confirm the failing test is untouched by the diff, and give a mechanism argument for why the change cannot reach it. Retain every attempt in the proof. [[CORE-128]] exists to remove this cost.
 - `main` branch protection sets **`required_conversation_resolution: true`**, so a PR sits at `mergeStateStatus: BLOCKED` until every review thread is resolved, no matter how green its checks are. `required_approving_review_count` is 0 and `enforce_admins` is true, so there is no bypass. Dispositioning a thread in the attestation and resolving it on GitHub are the **same obligation**: a reviewer that disposes findings without resolving threads leaves a PR that cannot merge. Resolve only after posting the disposition publicly on the PR, so the record survives outside the board.
 - Confirm the board branch is pushed (local tip == `origin/kanmer-board`) before treating a `kanmer-gate` result as current; the gate reads the remote board tip and does not re-run on board pushes.
@@ -85,6 +115,8 @@ un-accepts the risk that was just accepted.
 ## Implementation order and WIP
 
 [[DOC-027]] is done. Next take [[CORE-121]] as a single small PR on the stable line; then run the three parallel lanes in 3 above; then the shared-contract serial lane [[CORE-114]] → [[CORE-115]]. Do not begin more than two implementation PRs; only one shared subsystem PR is active at a time. Re-evaluate dependent plans after each contract merge. The live board remains on stable v0.3.12 throughout candidate work.
+
+Order from 2026-09-01: land [[CORE-127]] in one bounded round, hand-reconcile stale board state, release 0.4.0 as the new stable control plane with minimal promotion acceptance, then SKILL-039 (anti-churn amendment in skills/core), [[CORE-133]], [[CORE-119]], and 0.4.1.
 
 ## Breakdown
 
@@ -106,6 +138,7 @@ un-accepts the risk that was just accepted.
 | [[CORE-131]] | `apply_reconciliation` on revisions + leases | 6 |
 | [[GUI-144]] | GUI multi-project registry health | 6 |
 | [[SKILL-036]] | Durable `/goal`, review and verification control | 6 |
+| [[CORE-127]] | Constrained step reconciliation | 6 |
 | [[CORE-119]] | Golden-board and promotion/rollback proof | 7 |
 
 ## Rollout & rollback

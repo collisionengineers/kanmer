@@ -344,3 +344,40 @@ The implementation run intentionally does not treat historical verification as f
 - `scripts/verify-skill-prose.test.mjs`
 
 No implementation blocker remains. Exhausted or unavailable history, unrepresentable executable metadata and ambiguous ticket storage remain fail-closed rather than being guessed into PASS.
+
+
+## Eighth exact-head root-cause remediation
+
+Commit `c1d27cdba9a9b35d2182ab34a2ddd7dc2c8d77a7` resolves exact-head findings F-032 through F-034 on the existing CORE-127 branch and PR #307:
+
+- F-032: complete intervening history is collected with bounded raw `--raw -z` mode-and-path evidence. A reverted symbolic-link or Git-link mode remains unsafe even when the endpoint is a regular file again.
+- F-033: named checklist authority is granted only when the checkbox label begins with `Step N`. Selection, state derivation, line mapping, and strict packet verification share the same parser; explanatory prose containing “step N” cannot acquire authority.
+- F-034: structured plan authority admits only exact level-three `### Step N — title` headings and reports duplicate, skipped, or out-of-order declared numbering as blocking findings.
+- The generated standalone bundle and canonical AGENTS/skill/tool-reference prose were updated together; the tool roster remains 41 and no dependency, stage, tool, or write surface was added.
+
+### Verification attempts retained
+
+- An initial overloaded `node packages/mcp-server/src/smoke.mjs` attempt exited 1 after its fixed 60-second request timeout during batch operations. The clean serial rerun later passed 381/381; the timeout remains recorded and is not erased by the pass.
+- An initial concurrent `npm run test:scripts` attempt was interrupted with exit 1 while orphaned under competing heavy rails. The clean serial rerun passed 161/161; both outcomes are retained.
+- Focused core plan/packet tests: 126/126 PASS.
+- Collector suite: 49 PASS / 0 FAIL / 1 expected Windows executable-mode skip.
+- Reconciliation suite: 42/42 PASS.
+- Authoritative `npm run test:http -w @kanmer/mcp-server`: 236 PASS / 0 FAIL / 1 expected Windows skip.
+- Serial MCP stdio smoke: 381/381 PASS; protocol smoke: 50/50 PASS.
+- Script suites: 161/161 PASS; all-workspace typecheck, docs, skill prose, AGENTS block, plugin byte-sync, isolated handshake, and `git diff --check`: PASS.
+- Fresh clean exact-head `npm run verify`: PASS at `c1d27cdba9a9b35d2182ab34a2ddd7dc2c8d77a7`. Its constituent results include core 823/823, GUI 524/524, server 236 PASS / 1 expected Windows skip, scripts 161/161, MCP smoke 381/381, protocol 50/50, discovery 13/13, managed-instruction 31/31, and plugin sync with 41 tools.
+
+Hosted verification, independent exact-head review, public finding dispositions, board-synced `kanmer-gate`, merge, and exact-merge verification remain review/controller work. No implementation blocker remains.
+
+### Files changed in the eighth remediation
+
+- `AGENTS.md`
+- `packages/core/src/plan.ts`
+- `packages/core/src/plan.test.ts`
+- `packages/core/src/step-packet.ts`
+- `packages/core/src/step-packet.test.ts`
+- `packages/mcp-server/src/reconciliation.ts`
+- `packages/mcp-server/src/step-reconciliation.ts`
+- `packages/mcp-server/src/step-reconciliation.test.mjs`
+- `plugins/kanmer/mcp/kanmer-mcp.cjs`
+- canonical Kanmer execution/planning/tool-reference prose and their mutation guards

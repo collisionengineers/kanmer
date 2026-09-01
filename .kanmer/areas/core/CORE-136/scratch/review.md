@@ -140,6 +140,11 @@ findings:
   - id: F-010
     severity: note
     disposition: accepted-risk
+    summary: >-
+      F-010: The sentence is true of 0.4.0 — a caller can pin expected_project
+      and be refused with WRONG_PROJECT. (summary field supplied by the
+      controller from the reviewer's own reason after kanmer-gate reported it
+      empty; disposition and reason unchanged)
     reason: >-
       The sentence is true of 0.4.0 — a caller can pin expected_project and be
       refused with WRONG_PROJECT. Only its placement implies novelty, and both
@@ -150,6 +155,13 @@ findings:
   - id: F-011
     severity: note
     disposition: accepted-risk
+    summary: >-
+      F-011: "without ever gating a ticket's path to Done" is literally false
+      on one path — applyReconciliationLocked refuses every action including
+      MOVE_TO_DONE unless release evidence is not-applicable
+      (store.ts:3666-3671,3717-3722). (summary field supplied by the
+      controller from the reviewer's own reason after kanmer-gate reported it
+      empty; disposition and reason unchanged)
     reason: >-
       "without ever gating a ticket's path to Done" is literally false on one
       path — applyReconciliationLocked refuses every action including
@@ -161,6 +173,12 @@ findings:
   - id: F-012
     severity: note
     disposition: accepted-risk
+    summary: >-
+      F-012: plan.md "Required changes" cites the notes draft at
+      scratch/release-notes-draft.md while it actually lives in
+      scratch/notes.md. (summary field supplied by the controller from the
+      reviewer's own reason after kanmer-gate reported it empty; disposition
+      and reason unchanged)
     reason: >-
       plan.md "Required changes" cites the notes draft at
       scratch/release-notes-draft.md while it actually lives in
@@ -170,6 +188,10 @@ findings:
   - id: F-013
     severity: note
     disposition: rejected-with-reason
+    summary: >-
+      F-013: Rejected: no mention of GUI-146's GUI-build fix is wanted.
+      (summary field supplied by the controller from the reviewer's own reason
+      after kanmer-gate reported it empty; disposition and reason unchanged)
     reason: >-
       Rejected: no mention of GUI-146's GUI-build fix is wanted. That breakage
       was introduced by CORE-117 inside this same unreleased cycle and never

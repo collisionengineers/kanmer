@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { removeTreeWithRetry } from "./io.js";
+import { contentVersion, removeTreeWithRetry } from "./io.js";
 import { EXECUTION_AUTHORITY_LIMITS, KanmerStore } from "./store.js";
 import { STAGE_IDS } from "./stages.js";
 import { lastStageId } from "./board.js";
@@ -658,6 +658,56 @@ describe("format v2", () => {
     const second = await store.getExecutionAuthoritySnapshot(ticket.id);
     expect(second?.revision).toEqual(first?.revision);
     expect(second?.inventory.find((doc) => doc.doc === "scratch/exempt-000.md")?.content).toBe("changed scratch\n");
+  });
+
+  it("preserves leading UTF-8 BOM bytes across bounded authority, normal revisions and CAS tokens", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "BOM authority" });
+    await store.setDoc(ticket.id, "research", "bounded research");
+    await store.setDoc(ticket.id, "checklist", "- [ ] Step 1 — bounded bytes");
+    const group = await store.createGroup("epic", "BOM group", "Group body");
+    await store.setGroupDoc(group.id, "context.md", "Shared context");
+    await store.updateItem(ticket.id, { groups: [group.id] });
+
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const ticketFile = path.join(ticketDir, `${ticket.id}.md`);
+    const researchFile = path.join(ticketDir, "research", "research.md");
+    const checklistFile = path.join(ticketDir, "checklist", "checklist.md");
+    const contextFile = path.join(root, ".kanmer", "groups", group.id, "context.md");
+    const addBom = async (file: string) => fs.writeFile(file, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), await fs.readFile(file)]));
+    await Promise.all([ticketFile, researchFile, checklistFile, contextFile].map(addBom));
+
+    const snapshot = await store.getExecutionAuthoritySnapshot(ticket.id);
+    const normalRevision = await store.getRevision(ticket.id);
+    const normalResearch = await store.getDocWithVersion(ticket.id, "research");
+    const normalChecklist = await store.getDocWithVersion(ticket.id, "checklist");
+    const normalContext = await store.getGroupDoc(group.id, "context.md");
+    expect(snapshot?.revision).toEqual(normalRevision);
+    expect(snapshot?.inventory.find((doc) => doc.doc === "research/research.md")).toMatchObject(normalResearch);
+    expect(snapshot?.inventory.find((doc) => doc.doc === "checklist/checklist.md")).toMatchObject(normalChecklist);
+    expect(snapshot?.groups[0]).toMatchObject({
+      context: normalContext,
+      contextVersion: contentVersion(normalContext!),
+    });
+    expect(snapshot?.item.title).toBe("BOM authority");
+    expect(normalResearch.content.startsWith("\uFEFF")).toBe(true);
+    expect(normalChecklist.content.startsWith("\uFEFF")).toBe(true);
+    expect(normalContext?.startsWith("\uFEFF")).toBe(true);
+
+    await expect(store.updateItem(ticket.id, {
+      title: "BOM authority updated",
+      expectedRevision: snapshot!.revision!.revision,
+    })).resolves.toMatchObject({ title: "BOM authority updated" });
+    await expect(store.setDoc(ticket.id, "research", "updated research", {
+      expectedVersion: snapshot!.inventory.find((doc) => doc.doc === "research/research.md")!.version,
+    })).resolves.toMatchObject({ version: expect.stringMatching(/^[0-9a-f]{16}$/) });
+  });
+
+  it("keeps bounded authority UTF-8 decoding fatal", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Invalid UTF-8" });
+    await store.setDoc(ticket.id, "research", "valid first");
+    const researchFile = path.join(root, ".kanmer", "areas", "_none", ticket.id, "research", "research.md");
+    await fs.writeFile(researchFile, Buffer.from([0xff, 0xfe, 0xfd]));
+    await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/not valid UTF-8/i);
   });
 
   it("refuses a counted-document census over the limit before opening any document", async () => {

@@ -50,7 +50,14 @@ every intersecting forbidden pattern wins. Git-observed filenames retain exact
 bytes (including whitespace, Unicode and newlines) and are never declaration-
 normalized before classification.
 The bounded Git census covers tracked, staged, unstaged and untracked paths plus
-both rename endpoints. Ignored paths and `.git` / common-directory metadata are
+both rename endpoints. Every sample hashes one bounded NUL
+`git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
+path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
+gitlinks refuse without index mutation; census drift is `INCONCLUSIVE`. A tracked
+mode-`120000` path is retained only when its checkout representation and capped
+target bytes are identity-bound and its physical target is a regular file
+inside the worktree; external, chained-external, dangling, unreadable, unstable
+or over-budget links refuse. Ignored paths and `.git` / common-directory metadata are
 outside it and constrained workers must never mutate them; any need or attempt
 is a deviation stop recorded as `INCONCLUSIVE`, never an inferred PASS from an
 absent path. Symlink, hard-link, containment, encoded-byte, entry-count,
@@ -58,7 +65,10 @@ checklist-line and aggregate collection-time limits also fail closed.
 Iterative path matching has its own aggregate work budget; exhaustion is
 reported as `INCONCLUSIVE`, never converted into authorization or an
 undeclared-path failure. Checklist marker reconciliation preserves raw line
-bodies, CRLF/CR/LF terminators and final-newline state byte-for-byte.
+bodies, CRLF/CR/LF terminators and final-newline state byte-for-byte. Exact
+checklist bytes retain a leading UTF-8 BOM. Compilation and strict verification
+derive every marker state from those bytes, require a completed prefix and
+unfinished selected step, and refuse any checked successor marker.
 Plan-time glob containment and intersection have a separate aggregate proof
 context that charges alphabet construction, NFA closure/transitions, caches and
 queues; exhaustion reports `PLAN_GLOB_COMPLEXITY` instead of silently
@@ -105,9 +115,9 @@ path parsing and before every literal or wildcard comparison, so exhaustion is
 `INCONCLUSIVE`. Dirty regular-file bytes are read once through one capped handle
 whose pre-open, handle-before/after and post-path device, inode, type, mode,
 link-count and size facts agree; the handle closes on every result. Every Git
-sample also hashes one bounded NUL `git ls-files -v -z` index-flag census:
-assume-unchanged or skip-worktree entries refuse without being cleared, and
-flag drift between samples is `INCONCLUSIVE`.
+sample hashes the bounded NUL `git ls-files -v -s -z` index census described
+above; hidden flags, mode/object/stage drift and unprovable tracked links refuse
+without index mutation.
 
 `take_ticket.worktree` is conditionally optional: an isolated branch-only take
 may omit it, but a first batch declaration (`batch_members`) must supply a

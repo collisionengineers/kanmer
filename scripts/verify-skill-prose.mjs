@@ -1551,7 +1551,7 @@ check(
   /bounded, double-sampled `git --no-optional-locks` HEAD\/index\/worktree evidence/.test(agentsGuide) &&
     /Packet\/document bytes, entries and checklist lines plus the aggregate Git collection time are capped/.test(agentsGuide) &&
     /caller-supplied changed-path summaries are not proof/.test(executeSkill) &&
-    /Missing, unreadable,\s*unstable, escaped, symlinked or hard-linked workspace evidence is `INCONCLUSIVE`/.test(executeSkill) &&
+    /Missing, unreadable,\s*unstable, escaped, unconfined or unprovable linked, or hard-linked workspace\s+evidence is `INCONCLUSIVE`/.test(executeSkill) &&
     /forbidden or undeclared path is FAIL/.test(executeSkill) &&
     /only permitted ticket-document\s+change\s+is\s+the\s+selected\s+checklist\s+marker\s+from\s+unchecked\s+to\s+checked/.test(executeSkill),
   "actual workspace, document and exact checklist evidence govern PASS/FAIL/INCONCLUSIVE",
@@ -1562,6 +1562,16 @@ check(
     /at least one mapped\s+unchecked checklist\s+marker/.test(body),
   ),
   "whole-ticket setup remains available but dead-on-arrival step packets are refused",
+);
+check(
+  "exact checklist bytes enforce one contiguous packet frontier",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /Exact\s+checklist\s+bytes\s+retain a leading UTF-8 BOM/.test(body) &&
+    /derive every\s+marker state from those bytes/.test(body) &&
+    /require\s+a\s+completed\s+prefix\s+and\s+unfinished\s+selected\s+step/.test(body) &&
+    /refuse\s+any\s+checked\s+successor\s+marker/.test(body),
+  ),
+  "BOM bytes, content-derived marker states and the unchecked successor frontier stay authoritative",
 );
 check(
   "path matching and checklist bytes fail closed at explicit bounds",
@@ -1634,13 +1644,17 @@ check(
   "replacement, growth, mode/link drift and close failures cannot become PASS evidence",
 );
 check(
-  "workspace samples bind and refuse hidden index flags",
+  "workspace samples bind complete index and tracked-link authority",
   [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
-    /bounded\s+NUL\s+`git ls-files -v -z`\s+index-flag\s+census/.test(body) &&
+    /bounded\s+NUL\s+`git ls-files -v -s -z`\s+index\s+census/.test(body) &&
+    /binding flag, mode, object id, stage and\s+path/.test(body) &&
     /assume-unchanged\s+or\s+skip-worktree\s+entries\s+refuse/.test(body) &&
-    /flag\s+drift(?:\s+between\s+samples)?\s+is\s+`INCONCLUSIVE`/.test(body),
+    /nonzero\s+stages\s+and\s+gitlinks\s+refuse\s+without\s+index\s+mutation/.test(body) &&
+    /census\s+drift(?:\s+between\s+samples)?\s+is\s+`INCONCLUSIVE`/.test(body) &&
+    /tracked\s+mode-`120000`\s+path\s+is\s+retained\s+only\s+when\s+its\s+checkout\s+representation\s+and\s+capped\s+target\s+bytes\s+are\s+identity-bound/.test(body) &&
+    /external,\s+chained-external,\s+dangling,\s+unreadable,\s+unstable\s+or\s+over-budget\s+links\s+refuse/.test(body),
   ),
-  "hidden tracked changes and index-flag drift fail closed without mutating the index",
+  "hidden flags, index drift, gitlinks and unconfined tracked links fail closed without index mutation",
 );
 check(
   "constrained workers stop at the ignored and Git-metadata observation boundary",

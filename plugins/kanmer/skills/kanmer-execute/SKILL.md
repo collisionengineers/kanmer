@@ -139,7 +139,8 @@ and do not rebuild authority from live state.
 At the stop, call `reconcile_ticket` with that exact retained `step_packet`.
 Kanmer derives the actual HEAD, index, worktree and pre-dirty deltas itself;
 caller-supplied changed-path summaries are not proof. Missing, unreadable,
-unstable, escaped, symlinked or hard-linked workspace evidence is `INCONCLUSIVE`; a
+unstable, escaped, unconfined or unprovable linked, or hard-linked workspace
+evidence is `INCONCLUSIVE`; a
 forbidden or undeclared path is FAIL. The path matcher is iterative and
 explicitly bounded; its shared budget is charged before raw path parsing and
 before every literal or wildcard comparison. Exhaustion is `INCONCLUSIVE`,
@@ -149,16 +150,24 @@ post-path device, inode, type, mode, link-count and size facts must agree; the
 handle closes on every result. The only permitted ticket-document change is the
 selected checklist marker from unchecked to checked: every other raw line body,
 CRLF/CR/LF terminator, final-newline state, ticket authority field and counted
-document remains bound.
+document remains bound. Exact checklist bytes retain a leading UTF-8 BOM.
+Compilation and strict verification derive every marker state from those bytes,
+require a completed prefix and unfinished selected step, and refuse any checked
+successor marker.
 Free-form symbol names are not mechanically provable from Git paths. Any
 actual change while `allowedSymbols` is non-empty adds
 `STEP_SYMBOL_SCOPE_INCONCLUSIVE`; forbidden or undeclared path FAIL takes
 precedence. No-change invents no symbol finding, and empty symbols preserve
 file-scoped PASS.
 This Git evidence covers tracked, staged, unstaged and untracked paths plus both
-rename endpoints. Every sample also hashes one bounded NUL `git ls-files -v -z`
-index-flag census: assume-unchanged or skip-worktree entries refuse without
-clearing them, and flag drift between samples is `INCONCLUSIVE`.
+rename endpoints. Every sample also hashes one bounded NUL
+`git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
+path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
+gitlinks refuse without index mutation; census drift between samples is
+`INCONCLUSIVE`. A tracked mode-`120000` path is retained only when its checkout
+representation and capped target bytes are identity-bound and its physical
+target is a regular file inside the worktree; external, chained-external,
+dangling, unreadable, unstable or over-budget links refuse.
 Ignored paths and `.git` / common-directory metadata are outside it; a
 constrained worker must never mutate them. Any need or attempt is a deviation
 stop and the controller records `INCONCLUSIVE` — an absent path is not proof

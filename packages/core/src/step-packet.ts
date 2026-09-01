@@ -276,15 +276,25 @@ export type StepPacketResult =
 /** The ticked state of each `- [ ]` box of a checklist, in document order. */
 export function checklistBoxes(checklist: string | null): boolean[] {
   if (!checklist) return [];
-  return [...checklist.matchAll(/^[ \t]*[-*+][ \t]*\[([ xX])\]/gm)].map((match) => match[1].toLowerCase() === "x");
+  const states: boolean[] = [];
+  for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
+    const match = /^[ \t]*[-*+][ \t]*\[([ xX])\]/.exec(checklistLineForParsing(line, lineIndex));
+    if (match) states.push(match[1].toLowerCase() === "x");
+  }
+  return states;
+}
+
+/** A UTF-8 BOM is syntax only at byte zero; exact content retains it. */
+function checklistLineForParsing(line: string, lineIndex: number): string {
+  return lineIndex === 0 && line.startsWith("\uFEFF") ? line.slice(1) : line;
 }
 
 /** Checklist lines that name a step, paired with their ticked state. */
 function boxesByStep(checklist: string | null): Map<number, boolean[]> {
   const byStep = new Map<number, boolean[]>();
   if (!checklist) return byStep;
-  for (const line of checklist.replace(/\r\n?/g, "\n").split("\n")) {
-    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(line);
+  for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
+    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
     const named = /\bstep[\s ]+(\d+)\b/i.exec(box[2]);
     if (!named) continue;
@@ -337,10 +347,10 @@ function checklistStepLines(plan: ParsedPlan, checklist: string | null): number[
   const result = plan.steps.map(() => [] as number[]);
   if (!checklist) return result;
   const lines = checklist.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(line));
+  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
-    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(line);
+    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
     const stepIndex = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[2])?.[1] ?? 0) - 1 : positional++;
     if (stepIndex >= 0 && stepIndex < result.length) result[stepIndex].push(lineIndex);
@@ -489,15 +499,35 @@ function checklistLineMap(content: string | null, total: number): number[][] {
   const result = Array.from({ length: total }, () => [] as number[]);
   if (content === null) return result;
   const lines = content.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(line));
+  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
-    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(line);
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
     const selected = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[1])?.[1] ?? 0) - 1 : positional++;
     if (selected >= 0 && selected < total) result[selected].push(lineIndex);
   }
   return result;
+}
+
+function checklistStatesFromLineMap(
+  content: string | null,
+  stepLines: readonly (readonly number[])[],
+): { markers: boolean[][]; steps: boolean[] } | null {
+  const lines = content === null ? [] : content.replace(/\r\n?/g, "\n").split("\n");
+  const markers: boolean[][] = [];
+  for (const mapped of stepLines) {
+    const states: boolean[] = [];
+    for (const lineIndex of mapped) {
+      const line = lines[lineIndex];
+      if (line === undefined) return null;
+      const match = /^[ \t]*[-*+][ \t]*\[([ xX])\]/.exec(checklistLineForParsing(line, lineIndex));
+      if (!match) return null;
+      states.push(match[1].toLowerCase() === "x");
+    }
+    markers.push(states);
+  }
+  return { markers, steps: markers.map((states) => states.length > 0 && states.every(Boolean)) };
 }
 
 function nonEmptyStringOrNull(value: unknown): value is string | null {
@@ -579,12 +609,23 @@ export function verifyStepPacket(value: unknown): StepPacketVerification {
   if (canonicalJson(checklistLineMap(checklist.content as string | null, Number(step.total))) !== canonicalJson(checklist.stepLines)) {
     return { ok: false, reason: "step_packet.checklist stepLines do not match its exact baseline checkbox mapping" };
   }
+  const derivedChecklist = checklistStatesFromLineMap(
+    checklist.content as string | null,
+    checklist.stepLines as number[][],
+  );
+  if (!derivedChecklist || canonicalJson(derivedChecklist.steps) !== canonicalJson(checklist.steps)) {
+    return { ok: false, reason: "step_packet.checklist stored states do not match its exact content-derived marker states" };
+  }
   const selected = Number(step.index) - 1;
-  if ((checklist.stepLines as number[][])[selected]!.length === 0 || (checklist.steps as boolean[])[selected] !== false) {
+  if ((checklist.stepLines as number[][])[selected]!.length === 0 || derivedChecklist.steps[selected] !== false) {
     return { ok: false, reason: "step_packet selected step must have at least one mapped unchecked checklist marker" };
   }
-  if ((checklist.steps as boolean[]).slice(0, selected).some((state) => state !== true)) {
+  if (derivedChecklist.steps.slice(0, selected).some((state) => state !== true)) {
     return { ok: false, reason: "step_packet selected step must be the first unfinished checklist step" };
+  }
+  const checkedSuccessor = derivedChecklist.markers.slice(selected + 1).findIndex((states) => states.some(Boolean));
+  if (checkedSuccessor >= 0) {
+    return { ok: false, reason: `step_packet checklist successor step ${selected + checkedSuccessor + 2} already has a checked marker` };
   }
   for (const key of ["allowedFiles", "allowedSymbols", "forbiddenFiles", "negativeCases", "tests", "commands"] as const) {
     if (!stringArray(packet[key])) return { ok: false, reason: `step_packet.${key} must be a string array` };
@@ -666,10 +707,19 @@ function exactChecklistLines(content: string | null): ExactChecklistLine[] {
 }
 
 function tickedChecklistLine(before: string, after: string): boolean {
-  const marker = /^([ \t]*[-*+][ \t]*)\[ \]/.exec(before);
+  const beforeBom = before.startsWith("\uFEFF") ? "\uFEFF" : "";
+  const afterBom = after.startsWith("\uFEFF") ? "\uFEFF" : "";
+  if (beforeBom !== afterBom) return false;
+  const beforeBody = before.slice(beforeBom.length);
+  const afterBody = after.slice(afterBom.length);
+  const marker = /^([ \t]*[-*+][ \t]*)\[ \]/.exec(beforeBody);
   if (!marker) return false;
-  const suffix = before.slice(marker[0].length);
-  return after === `${marker[1]}[x]${suffix}` || after === `${marker[1]}[X]${suffix}`;
+  const suffix = beforeBody.slice(marker[0].length);
+  return afterBody === `${marker[1]}[x]${suffix}` || afterBody === `${marker[1]}[X]${suffix}`;
+}
+
+function untickedChecklistLine(line: string): boolean {
+  return /^[ \t]*[-*+][ \t]*\[ \]/.test(line.startsWith("\uFEFF") ? line.slice(1) : line);
 }
 
 function checklistOnlyTransition(packet: StepPacket, current: StepPacketChecklist): boolean {
@@ -686,7 +736,7 @@ function checklistOnlyTransition(packet: StepPacket, current: StepPacketChecklis
       if (baseline.body !== observed.body) return false;
       continue;
     }
-    if (/^[ \t]*[-*+][ \t]*\[ \]/.test(baseline.body)) {
+    if (untickedChecklistLine(baseline.body)) {
       if (!tickedChecklistLine(baseline.body, observed.body)) return false;
       transitions += 1;
     } else if (baseline.body !== observed.body) {
@@ -969,6 +1019,15 @@ export function compileStepPacket(input: StepPacketInput): StepPacketResult {
     return {
       ok: false,
       reason: `Ordered step ${resolved} requires at least one mapped unchecked checklist marker before a constrained packet can be issued.`,
+      validation,
+    };
+  }
+  const markerStates = checklistStatesFromLineMap(checklistSnapshot.content, checklistSnapshot.stepLines);
+  const checkedSuccessor = markerStates?.markers.slice(resolved).findIndex((states) => states.some(Boolean)) ?? -1;
+  if (checkedSuccessor >= 0) {
+    return {
+      ok: false,
+      reason: `Ordered successor step ${resolved + checkedSuccessor + 1} already has a checked checklist marker and cannot bypass its own packet.`,
       validation,
     };
   }

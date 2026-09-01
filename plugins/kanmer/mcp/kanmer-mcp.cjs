@@ -40469,13 +40469,21 @@ function lexicalCompare(left, right) {
 }
 function checklistBoxes(checklist) {
   if (!checklist) return [];
-  return [...checklist.matchAll(/^[ \t]*[-*+][ \t]*\[([ xX])\]/gm)].map((match) => match[1].toLowerCase() === "x");
+  const states = [];
+  for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
+    const match = /^[ \t]*[-*+][ \t]*\[([ xX])\]/.exec(checklistLineForParsing(line, lineIndex));
+    if (match) states.push(match[1].toLowerCase() === "x");
+  }
+  return states;
+}
+function checklistLineForParsing(line, lineIndex) {
+  return lineIndex === 0 && line.startsWith("\uFEFF") ? line.slice(1) : line;
 }
 function boxesByStep(checklist) {
   const byStep = /* @__PURE__ */ new Map();
   if (!checklist) return byStep;
-  for (const line of checklist.replace(/\r\n?/g, "\n").split("\n")) {
-    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(line);
+  for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
+    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
     const named = /\bstep[\s ]+(\d+)\b/i.exec(box[2]);
     if (!named) continue;
@@ -40517,10 +40525,10 @@ function checklistStepLines(plan, checklist) {
   const result = plan.steps.map(() => []);
   if (!checklist) return result;
   const lines = checklist.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(line));
+  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
-    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(line);
+    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
     const stepIndex = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[2])?.[1] ?? 0) - 1 : positional++;
     if (stepIndex >= 0 && stepIndex < result.length) result[stepIndex].push(lineIndex);
@@ -40626,15 +40634,31 @@ function checklistLineMap(content, total) {
   const result = Array.from({ length: total }, () => []);
   if (content === null) return result;
   const lines = content.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(line));
+  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
-    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(line);
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
     const selected = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[1])?.[1] ?? 0) - 1 : positional++;
     if (selected >= 0 && selected < total) result[selected].push(lineIndex);
   }
   return result;
+}
+function checklistStatesFromLineMap(content, stepLines) {
+  const lines = content === null ? [] : content.replace(/\r\n?/g, "\n").split("\n");
+  const markers = [];
+  for (const mapped of stepLines) {
+    const states = [];
+    for (const lineIndex of mapped) {
+      const line = lines[lineIndex];
+      if (line === void 0) return null;
+      const match = /^[ \t]*[-*+][ \t]*\[([ xX])\]/.exec(checklistLineForParsing(line, lineIndex));
+      if (!match) return null;
+      states.push(match[1].toLowerCase() === "x");
+    }
+    markers.push(states);
+  }
+  return { markers, steps: markers.map((states) => states.length > 0 && states.every(Boolean)) };
 }
 function nonEmptyStringOrNull(value) {
   return value === null || typeof value === "string" && value.trim().length > 0;
@@ -40713,12 +40737,23 @@ function verifyStepPacket(value) {
   if (canonicalJson(checklistLineMap(checklist.content, Number(step.total))) !== canonicalJson(checklist.stepLines)) {
     return { ok: false, reason: "step_packet.checklist stepLines do not match its exact baseline checkbox mapping" };
   }
+  const derivedChecklist = checklistStatesFromLineMap(
+    checklist.content,
+    checklist.stepLines
+  );
+  if (!derivedChecklist || canonicalJson(derivedChecklist.steps) !== canonicalJson(checklist.steps)) {
+    return { ok: false, reason: "step_packet.checklist stored states do not match its exact content-derived marker states" };
+  }
   const selected = Number(step.index) - 1;
-  if (checklist.stepLines[selected].length === 0 || checklist.steps[selected] !== false) {
+  if (checklist.stepLines[selected].length === 0 || derivedChecklist.steps[selected] !== false) {
     return { ok: false, reason: "step_packet selected step must have at least one mapped unchecked checklist marker" };
   }
-  if (checklist.steps.slice(0, selected).some((state) => state !== true)) {
+  if (derivedChecklist.steps.slice(0, selected).some((state) => state !== true)) {
     return { ok: false, reason: "step_packet selected step must be the first unfinished checklist step" };
+  }
+  const checkedSuccessor = derivedChecklist.markers.slice(selected + 1).findIndex((states) => states.some(Boolean));
+  if (checkedSuccessor >= 0) {
+    return { ok: false, reason: `step_packet checklist successor step ${selected + checkedSuccessor + 2} already has a checked marker` };
   }
   for (const key of ["allowedFiles", "allowedSymbols", "forbiddenFiles", "negativeCases", "tests", "commands"]) {
     if (!stringArray(packet[key])) return { ok: false, reason: `step_packet.${key} must be a string array` };
@@ -40765,10 +40800,18 @@ function exactChecklistLines(content) {
   return lines;
 }
 function tickedChecklistLine(before, after) {
-  const marker = /^([ \t]*[-*+][ \t]*)\[ \]/.exec(before);
+  const beforeBom = before.startsWith("\uFEFF") ? "\uFEFF" : "";
+  const afterBom = after.startsWith("\uFEFF") ? "\uFEFF" : "";
+  if (beforeBom !== afterBom) return false;
+  const beforeBody = before.slice(beforeBom.length);
+  const afterBody = after.slice(afterBom.length);
+  const marker = /^([ \t]*[-*+][ \t]*)\[ \]/.exec(beforeBody);
   if (!marker) return false;
-  const suffix = before.slice(marker[0].length);
-  return after === `${marker[1]}[x]${suffix}` || after === `${marker[1]}[X]${suffix}`;
+  const suffix = beforeBody.slice(marker[0].length);
+  return afterBody === `${marker[1]}[x]${suffix}` || afterBody === `${marker[1]}[X]${suffix}`;
+}
+function untickedChecklistLine(line) {
+  return /^[ \t]*[-*+][ \t]*\[ \]/.test(line.startsWith("\uFEFF") ? line.slice(1) : line);
 }
 function checklistOnlyTransition(packet, current) {
   const before = exactChecklistLines(packet.checklist.content);
@@ -40784,7 +40827,7 @@ function checklistOnlyTransition(packet, current) {
       if (baseline.body !== observed.body) return false;
       continue;
     }
-    if (/^[ \t]*[-*+][ \t]*\[ \]/.test(baseline.body)) {
+    if (untickedChecklistLine(baseline.body)) {
       if (!tickedChecklistLine(baseline.body, observed.body)) return false;
       transitions += 1;
     } else if (baseline.body !== observed.body) {
@@ -41015,6 +41058,15 @@ function compileStepPacket(input) {
     return {
       ok: false,
       reason: `Ordered step ${resolved} requires at least one mapped unchecked checklist marker before a constrained packet can be issued.`,
+      validation
+    };
+  }
+  const markerStates = checklistStatesFromLineMap(checklistSnapshot.content, checklistSnapshot.stepLines);
+  const checkedSuccessor = markerStates?.markers.slice(resolved).findIndex((states2) => states2.some(Boolean)) ?? -1;
+  if (checkedSuccessor >= 0) {
+    return {
+      ok: false,
+      reason: `Ordered successor step ${resolved + checkedSuccessor + 1} already has a checked checklist marker and cannot bypass its own packet.`,
       validation
     };
   }
@@ -43285,7 +43337,7 @@ async function readAuthorityText(metadata) {
       throw new Error(`${metadata.label} changed identity during its bounded read`);
     }
     try {
-      return new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, size));
+      return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(buffer.subarray(0, size));
     } catch {
       throw new Error(`${metadata.label} is not valid UTF-8`);
     }
@@ -48028,7 +48080,10 @@ var GIT_TIMEOUT_MS = 15e3;
 var WORKSPACE_COLLECTION_TIMEOUT_MS = 3e4;
 var GIT_MAX_BUFFER = 2 * 1024 * 1024;
 var MAX_ENTRIES = 512;
-var MAX_INDEX_FLAG_ENTRIES = 65536;
+var MAX_INDEX_FLAG_ENTRIES = 16384;
+var MAX_TRACKED_LINK_ENTRIES = 256;
+var MAX_TRACKED_LINK_TEXT_BYTES = 64 * 1024;
+var MAX_TRACKED_LINK_TARGET_BYTES = 2 * 1024 * 1024;
 var MAX_FILE_BYTES = 2 * 1024 * 1024;
 var MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
 var decoder = new TextDecoder("utf-8", { fatal: true });
@@ -48168,28 +48223,39 @@ function parseNameStatusZ(raw) {
 }
 function parseIndexFlagCensus(raw) {
   if (raw.length > GIT_MAX_BUFFER) throw new Error(`git ls-files flag census exceeds ${GIT_MAX_BUFFER} bytes`);
-  const tokens = splitNul(raw, "git ls-files -v -z output");
+  const tokens = splitNul(raw, "git ls-files -v -s -z output");
   if (tokens.length > MAX_INDEX_FLAG_ENTRIES) {
     throw new Error(`git ls-files flag census exceeds ${MAX_INDEX_FLAG_ENTRIES} tracked entries`);
   }
   const assumeUnchanged = [];
   const skipWorktree = [];
+  const entries = [];
+  let trackedLinks = 0;
   for (const token of tokens) {
-    if (token.length < 2 || token[1] !== 32) throw new Error("git ls-files emitted a malformed flag token");
-    const tag = String.fromCharCode(token[0]);
-    if (!/^[HSMRCK?]$/i.test(tag)) throw new Error(`git ls-files emitted unsupported flag tag ${JSON.stringify(tag)}`);
-    const observed = decode(token.subarray(2));
+    const tab = token.indexOf(9);
+    if (tab < 0) throw new Error("git ls-files emitted a malformed index census token");
+    const header = decode(token.subarray(0, tab));
+    const match = /^([HSMRCK?]) ([0-9]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-3])$/i.exec(header);
+    if (!match) throw new Error("git ls-files emitted a malformed index census header");
+    const [, tag, mode, objectId, stageText] = match;
+    const observed = decode(token.subarray(tab + 1));
     if (!observed) throw new Error("git ls-files emitted an empty tracked path");
     const parsed = parsePlanPath(observed, { observed: true });
     if (!parsed.ok || parsed.path !== observed) throw new Error(`git ls-files emitted unsafe tracked path ${JSON.stringify(observed)}`);
     if (/^[a-z]$/.test(tag)) assumeUnchanged.push(observed);
     if (tag === "S" || tag === "s") skipWorktree.push(observed);
+    if (mode === "120000") trackedLinks += 1;
+    entries.push({ tag, mode, objectId: objectId.toLowerCase(), stage: Number(stageText), path: observed });
+  }
+  if (trackedLinks > MAX_TRACKED_LINK_ENTRIES) {
+    throw new Error(`git ls-files census exceeds ${MAX_TRACKED_LINK_ENTRIES} tracked symbolic links`);
   }
   return {
     digest: (0, import_node_crypto3.createHash)("sha256").update(raw).digest("hex"),
     count: tokens.length,
     assumeUnchanged,
-    skipWorktree
+    skipWorktree,
+    entries
   };
 }
 function digest2(parts) {
@@ -48216,7 +48282,10 @@ function stableFileFacts(stat) {
 function sameFileFacts(left, right) {
   return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.nlink === right.nlink && left.size === right.size && left.regular === right.regular && left.symbolicLink === right.symbolicLink;
 }
-async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}) {
+async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}, limits = {
+  maxFileBytes: MAX_FILE_BYTES,
+  maxTotalBytes: MAX_TOTAL_FILE_BYTES
+}) {
   await assertPhysicalContainment(root, absolute);
   let initialStat;
   try {
@@ -48229,8 +48298,8 @@ async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}) {
   if (initial.symbolicLink) throw new Error("observed workspace path is a symbolic link");
   if (!initial.regular) throw new Error("observed workspace path is not a regular file");
   if (initial.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
-  const remainingTotal = MAX_TOTAL_FILE_BYTES - budget.total;
-  const allowed = Math.min(MAX_FILE_BYTES, remainingTotal);
+  const remainingTotal = limits.maxTotalBytes - budget.total;
+  const allowed = Math.min(limits.maxFileBytes, remainingTotal);
   if (allowed < 0 || initial.size > BigInt(allowed)) throw new Error("observed content exceeds the bounded snapshot budget");
   await hooks.beforeOpen?.();
   const noFollow = typeof import_node_fs3.constants.O_NOFOLLOW === "number" ? import_node_fs3.constants.O_NOFOLLOW : 0;
@@ -48265,6 +48334,82 @@ async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}) {
     await hooks.afterClose?.();
   }
 }
+function stableFactsIdentity(facts) {
+  return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.symbolicLink].join(":");
+}
+async function trackedLinkIdentity(root, entry, budget) {
+  const absolute = import_node_path5.default.resolve(root, ...entry.path.split("/"));
+  if (!inside(root, absolute)) throw new Error(`tracked symbolic link ${entry.path} escapes the worktree`);
+  let initialStat;
+  try {
+    initialStat = await (0, import_promises10.lstat)(absolute, { bigint: true });
+  } catch (error2) {
+    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error2 instanceof Error ? error2.message : String(error2)}`);
+  }
+  const initial = stableFileFacts(initialStat);
+  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
+  if (!initial.symbolicLink) {
+    if (!initial.regular) throw new Error(`tracked symbolic link ${entry.path} has an unsupported checkout representation`);
+    const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits);
+    if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
+    const after2 = stableFileFacts(await (0, import_promises10.lstat)(absolute, { bigint: true }));
+    if (!sameFileFacts(initial, after2)) {
+      throw new Error(`tracked symbolic link ${entry.path} changed checkout representation during bounded inspection`);
+    }
+    return digest2([
+      entry.tag,
+      entry.mode,
+      entry.objectId,
+      String(entry.stage),
+      entry.path,
+      "regular-placeholder",
+      stableFactsIdentity(initial),
+      placeholder.mode,
+      placeholder.bytes
+    ]);
+  }
+  const targetBytes = await (0, import_promises10.readlink)(absolute, { encoding: "buffer" });
+  if (targetBytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
+    throw new Error(`tracked symbolic link ${entry.path} target exceeds ${MAX_TRACKED_LINK_TEXT_BYTES} bytes`);
+  }
+  if (budget.total + targetBytes.length > MAX_TRACKED_LINK_TARGET_BYTES) {
+    throw new Error(`tracked symbolic-link targets exceed ${MAX_TRACKED_LINK_TARGET_BYTES} aggregate bytes`);
+  }
+  budget.total += targetBytes.length;
+  let resolved;
+  try {
+    resolved = await (0, import_promises10.realpath)(absolute);
+  } catch (error2) {
+    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error2 instanceof Error ? error2.message : String(error2)}`);
+  }
+  if (canonicalPath(resolved) !== canonicalPath(root) && !inside(root, resolved)) {
+    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  }
+  const target = await readBoundedWorkspaceFile(root, resolved, budget, {}, limits);
+  if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
+  const after = stableFileFacts(await (0, import_promises10.lstat)(absolute, { bigint: true }));
+  const afterTargetBytes = await (0, import_promises10.readlink)(absolute, { encoding: "buffer" });
+  const afterResolved = await (0, import_promises10.realpath)(absolute);
+  if (!sameFileFacts(initial, after) || !targetBytes.equals(afterTargetBytes) || canonicalPath(resolved) !== canonicalPath(afterResolved)) {
+    throw new Error(`tracked symbolic link ${entry.path} changed identity or target during bounded inspection`);
+  }
+  if (canonicalPath(afterResolved) !== canonicalPath(root) && !inside(root, afterResolved)) {
+    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  }
+  return digest2([
+    entry.tag,
+    entry.mode,
+    entry.objectId,
+    String(entry.stage),
+    entry.path,
+    "symbolic-link",
+    stableFactsIdentity(initial),
+    targetBytes,
+    canonicalPath(resolved),
+    target.mode,
+    target.bytes
+  ]);
+}
 async function fileIdentity(root, observed, run, budget) {
   const parsed = parsePlanPath(observed.path, { observed: true });
   if (!parsed.ok) throw new Error(`unsafe observed path ${JSON.stringify(observed.path)}: ${parsed.reason}`);
@@ -48294,12 +48439,19 @@ async function captureOnce(root, worktree, run) {
     run(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]),
     run(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
     run(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"]),
-    run(root, ["ls-files", "-v", "-z", "--full-name", "--"])
+    run(root, ["ls-files", "-v", "-s", "-z", "--full-name", "--"])
   ]);
   const branch = decode(branchRaw).trim();
   const head = decode(headRaw).trim();
   if (!branch) throw new Error("workspace HEAD is detached");
   if (!/^[0-9a-f]{40}$/i.test(head)) throw new Error("workspace HEAD is not a full commit SHA");
+  const indexFlags = parseIndexFlagCensus(indexFlagsRaw);
+  const unsupportedMode = indexFlags.entries.find((entry) => !["100644", "100755", "120000", "160000"].includes(entry.mode));
+  if (unsupportedMode) throw new Error(`tracked path ${JSON.stringify(unsupportedMode.path)} has unsupported Git mode ${unsupportedMode.mode}`);
+  const stagedConflict = indexFlags.entries.find((entry) => entry.stage !== 0);
+  if (stagedConflict) throw new Error(`tracked path ${JSON.stringify(stagedConflict.path)} has unsupported non-zero index stage ${stagedConflict.stage}`);
+  const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
+  if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
   const budget = { total: 0 };
   const entries = [];
   for (const observed of parsePorcelainV1Z(statusRaw)) {
@@ -48312,10 +48464,20 @@ async function captureOnce(root, worktree, run) {
       content: await fileIdentity(root, observed, run, budget)
     });
   }
+  const linkBudget = { total: 0 };
+  for (const link of indexFlags.entries.filter((entry) => entry.mode === "120000")) {
+    entries.push({
+      path: link.path,
+      index: ".",
+      worktree: ".",
+      content: await trackedLinkIdentity(root, link, linkBudget)
+    });
+  }
+  if (entries.length > MAX_ENTRIES) throw new Error(`workspace has more than ${MAX_ENTRIES} retained dirty/link paths`);
   entries.sort((left, right) => lexicalCompare2(left.path, right.path) || lexicalCompare2(left.index, right.index) || lexicalCompare2(left.worktree, right.worktree));
   return {
     snapshot: { branch, worktree, head: head.toLowerCase(), entries },
-    indexFlags: parseIndexFlagCensus(indexFlagsRaw)
+    indexFlags
   };
 }
 async function collectWorkspaceSnapshot(input) {

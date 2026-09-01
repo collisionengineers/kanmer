@@ -2533,9 +2533,16 @@ test("constrained-step prose validator rejects weakened authority, path and reco
     {
       label: "hidden-index-flags",
       file: (fixture) => skillFile(fixture, "kanmer-auto"),
-      from: "`git ls-files -v -z` index-flag census",
+      from: "`git ls-files -v -s -z` index census",
       to: "`git status` note",
-      failure: "workspace samples bind and refuse hidden index flags",
+      failure: "workspace samples bind complete index and tracked-link authority",
+    },
+    {
+      label: "checklist-frontier",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "derive every marker state from those bytes",
+      to: "trust the packet's stored marker summary",
+      failure: "exact checklist bytes enforce one contiguous packet frontier",
     },
     {
       label: "ignored-boundary",

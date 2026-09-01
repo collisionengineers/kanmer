@@ -51,17 +51,31 @@ test("porcelain and name-status parsers preserve both rename endpoints and rejec
 });
 
 test("index-flag census preserves raw NUL paths and rejects malformed or unbounded output", () => {
-  const census = parseIndexFlagCensus(Buffer.from("H normal.txt\0h assumed.txt\0S skipped.txt\0s both\n雪.txt\0", "utf8"));
+  const oid = "a".repeat(40);
+  const census = parseIndexFlagCensus(Buffer.from(
+    `H 100644 ${oid} 0\tnormal.txt\0h 100755 ${oid} 0\tassumed.txt\0S 100644 ${oid} 0\tskipped.txt\0s 120000 ${oid} 0\tboth\n雪.txt\0`,
+    "utf8",
+  ));
   assert.equal(census.count, 4);
   assert.deepEqual(census.assumeUnchanged, ["assumed.txt", "both\n雪.txt"]);
   assert.deepEqual(census.skipWorktree, ["skipped.txt", "both\n雪.txt"]);
+  assert.deepEqual(census.entries.map(({ mode, stage, path }) => ({ mode, stage, path })), [
+    { mode: "100644", stage: 0, path: "normal.txt" },
+    { mode: "100755", stage: 0, path: "assumed.txt" },
+    { mode: "100644", stage: 0, path: "skipped.txt" },
+    { mode: "120000", stage: 0, path: "both\n雪.txt" },
+  ]);
   assert.match(census.digest, /^[0-9a-f]{64}$/);
-  assert.throws(() => parseIndexFlagCensus(Buffer.from("H unterminated", "utf8")), /terminated by NUL/);
-  assert.throws(() => parseIndexFlagCensus(Buffer.from("H \0", "utf8")), /empty tracked path/);
+  assert.throws(() => parseIndexFlagCensus(Buffer.from(`H 100644 ${oid} 0\tunterminated`, "utf8")), /terminated by NUL/);
+  assert.throws(() => parseIndexFlagCensus(Buffer.from(`H 100644 ${oid} 0\t\0`, "utf8")), /empty tracked path/);
   assert.throws(() => parseIndexFlagCensus(Buffer.alloc(2 * 1024 * 1024 + 1)), /exceeds.*bytes/i);
   assert.throws(
-    () => parseIndexFlagCensus(Buffer.from(Array.from({ length: 65_537 }, (_, index) => `H p${index}\0`).join(""), "utf8")),
+    () => parseIndexFlagCensus(Buffer.from(Array.from({ length: 16_385 }, (_, index) => `H 100644 ${oid} 0\tp${index}\0`).join(""), "utf8")),
     /exceeds.*tracked entries/i,
+  );
+  assert.throws(
+    () => parseIndexFlagCensus(Buffer.from(Array.from({ length: 257 }, (_, index) => `H 120000 ${oid} 0\tlink-${index}\0`).join(""), "utf8")),
+    /tracked symbolic links/i,
   );
 });
 
@@ -196,6 +210,141 @@ test("index-flag addition and removal between samples are snapshot drift", async
     assert.equal(result.ok, false);
     assert.match(result.reason, /changed during the bounded double-sample/i);
   }
+});
+
+test("tracked index mode or object drift between samples is refused", async (t) => {
+  for (const kind of ["mode", "object"]) {
+    const { root, worktree, board } = await fixture(t);
+    const result = await collectWorkspaceSnapshot({
+      repoRoot: root,
+      boardRoot: board,
+      worktree: ".worktrees/ticket",
+      branch: "ticket-step",
+      betweenSamples: async () => {
+        if (kind === "mode") git(worktree, "update-index", "--chmod=+x", "tracked.txt");
+        else indexEntry(worktree, "100644", "tracked.txt", "alternate index bytes\n");
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /changed during the bounded double-sample/i);
+  }
+});
+
+test("a clean confined tracked symlink is identity-bound and write-through changes its retained entry", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const link = path.join(worktree, "tracked-link.txt");
+  try {
+    await fs.symlink("tracked.txt", link, "file");
+  } catch (error) {
+    t.skip(`filesystem cannot create the required file symlink: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+  git(worktree, "add", "tracked-link.txt");
+  git(worktree, "commit", "-m", "add confined link");
+  if (!git(worktree, "ls-files", "-s", "--", "tracked-link.txt").startsWith("120000 ")) {
+    t.skip("Git did not retain the fixture as mode 120000");
+    return;
+  }
+
+  const baseline = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(baseline.ok, true);
+  if (!baseline.ok) return;
+  const before = baseline.snapshot.entries.find((entry) => entry.path === "tracked-link.txt" && entry.index === "." && entry.worktree === ".");
+  assert.ok(before);
+
+  await fs.writeFile(link, "write through confined link\n");
+  const current = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    baseline: baseline.snapshot,
+  });
+  assert.equal(current.ok, true);
+  if (!current.ok) return;
+  const after = current.snapshot.entries.find((entry) => entry.path === "tracked-link.txt" && entry.index === "." && entry.worktree === ".");
+  assert.ok(after);
+  assert.notEqual(after.content, before.content);
+  assert.ok(current.snapshot.entries.some((entry) => entry.path === "tracked.txt"));
+});
+
+test("clean external, parent-relative, chained and dangling tracked symlinks fail closed", async (t) => {
+  for (const fixtureKind of ["external", "parent-relative", "chained", "dangling"]) {
+    const { root, worktree, board } = await fixture(t);
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), `kanmer-step-link-${fixtureKind}-`));
+    t.after(() => removeTreeWithRetry(outside));
+    const external = path.join(outside, "external.txt");
+    await fs.writeFile(external, "external\n");
+    const link = path.join(worktree, "tracked-link.txt");
+    try {
+      if (fixtureKind === "external") {
+        await fs.symlink(external, link, "file");
+      } else if (fixtureKind === "parent-relative") {
+        await fs.symlink(path.relative(worktree, external), link, "file");
+      } else if (fixtureKind === "chained") {
+        await fs.symlink(external, path.join(worktree, "intermediate-link.txt"), "file");
+        await fs.symlink("intermediate-link.txt", link, "file");
+      } else {
+        await fs.symlink("missing-target.txt", link, "file");
+      }
+    } catch (error) {
+      t.skip(`filesystem cannot create ${fixtureKind} symlink fixture: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    git(worktree, "add", "-A");
+    git(worktree, "commit", "-m", `add ${fixtureKind} link`);
+    if (!git(worktree, "ls-files", "-s", "--", "tracked-link.txt").startsWith("120000 ")) {
+      t.skip("Git did not retain the fixture as mode 120000");
+      return;
+    }
+    const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /outside the physical worktree|dangling|unreadable|ENOENT/i);
+  }
+});
+
+test("tracked-link target bytes are bounded before authority is accepted", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const target = path.join(worktree, "large-target.bin");
+  const link = path.join(worktree, "large-link.bin");
+  await fs.writeFile(target, Buffer.alloc(2 * 1024 * 1024 + 1, 0x61));
+  try {
+    await fs.symlink("large-target.bin", link, "file");
+  } catch (error) {
+    t.skip(`filesystem cannot create the required file symlink: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+  git(worktree, "add", "large-target.bin", "large-link.bin");
+  git(worktree, "commit", "-m", "add oversized confined link target");
+  if (!git(worktree, "ls-files", "-s", "--", "large-link.bin").startsWith("120000 ")) {
+    t.skip("Git did not retain the fixture as mode 120000");
+    return;
+  }
+  const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /bounded snapshot budget|aggregate bytes|exceeds/i);
+});
+
+test("a staged gitlink is refused before workspace-file authority", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const head = git(worktree, "rev-parse", "HEAD");
+  git(worktree, "update-index", "--add", "--cacheinfo", `160000,${head},submodule`);
+  const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /Git link|gitlink/i);
+});
+
+test("a non-zero tracked index stage is refused", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const oid = execFileSync("git", ["-C", worktree, "hash-object", "-w", "--stdin"], {
+    input: Buffer.from("conflict bytes\n"), encoding: "utf8", windowsHide: true,
+  }).trim();
+  execFileSync("git", ["-C", worktree, "update-index", "--index-info"], {
+    input: `100644 ${oid} 1\tconflict.txt\n`, encoding: "utf8", windowsHide: true,
+  });
+  const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /non-zero index stage/i);
 });
 
 test("bounded handle reads reject replacement, short/growing reads and post-read changes and always close", async (t) => {

@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { constants as fsConstants, type BigIntStats } from "node:fs";
-import { lstat, open, realpath } from "node:fs/promises";
+import { lstat, open, readlink, realpath } from "node:fs/promises";
 import path from "node:path";
 import {
   checkStepPacketBudget,
@@ -19,7 +19,10 @@ const GIT_TIMEOUT_MS = 15_000;
 const WORKSPACE_COLLECTION_TIMEOUT_MS = 30_000;
 const GIT_MAX_BUFFER = 2 * 1024 * 1024;
 const MAX_ENTRIES = 512;
-const MAX_INDEX_FLAG_ENTRIES = 65_536;
+const MAX_INDEX_FLAG_ENTRIES = 16_384;
+const MAX_TRACKED_LINK_ENTRIES = 256;
+const MAX_TRACKED_LINK_TEXT_BYTES = 64 * 1024;
+const MAX_TRACKED_LINK_TARGET_BYTES = 2 * 1024 * 1024;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
 const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -192,33 +195,53 @@ export interface IndexFlagCensus {
   count: number;
   assumeUnchanged: string[];
   skipWorktree: string[];
+  entries: IndexCensusEntry[];
 }
 
-/** Parse the exact raw `git ls-files -v -z` tracked-index census. */
+export interface IndexCensusEntry {
+  tag: string;
+  mode: string;
+  objectId: string;
+  stage: number;
+  path: string;
+}
+
+/** Parse the exact raw `git ls-files -v -s -z` tracked-index census. */
 export function parseIndexFlagCensus(raw: Buffer): IndexFlagCensus {
   if (raw.length > GIT_MAX_BUFFER) throw new Error(`git ls-files flag census exceeds ${GIT_MAX_BUFFER} bytes`);
-  const tokens = splitNul(raw, "git ls-files -v -z output");
+  const tokens = splitNul(raw, "git ls-files -v -s -z output");
   if (tokens.length > MAX_INDEX_FLAG_ENTRIES) {
     throw new Error(`git ls-files flag census exceeds ${MAX_INDEX_FLAG_ENTRIES} tracked entries`);
   }
   const assumeUnchanged: string[] = [];
   const skipWorktree: string[] = [];
+  const entries: IndexCensusEntry[] = [];
+  let trackedLinks = 0;
   for (const token of tokens) {
-    if (token.length < 2 || token[1] !== 0x20) throw new Error("git ls-files emitted a malformed flag token");
-    const tag = String.fromCharCode(token[0]);
-    if (!/^[HSMRCK?]$/i.test(tag)) throw new Error(`git ls-files emitted unsupported flag tag ${JSON.stringify(tag)}`);
-    const observed = decode(token.subarray(2));
+    const tab = token.indexOf(0x09);
+    if (tab < 0) throw new Error("git ls-files emitted a malformed index census token");
+    const header = decode(token.subarray(0, tab));
+    const match = /^([HSMRCK?]) ([0-9]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-3])$/i.exec(header);
+    if (!match) throw new Error("git ls-files emitted a malformed index census header");
+    const [, tag, mode, objectId, stageText] = match;
+    const observed = decode(token.subarray(tab + 1));
     if (!observed) throw new Error("git ls-files emitted an empty tracked path");
     const parsed = parsePlanPath(observed, { observed: true });
     if (!parsed.ok || parsed.path !== observed) throw new Error(`git ls-files emitted unsafe tracked path ${JSON.stringify(observed)}`);
     if (/^[a-z]$/.test(tag)) assumeUnchanged.push(observed);
     if (tag === "S" || tag === "s") skipWorktree.push(observed);
+    if (mode === "120000") trackedLinks += 1;
+    entries.push({ tag, mode, objectId: objectId.toLowerCase(), stage: Number(stageText), path: observed });
+  }
+  if (trackedLinks > MAX_TRACKED_LINK_ENTRIES) {
+    throw new Error(`git ls-files census exceeds ${MAX_TRACKED_LINK_ENTRIES} tracked symbolic links`);
   }
   return {
     digest: createHash("sha256").update(raw).digest("hex"),
     count: tokens.length,
     assumeUnchanged,
     skipWorktree,
+    entries,
   };
 }
 
@@ -278,6 +301,10 @@ export async function readBoundedWorkspaceFile(
   absolute: string,
   budget: { total: number },
   hooks: WorkspaceFileReadHooks = {},
+  limits: { maxFileBytes: number; maxTotalBytes: number } = {
+    maxFileBytes: MAX_FILE_BYTES,
+    maxTotalBytes: MAX_TOTAL_FILE_BYTES,
+  },
 ): Promise<{ bytes: Buffer; mode: string } | null> {
   await assertPhysicalContainment(root, absolute);
   let initialStat: BigIntStats;
@@ -291,8 +318,8 @@ export async function readBoundedWorkspaceFile(
   if (initial.symbolicLink) throw new Error("observed workspace path is a symbolic link");
   if (!initial.regular) throw new Error("observed workspace path is not a regular file");
   if (initial.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
-  const remainingTotal = MAX_TOTAL_FILE_BYTES - budget.total;
-  const allowed = Math.min(MAX_FILE_BYTES, remainingTotal);
+  const remainingTotal = limits.maxTotalBytes - budget.total;
+  const allowed = Math.min(limits.maxFileBytes, remainingTotal);
   if (allowed < 0 || initial.size > BigInt(allowed)) throw new Error("observed content exceeds the bounded snapshot budget");
 
   await hooks.beforeOpen?.();
@@ -329,6 +356,75 @@ export async function readBoundedWorkspaceFile(
     if (handle) await handle.close();
     await hooks.afterClose?.();
   }
+}
+
+function stableFactsIdentity(facts: StableFileFacts): string {
+  return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.symbolicLink].join(":");
+}
+
+async function trackedLinkIdentity(
+  root: string,
+  entry: IndexCensusEntry,
+  budget: { total: number },
+): Promise<string> {
+  const absolute = path.resolve(root, ...entry.path.split("/"));
+  if (!inside(root, absolute)) throw new Error(`tracked symbolic link ${entry.path} escapes the worktree`);
+  let initialStat: BigIntStats;
+  try {
+    initialStat = await lstat(absolute, { bigint: true });
+  } catch (error) {
+    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const initial = stableFileFacts(initialStat);
+  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
+
+  if (!initial.symbolicLink) {
+    if (!initial.regular) throw new Error(`tracked symbolic link ${entry.path} has an unsupported checkout representation`);
+    const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits);
+    if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
+    const after = stableFileFacts(await lstat(absolute, { bigint: true }));
+    if (!sameFileFacts(initial, after)) {
+      throw new Error(`tracked symbolic link ${entry.path} changed checkout representation during bounded inspection`);
+    }
+    return digest([
+      entry.tag, entry.mode, entry.objectId, String(entry.stage), entry.path,
+      "regular-placeholder", stableFactsIdentity(initial), placeholder.mode, placeholder.bytes,
+    ]);
+  }
+
+  const targetBytes = await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer;
+  if (targetBytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
+    throw new Error(`tracked symbolic link ${entry.path} target exceeds ${MAX_TRACKED_LINK_TEXT_BYTES} bytes`);
+  }
+  if (budget.total + targetBytes.length > MAX_TRACKED_LINK_TARGET_BYTES) {
+    throw new Error(`tracked symbolic-link targets exceed ${MAX_TRACKED_LINK_TARGET_BYTES} aggregate bytes`);
+  }
+  budget.total += targetBytes.length;
+  let resolved: string;
+  try {
+    resolved = await realpath(absolute);
+  } catch (error) {
+    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (canonicalPath(resolved) !== canonicalPath(root) && !inside(root, resolved)) {
+    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  }
+  const target = await readBoundedWorkspaceFile(root, resolved, budget, {}, limits);
+  if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
+
+  const after = stableFileFacts(await lstat(absolute, { bigint: true }));
+  const afterTargetBytes = await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer;
+  const afterResolved = await realpath(absolute);
+  if (!sameFileFacts(initial, after) || !targetBytes.equals(afterTargetBytes) || canonicalPath(resolved) !== canonicalPath(afterResolved)) {
+    throw new Error(`tracked symbolic link ${entry.path} changed identity or target during bounded inspection`);
+  }
+  if (canonicalPath(afterResolved) !== canonicalPath(root) && !inside(root, afterResolved)) {
+    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  }
+  return digest([
+    entry.tag, entry.mode, entry.objectId, String(entry.stage), entry.path,
+    "symbolic-link", stableFactsIdentity(initial), targetBytes, canonicalPath(resolved), target.mode, target.bytes,
+  ]);
 }
 
 async function fileIdentity(
@@ -371,12 +467,19 @@ async function captureOnce(root: string, worktree: string, run: StepGitRun): Pro
     run(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]),
     run(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
     run(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"]),
-    run(root, ["ls-files", "-v", "-z", "--full-name", "--"]),
+    run(root, ["ls-files", "-v", "-s", "-z", "--full-name", "--"]),
   ]);
   const branch = decode(branchRaw).trim();
   const head = decode(headRaw).trim();
   if (!branch) throw new Error("workspace HEAD is detached");
   if (!/^[0-9a-f]{40}$/i.test(head)) throw new Error("workspace HEAD is not a full commit SHA");
+  const indexFlags = parseIndexFlagCensus(indexFlagsRaw);
+  const unsupportedMode = indexFlags.entries.find((entry) => !["100644", "100755", "120000", "160000"].includes(entry.mode));
+  if (unsupportedMode) throw new Error(`tracked path ${JSON.stringify(unsupportedMode.path)} has unsupported Git mode ${unsupportedMode.mode}`);
+  const stagedConflict = indexFlags.entries.find((entry) => entry.stage !== 0);
+  if (stagedConflict) throw new Error(`tracked path ${JSON.stringify(stagedConflict.path)} has unsupported non-zero index stage ${stagedConflict.stage}`);
+  const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
+  if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
   const budget = { total: 0 };
   const entries: StepWorkspaceEntry[] = [];
   for (const observed of parsePorcelainV1Z(statusRaw)) {
@@ -389,10 +492,20 @@ async function captureOnce(root: string, worktree: string, run: StepGitRun): Pro
       content: await fileIdentity(root, observed, run, budget),
     });
   }
+  const linkBudget = { total: 0 };
+  for (const link of indexFlags.entries.filter((entry) => entry.mode === "120000")) {
+    entries.push({
+      path: link.path,
+      index: ".",
+      worktree: ".",
+      content: await trackedLinkIdentity(root, link, linkBudget),
+    });
+  }
+  if (entries.length > MAX_ENTRIES) throw new Error(`workspace has more than ${MAX_ENTRIES} retained dirty/link paths`);
   entries.sort((left, right) => lexicalCompare(left.path, right.path) || lexicalCompare(left.index, right.index) || lexicalCompare(left.worktree, right.worktree));
   return {
     snapshot: { branch, worktree, head: head.toLowerCase(), entries },
-    indexFlags: parseIndexFlagCensus(indexFlagsRaw),
+    indexFlags,
   };
 }
 

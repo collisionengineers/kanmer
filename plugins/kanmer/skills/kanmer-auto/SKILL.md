@@ -477,7 +477,10 @@ worker text or current board/Git state. A successor step is issued only after
 the exact retained predecessor reconciles PASS and is supplied whole as
 `prior_step_packet`. Initial issuance likewise requires at least one mapped
 unchecked checklist marker for the selected ordered step; a plan-only or
-unrelated checklist cannot become worker authority. Whole-ticket and
+unrelated checklist cannot become worker authority. Exact checklist bytes
+retain a leading UTF-8 BOM. Compilation and strict verification derive every
+marker state from those bytes, require a completed prefix and unfinished
+selected step, and refuse any checked successor marker. Whole-ticket and
 constrained issuance share one lexical, de-duplicated group census: counted
 ticket documents plus unique group ids are capped at 256 before any group or
 context read, and missing or conflicting resolved identity refuses. Core binds
@@ -519,8 +522,13 @@ On every result or timeout, the controller:
 
 The constrained Git census covers tracked, staged, unstaged and untracked
 paths plus both rename endpoints. Every sample also hashes one bounded NUL
-`git ls-files -v -z` index-flag census: assume-unchanged or skip-worktree
-entries refuse without being cleared, and flag drift is `INCONCLUSIVE`.
+`git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
+path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
+gitlinks refuse without index mutation; census drift is `INCONCLUSIVE`. A tracked
+mode-`120000` path is retained only when its checkout representation and capped
+target bytes are identity-bound and its physical target is a regular file
+inside the worktree; external, chained-external, dangling, unreadable, unstable
+or over-budget links refuse.
 Ignored paths and `.git` / common-directory metadata are outside it and
 constrained workers must never mutate them. Any need or attempt is a deviation stop
 recorded as `INCONCLUSIVE`; absence from the census never authorizes such a write.

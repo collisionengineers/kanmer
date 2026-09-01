@@ -392,7 +392,7 @@ async function readAuthorityText(metadata: AuthorityFileMetadata): Promise<strin
       throw new Error(`${metadata.label} changed identity during its bounded read`);
     }
     try {
-      return new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, size));
+      return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(buffer.subarray(0, size));
     } catch {
       throw new Error(`${metadata.label} is not valid UTF-8`);
     }

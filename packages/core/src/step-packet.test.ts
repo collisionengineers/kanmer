@@ -405,6 +405,45 @@ describe("selecting the next step", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toContain("step 1 is the current unfinished step");
   });
+
+  it.each(["next" as const, 1 as const])("refuses %s when a successor marker is already checked", (select) => {
+    const result = compileStepPacket(input({
+      select,
+      checklist: "- [ ] Step 1 — pending\n- [x] Step 2 — already advanced\n",
+    }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(/successor.*step 2.*checked|step 2.*successor.*checked/i);
+  });
+
+  it("refuses a partially prechecked successor while preserving partial progress in the selected step", () => {
+    const successor = compileStepPacket(input({
+      checklist: [
+        "- [x] Step 1 — first half",
+        "- [ ] Step 1 — second half",
+        "- [x] Step 2 — first half already advanced",
+        "- [ ] Step 2 — second half",
+        "",
+      ].join("\n"),
+    }));
+    expect(successor.ok).toBe(false);
+    if (!successor.ok) expect(successor.reason).toMatch(/successor.*step 2.*checked|step 2.*successor.*checked/i);
+
+    const selectedOnly = compileStepPacket(input({
+      checklist: "- [x] Step 1 — first half\n- [ ] Step 1 — second half\n- [ ] Step 2 — pending\n",
+    }));
+    expect(selectedOnly.ok).toBe(true);
+  });
+
+  it("parses one leading UTF-8 BOM without removing it from packet identity", () => {
+    const checklist = "\uFEFF- [ ] Step 1 — pending\n- [ ] Step 2 — pending\n";
+    const compiled = compileStepPacket(input({ checklist }));
+    expect(compiled.ok).toBe(true);
+    if (!compiled.ok) return;
+    expect(compiled.packet.checklist.content).toBe(checklist);
+    expect(compiled.packet.checklist.stepLines).toEqual([[0], [1]]);
+    expect(compiled.packet.checklist.steps).toEqual([false, false]);
+    expect(verifyStepPacket(compiled.packet)).toMatchObject({ ok: true });
+  });
 });
 
 describe("reconcileStepPacket", () => {
@@ -489,6 +528,43 @@ describe("reconcileStepPacket", () => {
       "- [ ] Step 1 — first\r\ncontext\r- [ ] Step 2 — second\n",
       "- [X] Step 1 — first\r\ncontext\r- [ ] Step 2 — second\n",
     ).status).toBe("pass");
+  });
+
+  it("accepts a BOM-preserving marker transition and refuses BOM addition or removal", () => {
+    expect(reconcileChecklistBytes(
+      "\uFEFF- [ ] Step 1 — first\n- [ ] Step 2 — second\n",
+      "\uFEFF- [x] Step 1 — first\n- [ ] Step 2 — second\n",
+    ).status).toBe("pass");
+    expect(reconcileChecklistBytes(
+      "\uFEFF- [ ] Step 1 — first\n- [ ] Step 2 — second\n",
+      "- [x] Step 1 — first\n- [ ] Step 2 — second\n",
+    ).status).toBe("fail");
+    expect(reconcileChecklistBytes(
+      "- [ ] Step 1 — first\n- [ ] Step 2 — second\n",
+      "\uFEFF- [x] Step 1 — first\n- [ ] Step 2 — second\n",
+    ).status).toBe("fail");
+  });
+
+  it("refuses re-digested checklist state that contradicts exact content or advances a successor", () => {
+    const value = packet();
+    const signed = (mutate: (body: any) => void) => {
+      const { packetId: _ignored, ...body } = structuredClone(value);
+      mutate(body);
+      return { ...body, packetId: stepPacketDigest(body) };
+    };
+
+    const contradictory = verifyStepPacket(signed((body) => {
+      body.checklist.steps = [true, false];
+    }));
+    expect(contradictory.ok).toBe(false);
+    if (!contradictory.ok) expect(contradictory.reason).toMatch(/exact.*content|content-derived|stored.*state/i);
+
+    const successor = verifyStepPacket(signed((body) => {
+      body.checklist.content = "- [ ] Step 1 — bound the loop\n- [x] Step 2 — document the cap\n";
+      body.checklist.steps = [false, true];
+    }));
+    expect(successor.ok).toBe(false);
+    if (!successor.ok) expect(successor.reason).toMatch(/successor.*checked|later.*checked/i);
   });
 
   it.each([

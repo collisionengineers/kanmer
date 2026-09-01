@@ -33,6 +33,7 @@ The implementation starts only after CORE-127 and CORE-133 merge, then rebases o
 | Modify | `plugins/kanmer/skills/kanmer-setup/SKILL.md` | Existing format-migration consumer performs report → dry-run digest → strict cutover deliberately |
 | Modify | `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` | Proof schema, gate diagnostics and migration census contract |
 | Modify | `AGENTS.md` | Canonical proof-attempt authority and strict-cutover contract |
+| Modify | `docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md` | Amend the governed movement-gate content-reader boundary for strict typed proof authority |
 | Modify | `docs/functional/frd/FRD-002-requirement-profiles.md` | Replace existence-only proof authority with explicit report/strict profile semantics |
 | Modify | `docs/functional/frd/FRD-006-typed-proof.md` | Define current typed proof authority, compatibility reporting and strict Done behavior |
 | Modify | `docs/manual/proof.md` | User-visible typed proof and migration/report behavior |

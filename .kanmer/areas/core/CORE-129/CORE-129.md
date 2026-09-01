@@ -18,9 +18,10 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-002-requirement-profiles.md
   - docs/functional/frd/FRD-006-typed-proof.md
+  - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-08-31T22:52:58.527Z'
+updated: '2026-09-01T00:01:42.636Z'
 ---
 
 ## What

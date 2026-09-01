@@ -15,6 +15,7 @@ Make the exact proof record—not file existence or free prose—the single auth
 
 ## Governing contract
 
+- `docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md`: amend the movement-gate content-reader boundary so strict typed proof validation is an explicit, bounded exception rather than an undocumented second content parser.
 - `docs/functional/frd/FRD-002-requirement-profiles.md`: update the legacy existence-only proof requirement to explicit report/strict semantics.
 - `docs/functional/frd/FRD-006-typed-proof.md`: replace the historical rule that FAIL satisfies the hard gate with the current typed-proof authority and compatibility cutover.
 - `docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md`: exact merged-SHA PASS precedes Done.
@@ -39,6 +40,7 @@ Make the exact proof record—not file existence or free prose—the single auth
    - In strict mode, every proof requirement is satisfied only by a current valid PASS. Visual proof keeps its existing image advisory after that hard check.
    - Existing Done items remain untouched because gates apply only on transitions.
    - Expose `get_status.proofValidation = { mode, source }` so an absent/stripped explicit board policy is observable.
+   - Ordinary board writers (`setBoard`/`updateBoard`) must refuse a `report` or absent-policy → `strict` escalation. Strict activation is available only through one dedicated digest-bound store cutover method under the board-wide write lock.
 
 3. **Census before enabling strict**
    - Extend existing `migrate_board`; do not add a tool.
@@ -75,17 +77,17 @@ Make the exact proof record—not file existence or free prose—the single auth
 
 ### Step 2 — Add report/strict central gate policy
 
-- Files: `types.ts`, `board.ts`, `gates.ts`, `store.ts`, plus board/gates/profile-matrix/store/docs/claims/delivery/release tests named in `files/files.md`.
+- Files: `types.ts`, `board.ts`, `gates.ts`, `store.ts`, `docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md`, plus board/gates/profile-matrix/store/docs/claims/delivery/release tests named in `files/files.md`.
 - Symbols: board policy schema/resolver, `EvidenceProbe` proof state, `statusOf`, `gateReport`.
-- Negative cases: absent legacy policy reports with source `default`; explicit policy reports source `board`; stripped-key fallback is observable; strict legacy/invalid/FAIL/INCONCLUSIVE blocks; strict valid PASS passes; a noncanonical proof Markdown cannot satisfy canonical `proof/proof.md`; visual advisory unchanged; existing Done creation/backfill remains ungated.
+- Negative cases: absent legacy policy reports with source `default`; explicit policy reports source `board`; stripped-key fallback is observable; direct generic board-update escalation to strict refuses; strict legacy/invalid/FAIL/INCONCLUSIVE blocks; strict valid PASS passes; a noncanonical proof Markdown cannot satisfy canonical `proof/proof.md`; visual advisory unchanged; existing Done creation/backfill remains ungated.
 - Commands: focused board/gates/docs/store suites and core typecheck.
 - Done when: GUI and MCP observe one central gate decision.
 
 ### Step 3 — Add a byte-preserving census and cutover to migrate_board
 
 - Files: `migrate.ts`, `migrate.test.ts`, tool description in MCP index.
-- Symbols: `auditProofRecords`, proof-policy migration report, `migrateBoard`.
-- Negative cases: old-format combined cutover refuses; dry run writes nothing; incomplete census, missing digest or stale digest refuses with no write; concurrent proof drift under the lock refuses; successful cutover changes only board policy; malformed/legacy records are listed; repeat is idempotent; old proofs/tickets/activity remain byte-identical.
+- Symbols: `auditProofRecords`, the dedicated locked store cutover method, proof-policy migration report, `migrateBoard`.
+- Negative cases: old-format combined cutover refuses; dry run writes nothing; incomplete census, missing digest or stale digest refuses with no write; concurrent proof drift under the lock refuses; direct `setBoard`/`updateBoard` strict escalation refuses; successful dedicated cutover changes only board policy; malformed/legacy records are listed; repeat is idempotent; old proofs/tickets/activity remain byte-identical.
 - Commands: focused migration tests and server build.
 - Done when: strict is never enabled for the release board before its durable census is recorded.
 
@@ -99,7 +101,7 @@ Make the exact proof record—not file existence or free prose—the single auth
 
 ### Step 5 — Update operating prose, generate artifacts and verify
 
-- Files: FRD-002/FRD-006, AGENTS, verify/closeout/auto/setup skills, tool reference, proof/gates/first-ticket manuals and generated manual, prose validators, plugin bundle.
+- Files: ADR-0011, FRD-002/FRD-006, AGENTS, verify/closeout/auto/setup skills, tool reference, proof/gates/first-ticket manuals and generated manual, prose validators, plugin bundle.
 - Preserve: existing review/retry/closeout contracts, 41 tools and byte-identical source/bundle build.
 - Commands: script tests, skill/AGENTS/manual checks, plugin build/check, typecheck, one clean non-overlapping `npm run verify`, `git diff --check`.
 - Done when: one bounded PR is open at a clean exact head with current report, hosted checks and exact-head independent review.
@@ -114,8 +116,8 @@ Make the exact proof record—not file existence or free prose—the single auth
 - Strict Done refuses legacy, invalid, contradictory, FAIL and INCONCLUSIVE evidence.
 - Reconciliation uses the same parser and cannot recommend Done from those states.
 - Report-mode compatibility and stable-v0.3.12 board readability are preserved before promotion.
-- Census and reconciliation are read-only; only a complete current-format digest-bound census may atomically change the explicit board policy under the write lock.
-- FRD-002, FRD-006, setup guidance and the manuals agree with the implemented report/strict behavior.
+- Census and reconciliation are read-only; only a complete current-format digest-bound census may atomically change the explicit board policy under the write lock, and generic board writers cannot bypass that cutover.
+- ADR-0011 explicitly authorizes the bounded strict proof content reader; FRD-002, FRD-006, setup guidance and the manuals agree with the implemented report/strict behavior.
 - No historical ticket is reopened and no excluded ticket joins the v0.3.13 roster.
 
 ## Deviation rules

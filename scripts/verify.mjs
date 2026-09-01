@@ -11,6 +11,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** The authoritative ordered verification commands for PRs and releases. */
 export const VERIFY_STEPS = Object.freeze([
   "npm run build",
+  // The renderer bundles @kanmer/core/browser; only a real build proves the
+  // renderer graph stays browser-safe (GUI-146).
+  "npm run build -w @kanmer/gui",
   // The GUI imports @kanmer/core from its package export. A clean checkout
   // has no generated dist yet, so build the workspace artifacts before tests.
   "npm test",

@@ -1,5 +1,5 @@
 import { UI_STAGE_IDS as STAGE_IDS, uiStageName as stageName } from "../../../shared/stages.js";
-import { isCaptureItem } from "@kanmer/core";
+import { isCaptureItem } from "@kanmer/core/browser";
 import type { ActivityEntry, BoardConfig, Item, ItemWarning } from "@kanmer/core";
 import { blockedIds } from "./board.js";
 

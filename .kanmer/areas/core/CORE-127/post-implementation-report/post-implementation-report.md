@@ -202,3 +202,91 @@ No implementation blocker remains. The intentional residual boundary stays fail-
 ## Scope confirmation
 
 All changed source, test, prose, and generated files are in the versioned files/plan packet. CORE-126 batch ownership, CORE-133 abandoned-workspace routing, CORE-129 proof consistency, GUI behavior, workflow stages, release records, provider configuration and unrelated local state were not absorbed.
+
+## Exact-head F-022 / F-023 correction
+
+Review of exact PR head `c549e1febacbf210d74dc45cd04b647c4dd7be42` produced one major and one blocker. The existing branch/worktree was returned through the audited Review → Implementing path; no new workspace, tool, stage, dependency, or ticket was introduced.
+
+### Source changes
+
+- `packages/mcp-server/src/step-reconciliation.ts`
+  - carries one absolute aggregate deadline through Git and sequential workspace filesystem collection;
+  - checks the deadline at each census/loop boundary and bounds resource-free filesystem observations;
+  - preserves handle closure while refusing a read that crosses the deadline;
+  - proves raw tracked-link target components in filesystem order, rejecting a link/junction hop before a later `..` can erase it;
+  - retains direct confined and parent-relative targets only when every traversed directory and final single-link regular file is proved twice.
+- `packages/mcp-server/src/step-reconciliation.test.mjs`
+  - adds an ignored external-hop plus `ignored-hop/../victim.txt` refusal on real-link and Windows placeholder representations;
+  - retains `normal/../victim.txt` and nested `../tracked.txt` confined controls;
+  - adds a deterministic test clock that expires inside the regular-file census.
+- `plugins/kanmer/mcp/kanmer-mcp.cjs`
+  - regenerated mechanically from the final server source.
+
+### Verification retained
+
+- First complete collector run at the changed source: 36/38 PASS. The two failures were exact fixture/error-contract corrections: the Windows link fixture needed `core.symlinks=false` for a clean mode-120000 placeholder, and the new parent-traversal refusal needed the existing “outside the physical worktree” wording. No production acceptance was weakened.
+- Focused rerun after those corrections: 2/2 PASS.
+- Complete collector suite: 38/38 PASS.
+- Authoritative MCP `test:http`: 220/220 PASS, including the collector.
+- All-workspace `npm run typecheck`: PASS.
+- Server development and standalone builds: PASS.
+- `npm run plugin:build` and `npm run plugin:check`: PASS; 41 tools, exact bundle bytes, isolated handshake.
+- `git diff --check`: PASS.
+
+The clean full Windows rail, hosted verification, exact-head automated settlement, independent delta review, public dispositions, synced-board gate, merge, and exact-merge verification remain controller-owned after the coherent correction commit.
+
+
+## Sixth exact-head root-cause remediation
+
+Commit `4a50a885cada3ce89119410d1d2b16e0677edda9` addresses exact-head findings F-024 through F-028 together:
+
+- F-024: tracked-link target decoding retains a leading UTF-8 BOM, so a BOM-prefixed path component cannot be normalized into a different target. Both native links and Git-for-Windows placeholder representations are covered.
+- F-025: a retained tracked link may resolve only to an indexed mode-100644/100755 regular path from the same bounded census. Ignored and untracked targets refuse even when the link itself is clean.
+- F-026: plan, evidence and ticket authority drift after issuance no longer suppresses actual workspace collection. Typed stale findings and forbidden/undeclared changed-path evidence are returned together before any successor packet.
+- F-027: an unavailable bounded authority snapshot returns explicit `STEP_AUTHORITY_UNAVAILABLE` with the verified packet identity and no invented isolated batch authority. The regression uses a genuinely declared two-ticket batch.
+- F-028: packet compilation, strict verification and real workspace collection accept only complete 40-character SHA-1 or 64-character SHA-256 Git object IDs.
+
+Canonical AGENTS, execute/auto skills and tool reference prose now state the BOM, indexed-target and SHA-1/SHA-256 contract. Mutation tests pin each statement, and the standalone MCP bundle was regenerated mechanically.
+
+### Failed-first evidence
+
+The new tests were run before the production fixes and retained their exact failures:
+
+- Core packet focus: 58 PASS / 1 FAIL because a valid 64-character SHA-256 HEAD was refused.
+- Workspace collector: 38 PASS / 5 FAIL, comprising the SHA-256 repository, native-link and placeholder BOM cases, and ignored/untracked target authority.
+- Reconciliation: 37 PASS / 4 FAIL, comprising three post-issuance drift cases that lost changed-path evidence and one unavailable-batch case that returned a false identity failure.
+
+No assertion was weakened. An independent fixture audit then found that the first F-027 regression constructed a batch field on an isolated packet; the fixture was replaced with a real frozen two-ticket batch before final evidence was accepted.
+
+### Final implementation evidence
+
+All commands exited 0 on the exact source committed as `4a50a885cada3ce89119410d1d2b16e0677edda9`:
+
+- Core step-packet focus: 59/59 PASS.
+- Workspace collector: 43/43 PASS.
+- Reconciliation: 41/41 PASS.
+- Authoritative MCP workspace command `npm run test:http -w @kanmer/mcp-server`: 229/229 PASS.
+- MCP stdio smoke: 381/381 PASS; protocol smoke: 50/50 PASS; tool roster remains exactly 41.
+- Script suites: 161/161 PASS; canonical skill verification: ALL CHECKS PASSED; AGENTS block: 31/31 PASS.
+- All-workspace typecheck, core/MCP builds, plugin build/check, exact bundle byte identity, isolated handshake, `git diff --check`, and staged diff check: PASS.
+- The branch was pushed to PR #307 and the ticket worktree is clean.
+
+The implementation run intentionally did not treat historical verification as final-head proof. One fresh clean Windows `npm run verify` at this exact head, hosted `verify`, exact-head automated settlement, fresh independent delta review, public thread dispositions, synced-board `kanmer-gate`, merge and exact-merge verification remain controller-owned.
+
+### Files changed in the sixth remediation
+
+- `AGENTS.md`
+- `packages/core/src/step-packet.ts`
+- `packages/core/src/step-packet.test.ts`
+- `packages/mcp-server/src/reconciliation.ts`
+- `packages/mcp-server/src/reconciliation.test.mjs`
+- `packages/mcp-server/src/step-reconciliation.ts`
+- `packages/mcp-server/src/step-reconciliation.test.mjs`
+- `plugins/kanmer/mcp/kanmer-mcp.cjs`
+- `plugins/kanmer/skills/kanmer-auto/SKILL.md`
+- `plugins/kanmer/skills/kanmer-execute/SKILL.md`
+- `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`
+- `scripts/verify-skill-prose.mjs`
+- `scripts/verify-skill-prose.test.mjs`
+
+No implementation blocker remains. Unsupported or unobservable link targets and unavailable authority stay fail-closed rather than being guessed into PASS.

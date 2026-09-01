@@ -39,6 +39,20 @@
 - [x] Step 23 — Physicalize the two direct-reader temporary roots while preserving their exact race assertions, then prove the hosted failure mechanism locally.
 - [x] Step 24 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
 
+
+## Fifth exact-head delta remediation
+
+- [x] Step 25 — Propagate and enforce the aggregate deadline across the regular-file census and every sequential workspace filesystem traversal; prove deterministic non-Git timeout refusal.
+- [x] Step 26 — Prove raw tracked-link target components in kernel order so an erased external hop cannot pass, while retaining safe direct confined parent-relative controls.
+- [x] Step 27 — Rebuild the server and bundle, pass focused/authoritative MCP checks, update the report, commit the correction, and return the same PR to Review.
+
+## Sixth exact-head root-cause remediation
+
+- [x] Step 28 — Preserve BOM path bytes and require every retained tracked-link target to be an indexed tracked regular path; prove ignored/untracked target refusal.
+- [x] Step 29 — Continue bounded workspace classification under post-issuance authority drift and keep unavailable batched authority explicitly INCONCLUSIVE.
+- [x] Step 30 — Accept only full 40- or 64-hex Git object IDs across packet compilation, verification and real SHA-256 collection.
+- [x] Step 31 — Update canonical prose/tests, regenerate the bundle, pass focused and authoritative checks, update the report, commit/push, and return the same PR to Review.
+
 ## Acceptance census
 
 - [x] Escaping/absolute/unsupported paths fail closed; literal, `*` and `**` semantics are pinned by tests.

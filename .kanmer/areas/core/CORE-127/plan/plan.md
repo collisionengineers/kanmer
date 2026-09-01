@@ -392,3 +392,65 @@ The exact head passed the clean local Windows rail, but hosted verification expo
 - Run core step-packet/store plus claims/batch regressions; collector and reconciliation suites; `npm run test:http -w @kanmer/mcp-server`; MCP/protocol smoke; scripts/prose/AGENTS checks; builds/typecheck; plugin build/check and `git diff --check`.
 - Do not run a duplicate full Windows rail inside implementation. Regenerate the committed bundle, commit one coherent correction, update the checklist/report/ticket commit, and return the same PR to Review without pushing, self-reviewing, merging, verifying or starting CORE-133.
 - The release controller then publishes the head and requires a fresh clean Windows rail, hosted `verify`, settled automated exact-head review, one fresh independent delta review over F-001 through F-021 and all affected callers/tests, synced-board `kanmer-gate`, merge and exact-merge verification.
+
+## Fifth exact-head delta remediation — F-022 / F-023
+
+Exact-head automated and independent review of `c549e1febacbf210d74dc45cd04b647c4dd7be42` found two remaining violations of the existing Step 3/RC-13 bounded-workspace invariant. They stay inside the already-authorised collector source, collector tests, and generated bundle.
+
+### RC-16 — Bind the aggregate deadline to filesystem traversal (F-022)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::collectWorkspaceSnapshot`, `captureOnce`, `trackedRegularMetadataCensus`, `confinedPathProof`, and their existing sequential workspace helpers; `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Carry one absolute deadline through both samples and every sequential workspace filesystem traversal. Check it before starting I/O and bound the awaited operation; an expired or stalled non-Git census returns INCONCLUSIVE with the same aggregate deadline reason.
+- Preserve the 30-second production maximum and the existing test-only tightening rule. Add no scheduler, worker, dependency, cache, or caller-supplied extension.
+- Negative proof: a deterministic test advances the internal test clock during the regular-file census and proves refusal occurs there, not only after both samples.
+
+### RC-17 — Prove raw tracked-link components in kernel order (F-023)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::trackedLinkIdentity` and a focused raw-target helper; `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Resolve each raw target component in order from the already-proved link parent. Reject every symlink/junction intermediate before processing a following `..`; allow parent traversal only after a real directory was proved and only while the cursor remains at or below the physical worktree root. Require a final direct single-link regular file and bind the repeated proof.
+- Retain safe direct confined links, including a confined parent-relative target. Reject absolute spellings that do not directly share the physical-root prefix and every erased-hop/out-and-back spelling.
+- Negative proof: an ignored `ignored-hop` link plus tracked raw target `ignored-hop/../victim` must refuse on all checkout representations; a normal-directory `dir/../victim` and a confined `../shared/file` control remain valid where represented as real tracked links.
+
+### Commands and stop
+
+Run the collector suite failed-first and after correction, then the authoritative MCP `test:http`, server build/typecheck, plugin rebuild/identity check, and `git diff --check`. Update the report/checklist, commit one coherent F-022/F-023 correction, and return the same PR to Review. The release controller owns the clean full Windows rail, hosted checks, automated settlement, independent delta review, public thread dispositions, merge, and exact-merge verification.
+
+## Sixth exact-head root-cause remediation — F-024 through F-028
+
+Exact-head automated and independent review of `a682057152c24fb30c84ff6b296cd97e7a5ee439` confirmed F-022/F-023 and every prior blocker/major disposition, then found five remaining violations of the existing byte-exact, observable-authority and truthful-reconciliation contracts. They are one bounded remediation in the already-authorised packet, collector, reconciliation, canonical prose/test and generated-bundle files. No tool, stage, schema, dependency or persisted state is added.
+
+### RC-18 — Bind tracked links to exact bytes and observable tracked targets (F-024 / F-025)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::UTF8_FATAL`, `trackedLinkTargetProof`, `trackedLinkIdentity`, `trackedRegularMetadataCensus`; `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Preserve a leading UTF-8 BOM in every decoded Git/filesystem path byte sequence by configuring the fatal decoder with `ignoreBOM: true`. The validator and kernel must use the same target spelling.
+- Build the canonical set of indexed stage-0 mode-100644/100755 regular paths from the already-bounded index census. A mode-120000 target is admissible only when its final proved confined target is one of those indexed tracked regular paths. Ignored, untracked, unsupported, chained or otherwise unobservable targets refuse before packet issuance; do not add `--ignored` scanning or a parallel authority source.
+- Retain the existing repeated identity/link/hard-link/confinement checks for the final target. Attribute later mutations through the ordinary tracked target's porcelain/index evidence rather than granting authority from the link digest alone.
+- Negative cases: real symlink and Windows placeholder targets beginning with BOM select no non-BOM sibling; an allowed link to an ignored/forbidden target refuses; a direct link to an indexed tracked regular file remains valid and a later target mutation is classified under the tracked target path.
+
+### RC-19 — Preserve workspace evidence under drift and unknown authority (F-026 / F-027)
+
+- Files/symbols: `packages/mcp-server/src/reconciliation.ts::reconcileTicket`, the pre-Git authority shortcut and unavailable-snapshot branch; `packages/mcp-server/src/reconciliation.test.mjs`.
+- Short-circuit before Git only for facts that make the supplied packet foreign or forged: `STEP_IDENTITY_MISMATCH`, or `STEP_PLAN_AUTHORITY_MISMATCH` when there is no `STEP_PLAN_STALE` evidence showing ordinary post-issuance drift. Plan, ticket, research, files, checklist and group-context drift must still collect the bounded workspace snapshot and report forbidden/undeclared changes in the same result.
+- If stable document authority cannot be collected, return an explicit `STEP_AUTHORITY_UNAVAILABLE` INCONCLUSIVE result with the bounded reader's reason. Do not fabricate `batch: null`, run identity classification against invented facts or erase the retained packet's batch identity.
+- Preserve the existing recomputed-broader/forged-plan refusal before Git. Negative cases combine plan, evidence and ticket drift separately with an undeclared file, plus a valid batched packet whose oversized/unreadable authority remains INCONCLUSIVE without `STEP_IDENTITY_MISMATCH`.
+
+### RC-20 — Support every full Git object ID emitted by supported repositories (F-028)
+
+- Files/symbols: `packages/core/src/step-packet.ts` compile and strict workspace-head validation; `packages/core/src/step-packet.test.ts`; `packages/mcp-server/src/step-reconciliation.ts` HEAD validation; `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Accept exactly 40-hex SHA-1 or 64-hex SHA-256 full object IDs wherever the packet workspace HEAD is compiled, verified or collected. Keep abbreviated, mixed-length and nonhex IDs refused.
+- Reuse one local full-object-ID contract per package rather than guessing repository format from caller data. Do not change packet identity, index object validation or delivery-policy integration SHA semantics.
+- Negative proof: core compilation/verification accept 40 and 64 only; a real `git init --object-format=sha256` fixture issues and collects a 64-character HEAD.
+
+### Canonical contract, commands and stop
+
+- Update `AGENTS.md`, `plugins/kanmer/skills/kanmer-execute/SKILL.md`, `plugins/kanmer/skills/kanmer-auto/SKILL.md` and `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` together: retained targets are indexed tracked regular files, path bytes preserve a leading BOM, and a packet HEAD is a full 40- or 64-hex Git object ID.
+- Extend `scripts/verify-skill-prose.mjs` and its mutation tests without weakening existing assertions. Regenerate `plugins/kanmer/mcp/kanmer-mcp.cjs` mechanically.
+- Run failed-first focused cases, then:
+  - `npm exec --workspace @kanmer/core -- vitest run src/step-packet.test.ts --no-file-parallelism`
+  - `node --test packages/mcp-server/src/step-reconciliation.test.mjs`
+  - `node --test packages/mcp-server/src/reconciliation.test.mjs`
+  - `npm run test:http -w @kanmer/mcp-server`
+  - `npm run build:core`, `npm run build:server`, `npm run typecheck`
+  - `npm run test:scripts`, `npm run verify:skills`, `npm run verify:agents-block`
+  - `npm run plugin:build`, `npm run plugin:check`, `git diff --check`
+- Update the report and checklist, commit and push one coherent correction, and return the same PR to Review. The release controller then owns one fresh clean Windows `npm run verify` rail at the new head, hosted exact-head settlement, one fresh independent delta review, public dispositions and thread resolution, synced-board gate, merge and exact-merge verification.

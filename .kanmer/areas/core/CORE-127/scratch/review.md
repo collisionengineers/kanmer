@@ -1,128 +1,36 @@
 ---
 kind: review-attestation
 pr: "307"
-head_sha: "437c7182021137eae962228942b712b2045cdc57"
+head_sha: "a682057152c24fb30c84ff6b296cd97e7a5ee439"
 verdict: needs-changes
-reviewer: "GitHub Codex exact-head review plus independent /root CORE-127 audits"
+reviewer: "/root/core127_a682_delta_review"
 independent: true
-plan_hash: "2b6c6392f7f58292"
-ticket_updated: "2026-09-01T00:21:26.216Z"
-findings:
-  - id: F-001
-    severity: major
-    summary: "Recursive runtime glob matching could revisit states exponentially."
-    disposition: fixed
-  - id: F-002
-    severity: major
-    summary: "A selected constrained step could lack a checklist marker."
-    disposition: fixed
-  - id: F-003
-    severity: major
-    summary: "Checklist newline normalization could accept a whole-document EOL rewrite."
-    disposition: fixed
-  - id: F-004
-    severity: minor
-    summary: "Duplicate group evidence could make an emitted packet fail its own verifier."
-    disposition: fixed
-  - id: F-005
-    severity: blocker
-    summary: "A linked worktree beneath the dedicated board could bypass protected-workspace checks."
-    disposition: fixed
-  - id: F-006
-    severity: major
-    summary: "Unique group references were resolved before their bounded census."
-    disposition: fixed
-  - id: F-007
-    severity: major
-    summary: "Literal path parsing and equality bypassed the shared runtime matcher budget."
-    disposition: fixed
-  - id: F-008
-    severity: major
-    summary: "Workspace validation and reading were not bound to one filesystem object."
-    disposition: fixed
-  - id: F-009
-    severity: major
-    summary: "Index flags could hide tracked edits from porcelain status."
-    disposition: fixed
-  - id: F-010
-    severity: major
-    summary: "Compile-time glob proof did not bound alphabet transitions, queues or caches."
-    disposition: fixed
-  - id: F-011
-    severity: major
-    summary: "Free-form allowed-symbol authority could not prove changed source ranges."
-    disposition: fixed
-  - id: F-012
-    severity: major
-    summary: "Ticket, document and group limits were applied after full reads."
-    disposition: fixed
-  - id: F-013
-    severity: note
-    summary: "Group-card metadata is not retained evidence when context.md is unchanged."
-    disposition: rejected-with-reason
-    reason: "The approved retained shared-evidence contract binds group context.md; group-card metadata remains double-sampled issuance metadata."
-  - id: F-014
-    severity: major
-    summary: "A prechecked successor step could bypass packet issuance and reconciliation."
-    disposition: fixed
-  - id: F-015
-    severity: major
-    summary: "Bounded authority decoding stripped UTF-8 BOM bytes and diverged from normal revision/CAS readers."
-    disposition: fixed
-  - id: F-016
-    severity: blocker
-    summary: "A clean tracked symlink could mutate outside the worktree without appearing in workspace snapshots."
-    disposition: fixed
-  - id: F-017
-    severity: major
-    summary: "Date-valued passthrough ticket metadata collapses to empty object authority and can evade revision staleness."
-    disposition: open
-  - id: F-018
-    severity: blocker
-    summary: "A tracked symlink chain may leave the worktree and return inside while its external hop remains unbound."
-    disposition: open
-  - id: F-019
-    severity: major
-    summary: "Batch manifests and the transitive ticket census are read and parsed before bounded execution-authority checks."
-    disposition: open
-  - id: F-020
-    severity: blocker
-    summary: "A clean tracked regular file may already be hard-linked outside the worktree at packet issuance."
-    disposition: open
-  - id: F-021
-    severity: minor
-    summary: "Two hosted handle-race tests pass an unphysical temporary-root alias and fail before their intended race hooks."
-    disposition: open
+plan_hash: "6091a8ded19f47c9"
+ticket_updated: "2026-09-01T02:06:03.931Z"
+board_sha: "6948054b9b4fea9aca5cc0114b35308cc1a7d4ef"
+expected_reviewers: ["/root/core127_a682_delta_review"]
+threads_snapshot: [{"id":"PRRT_kwDOT2PEds6d2-fI","finding":"F-001","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d2-fO","finding":"F-002","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d2-fP","finding":"F-003","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d2-fS","finding":"F-004","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d2-fU","finding":"F-005","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d4PLS","finding":"F-006","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d4PLb","finding":"F-007","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d4PLk","finding":"F-008","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d4PLs","finding":"F-009","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d5Vjp","finding":"F-010","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d5Vjw","finding":"F-011","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d5Vj0","finding":"F-012","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d5Vj-","finding":"F-013","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d6jzo","finding":"F-014","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d6jzu","finding":"F-015","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d6jz0","finding":"F-016","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d7Rts","finding":"F-018","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d7Rtx","finding":"F-019","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d7Rt1","finding":"F-020","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d7-0e","finding":"F-022","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d8h_0","finding":"F-024","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d8h_3","finding":"F-025","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d8h_4","finding":"F-026","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d8h_6","finding":"F-027","resolved":false,"source":"github"},{"id":"PRRT_kwDOT2PEds6d8h_9","finding":"F-028","resolved":false,"source":"github"}]
+findings: [{"id":"F-001","severity":"major","summary":"Recursive runtime glob matching could revisit states exponentially.","disposition":"fixed"},{"id":"F-002","severity":"major","summary":"A selected constrained step could lack a checklist marker.","disposition":"fixed"},{"id":"F-003","severity":"major","summary":"Checklist newline normalization could accept a whole-document EOL rewrite.","disposition":"fixed"},{"id":"F-004","severity":"minor","summary":"Duplicate group evidence could make an emitted packet fail its own verifier.","disposition":"fixed"},{"id":"F-005","severity":"blocker","summary":"A linked worktree beneath the dedicated board could bypass protected-workspace checks.","disposition":"fixed"},{"id":"F-006","severity":"major","summary":"Unique group references were resolved before their bounded census.","disposition":"fixed"},{"id":"F-007","severity":"major","summary":"Literal path parsing and equality bypassed the shared runtime matcher budget.","disposition":"fixed"},{"id":"F-008","severity":"major","summary":"Workspace validation and reading were not bound to one filesystem object.","disposition":"fixed"},{"id":"F-009","severity":"major","summary":"Index flags could hide tracked edits from porcelain status.","disposition":"fixed"},{"id":"F-010","severity":"major","summary":"Compile-time glob proof did not bound alphabet transitions, queues or caches.","disposition":"fixed"},{"id":"F-011","severity":"major","summary":"Free-form allowed-symbol authority could not prove changed source ranges.","disposition":"fixed"},{"id":"F-012","severity":"major","summary":"Ticket, document and group limits were applied after full reads.","disposition":"fixed"},{"id":"F-013","severity":"note","summary":"Group-card metadata is not retained evidence when context.md is unchanged.","disposition":"rejected-with-reason","reason":"The approved retained shared-evidence contract binds group context.md; group-card metadata remains double-sampled issuance metadata."},{"id":"F-014","severity":"major","summary":"A prechecked successor step could bypass packet issuance and reconciliation.","disposition":"fixed"},{"id":"F-015","severity":"major","summary":"Bounded authority decoding stripped UTF-8 BOM bytes and diverged from normal revision/CAS readers.","disposition":"fixed"},{"id":"F-016","severity":"blocker","summary":"A clean tracked symlink could mutate outside the worktree without appearing in workspace snapshots.","disposition":"fixed"},{"id":"F-017","severity":"major","summary":"Date-valued passthrough metadata could collapse to ambiguous authority and evade revision staleness.","disposition":"fixed"},{"id":"F-018","severity":"blocker","summary":"A tracked symlink chain could leave the worktree and return while its external hop remained unbound.","disposition":"fixed"},{"id":"F-019","severity":"major","summary":"Batch manifests and the transitive ticket census were read before bounded authority checks.","disposition":"fixed"},{"id":"F-020","severity":"blocker","summary":"A clean tracked regular file could already be hard-linked outside the worktree at packet issuance.","disposition":"fixed"},{"id":"F-021","severity":"minor","summary":"Hosted direct-reader fixtures used an unphysical temporary-root spelling.","disposition":"fixed"},{"id":"F-022","severity":"major","summary":"The regular-file census can overrun the advertised aggregate collection deadline.","disposition":"fixed"},{"id":"F-023","severity":"blocker","summary":"Lexical normalization can erase a POSIX symlink hop before the raw target path is proved.","disposition":"fixed"},{"id":"F-024","severity":"blocker","summary":"Tracked-link target decoding discards a leading UTF-8 BOM and can validate a different path from the kernel.","disposition":"open"},{"id":"F-025","severity":"blocker","summary":"A retained tracked link can mutate an ignored or forbidden target that is outside observable Git path authority.","disposition":"open"},{"id":"F-026","severity":"major","summary":"Post-issuance plan, evidence or ticket drift returns before classifying undeclared or forbidden workspace changes.","disposition":"open"},{"id":"F-027","severity":"major","summary":"Unavailable batched document authority is invented as isolated and misreported as FAIL instead of INCONCLUSIVE.","disposition":"open"},{"id":"F-028","severity":"major","summary":"Constrained packet issuance and verification reject full SHA-256 Git object IDs.","disposition":"open"}]
 ---
 
-# Consolidated exact-head review — CORE-127 / PR #307
+# Independent exact-head delta review — CORE-127 / PR #307
 
-Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `437c7182021137eae962228942b712b2045cdc57`. GitHub's expected automated review settled on this head at 2026-09-01T00:31:45Z. The implementation worktree is clean.
+Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `a682057152c24fb30c84ff6b296cd97e7a5ee439`. The source worktree was clean, its merge base matched current `main`, `git diff --check` passed, the clean Windows `npm run verify` rail passed, and hosted `verify` job `99711596329` passed on this exact head.
 
-A clean local Windows `npm run verify` passed at this exact head from 2026-09-01T00:23:28.0186862Z through 2026-09-01T00:33:53.2609777Z on Node v24.15.0 and npm 11.14.1. Hosted Actions run 33454522677 failed 210/212 only because two direct handle-reader tests used the raw `fs.mkdtemp` spelling rather than its physical `realpath`; production already physicalizes the worktree before calling the reader. That required check remains red until the fixtures are corrected and rerun.
+## Settled findings
 
-## Prior findings
+F-001 through F-012, F-014 through F-023 are fixed. F-013 remains rejected with the recorded evidence-contract reason. In particular, F-022 now shares one deadline across Git and sequential filesystem collection, and F-023 walks raw link components in kernel order before applying parent traversal.
 
-F-001 through F-012 remain fixed across their affected callers and tests. F-013 remains rejected-with-reason under the approved group-context evidence contract. F-014 through F-016 are fixed at this head and their focused and authoritative local suites pass.
+## Open exact-head findings
 
-## Current exact-head findings
+- F-024 (blocker): preserve leading BOM bytes when decoding tracked-link path data, and prove both real-link and Windows-placeholder representations cannot select a non-BOM sibling.
+- F-025 (blocker): a tracked link may retain only a final target that is an indexed tracked regular path. Ignored or untracked targets are not observable authority and must refuse before issuance.
+- F-026 (major): reserve the pre-Git shortcut for genuinely foreign or forged packet facts. Post-issuance plan, evidence and ticket drift must still collect and classify bounded workspace deviations.
+- F-027 (major): when stable document authority is unavailable, return explicit `STEP_AUTHORITY_UNAVAILABLE` INCONCLUSIVE evidence; do not invent `batch: null`.
+- F-028 (major): accept only full supported Git object IDs, but support both SHA-1 (40 hex) and SHA-256 (64 hex) consistently in collection, compilation and strict verification.
 
-Independent disposable reproductions confirmed all four production findings:
-
-- F-017 changed an unknown YAML timestamp plus the exact checklist tick. Raw revisions differed, `itemAuthority` remained identical, and reconciliation incorrectly returned PASS. Date values need a distinct deterministic authority encoding, while invalid dates, non-finite numbers, cycles and unsupported object prototypes refuse.
-- F-018 used a clean tracked link that traversed an external intermediate link and returned in-worktree. Equal before/after snapshots allowed an outside victim to change. Every link hop must stay confined; only the already-supported direct confined target remains admissible.
-- F-019 showed a 2 MiB manifest and 2 MiB ticket records are read before the packet budget. Batch facts must join the core metadata-first authority snapshot with bounded manifest and complete warning-aware ticket censuses, reusing exact handle reads.
-- F-020 showed a clean mode-100644 file with two links is accepted at issuance and can mutate an outside inode before later refusal. Both samples must metadata-check every already-bounded tracked regular entry before dispatch.
-- F-021 is test-only but blocks the hosted required check: retain the allocated temp root for cleanup and pass its physical `realpath` into the direct reader tests.
-
-## Required single remediation
-
-1. Close F-017 with type-distinct, bounded ticket-authority canonicalization and end-to-end stale-authority tests.
-2. Close F-018/F-020 at the shared tracked-index/filesystem-alias boundary, retaining direct confined links and refusing chained or multi-link authority before dispatch.
-3. Close F-019 by folding bounded batch state into `ExecutionAuthoritySnapshot`; leave ordinary batch mutation, closeout and merge-gate paths unchanged.
-4. Close F-021 without broadening error assertions or changing production behavior.
-5. Update only already-authorized source, tests, canonical prose where the contract needs clarification, and the generated MCP bundle. Add no tool, schema, dependency, stage, writer or unrelated behavior.
+All 25 GitHub review threads remain unresolved until final exact-head dispositions are posted publicly. F-017, F-021 and F-023 have no separate GitHub thread but remain represented in this durable finding ledger.
 
 ## Decision
 
-NEEDS CHANGES. Return the existing branch, worktree, lease and PR to Implementing for this one root-cause replan. Then require fresh exact-head hosted and local verification, automated settlement, one independent delta review over F-001 through F-021 and affected callers, synced-board `kanmer-gate`, merge and exact-merge verification.
+NEEDS CHANGES. Return the existing branch `core-127-constrained-step-reconciliation`, worktree `.worktrees/core-127`, lease and PR #307 to Implementing for one consolidated F-024 through F-028 root-cause correction. Then require focused negative tests, one fresh clean Windows rail on the new head, hosted exact-head settlement, one bounded independent delta review, public dispositions and resolution for every thread, synced-board `kanmer-gate`, merge, and exact-merge verification.

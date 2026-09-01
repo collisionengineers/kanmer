@@ -231,6 +231,15 @@ export const EXECUTION_AUTHORITY_LIMITS = {
   maxAggregateBytes: STEP_PACKET_LIMITS.maxEncodedBytes,
   maxFileBytes: STEP_PACKET_LIMITS.maxStringBytes,
   maxChecklistBytes: STEP_PACKET_LIMITS.maxChecklistBytes,
+  maxBatchDirectoryEntries: 256,
+  maxBatchManifestBytes: 64 * 1024,
+  maxBatchManifestAggregateBytes: 512 * 1024,
+  maxBatchManifestMembers: 256,
+  maxBatchMemberReferences: 2_048,
+  maxTicketCensusEntries: 2_048,
+  maxTicketEndpoints: 2_048,
+  maxTicketRecordBytes: 64 * 1024,
+  maxTicketCensusBytes: 8 * 1024 * 1024,
 } as const;
 
 export interface ExecutionAuthorityGroup {
@@ -246,6 +255,7 @@ export interface ExecutionAuthoritySnapshot {
   fixed: TicketDocumentWithVersion[];
   inventory: TicketDocumentWithVersion[];
   groups: ExecutionAuthorityGroup[];
+  batch: BatchState | null;
 }
 
 interface AuthorityFileMetadata {
@@ -358,6 +368,14 @@ async function authorityDirectoryMetadata(
 async function confirmAuthorityDirectory(metadata: AuthorityDirectoryMetadata): Promise<void> {
   const after = authorityFileFacts(await fs.lstat(metadata.directory, { bigint: true }));
   const physical = await confinedAuthorityPhysicalPath(metadata.directory, metadata.label, metadata.confinement);
+  if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
+    throw new Error(`${metadata.label} changed identity during its bounded census`);
+  }
+}
+
+async function confirmAuthorityFile(metadata: AuthorityFileMetadata): Promise<void> {
+  const after = authorityFileFacts(await fs.lstat(metadata.file, { bigint: true }));
+  const physical = await confinedAuthorityPhysicalPath(metadata.file, metadata.label, metadata.confinement);
   if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
     throw new Error(`${metadata.label} changed identity during its bounded census`);
   }
@@ -499,6 +517,12 @@ interface BatchActiveManifest extends BatchManifestBase {
 }
 
 type BatchDeclarationJournal = BatchPendingManifest | BatchActiveManifest;
+
+interface ExecutionTicketEndpoint {
+  metadata: AuthorityFileMetadata;
+  expectedId: string;
+  areaFolder: string | null;
+}
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -766,8 +790,330 @@ export class KanmerStore {
    * Collect the exact bounded ticket, document and group bytes that authorize
    * an execution packet. Legacy-layout tickets expose only their parsed item.
    */
+  private async executionBatchManifests(
+    confinement: AuthorityConfinement,
+  ): Promise<BatchDeclarationJournal[]> {
+    const directory = await authorityDirectoryMetadata(
+      this.paths.batchTransactionsDir,
+      "batch declaration transaction directory",
+      confinement,
+      true,
+    );
+    if (!directory) return [];
+
+    const names: string[] = [];
+    const stream = await fs.opendir(directory.directory);
+    for await (const entry of stream) {
+      names.push(entry.name);
+      if (names.length > EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch declaration transaction directory exceeds ` +
+          `${EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries} entries.`,
+        );
+      }
+    }
+    names.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+
+    const bounded: Array<{ name: string; metadata: AuthorityFileMetadata }> = [];
+    let aggregateBytes = 0;
+    for (const name of names) {
+      if (/^\.[0-9a-f]{64}\.json\.tmp-\d+-\d+$/u.test(name)) continue;
+      if (!/^[0-9a-f]{64}\.json$/u.test(name)) {
+        throw new Error(`BATCH_TRANSACTION_INVALID: unexpected batch declaration manifest ${name} was retained.`);
+      }
+      const metadata = await authorityFileMetadata(
+        path.join(directory.directory, name),
+        `batch declaration manifest ${name}`,
+        EXECUTION_AUTHORITY_LIMITS.maxBatchManifestBytes,
+        confinement,
+      );
+      const size = Number(metadata!.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxBatchManifestAggregateBytes) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch declaration manifests exceed ` +
+          `${EXECUTION_AUTHORITY_LIMITS.maxBatchManifestAggregateBytes} aggregate pre-read bytes.`,
+        );
+      }
+      aggregateBytes += size;
+      bounded.push({ name, metadata: metadata! });
+    }
+    await confirmAuthorityDirectory(directory);
+
+    const manifests: BatchDeclarationJournal[] = [];
+    const owners = new Map<string, string>();
+    let memberReferences = 0;
+    for (const { name, metadata } of bounded) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(await readAuthorityText(metadata));
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          throw new Error(`BATCH_TRANSACTION_INVALID: batch declaration manifest ${name} is malformed and was retained.`);
+        }
+        throw error;
+      }
+      if (!isBatchDeclarationJournal(parsed) || `${sha256(parsed.batch_id)}.json` !== name) {
+        throw new Error(`BATCH_TRANSACTION_INVALID: batch declaration manifest ${name} is malformed and was retained.`);
+      }
+      this.assertBatchJournalWorkspace(parsed);
+      if (parsed.members.length > EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch ${parsed.batch_id} exceeds ` +
+          `${EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers} manifest members.`,
+        );
+      }
+      memberReferences += parsed.members.length;
+      if (memberReferences > EXECUTION_AUTHORITY_LIMITS.maxBatchMemberReferences) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch manifests exceed ` +
+          `${EXECUTION_AUTHORITY_LIMITS.maxBatchMemberReferences} aggregate member references.`,
+        );
+      }
+      for (const member of parsed.members) {
+        const prior = owners.get(member);
+        if (prior && prior !== parsed.batch_id) {
+          throw new Error(
+            `BATCH_TRANSACTION_INVALID: "${member}" is named by overlapping batch manifests ` +
+            `${prior} and ${parsed.batch_id}; both were retained.`,
+          );
+        }
+        owners.set(member, parsed.batch_id);
+      }
+      manifests.push(parsed);
+    }
+    await confirmAuthorityDirectory(directory);
+    return manifests;
+  }
+
+  private async executionTicketCensus(
+    selected: { item: Item; metadata: AuthorityFileMetadata },
+    confinement: AuthorityConfinement,
+  ): Promise<Item[]> {
+    const endpoints: ExecutionTicketEndpoint[] = [];
+    const directories = new Map<string, AuthorityDirectoryMetadata>();
+    let aggregateBytes = 0;
+    let censusEntries = 0;
+    const chargeCensusEntry = (): void => {
+      censusEntries += 1;
+      if (censusEntries > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries) {
+        throw new Error(
+          `BATCH_INCONSISTENT: complete ticket census exceeds ` +
+          `${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries} enumerated entries.`,
+        );
+      }
+    };
+    const rememberDirectory = (metadata: AuthorityDirectoryMetadata): void => {
+      directories.set(authorityPathKey(metadata.directory), metadata);
+    };
+    const addEndpoint = async (file: string, expectedId: string, areaFolder: string | null): Promise<void> => {
+      const metadata = await authorityFileMetadata(
+        file,
+        `ticket census endpoint ${expectedId}`,
+        EXECUTION_AUTHORITY_LIMITS.maxTicketRecordBytes,
+        confinement,
+        true,
+      );
+      if (!metadata) return;
+      endpoints.push({ metadata, expectedId, areaFolder });
+      if (endpoints.length > EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints) {
+        throw new Error(`BATCH_INCONSISTENT: complete ticket census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints} endpoints.`);
+      }
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusBytes) {
+        throw new Error(
+          `BATCH_INCONSISTENT: complete ticket census exceeds ` +
+          `${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusBytes} aggregate pre-read bytes.`,
+        );
+      }
+      aggregateBytes += size;
+    };
+
+    const areas = await authorityDirectoryMetadata(this.paths.areasRoot, "ticket census areas directory", confinement, true);
+    if (areas) {
+      rememberDirectory(areas);
+      const areaNames: string[] = [];
+      for await (const entry of await fs.opendir(areas.directory)) {
+        chargeCensusEntry();
+        areaNames.push(entry.name);
+      }
+      areaNames.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+      for (const areaFolder of areaNames) {
+        const areaPath = path.join(areas.directory, areaFolder);
+        const areaFacts = authorityFileFacts(await fs.lstat(areaPath, { bigint: true }));
+        if (areaFacts.symbolicLink) throw new Error(`BATCH_INCONSISTENT: ticket census area ${areaFolder} is a symbolic link or junction.`);
+        if (!areaFacts.directory) continue;
+        const area = await authorityDirectoryMetadata(areaPath, `ticket census area ${areaFolder}`, confinement);
+        rememberDirectory(area!);
+        const ticketNames: string[] = [];
+        for await (const entry of await fs.opendir(areaPath)) {
+          chargeCensusEntry();
+          ticketNames.push(entry.name);
+        }
+        ticketNames.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+        for (const ticketFolder of ticketNames) {
+          const ticketDirectoryPath = path.join(areaPath, ticketFolder);
+          const ticketFacts = authorityFileFacts(await fs.lstat(ticketDirectoryPath, { bigint: true }));
+          if (ticketFacts.symbolicLink) {
+            throw new Error(`BATCH_INCONSISTENT: ticket census directory ${ticketFolder} is a symbolic link or junction.`);
+          }
+          if (!ticketFacts.directory) continue;
+          const ticketDirectory = await authorityDirectoryMetadata(
+            ticketDirectoryPath,
+            `ticket census directory ${ticketFolder}`,
+            confinement,
+          );
+          rememberDirectory(ticketDirectory!);
+          await addEndpoint(path.join(ticketDirectoryPath, `${ticketFolder}.md`), ticketFolder, areaFolder);
+        }
+      }
+    }
+
+    const legacy = await authorityDirectoryMetadata(this.paths.tickets, "legacy ticket census directory", confinement, true);
+    if (legacy) {
+      rememberDirectory(legacy);
+      const names: string[] = [];
+      for await (const entry of await fs.opendir(legacy.directory)) {
+        chargeCensusEntry();
+        names.push(entry.name);
+      }
+      names.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+      for (const name of names) {
+        if (!name.endsWith(".md")) continue;
+        await addEndpoint(path.join(legacy.directory, name), path.basename(name, ".md"), null);
+      }
+    }
+
+    for (const directory of directories.values()) await confirmAuthorityDirectory(directory);
+
+    const items: Item[] = [];
+    const ids = new Map<string, string>();
+    let selectedMatches = 0;
+    for (const endpoint of endpoints.sort((left, right) =>
+      authorityPathKey(left.metadata.file) < authorityPathKey(right.metadata.file) ? -1 : 1
+    )) {
+      const selectedPath = authorityPathKey(endpoint.metadata.file) === authorityPathKey(selected.metadata.file);
+      let item: Item;
+      if (selectedPath) {
+        selectedMatches += 1;
+        if (!sameAuthorityFileFacts(endpoint.metadata.facts, selected.metadata.facts) ||
+            authorityPathKey(endpoint.metadata.physical) !== authorityPathKey(selected.metadata.physical)) {
+          throw new Error(`BATCH_INCONSISTENT: selected ticket endpoint changed during the complete census.`);
+        }
+        await confirmAuthorityFile(selected.metadata);
+        item = selected.item;
+      } else {
+        try {
+          item = parseItem(await readAuthorityText(endpoint.metadata));
+        } catch (error) {
+          throw new Error(
+            `BATCH_INCONSISTENT: complete ticket census could not read ${endpoint.metadata.file}: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+      if (item.type !== "ticket" || item.id !== endpoint.expectedId) {
+        throw new Error(
+          `BATCH_INCONSISTENT: ticket census endpoint ${endpoint.metadata.file} resolved as ` +
+          `${item.type} identity "${item.id}" instead of "${endpoint.expectedId}".`,
+        );
+      }
+      if (endpoint.areaFolder !== null) {
+        const expectedArea = safeAreaFolder(item.area);
+        if (expectedArea === null || expectedArea !== endpoint.areaFolder) {
+          throw new Error(
+            `BATCH_INCONSISTENT: ticket "${item.id}" area is "${item.area || "(none)"}" but its endpoint is ` +
+            `under areas/${endpoint.areaFolder}/.`,
+          );
+        }
+      }
+      const prior = ids.get(item.id);
+      if (prior) {
+        throw new Error(`BATCH_INCONSISTENT: duplicate ticket identity "${item.id}" exists at ${prior} and ${endpoint.metadata.file}.`);
+      }
+      ids.set(item.id, endpoint.metadata.file);
+      items.push(item);
+    }
+    if (selectedMatches !== 1) {
+      throw new Error(`BATCH_INCONSISTENT: selected ticket endpoint was not retained exactly once by the complete census.`);
+    }
+    for (const directory of directories.values()) await confirmAuthorityDirectory(directory);
+    return items.sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+  }
+
+  private batchStateFromExecutionRecords(
+    item: Item,
+    tickets: Item[],
+    manifests: BatchDeclarationJournal[],
+  ): BatchState | null {
+    const manifestForItem = manifests.find((manifest) => manifest.members.includes(item.id)) ?? null;
+    if (!item.lease_batch && !manifestForItem) {
+      if (hasBatchOwnership(item)) {
+        throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      }
+      return null;
+    }
+    const byId = new Map(tickets.map((ticket) => [ticket.id, ticket]));
+    const requireManifestMembers = (manifest: BatchDeclarationJournal): void => {
+      const missing = manifest.members.find((member) => !byId.has(member));
+      if (missing) throw new Error(`BATCH_INCONSISTENT: manifest member "${missing}" is missing from batch ${manifest.batch_id}.`);
+    };
+    if (item.lease_batch) {
+      const manifest = manifests.find((entry) => entry.batch_id === item.lease_batch) ?? null;
+      if (manifest) requireManifestMembers(manifest);
+      const state = this.batchStateOf(item.lease_batch, tickets, manifest);
+      return manifest ? state : { ...state, declaration: "inconsistent" };
+    }
+    if (manifestForItem) {
+      requireManifestMembers(manifestForItem);
+      return this.batchStateOf(manifestForItem.batch_id, tickets, manifestForItem);
+    }
+    if (hasBatchOwnership(item)) {
+      throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+    }
+    return null;
+  }
+
+  private async locateExecutionAuthorityItem(id: string): Promise<ItemLocation | null> {
+    itemFile(this.paths, "ticket", id);
+    const areaFolders: string[] = [];
+    try {
+      for await (const entry of await fs.opendir(this.paths.areasRoot)) {
+        areaFolders.push(entry.name);
+        if (areaFolders.length > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries) {
+          throw new Error(
+            `execution authority ticket lookup exceeds ` +
+            `${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries} area entries`,
+          );
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    areaFolders.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    for (const areaFolder of areaFolders) {
+      const dir = path.join(this.paths.areasRoot, areaFolder, id);
+      const file = path.join(dir, `${id}.md`);
+      try {
+        await fs.lstat(file);
+        return { kind: "v2", file, dir, areaFolder };
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+    }
+    for (const type of ITEM_TYPES) {
+      const file = itemFile(this.paths, type, id);
+      try {
+        await fs.lstat(file);
+        return { kind: "v1", file, type };
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+    }
+    return null;
+  }
+
   async getExecutionAuthoritySnapshot(id: string): Promise<ExecutionAuthoritySnapshot | null> {
-    const loc = await this.locateItem(id);
+    const loc = await this.locateExecutionAuthorityItem(id);
     if (!loc) return null;
     const confinement: AuthorityConfinement = {
       lexicalRoot: path.resolve(this.paths.projectRoot),
@@ -788,8 +1134,14 @@ export class KanmerStore {
     if (item.id !== id || item.type !== "ticket") {
       throw new Error(`Ticket record "${id}" resolved as ${item.type} identity "${item.id}"`);
     }
+    const manifests = await this.executionBatchManifests(confinement);
+    const requiresTicketCensus = Boolean(item.lease_batch) || manifests.some((manifest) => manifest.members.includes(item.id));
+    const batchTickets = requiresTicketCensus
+      ? await this.executionTicketCensus({ item, metadata: ticketMetadata! }, confinement)
+      : [];
+    const batch = this.batchStateFromExecutionRecords(item, batchTickets, manifests);
     if (loc.kind !== "v2") {
-      return { item, revision: null, gates: null, fixed: [], inventory: [], groups: [] };
+      return { item, revision: null, gates: null, fixed: [], inventory: [], groups: [], batch };
     }
 
     const census = await boundedAuthorityInventory(loc.dir, confinement);
@@ -897,6 +1249,7 @@ export class KanmerStore {
       fixed,
       inventory,
       groups,
+      batch,
     };
   }
 

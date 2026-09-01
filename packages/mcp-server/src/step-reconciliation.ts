@@ -263,6 +263,7 @@ interface StableFileFacts {
   nlink: bigint;
   size: bigint;
   regular: boolean;
+  directory: boolean;
   symbolicLink: boolean;
 }
 
@@ -274,6 +275,7 @@ function stableFileFacts(stat: BigIntStats): StableFileFacts {
     nlink: stat.nlink,
     size: stat.size,
     regular: stat.isFile(),
+    directory: stat.isDirectory(),
     symbolicLink: stat.isSymbolicLink(),
   };
 }
@@ -281,7 +283,7 @@ function stableFileFacts(stat: BigIntStats): StableFileFacts {
 function sameFileFacts(left: StableFileFacts, right: StableFileFacts): boolean {
   return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode &&
     left.nlink === right.nlink && left.size === right.size && left.regular === right.regular &&
-    left.symbolicLink === right.symbolicLink;
+    left.directory === right.directory && left.symbolicLink === right.symbolicLink;
 }
 
 export interface WorkspaceFileReadHooks {
@@ -359,7 +361,64 @@ export async function readBoundedWorkspaceFile(
 }
 
 function stableFactsIdentity(facts: StableFileFacts): string {
-  return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.symbolicLink].join(":");
+  return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.directory, facts.symbolicLink].join(":");
+}
+
+interface ConfinedPathProof {
+  digest: string;
+  final: StableFileFacts | null;
+  missing: boolean;
+}
+
+/**
+ * Prove every lexical component below the already-physical worktree root.
+ * Directory facts omit size/link-count churn, while the terminal identity is
+ * complete. A tracked link may be the terminal component only; its target is
+ * proved separately as a direct regular path.
+ */
+async function confinedPathProof(
+  root: string,
+  absolute: string,
+  terminal: "regular" | "link" | "regular-or-missing",
+): Promise<ConfinedPathProof> {
+  if (!inside(root, absolute)) throw new Error("observed path is lexically outside the physical worktree");
+  const relative = path.relative(root, absolute);
+  const components = relative.split(path.sep).filter(Boolean);
+  const identities: string[] = [];
+  let cursor = root;
+  for (let index = 0; index < components.length; index += 1) {
+    cursor = path.join(cursor, components[index]!);
+    const final = index === components.length - 1;
+    let stat: BigIntStats;
+    try {
+      stat = await lstat(cursor, { bigint: true });
+    } catch (error) {
+      if (terminal === "regular-or-missing" && (error as NodeJS.ErrnoException).code === "ENOENT") {
+        identities.push(`${components.slice(index).join("/")}:missing`);
+        return { digest: digest(identities), final: null, missing: true };
+      }
+      throw error;
+    }
+    const facts = stableFileFacts(stat);
+    if (!final) {
+      if (facts.symbolicLink || !facts.directory) {
+        throw new Error(
+          "observed path is outside the physical worktree direct-component contract because it contains a symbolic-link or junction component",
+        );
+      }
+      identities.push(`${components[index]}:${facts.dev}:${facts.ino}:${facts.mode}:${facts.directory}:${facts.symbolicLink}`);
+      continue;
+    }
+    if (terminal === "link") {
+      if (!facts.symbolicLink) throw new Error("tracked symbolic link changed checkout representation");
+    } else {
+      if (facts.symbolicLink || !facts.regular) throw new Error("observed workspace path is not a direct regular file");
+      if (facts.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
+    }
+    identities.push(`${components[index]}:${stableFactsIdentity(facts)}`);
+    return { digest: digest(identities), final: facts, missing: false };
+  }
+  throw new Error("observed path does not name a worktree descendant");
 }
 
 async function trackedLinkIdentity(
@@ -369,28 +428,29 @@ async function trackedLinkIdentity(
 ): Promise<string> {
   const absolute = path.resolve(root, ...entry.path.split("/"));
   if (!inside(root, absolute)) throw new Error(`tracked symbolic link ${entry.path} escapes the worktree`);
-  let initialStat: BigIntStats;
+  let initialProof: ConfinedPathProof;
   try {
-    initialStat = await lstat(absolute, { bigint: true });
+    initialProof = await confinedPathProof(root, absolute, "link");
   } catch (error) {
-    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  const initial = stableFileFacts(initialStat);
-  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
-
-  if (!initial.symbolicLink) {
-    if (!initial.regular) throw new Error(`tracked symbolic link ${entry.path} has an unsupported checkout representation`);
+    let placeholderProof: ConfinedPathProof;
+    try {
+      placeholderProof = await confinedPathProof(root, absolute, "regular");
+    } catch {
+      throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
     const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits);
     if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
-    const after = stableFileFacts(await lstat(absolute, { bigint: true }));
-    if (!sameFileFacts(initial, after)) {
+    const afterProof = await confinedPathProof(root, absolute, "regular");
+    if (placeholderProof.digest !== afterProof.digest) {
       throw new Error(`tracked symbolic link ${entry.path} changed checkout representation during bounded inspection`);
     }
     return digest([
       entry.tag, entry.mode, entry.objectId, String(entry.stage), entry.path,
-      "regular-placeholder", stableFactsIdentity(initial), placeholder.mode, placeholder.bytes,
+      "regular-placeholder", placeholderProof.digest, placeholder.mode, placeholder.bytes,
     ]);
   }
+  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
 
   const targetBytes = await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer;
   if (targetBytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
@@ -400,31 +460,73 @@ async function trackedLinkIdentity(
     throw new Error(`tracked symbolic-link targets exceed ${MAX_TRACKED_LINK_TARGET_BYTES} aggregate bytes`);
   }
   budget.total += targetBytes.length;
-  let resolved: string;
+  let targetText: string;
   try {
-    resolved = await realpath(absolute);
+    targetText = decode(targetBytes);
   } catch (error) {
-    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (canonicalPath(resolved) !== canonicalPath(root) && !inside(root, resolved)) {
-    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  const targetAbsolute = path.resolve(path.dirname(absolute), targetText);
+  if (!inside(root, targetAbsolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target resolves lexically outside the physical worktree`);
   }
-  const target = await readBoundedWorkspaceFile(root, resolved, budget, {}, limits);
+  const targetProof = await confinedPathProof(root, targetAbsolute, "regular");
+  const resolved = await realpath(targetAbsolute);
+  if (canonicalPath(resolved) !== canonicalPath(targetAbsolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
+  }
+  const target = await readBoundedWorkspaceFile(root, targetAbsolute, budget, {}, limits);
   if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
 
-  const after = stableFileFacts(await lstat(absolute, { bigint: true }));
+  const afterProof = await confinedPathProof(root, absolute, "link");
   const afterTargetBytes = await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer;
-  const afterResolved = await realpath(absolute);
-  if (!sameFileFacts(initial, after) || !targetBytes.equals(afterTargetBytes) || canonicalPath(resolved) !== canonicalPath(afterResolved)) {
+  let afterTargetText: string;
+  try {
+    afterTargetText = decode(afterTargetBytes);
+  } catch (error) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const afterTargetAbsolute = path.resolve(path.dirname(absolute), afterTargetText);
+  const afterTargetProof = await confinedPathProof(root, afterTargetAbsolute, "regular");
+  const afterResolved = await realpath(afterTargetAbsolute);
+  if (initialProof.digest !== afterProof.digest || !targetBytes.equals(afterTargetBytes) ||
+      canonicalPath(targetAbsolute) !== canonicalPath(afterTargetAbsolute) || targetProof.digest !== afterTargetProof.digest ||
+      canonicalPath(resolved) !== canonicalPath(afterResolved)) {
     throw new Error(`tracked symbolic link ${entry.path} changed identity or target during bounded inspection`);
   }
-  if (canonicalPath(afterResolved) !== canonicalPath(root) && !inside(root, afterResolved)) {
-    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  if (canonicalPath(afterResolved) !== canonicalPath(afterTargetAbsolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
   }
   return digest([
     entry.tag, entry.mode, entry.objectId, String(entry.stage), entry.path,
-    "symbolic-link", stableFactsIdentity(initial), targetBytes, canonicalPath(resolved), target.mode, target.bytes,
+    "symbolic-link", initialProof.digest, targetBytes, targetProof.digest, canonicalPath(resolved), target.mode, target.bytes,
   ]);
+}
+
+async function trackedRegularMetadataCensus(
+  root: string,
+  entries: readonly IndexCensusEntry[],
+  status: readonly StatusPath[],
+): Promise<{ count: number; digest: string }> {
+  const regular = entries.filter((entry) => entry.mode === "100644" || entry.mode === "100755");
+  const identities: string[] = [];
+  const porcelainRemovals = new Set(status.filter((observed) =>
+    (observed.role === "path" && observed.worktree === "D") ||
+    (observed.role === "rename-source" && observed.worktree === "R")
+  ).map((observed) => observed.path));
+  for (const entry of regular) {
+    const absolute = path.resolve(root, ...entry.path.split("/"));
+    const proof = await confinedPathProof(root, absolute, "regular-or-missing");
+    const porcelainDeletion = porcelainRemovals.has(entry.path);
+    if (proof.missing && !porcelainDeletion) {
+      throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is missing without a matching porcelain worktree deletion`);
+    }
+    if (!proof.missing && porcelainDeletion) {
+      throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is present despite a porcelain worktree deletion`);
+    }
+    identities.push(digest([entry.path, entry.mode, entry.objectId, String(entry.stage), proof.missing ? "missing" : "regular", proof.digest]));
+  }
+  return { count: regular.length, digest: digest(identities) };
 }
 
 async function fileIdentity(
@@ -460,6 +562,7 @@ async function fileIdentity(
 interface WorkspaceCapture {
   snapshot: StepPacketWorkspace;
   indexFlags: IndexFlagCensus;
+  regularFiles: { count: number; digest: string };
 }
 
 async function captureOnce(root: string, worktree: string, run: StepGitRun): Promise<WorkspaceCapture> {
@@ -480,9 +583,11 @@ async function captureOnce(root: string, worktree: string, run: StepGitRun): Pro
   if (stagedConflict) throw new Error(`tracked path ${JSON.stringify(stagedConflict.path)} has unsupported non-zero index stage ${stagedConflict.stage}`);
   const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
   if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
+  const status = parsePorcelainV1Z(statusRaw);
+  const regularFiles = await trackedRegularMetadataCensus(root, indexFlags.entries, status);
   const budget = { total: 0 };
   const entries: StepWorkspaceEntry[] = [];
-  for (const observed of parsePorcelainV1Z(statusRaw)) {
+  for (const observed of status) {
     const parsed = parsePlanPath(observed.path, { observed: true });
     if (!parsed.ok) throw new Error(`unsafe observed path: ${parsed.reason}`);
     entries.push({
@@ -506,6 +611,7 @@ async function captureOnce(root: string, worktree: string, run: StepGitRun): Pro
   return {
     snapshot: { branch, worktree, head: head.toLowerCase(), entries },
     indexFlags,
+    regularFiles,
   };
 }
 
@@ -630,9 +736,8 @@ export function stepDocumentSnapshotAuthority(snapshot: StepDocumentSnapshot): u
 async function documentSample(store: KanmerStore, id: string): Promise<StepDocumentSnapshot> {
   const authority = await store.getExecutionAuthoritySnapshot(id);
   if (!authority) throw new Error(`No ticket with id "${id}"`);
-  const { item, revision, gates, fixed, inventory } = authority;
+  const { item, revision, gates, fixed, inventory, batch } = authority;
   if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
-  const batch = await store.batchStateFromExecutionAuthority(item);
   if (!gates) throw new Error(`Ticket "${id}" has no document-gate report`);
   const groups = authority.groups.map(({ group, context, contextVersion }) => ({
     id: group.id,

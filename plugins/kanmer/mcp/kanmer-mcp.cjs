@@ -40426,14 +40426,26 @@ function checkStepPacketBudget(value) {
       }
       return addBytes(bytes + 2);
     }
+    if (typeof entry === "number" && !Number.isFinite(entry)) {
+      return { ok: false, reason: "step packet material contains a non-finite number" };
+    }
     if (entry === null || entry === void 0 || typeof entry === "boolean" || typeof entry === "number") {
       return addBytes(String(entry ?? null).length + 1);
     }
     if (typeof entry !== "object") return { ok: false, reason: "step packet material contains an unsupported value" };
+    if (entry instanceof Date) {
+      if (Object.getPrototypeOf(entry) !== Date.prototype || !Number.isFinite(entry.getTime())) {
+        return { ok: false, reason: "step packet material contains an invalid or unsupported Date" };
+      }
+      return addBytes(budgetEncoder.encode(entry.toISOString()).length + 16);
+    }
     if (active.has(entry)) return { ok: false, reason: "step packet material is cyclic" };
     active.add(entry);
     try {
       if (Array.isArray(entry)) {
+        if (Object.getPrototypeOf(entry) !== Array.prototype) {
+          return { ok: false, reason: "step packet material contains an unsupported object prototype" };
+        }
         if (entry.length > STEP_PACKET_LIMITS.maxArrayEntries) return { ok: false, reason: `step packet array exceeds ${STEP_PACKET_LIMITS.maxArrayEntries} entries` };
         aggregateEntries += entry.length;
         if (aggregateEntries > STEP_PACKET_LIMITS.maxAggregateEntries) return { ok: false, reason: `step packet arrays exceed ${STEP_PACKET_LIMITS.maxAggregateEntries} aggregate entries` };
@@ -40444,6 +40456,10 @@ function checkStepPacketBudget(value) {
           if (!nested.ok) return nested;
         }
         return { ok: true };
+      }
+      const prototype = Object.getPrototypeOf(entry);
+      if (prototype !== Object.prototype && prototype !== null || Object.getOwnPropertySymbols(entry).length > 0) {
+        return { ok: false, reason: "step packet material contains an unsupported object prototype or symbol key" };
       }
       const entries = Object.entries(entry);
       if (entries.length > STEP_PACKET_LIMITS.maxObjectKeys) return { ok: false, reason: `step packet object exceeds ${STEP_PACKET_LIMITS.maxObjectKeys} keys` };
@@ -40584,6 +40600,7 @@ function authorityOf(packet) {
   };
 }
 function canonicalJson(value) {
+  if (value instanceof Date) return `@kanmer-date:${JSON.stringify(value.toISOString())}`;
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value && typeof value === "object") {
     const entries = Object.entries(value).filter(([, entry]) => entry !== void 0).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
@@ -43240,7 +43257,16 @@ var EXECUTION_AUTHORITY_LIMITS = {
   maxCountedDocuments: STEP_PACKET_LIMITS.maxDocuments,
   maxAggregateBytes: STEP_PACKET_LIMITS.maxEncodedBytes,
   maxFileBytes: STEP_PACKET_LIMITS.maxStringBytes,
-  maxChecklistBytes: STEP_PACKET_LIMITS.maxChecklistBytes
+  maxChecklistBytes: STEP_PACKET_LIMITS.maxChecklistBytes,
+  maxBatchDirectoryEntries: 256,
+  maxBatchManifestBytes: 64 * 1024,
+  maxBatchManifestAggregateBytes: 512 * 1024,
+  maxBatchManifestMembers: 256,
+  maxBatchMemberReferences: 2048,
+  maxTicketCensusEntries: 2048,
+  maxTicketEndpoints: 2048,
+  maxTicketRecordBytes: 64 * 1024,
+  maxTicketCensusBytes: 8 * 1024 * 1024
 };
 function authorityFileFacts(stat) {
   return {
@@ -43305,6 +43331,13 @@ async function authorityDirectoryMetadata(directory, label, confinement, optiona
 async function confirmAuthorityDirectory(metadata) {
   const after = authorityFileFacts(await import_promises8.default.lstat(metadata.directory, { bigint: true }));
   const physical = await confinedAuthorityPhysicalPath(metadata.directory, metadata.label, metadata.confinement);
+  if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
+    throw new Error(`${metadata.label} changed identity during its bounded census`);
+  }
+}
+async function confirmAuthorityFile(metadata) {
+  const after = authorityFileFacts(await import_promises8.default.lstat(metadata.file, { bigint: true }));
+  const physical = await confinedAuthorityPhysicalPath(metadata.file, metadata.label, metadata.confinement);
   if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
     throw new Error(`${metadata.label} changed identity during its bounded census`);
   }
@@ -43558,8 +43591,298 @@ var KanmerStore = class _KanmerStore {
    * Collect the exact bounded ticket, document and group bytes that authorize
    * an execution packet. Legacy-layout tickets expose only their parsed item.
    */
+  async executionBatchManifests(confinement) {
+    const directory = await authorityDirectoryMetadata(
+      this.paths.batchTransactionsDir,
+      "batch declaration transaction directory",
+      confinement,
+      true
+    );
+    if (!directory) return [];
+    const names = [];
+    const stream = await import_promises8.default.opendir(directory.directory);
+    for await (const entry of stream) {
+      names.push(entry.name);
+      if (names.length > EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch declaration transaction directory exceeds ${EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries} entries.`
+        );
+      }
+    }
+    names.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    const bounded = [];
+    let aggregateBytes = 0;
+    for (const name of names) {
+      if (/^\.[0-9a-f]{64}\.json\.tmp-\d+-\d+$/u.test(name)) continue;
+      if (!/^[0-9a-f]{64}\.json$/u.test(name)) {
+        throw new Error(`BATCH_TRANSACTION_INVALID: unexpected batch declaration manifest ${name} was retained.`);
+      }
+      const metadata = await authorityFileMetadata(
+        import_path11.default.join(directory.directory, name),
+        `batch declaration manifest ${name}`,
+        EXECUTION_AUTHORITY_LIMITS.maxBatchManifestBytes,
+        confinement
+      );
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxBatchManifestAggregateBytes) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch declaration manifests exceed ${EXECUTION_AUTHORITY_LIMITS.maxBatchManifestAggregateBytes} aggregate pre-read bytes.`
+        );
+      }
+      aggregateBytes += size;
+      bounded.push({ name, metadata });
+    }
+    await confirmAuthorityDirectory(directory);
+    const manifests = [];
+    const owners = /* @__PURE__ */ new Map();
+    let memberReferences = 0;
+    for (const { name, metadata } of bounded) {
+      let parsed;
+      try {
+        parsed = JSON.parse(await readAuthorityText(metadata));
+      } catch (error2) {
+        if (error2 instanceof SyntaxError) {
+          throw new Error(`BATCH_TRANSACTION_INVALID: batch declaration manifest ${name} is malformed and was retained.`);
+        }
+        throw error2;
+      }
+      if (!isBatchDeclarationJournal(parsed) || `${sha256(parsed.batch_id)}.json` !== name) {
+        throw new Error(`BATCH_TRANSACTION_INVALID: batch declaration manifest ${name} is malformed and was retained.`);
+      }
+      this.assertBatchJournalWorkspace(parsed);
+      if (parsed.members.length > EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch ${parsed.batch_id} exceeds ${EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers} manifest members.`
+        );
+      }
+      memberReferences += parsed.members.length;
+      if (memberReferences > EXECUTION_AUTHORITY_LIMITS.maxBatchMemberReferences) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch manifests exceed ${EXECUTION_AUTHORITY_LIMITS.maxBatchMemberReferences} aggregate member references.`
+        );
+      }
+      for (const member of parsed.members) {
+        const prior = owners.get(member);
+        if (prior && prior !== parsed.batch_id) {
+          throw new Error(
+            `BATCH_TRANSACTION_INVALID: "${member}" is named by overlapping batch manifests ${prior} and ${parsed.batch_id}; both were retained.`
+          );
+        }
+        owners.set(member, parsed.batch_id);
+      }
+      manifests.push(parsed);
+    }
+    await confirmAuthorityDirectory(directory);
+    return manifests;
+  }
+  async executionTicketCensus(selected, confinement) {
+    const endpoints = [];
+    const directories = /* @__PURE__ */ new Map();
+    let aggregateBytes = 0;
+    let censusEntries = 0;
+    const chargeCensusEntry = () => {
+      censusEntries += 1;
+      if (censusEntries > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries) {
+        throw new Error(
+          `BATCH_INCONSISTENT: complete ticket census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries} enumerated entries.`
+        );
+      }
+    };
+    const rememberDirectory = (metadata) => {
+      directories.set(authorityPathKey(metadata.directory), metadata);
+    };
+    const addEndpoint = async (file, expectedId, areaFolder) => {
+      const metadata = await authorityFileMetadata(
+        file,
+        `ticket census endpoint ${expectedId}`,
+        EXECUTION_AUTHORITY_LIMITS.maxTicketRecordBytes,
+        confinement,
+        true
+      );
+      if (!metadata) return;
+      endpoints.push({ metadata, expectedId, areaFolder });
+      if (endpoints.length > EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints) {
+        throw new Error(`BATCH_INCONSISTENT: complete ticket census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints} endpoints.`);
+      }
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusBytes) {
+        throw new Error(
+          `BATCH_INCONSISTENT: complete ticket census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusBytes} aggregate pre-read bytes.`
+        );
+      }
+      aggregateBytes += size;
+    };
+    const areas = await authorityDirectoryMetadata(this.paths.areasRoot, "ticket census areas directory", confinement, true);
+    if (areas) {
+      rememberDirectory(areas);
+      const areaNames = [];
+      for await (const entry of await import_promises8.default.opendir(areas.directory)) {
+        chargeCensusEntry();
+        areaNames.push(entry.name);
+      }
+      areaNames.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+      for (const areaFolder of areaNames) {
+        const areaPath = import_path11.default.join(areas.directory, areaFolder);
+        const areaFacts = authorityFileFacts(await import_promises8.default.lstat(areaPath, { bigint: true }));
+        if (areaFacts.symbolicLink) throw new Error(`BATCH_INCONSISTENT: ticket census area ${areaFolder} is a symbolic link or junction.`);
+        if (!areaFacts.directory) continue;
+        const area = await authorityDirectoryMetadata(areaPath, `ticket census area ${areaFolder}`, confinement);
+        rememberDirectory(area);
+        const ticketNames = [];
+        for await (const entry of await import_promises8.default.opendir(areaPath)) {
+          chargeCensusEntry();
+          ticketNames.push(entry.name);
+        }
+        ticketNames.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+        for (const ticketFolder of ticketNames) {
+          const ticketDirectoryPath = import_path11.default.join(areaPath, ticketFolder);
+          const ticketFacts = authorityFileFacts(await import_promises8.default.lstat(ticketDirectoryPath, { bigint: true }));
+          if (ticketFacts.symbolicLink) {
+            throw new Error(`BATCH_INCONSISTENT: ticket census directory ${ticketFolder} is a symbolic link or junction.`);
+          }
+          if (!ticketFacts.directory) continue;
+          const ticketDirectory = await authorityDirectoryMetadata(
+            ticketDirectoryPath,
+            `ticket census directory ${ticketFolder}`,
+            confinement
+          );
+          rememberDirectory(ticketDirectory);
+          await addEndpoint(import_path11.default.join(ticketDirectoryPath, `${ticketFolder}.md`), ticketFolder, areaFolder);
+        }
+      }
+    }
+    const legacy = await authorityDirectoryMetadata(this.paths.tickets, "legacy ticket census directory", confinement, true);
+    if (legacy) {
+      rememberDirectory(legacy);
+      const names = [];
+      for await (const entry of await import_promises8.default.opendir(legacy.directory)) {
+        chargeCensusEntry();
+        names.push(entry.name);
+      }
+      names.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+      for (const name of names) {
+        if (!name.endsWith(".md")) continue;
+        await addEndpoint(import_path11.default.join(legacy.directory, name), import_path11.default.basename(name, ".md"), null);
+      }
+    }
+    for (const directory of directories.values()) await confirmAuthorityDirectory(directory);
+    const items = [];
+    const ids = /* @__PURE__ */ new Map();
+    let selectedMatches = 0;
+    for (const endpoint of endpoints.sort(
+      (left, right) => authorityPathKey(left.metadata.file) < authorityPathKey(right.metadata.file) ? -1 : 1
+    )) {
+      const selectedPath = authorityPathKey(endpoint.metadata.file) === authorityPathKey(selected.metadata.file);
+      let item;
+      if (selectedPath) {
+        selectedMatches += 1;
+        if (!sameAuthorityFileFacts(endpoint.metadata.facts, selected.metadata.facts) || authorityPathKey(endpoint.metadata.physical) !== authorityPathKey(selected.metadata.physical)) {
+          throw new Error(`BATCH_INCONSISTENT: selected ticket endpoint changed during the complete census.`);
+        }
+        await confirmAuthorityFile(selected.metadata);
+        item = selected.item;
+      } else {
+        try {
+          item = parseItem(await readAuthorityText(endpoint.metadata));
+        } catch (error2) {
+          throw new Error(
+            `BATCH_INCONSISTENT: complete ticket census could not read ${endpoint.metadata.file}: ${error2 instanceof Error ? error2.message : String(error2)}`
+          );
+        }
+      }
+      if (item.type !== "ticket" || item.id !== endpoint.expectedId) {
+        throw new Error(
+          `BATCH_INCONSISTENT: ticket census endpoint ${endpoint.metadata.file} resolved as ${item.type} identity "${item.id}" instead of "${endpoint.expectedId}".`
+        );
+      }
+      if (endpoint.areaFolder !== null) {
+        const expectedArea = safeAreaFolder(item.area);
+        if (expectedArea === null || expectedArea !== endpoint.areaFolder) {
+          throw new Error(
+            `BATCH_INCONSISTENT: ticket "${item.id}" area is "${item.area || "(none)"}" but its endpoint is under areas/${endpoint.areaFolder}/.`
+          );
+        }
+      }
+      const prior = ids.get(item.id);
+      if (prior) {
+        throw new Error(`BATCH_INCONSISTENT: duplicate ticket identity "${item.id}" exists at ${prior} and ${endpoint.metadata.file}.`);
+      }
+      ids.set(item.id, endpoint.metadata.file);
+      items.push(item);
+    }
+    if (selectedMatches !== 1) {
+      throw new Error(`BATCH_INCONSISTENT: selected ticket endpoint was not retained exactly once by the complete census.`);
+    }
+    for (const directory of directories.values()) await confirmAuthorityDirectory(directory);
+    return items.sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+  }
+  batchStateFromExecutionRecords(item, tickets, manifests) {
+    const manifestForItem = manifests.find((manifest) => manifest.members.includes(item.id)) ?? null;
+    if (!item.lease_batch && !manifestForItem) {
+      if (hasBatchOwnership(item)) {
+        throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      }
+      return null;
+    }
+    const byId = new Map(tickets.map((ticket) => [ticket.id, ticket]));
+    const requireManifestMembers = (manifest) => {
+      const missing = manifest.members.find((member) => !byId.has(member));
+      if (missing) throw new Error(`BATCH_INCONSISTENT: manifest member "${missing}" is missing from batch ${manifest.batch_id}.`);
+    };
+    if (item.lease_batch) {
+      const manifest = manifests.find((entry) => entry.batch_id === item.lease_batch) ?? null;
+      if (manifest) requireManifestMembers(manifest);
+      const state = this.batchStateOf(item.lease_batch, tickets, manifest);
+      return manifest ? state : { ...state, declaration: "inconsistent" };
+    }
+    if (manifestForItem) {
+      requireManifestMembers(manifestForItem);
+      return this.batchStateOf(manifestForItem.batch_id, tickets, manifestForItem);
+    }
+    if (hasBatchOwnership(item)) {
+      throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+    }
+    return null;
+  }
+  async locateExecutionAuthorityItem(id) {
+    itemFile(this.paths, "ticket", id);
+    const areaFolders = [];
+    try {
+      for await (const entry of await import_promises8.default.opendir(this.paths.areasRoot)) {
+        areaFolders.push(entry.name);
+        if (areaFolders.length > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries) {
+          throw new Error(
+            `execution authority ticket lookup exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries} area entries`
+          );
+        }
+      }
+    } catch (error2) {
+      if (error2.code !== "ENOENT") throw error2;
+    }
+    areaFolders.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    for (const areaFolder of areaFolders) {
+      const dir = import_path11.default.join(this.paths.areasRoot, areaFolder, id);
+      const file = import_path11.default.join(dir, `${id}.md`);
+      try {
+        await import_promises8.default.lstat(file);
+        return { kind: "v2", file, dir, areaFolder };
+      } catch (error2) {
+        if (error2.code !== "ENOENT") throw error2;
+      }
+    }
+    for (const type of ITEM_TYPES) {
+      const file = itemFile(this.paths, type, id);
+      try {
+        await import_promises8.default.lstat(file);
+        return { kind: "v1", file, type };
+      } catch (error2) {
+        if (error2.code !== "ENOENT") throw error2;
+      }
+    }
+    return null;
+  }
   async getExecutionAuthoritySnapshot(id) {
-    const loc = await this.locateItem(id);
+    const loc = await this.locateExecutionAuthorityItem(id);
     if (!loc) return null;
     const confinement = {
       lexicalRoot: import_path11.default.resolve(this.paths.projectRoot),
@@ -43577,8 +43900,12 @@ var KanmerStore = class _KanmerStore {
     if (item.id !== id || item.type !== "ticket") {
       throw new Error(`Ticket record "${id}" resolved as ${item.type} identity "${item.id}"`);
     }
+    const manifests = await this.executionBatchManifests(confinement);
+    const requiresTicketCensus = Boolean(item.lease_batch) || manifests.some((manifest) => manifest.members.includes(item.id));
+    const batchTickets = requiresTicketCensus ? await this.executionTicketCensus({ item, metadata: ticketMetadata }, confinement) : [];
+    const batch = this.batchStateFromExecutionRecords(item, batchTickets, manifests);
     if (loc.kind !== "v2") {
-      return { item, revision: null, gates: null, fixed: [], inventory: [], groups: [] };
+      return { item, revision: null, gates: null, fixed: [], inventory: [], groups: [], batch };
     }
     const census = await boundedAuthorityInventory(loc.dir, confinement);
     const countedDocuments = census.documents.filter(revisionCountsDocument);
@@ -43667,7 +43994,8 @@ var KanmerStore = class _KanmerStore {
       gates,
       fixed,
       inventory,
-      groups
+      groups,
+      batch
     };
   }
   async gateReportFromExecutionAuthority(board, item, inventory, allFiles) {
@@ -48276,11 +48604,12 @@ function stableFileFacts(stat) {
     nlink: stat.nlink,
     size: stat.size,
     regular: stat.isFile(),
+    directory: stat.isDirectory(),
     symbolicLink: stat.isSymbolicLink()
   };
 }
 function sameFileFacts(left, right) {
-  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.nlink === right.nlink && left.size === right.size && left.regular === right.regular && left.symbolicLink === right.symbolicLink;
+  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.nlink === right.nlink && left.size === right.size && left.regular === right.regular && left.directory === right.directory && left.symbolicLink === right.symbolicLink;
 }
 async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}, limits = {
   maxFileBytes: MAX_FILE_BYTES,
@@ -48335,25 +48664,66 @@ async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}, limi
   }
 }
 function stableFactsIdentity(facts) {
-  return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.symbolicLink].join(":");
+  return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.directory, facts.symbolicLink].join(":");
+}
+async function confinedPathProof(root, absolute, terminal) {
+  if (!inside(root, absolute)) throw new Error("observed path is lexically outside the physical worktree");
+  const relative = import_node_path5.default.relative(root, absolute);
+  const components = relative.split(import_node_path5.default.sep).filter(Boolean);
+  const identities = [];
+  let cursor = root;
+  for (let index = 0; index < components.length; index += 1) {
+    cursor = import_node_path5.default.join(cursor, components[index]);
+    const final = index === components.length - 1;
+    let stat;
+    try {
+      stat = await (0, import_promises10.lstat)(cursor, { bigint: true });
+    } catch (error2) {
+      if (terminal === "regular-or-missing" && error2.code === "ENOENT") {
+        identities.push(`${components.slice(index).join("/")}:missing`);
+        return { digest: digest2(identities), final: null, missing: true };
+      }
+      throw error2;
+    }
+    const facts = stableFileFacts(stat);
+    if (!final) {
+      if (facts.symbolicLink || !facts.directory) {
+        throw new Error(
+          "observed path is outside the physical worktree direct-component contract because it contains a symbolic-link or junction component"
+        );
+      }
+      identities.push(`${components[index]}:${facts.dev}:${facts.ino}:${facts.mode}:${facts.directory}:${facts.symbolicLink}`);
+      continue;
+    }
+    if (terminal === "link") {
+      if (!facts.symbolicLink) throw new Error("tracked symbolic link changed checkout representation");
+    } else {
+      if (facts.symbolicLink || !facts.regular) throw new Error("observed workspace path is not a direct regular file");
+      if (facts.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
+    }
+    identities.push(`${components[index]}:${stableFactsIdentity(facts)}`);
+    return { digest: digest2(identities), final: facts, missing: false };
+  }
+  throw new Error("observed path does not name a worktree descendant");
 }
 async function trackedLinkIdentity(root, entry, budget) {
   const absolute = import_node_path5.default.resolve(root, ...entry.path.split("/"));
   if (!inside(root, absolute)) throw new Error(`tracked symbolic link ${entry.path} escapes the worktree`);
-  let initialStat;
+  let initialProof;
   try {
-    initialStat = await (0, import_promises10.lstat)(absolute, { bigint: true });
+    initialProof = await confinedPathProof(root, absolute, "link");
   } catch (error2) {
-    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error2 instanceof Error ? error2.message : String(error2)}`);
-  }
-  const initial = stableFileFacts(initialStat);
-  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
-  if (!initial.symbolicLink) {
-    if (!initial.regular) throw new Error(`tracked symbolic link ${entry.path} has an unsupported checkout representation`);
-    const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits);
+    let placeholderProof;
+    try {
+      placeholderProof = await confinedPathProof(root, absolute, "regular");
+    } catch {
+      throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+    const limits2 = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
+    const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits2);
     if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
-    const after2 = stableFileFacts(await (0, import_promises10.lstat)(absolute, { bigint: true }));
-    if (!sameFileFacts(initial, after2)) {
+    const afterProof2 = await confinedPathProof(root, absolute, "regular");
+    if (placeholderProof.digest !== afterProof2.digest) {
       throw new Error(`tracked symbolic link ${entry.path} changed checkout representation during bounded inspection`);
     }
     return digest2([
@@ -48363,11 +48733,12 @@ async function trackedLinkIdentity(root, entry, budget) {
       String(entry.stage),
       entry.path,
       "regular-placeholder",
-      stableFactsIdentity(initial),
+      placeholderProof.digest,
       placeholder.mode,
       placeholder.bytes
     ]);
   }
+  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
   const targetBytes = await (0, import_promises10.readlink)(absolute, { encoding: "buffer" });
   if (targetBytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
     throw new Error(`tracked symbolic link ${entry.path} target exceeds ${MAX_TRACKED_LINK_TEXT_BYTES} bytes`);
@@ -48376,25 +48747,39 @@ async function trackedLinkIdentity(root, entry, budget) {
     throw new Error(`tracked symbolic-link targets exceed ${MAX_TRACKED_LINK_TARGET_BYTES} aggregate bytes`);
   }
   budget.total += targetBytes.length;
-  let resolved;
+  let targetText;
   try {
-    resolved = await (0, import_promises10.realpath)(absolute);
+    targetText = decode(targetBytes);
   } catch (error2) {
-    throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error2 instanceof Error ? error2.message : String(error2)}`);
   }
-  if (canonicalPath(resolved) !== canonicalPath(root) && !inside(root, resolved)) {
-    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  const targetAbsolute = import_node_path5.default.resolve(import_node_path5.default.dirname(absolute), targetText);
+  if (!inside(root, targetAbsolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target resolves lexically outside the physical worktree`);
   }
-  const target = await readBoundedWorkspaceFile(root, resolved, budget, {}, limits);
+  const targetProof = await confinedPathProof(root, targetAbsolute, "regular");
+  const resolved = await (0, import_promises10.realpath)(targetAbsolute);
+  if (canonicalPath(resolved) !== canonicalPath(targetAbsolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
+  }
+  const target = await readBoundedWorkspaceFile(root, targetAbsolute, budget, {}, limits);
   if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
-  const after = stableFileFacts(await (0, import_promises10.lstat)(absolute, { bigint: true }));
+  const afterProof = await confinedPathProof(root, absolute, "link");
   const afterTargetBytes = await (0, import_promises10.readlink)(absolute, { encoding: "buffer" });
-  const afterResolved = await (0, import_promises10.realpath)(absolute);
-  if (!sameFileFacts(initial, after) || !targetBytes.equals(afterTargetBytes) || canonicalPath(resolved) !== canonicalPath(afterResolved)) {
+  let afterTargetText;
+  try {
+    afterTargetText = decode(afterTargetBytes);
+  } catch (error2) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error2 instanceof Error ? error2.message : String(error2)}`);
+  }
+  const afterTargetAbsolute = import_node_path5.default.resolve(import_node_path5.default.dirname(absolute), afterTargetText);
+  const afterTargetProof = await confinedPathProof(root, afterTargetAbsolute, "regular");
+  const afterResolved = await (0, import_promises10.realpath)(afterTargetAbsolute);
+  if (initialProof.digest !== afterProof.digest || !targetBytes.equals(afterTargetBytes) || canonicalPath(targetAbsolute) !== canonicalPath(afterTargetAbsolute) || targetProof.digest !== afterTargetProof.digest || canonicalPath(resolved) !== canonicalPath(afterResolved)) {
     throw new Error(`tracked symbolic link ${entry.path} changed identity or target during bounded inspection`);
   }
-  if (canonicalPath(afterResolved) !== canonicalPath(root) && !inside(root, afterResolved)) {
-    throw new Error(`tracked symbolic link ${entry.path} resolves outside the physical worktree`);
+  if (canonicalPath(afterResolved) !== canonicalPath(afterTargetAbsolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
   }
   return digest2([
     entry.tag,
@@ -48403,12 +48788,33 @@ async function trackedLinkIdentity(root, entry, budget) {
     String(entry.stage),
     entry.path,
     "symbolic-link",
-    stableFactsIdentity(initial),
+    initialProof.digest,
     targetBytes,
+    targetProof.digest,
     canonicalPath(resolved),
     target.mode,
     target.bytes
   ]);
+}
+async function trackedRegularMetadataCensus(root, entries, status) {
+  const regular = entries.filter((entry) => entry.mode === "100644" || entry.mode === "100755");
+  const identities = [];
+  const porcelainRemovals = new Set(status.filter(
+    (observed) => observed.role === "path" && observed.worktree === "D" || observed.role === "rename-source" && observed.worktree === "R"
+  ).map((observed) => observed.path));
+  for (const entry of regular) {
+    const absolute = import_node_path5.default.resolve(root, ...entry.path.split("/"));
+    const proof = await confinedPathProof(root, absolute, "regular-or-missing");
+    const porcelainDeletion = porcelainRemovals.has(entry.path);
+    if (proof.missing && !porcelainDeletion) {
+      throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is missing without a matching porcelain worktree deletion`);
+    }
+    if (!proof.missing && porcelainDeletion) {
+      throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is present despite a porcelain worktree deletion`);
+    }
+    identities.push(digest2([entry.path, entry.mode, entry.objectId, String(entry.stage), proof.missing ? "missing" : "regular", proof.digest]));
+  }
+  return { count: regular.length, digest: digest2(identities) };
 }
 async function fileIdentity(root, observed, run, budget) {
   const parsed = parsePlanPath(observed.path, { observed: true });
@@ -48452,9 +48858,11 @@ async function captureOnce(root, worktree, run) {
   if (stagedConflict) throw new Error(`tracked path ${JSON.stringify(stagedConflict.path)} has unsupported non-zero index stage ${stagedConflict.stage}`);
   const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
   if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
+  const status = parsePorcelainV1Z(statusRaw);
+  const regularFiles = await trackedRegularMetadataCensus(root, indexFlags.entries, status);
   const budget = { total: 0 };
   const entries = [];
-  for (const observed of parsePorcelainV1Z(statusRaw)) {
+  for (const observed of status) {
     const parsed = parsePlanPath(observed.path, { observed: true });
     if (!parsed.ok) throw new Error(`unsafe observed path: ${parsed.reason}`);
     entries.push({
@@ -48477,7 +48885,8 @@ async function captureOnce(root, worktree, run) {
   entries.sort((left, right) => lexicalCompare2(left.path, right.path) || lexicalCompare2(left.index, right.index) || lexicalCompare2(left.worktree, right.worktree));
   return {
     snapshot: { branch, worktree, head: head.toLowerCase(), entries },
-    indexFlags
+    indexFlags,
+    regularFiles
   };
 }
 async function collectWorkspaceSnapshot(input) {
@@ -48562,9 +48971,8 @@ function stepDocumentSnapshotAuthority(snapshot) {
 async function documentSample(store2, id) {
   const authority = await store2.getExecutionAuthoritySnapshot(id);
   if (!authority) throw new Error(`No ticket with id "${id}"`);
-  const { item, revision, gates, fixed, inventory } = authority;
+  const { item, revision, gates, fixed, inventory, batch } = authority;
   if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
-  const batch = await store2.batchStateFromExecutionAuthority(item);
   if (!gates) throw new Error(`Ticket "${id}" has no document-gate report`);
   const groups = authority.groups.map(({ group, context, contextVersion }) => ({
     id: group.id,

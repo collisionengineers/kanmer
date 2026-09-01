@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -12,6 +13,23 @@ import { assertNotBoardWorktree } from "./worktree-guard.js";
 
 let root: string;
 let store: KanmerStore;
+
+async function executionBatch(label: string) {
+  const a = await store.createItem({ type: "ticket", title: `${label} A`, profile: "custom", requires: {}, status: "implementing" });
+  const b = await store.createItem({ type: "ticket", title: `${label} B`, profile: "custom", requires: {}, status: "implementing" });
+  await store.takeTicket(a.id, {
+    branch: label,
+    worktree: `.worktrees/${label}`,
+    assignee: "controller",
+    controllerRun: `${label}-run`,
+    batch: label,
+    batchMembers: [a.id, b.id],
+  });
+  const transactions = path.join(root, ".kanmer", "batches", "transactions");
+  const manifest = path.join(transactions, (await fs.readdir(transactions)).find((name) => name.endsWith(".json"))!);
+  const ticketFile = (id: string) => path.join(root, ".kanmer", "areas", "_none", id, `${id}.md`);
+  return { a, b, manifest, transactions, ticketFile };
+}
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-test-"));
@@ -658,6 +676,242 @@ describe("format v2", () => {
     const second = await store.getExecutionAuthoritySnapshot(ticket.id);
     expect(second?.revision).toEqual(first?.revision);
     expect(second?.inventory.find((doc) => doc.doc === "scratch/exempt-000.md")?.content).toBe("changed scratch\n");
+  });
+
+  it("collects batch state inside the bounded authority snapshot without rereading retained endpoints", async () => {
+    const fixture = await executionBatch("authority-batch");
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    let snapshot;
+    try {
+      snapshot = await store.getExecutionAuthoritySnapshot(fixture.a.id);
+    } finally {
+      openSpy.mockRestore();
+    }
+    expect(snapshot?.batch).toMatchObject({
+      id: "authority-batch",
+      declaration: "consistent",
+      state: "active",
+      members: [{ id: fixture.a.id, exists: true }, { id: fixture.b.id, exists: true }],
+    });
+    for (const file of [fixture.ticketFile(fixture.a.id), fixture.ticketFile(fixture.b.id), fixture.manifest]) {
+      expect(opened.filter((openedFile) => openedFile === path.resolve(file)), file).toHaveLength(1);
+    }
+  });
+
+  it("bounds every transaction entry, manifest byte and manifest member before batch authority", async () => {
+    const isolated = await store.createItem({ type: "ticket", title: "Manifest bounds", status: "implementing" });
+    const transactions = path.join(root, ".kanmer", "batches", "transactions");
+    await fs.mkdir(transactions, { recursive: true });
+    for (let index = 0; index <= EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries; index += 1) {
+      await fs.writeFile(
+        path.join(transactions, `.${String(index).padStart(64, "0")}.json.tmp-${index + 1}-${index + 2}`),
+        "temp",
+        "utf8",
+      );
+    }
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/transaction directory exceeds 256 entries/i);
+
+    await fs.rm(transactions, { recursive: true });
+    await fs.mkdir(transactions, { recursive: true });
+    const batchId = "member-overflow";
+    const members = Array.from({ length: EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers + 1 }, (_, index) => `SYN-${String(index).padStart(4, "0")}`);
+    const manifest = {
+      schema: 1,
+      state: "active",
+      request_sha256: "0".repeat(64),
+      declaring_ticket: members[0],
+      batch_id: batchId,
+      controller: "controller",
+      controller_run: "run",
+      frozen_at: "2026-09-01T00:00:00.000Z",
+      members,
+      workspace: "branch:member-overflow",
+      branch: "member-overflow",
+    };
+    const name = `${createHash("sha256").update(batchId, "utf8").digest("hex")}.json`;
+    await fs.writeFile(path.join(transactions, name), `${JSON.stringify(manifest)}\n`, "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/exceeds 256 manifest members/i);
+
+    await fs.rm(transactions, { recursive: true });
+    await fs.mkdir(transactions, { recursive: true });
+    for (let batchIndex = 0; batchIndex < 9; batchIndex += 1) {
+      const refsBatch = `refs-${batchIndex}`;
+      const refs = Array.from({ length: EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers }, (_, index) =>
+        `REF-${batchIndex}-${String(index).padStart(4, "0")}`
+      );
+      const refsManifest = {
+        ...manifest,
+        batch_id: refsBatch,
+        declaring_ticket: refs[0],
+        members: refs,
+        workspace: `branch:${refsBatch}`,
+        branch: refsBatch,
+      };
+      const refsName = `${createHash("sha256").update(refsBatch, "utf8").digest("hex")}.json`;
+      await fs.writeFile(path.join(transactions, refsName), `${JSON.stringify(refsManifest)}\n`, "utf8");
+    }
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/exceed 2048 aggregate member references/i);
+
+    await fs.rm(transactions, { recursive: true });
+    await fs.mkdir(transactions, { recursive: true });
+    await fs.writeFile(path.join(transactions, name), "x".repeat(EXECUTION_AUTHORITY_LIMITS.maxBatchManifestBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/manifest.*exceeds 65536 pre-read bytes/i);
+  });
+
+  it("preflights aggregate manifest bytes before opening any manifest", async () => {
+    const isolated = await store.createItem({ type: "ticket", title: "Manifest aggregate", status: "implementing" });
+    const transactions = path.join(root, ".kanmer", "batches", "transactions");
+    await fs.mkdir(transactions, { recursive: true });
+    for (let index = 0; index < 9; index += 1) {
+      await fs.writeFile(path.join(transactions, `${String(index).padStart(64, "0")}.json`), "x".repeat(60 * 1024), "utf8");
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/manifests exceed 524288 aggregate pre-read bytes/i);
+      expect(opened.filter((file) => file.startsWith(path.resolve(transactions) + path.sep))).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("preflights complete ticket endpoint and aggregate-byte bounds before sibling reads", async () => {
+    const endpointFixture = await executionBatch("endpoint-bound");
+    const legacy = path.join(root, ".kanmer", "tickets");
+    await fs.mkdir(legacy, { recursive: true });
+    const tiny = (id: string) => `---\nid: ${id}\ntype: ticket\ntitle: ${id}\nstatus: backlog\ncreated: 2026-09-01T00:00:00.000Z\nupdated: 2026-09-01T00:00:00.000Z\n---\nfixture\n`;
+    for (let index = 0; index < EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints - 1; index += 1) {
+      const id = `LEG-${String(index).padStart(4, "0")}`;
+      await fs.writeFile(path.join(legacy, `${id}.md`), tiny(id), "utf8");
+    }
+    await expect(store.getExecutionAuthoritySnapshot(endpointFixture.a.id)).rejects.toThrow(/ticket census exceeds 2048 (?:enumerated entries|endpoints)/i);
+
+    await fs.rm(legacy, { recursive: true });
+    await fs.mkdir(legacy, { recursive: true });
+    for (let index = 0; index < 129; index += 1) {
+      await fs.writeFile(path.join(legacy, `BIG-${String(index).padStart(4, "0")}.md`), "x".repeat(65_500), "utf8");
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(endpointFixture.a.id)).rejects.toThrow(/ticket census exceeds 8388608 aggregate pre-read bytes/i);
+      const endpointOpens = opened.filter((file) => file.startsWith(path.resolve(legacy) + path.sep));
+      expect(endpointOpens).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  }, 30_000);
+
+  it("charges junk and empty ticket-census entries before they can grow an unbounded name list", async () => {
+    const fixture = await executionBatch("junk-census");
+    const legacy = path.join(root, ".kanmer", "tickets");
+    await fs.mkdir(legacy, { recursive: true });
+    for (let index = 0; index <= EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries; index += 1) {
+      await fs.writeFile(path.join(legacy, `junk-${String(index).padStart(4, "0")}.tmp`), "", "utf8");
+    }
+    await expect(store.getExecutionAuthoritySnapshot(fixture.a.id)).rejects.toThrow(/ticket census exceeds 2048 enumerated entries/i);
+  }, 30_000);
+
+  it("bounds the authority ticket lookup before opening selected or sibling content", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Lookup bound", status: "implementing" });
+    const areas = path.join(root, ".kanmer", "areas");
+    for (let index = 0; index < EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries; index += 1) {
+      await fs.mkdir(path.join(areas, `junk-${String(index).padStart(4, "0")}`));
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/ticket lookup exceeds 2048 area entries/i);
+      expect(opened).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  }, 30_000);
+
+  it("refuses malformed and hard-linked ticket endpoints in a complete batch census", async () => {
+    const malformed = await executionBatch("malformed-census");
+    const legacy = path.join(root, ".kanmer", "tickets");
+    await fs.mkdir(legacy, { recursive: true });
+    await fs.writeFile(path.join(legacy, "BROKEN-001.md"), "not frontmatter", "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(malformed.a.id)).rejects.toThrow(/complete ticket census could not read/i);
+
+    await fs.rm(legacy, { recursive: true });
+    const linked = await executionBatch("hardlink-census");
+    const alias = path.join(root, "ticket-alias.md");
+    try {
+      await fs.link(linked.ticketFile(linked.b.id), alias);
+    } catch (error) {
+      if (["EPERM", "EACCES", "ENOTSUP"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
+      throw error;
+    }
+    await expect(store.getExecutionAuthoritySnapshot(linked.a.id)).rejects.toThrow(/ticket census endpoint.*more than one filesystem link/i);
+  });
+
+  it("rejects ticket replacement and manifest growth during bounded batch reads and closes their handles", async () => {
+    const replaced = await executionBatch("census-replacement");
+    const sibling = replaced.ticketFile(replaced.b.id);
+    const displaced = `${sibling}.displaced`;
+    const originalSibling = await fs.readFile(sibling);
+    const originalOpen = fs.open.bind(fs);
+    let swapped = false;
+    const replacementSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      if (!swapped && path.resolve(String(args[0])) === path.resolve(sibling)) {
+        swapped = true;
+        await fs.rename(sibling, displaced);
+        await fs.writeFile(sibling, originalSibling);
+      }
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(replaced.a.id)).rejects.toThrow(/changed identity before its bounded read/i);
+    } finally {
+      replacementSpy.mockRestore();
+    }
+    await fs.unlink(sibling);
+    await fs.rename(displaced, sibling);
+
+    const grown = await executionBatch("manifest-growth");
+    let wrapped = false;
+    const growthSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      const handle = await originalOpen(...args);
+      if (!wrapped && path.resolve(String(args[0])) === path.resolve(grown.manifest)) {
+        wrapped = true;
+        const originalRead = handle.read.bind(handle);
+        let appended = false;
+        handle.read = async (...readArgs: Parameters<typeof handle.read>) => {
+          if (!appended) {
+            appended = true;
+            await fs.appendFile(grown.manifest, "growth", "utf8");
+          }
+          return originalRead(...readArgs);
+        };
+      }
+      return handle;
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(grown.a.id)).rejects.toThrow(/changed size during its bounded read/i);
+    } finally {
+      growthSpy.mockRestore();
+    }
+    await fs.rename(grown.manifest, `${grown.manifest}.closed`);
+    await fs.rename(`${grown.manifest}.closed`, grown.manifest);
   });
 
   it("preserves leading UTF-8 BOM bytes across bounded authority, normal revisions and CAS tokens", async () => {
@@ -1443,6 +1697,24 @@ describe("format v1 compatibility", () => {
         () => false,
       ),
     ).toBe(false);
+  });
+
+  it("returns bounded execution authority for a selected legacy ticket", async () => {
+    const snapshot = await v1store.getExecutionAuthoritySnapshot("TICK-001");
+    expect(snapshot).toMatchObject({
+      item: {
+        id: "TICK-001",
+        type: "ticket",
+        title: "Legacy ticket",
+        status: "in-progress",
+      },
+      revision: null,
+      gates: null,
+      fixed: [],
+      inventory: [],
+      groups: [],
+      batch: null,
+    });
   });
 
   it("validates document paths before the legacy missing-document response", async () => {

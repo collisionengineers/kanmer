@@ -91,14 +91,26 @@ export function checkStepPacketBudget(value: unknown): StepPacketBudgetResult {
       }
       return addBytes(bytes + 2);
     }
+    if (typeof entry === "number" && !Number.isFinite(entry)) {
+      return { ok: false, reason: "step packet material contains a non-finite number" };
+    }
     if (entry === null || entry === undefined || typeof entry === "boolean" || typeof entry === "number") {
       return addBytes(String(entry ?? null).length + 1);
     }
     if (typeof entry !== "object") return { ok: false, reason: "step packet material contains an unsupported value" };
+    if (entry instanceof Date) {
+      if (Object.getPrototypeOf(entry) !== Date.prototype || !Number.isFinite(entry.getTime())) {
+        return { ok: false, reason: "step packet material contains an invalid or unsupported Date" };
+      }
+      return addBytes(budgetEncoder.encode(entry.toISOString()).length + 16);
+    }
     if (active.has(entry)) return { ok: false, reason: "step packet material is cyclic" };
     active.add(entry);
     try {
       if (Array.isArray(entry)) {
+        if (Object.getPrototypeOf(entry) !== Array.prototype) {
+          return { ok: false, reason: "step packet material contains an unsupported object prototype" };
+        }
         if (entry.length > STEP_PACKET_LIMITS.maxArrayEntries) return { ok: false, reason: `step packet array exceeds ${STEP_PACKET_LIMITS.maxArrayEntries} entries` };
         aggregateEntries += entry.length;
         if (aggregateEntries > STEP_PACKET_LIMITS.maxAggregateEntries) return { ok: false, reason: `step packet arrays exceed ${STEP_PACKET_LIMITS.maxAggregateEntries} aggregate entries` };
@@ -109,6 +121,10 @@ export function checkStepPacketBudget(value: unknown): StepPacketBudgetResult {
           if (!nested.ok) return nested;
         }
         return { ok: true };
+      }
+      const prototype = Object.getPrototypeOf(entry);
+      if ((prototype !== Object.prototype && prototype !== null) || Object.getOwnPropertySymbols(entry).length > 0) {
+        return { ok: false, reason: "step packet material contains an unsupported object prototype or symbol key" };
       }
       const entries = Object.entries(entry as Record<string, unknown>);
       if (entries.length > STEP_PACKET_LIMITS.maxObjectKeys) return { ok: false, reason: `step packet object exceeds ${STEP_PACKET_LIMITS.maxObjectKeys} keys` };
@@ -423,6 +439,7 @@ function authorityOf(packet: StepPacket): StepPacketAuthority {
 
 /** Canonical, key-ordered JSON so the same content always hashes the same. */
 function canonicalJson(value: unknown): string {
+  if (value instanceof Date) return `@kanmer-date:${JSON.stringify(value.toISOString())}`;
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value && typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)

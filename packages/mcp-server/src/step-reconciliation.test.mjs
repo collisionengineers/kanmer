@@ -84,11 +84,10 @@ const baseAuthorityItem = {
   labels: [], links: [], body: "", created: "2026-08-31T00:00:00.000Z", updated: "2026-08-31T00:00:00.000Z",
 };
 
-function authorityStore({ item = baseAuthorityItem, inventory = [], groups = [], error = null } = {}) {
+function authorityStore({ item = baseAuthorityItem, inventory = [], groups = [], batch = null, error = null } = {}) {
   let snapshots = 0;
-  let batchReads = 0;
   return {
-    reads: () => ({ snapshots, batchReads }),
+    reads: () => ({ snapshots }),
     store: {
       getExecutionAuthoritySnapshot: async () => {
         snapshots += 1;
@@ -100,12 +99,8 @@ function authorityStore({ item = baseAuthorityItem, inventory = [], groups = [],
           fixed: [],
           inventory,
           groups,
+          batch: typeof batch === "function" ? batch(snapshots) : batch,
         };
-      },
-      batchStateFromExecutionAuthority: async (boundedItem) => {
-        batchReads += 1;
-        assert.equal(boundedItem.id, item.id);
-        return null;
       },
     },
   };
@@ -122,7 +117,7 @@ test("more than 256 revision-exempt scratch/reference docs do not exhaust the au
   const result = await collectStepDocumentSnapshot(fixture.store, "TICK-001");
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.snapshot.inventory.length, 300);
-  assert.deepEqual(fixture.reads(), { snapshots: 2, batchReads: 2 });
+  assert.deepEqual(fixture.reads(), { snapshots: 2 });
 });
 
 test("stable document collection consumes the store's de-duplicated bounded group authority", async () => {
@@ -136,7 +131,7 @@ test("stable document collection consumes the store's de-duplicated bounded grou
   const result = await collectStepDocumentSnapshot(fixture.store, "TICK-001");
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.deepEqual(fixture.reads(), { snapshots: 2, batchReads: 2 });
+  assert.deepEqual(fixture.reads(), { snapshots: 2 });
   assert.deepEqual(result.snapshot.item.groups, ["HZN-001"]);
   assert.equal(result.snapshot.groups.length, 1);
   assert.equal(result.snapshot.evidence.filter((entry) => entry.layer === "group").length, 1);
@@ -153,8 +148,23 @@ test("bounded store authority refusal stops before batch projection or later pac
     const result = await collectStepDocumentSnapshot(fixture.store, "TICK-001");
     assert.equal(result.ok, false);
     if (!result.ok) assert.match(result.reason, new RegExp(reason.split(" ")[0], "i"));
-    assert.deepEqual(fixture.reads(), { snapshots: 1, batchReads: 0 });
+    assert.deepEqual(fixture.reads(), { snapshots: 1 });
   }
+});
+
+test("batch authority is part of the same bounded double-sample", async () => {
+  const fixture = authorityStore({
+    batch: (sample) => ({
+      id: "batch-a", controller: "controller", controllerRun: "run", frozenAt: "2026-09-01T00:00:00.000Z",
+      state: "active", declaration: "consistent", branch: "batch-a", workspace: "worktree:.worktrees/batch-a",
+      members: [{ id: "TICK-001", exists: true, status: sample === 1 ? "implementing" : "review", archived: false, terminal: false, taken: true }],
+      allTerminal: false,
+    }),
+  });
+  const result = await collectStepDocumentSnapshot(fixture.store, "TICK-001");
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.reason, /changed during the bounded double-sample/i);
+  assert.deepEqual(fixture.reads(), { snapshots: 2 });
 });
 
 test("workspace snapshot is stable, bounded and does not refresh the Git index", async (t) => {
@@ -303,6 +313,34 @@ test("clean external, parent-relative, chained and dangling tracked symlinks fai
   }
 });
 
+test("clean in-worktree and outside-and-back tracked-link chains fail closed", async (t) => {
+  for (const fixtureKind of ["in-worktree-chain", "outside-and-back"]) {
+    const { root, worktree, board } = await fixture(t);
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), `kanmer-step-link-${fixtureKind}-`));
+    t.after(() => removeTreeWithRetry(outside));
+    const hop = path.join(worktree, "hop.txt");
+    const link = path.join(worktree, "tracked-link.txt");
+    try {
+      if (fixtureKind === "in-worktree-chain") {
+        await fs.symlink("tracked.txt", hop, "file");
+      } else {
+        const returning = path.join(outside, "return.txt");
+        await fs.symlink(path.join(worktree, "tracked.txt"), returning, "file");
+        await fs.symlink(returning, hop, "file");
+      }
+      await fs.symlink("hop.txt", link, "file");
+    } catch (error) {
+      t.skip(`filesystem cannot create ${fixtureKind} symlink fixture: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    git(worktree, "add", "hop.txt", "tracked-link.txt");
+    git(worktree, "commit", "-m", `add ${fixtureKind} links`);
+    const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /direct|chain|symbolic-link or junction component|lexically outside/i);
+  }
+});
+
 test("tracked-link target bytes are bounded before authority is accepted", async (t) => {
   const { root, worktree, board } = await fixture(t);
   const target = path.join(worktree, "large-target.bin");
@@ -348,8 +386,9 @@ test("a non-zero tracked index stage is refused", async (t) => {
 });
 
 test("bounded handle reads reject replacement, short/growing reads and post-read changes and always close", async (t) => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-handle-read-"));
-  t.after(() => removeTreeWithRetry(root));
+  const allocatedRoot = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-handle-read-"));
+  t.after(() => removeTreeWithRetry(allocatedRoot));
+  const root = await fs.realpath(allocatedRoot);
 
   const exercise = async (name, content, hooks, expected) => {
     const absolute = path.join(root, name);
@@ -390,8 +429,9 @@ test("bounded handle reads reject replacement, short/growing reads and post-read
 });
 
 test("bounded handle read refuses a symlink substituted after the path sample where supported", async (t) => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-handle-link-"));
-  t.after(() => removeTreeWithRetry(root));
+  const allocatedRoot = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-handle-link-"));
+  t.after(() => removeTreeWithRetry(allocatedRoot));
+  const root = await fs.realpath(allocatedRoot);
   const absolute = path.join(root, "candidate.txt");
   const target = path.join(root, "target.txt");
   const probe = path.join(root, "probe-link.txt");
@@ -554,6 +594,81 @@ test("a dirty hard-linked file is inconclusive instead of authorising an externa
   const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
   assert.equal(result.ok, false);
   assert.match(result.reason, /hard-linked/i);
+});
+
+test("a clean tracked hardlink is refused even when Git reports no content change", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const alias = path.join(root, "outside-hardlink.txt");
+  try {
+    await fs.link(path.join(worktree, "tracked.txt"), alias);
+  } catch (error) {
+    t.skip(`filesystem cannot create the required hard link: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+  assert.equal(git(worktree, "status", "--porcelain=v1"), "");
+  const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /hard-linked|filesystem links|single workspace identity/i);
+});
+
+test("same-byte clean file replacement between samples remains internal snapshot drift", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const tracked = path.join(worktree, "tracked.txt");
+  const original = await fs.readFile(tracked);
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    betweenSamples: async () => {
+      await fs.rm(tracked);
+      await fs.writeFile(tracked, original);
+    },
+  });
+  assert.equal(git(worktree, "status", "--porcelain=v1"), "");
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /changed during the bounded double-sample/i);
+});
+
+test("a missing indexed regular file must agree with the same capture's porcelain deletion", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  await fs.rm(path.join(worktree, "tracked.txt"));
+  const ordinary = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(ordinary.ok, true);
+
+  const dishonestRun = async (cwd, args) => {
+    if (args[0] === "status") return Buffer.alloc(0);
+    return execFileSync("git", ["--no-optional-locks", "-C", cwd, ...args], {
+      encoding: "buffer", windowsHide: true, maxBuffer: 2 * 1024 * 1024,
+    });
+  };
+  const hidden = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    run: dishonestRun,
+  });
+  assert.equal(hidden.ok, false);
+  assert.match(hidden.reason, /missing.*porcelain|porcelain.*missing/i);
+});
+
+test("porcelain deletion remains authoritative when a tracked file's parent directory is also absent", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const nested = path.join(worktree, "nested", "tracked.txt");
+  await fs.mkdir(path.dirname(nested), { recursive: true });
+  await fs.writeFile(nested, "nested\n");
+  git(worktree, "add", "nested/tracked.txt");
+  git(worktree, "commit", "-m", "add nested tracked file");
+  await fs.rm(path.dirname(nested), { recursive: true });
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.ok(result.snapshot.entries.some((entry) => entry.path === "nested/tracked.txt"));
 });
 
 test("ignored files and Git common-directory metadata are explicitly outside the collected path evidence", async (t) => {

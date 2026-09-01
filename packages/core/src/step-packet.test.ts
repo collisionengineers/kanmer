@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseItem } from "./frontmatter.js";
 import { parsePlan } from "./plan.js";
 import {
   compileStepPacket,
@@ -603,6 +604,87 @@ describe("reconcileStepPacket", () => {
       updated: "2026-08-31T10:00:00.000Z",
     })).toBe(stepTicketAuthority(base));
     expect(stepTicketAuthority({ ...base, lease_worker_run: "worker-2" })).not.toBe(stepTicketAuthority(base));
+  });
+
+  it("keeps ordinary JSON authority stable while binding Date identity and refusing non-JSON runtime types", () => {
+    const ordinary = { z: [true, null, "x"], a: { n: 42, undef: undefined }, id: "TICK-001" };
+    expect(stepTicketAuthority(ordinary)).toBe("9fa21db2a3a70eb2c94852c175e8a370403bda873b043a7939f5dbb6062cc8d0");
+
+    const nullPrototype = Object.create(null) as Record<string, unknown>;
+    nullPrototype.z = [true, null, "x"];
+    nullPrototype.a = Object.assign(Object.create(null), { n: 42, undef: undefined });
+    nullPrototype.id = "TICK-001";
+    expect(stepTicketAuthority(nullPrototype)).toBe(stepTicketAuthority(ordinary));
+
+    const instant = "2026-09-01T00:00:00.000Z";
+    expect(stepTicketAuthority({ when: new Date(instant) })).toBe(stepTicketAuthority({ when: new Date(instant) }));
+    expect(stepTicketAuthority({ when: new Date(instant) })).not.toBe(stepTicketAuthority({ when: new Date("2026-09-01T00:00:01.000Z") }));
+    expect(stepTicketAuthority({ when: new Date(instant) })).not.toBe(stepTicketAuthority({ when: instant }));
+
+    class CustomAuthority {
+      value = "custom";
+    }
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    const unsupported: unknown[] = [
+      new Date(Number.NaN),
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+      Buffer.from("bytes"),
+      new Uint8Array([1, 2]),
+      new Map([["key", "value"]]),
+      new Set(["value"]),
+      /value/,
+      new CustomAuthority(),
+      cycle,
+    ];
+    for (const value of unsupported) {
+      expect(() => stepTicketAuthority({ value })).toThrow(/ticket authority cannot be hashed/i);
+    }
+  });
+
+  it("fails stale authority and revision when an unknown YAML timestamp changes beside the exact checklist tick", () => {
+    const raw = (customWhen: string) => `---\nid: TICK-001\ntype: ticket\ntitle: Timestamp authority\nstatus: implementing\ncreated: 2026-08-12T10:00:00.000Z\nupdated: 2026-08-12T11:30:00.000Z\ncustom_when: ${customWhen}\n---\nTimestamp authority.\n`;
+    const before = parseItem(raw("2026-09-01T00:00:00.000Z"));
+    const changed = parseItem(raw("2026-09-01T00:00:01.000Z"));
+    expect((before as Record<string, unknown>).custom_when).toBeInstanceOf(Date);
+
+    const baseInput = input();
+    const compiled = compileStepPacket({
+      ...baseInput,
+      ticket: { ...baseInput.ticket, itemAuthority: stepTicketAuthority(before) },
+    });
+    if (!compiled.ok) throw new Error(compiled.reason);
+    const currentFacts = (item: unknown) => ({
+      project: compiled.packet.project,
+      ticket: {
+        ...compiled.packet.ticket,
+        revision: "rev1:after-checklist",
+        itemAuthority: stepTicketAuthority(item),
+      },
+      batch: compiled.packet.batch,
+      plan: {
+        ...compiled.packet.plan,
+        authority: stepPacketAuthority(parsePlan(PLAN), compiled.packet.step.index, "Stop when the PR is open."),
+      },
+      checklist: stepChecklistSnapshot(
+        parsePlan(PLAN),
+        compiled.packet.checklist.content?.replace("[ ] Step 1", "[x] Step 1") ?? "",
+        compiled.packet.checklist.path,
+        "3333333333333333",
+      ),
+      evidence: [...compiled.packet.evidence.group, ...compiled.packet.evidence.ticket],
+      workspace: { snapshot: compiled.packet.workspace, headChanges: [] },
+    });
+
+    const stale = reconcileStepPacket(compiled.packet, currentFacts(changed));
+    expect(stale.status).toBe("fail");
+    expect(stale.findings.map((finding) => finding.code)).toEqual(expect.arrayContaining([
+      "STEP_TICKET_AUTHORITY_STALE",
+      "STEP_TICKET_REVISION_STALE",
+    ]));
+    expect(reconcileStepPacket(compiled.packet, currentFacts(before)).status).toBe("pass");
   });
 
   it("does not let an exact checklist tick mask another ticket or document mutation", () => {

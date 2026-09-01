@@ -352,3 +352,43 @@ Read-only preflight at exact source head `7d899869523ac5b55ef2debbf67d0324ebe4fb
 - If any checked-in expectation counts the MCP test total, report its exact path before editing unless that path is already authorized by `files/files.md`; do not weaken or delete a count.
 - The controller's next clean Windows `npm run verify` and hosted `verify` at the final published head must both prove this registration. Historical rails at 7d899 remain honest but incomplete for the collector.
 - Done when the exact F-016 external-link, malformed/oversized census and ordinary-file regressions execute through the same existing command used by local and hosted authoritative verification.
+
+## Fourth exact-head root-cause remediation — review head `437c7182021137eae962228942b712b2045cdc57`
+
+The exact head passed the clean local Windows rail, but hosted verification exposed two unphysical direct-reader fixtures and the settled exact-head review plus independent disposable audits proved F-017 through F-020. These findings share the remaining invariant: every value and filesystem record that can authorize a worker step must have a type-distinct, pre-read-bounded, physically confined identity before dispatch. F-001 through F-016 remain fixed except F-013, which remains rejected-with-reason. This is the one root-cause replan authorized after the prior remediation budget; it adds no tool, schema, stage, writer, dependency or unrelated feature.
+
+### RC-12 — Type-distinct ticket authority (F-017)
+
+- Files/symbols: `packages/core/src/step-packet.ts::checkStepPacketBudget`, `canonicalJson`, `stepTicketAuthority`; `packages/core/src/step-packet.test.ts`; existing reconciliation integration only for the end-to-end stale-authority assertion.
+- Preserve normal JSON-shaped authority hashes. Encode a valid `Date` with a deterministic type tag plus `toISOString()` so it cannot collide with either another Date or the same quoted string. Reject invalid Dates, non-finite numbers, cyclic structures and object prototypes other than ordinary/null-prototype objects; Buffer/typed arrays, Map, Set, RegExp and custom instances fail closed.
+- Keep the existing volatile lease-heartbeat projection unchanged. Do not change global frontmatter parsing or rewrite board data.
+- Negative cases: different/equal Dates, Date-versus-string, nested Date, invalid Date, NaN/infinities, Buffer, Map, Set, RegExp, custom/null prototype and cycle. Changing an unknown YAML timestamp plus only the selected checklist marker must FAIL with `STEP_TICKET_AUTHORITY_STALE` and revision staleness; unchanged metadata plus that marker transition still PASSes.
+
+### RC-13 — Prove every tracked write alias before dispatch (F-018/F-020)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::trackedLinkIdentity`, `captureOnce` and focused helpers; `packages/mcp-server/src/step-reconciliation.test.mjs`; canonical prose only if its already-stated confinement wording needs precision.
+- Retain only the currently supported direct confined tracked link: decode its link bytes, lexically resolve the target relative to the tracked link, require that path inside the physical worktree, reject every symlink/junction component between the physical root and final target, require a single-link regular final file, perform the existing bounded handle read, then repeat and compare the complete path/target validation. Any chained link—including an out-and-back chain—refuses.
+- During both `captureOnce` samples, metadata-check every mode-`100644`/`100755` path from the already bounded index census before dispatch. Materialized paths must be physically confined single-link regular files; missing/deleted paths must agree with the porcelain census. Retain a bounded stable-facts digest in the internal double-sample so replacement/link-count drift is not discarded. Do not read/hash all clean file contents or change the packet schema.
+- Negative cases: external intermediate returning inside, internal component redirecting outside, direct confined one-hop link control, clean two-link regular file with empty status, hardlink added between samples, missing/deleted path mismatch, and all existing dirty-hardlink/external/dangling/placeholder/ordinary controls.
+
+### RC-14 — Fold bounded batch state into execution authority (F-019)
+
+- Files/symbols: `packages/core/src/store.ts::ExecutionAuthoritySnapshot`, execution-authority limit/helpers and `getExecutionAuthoritySnapshot`; `packages/core/src/store.test.ts`; `packages/mcp-server/src/step-reconciliation.ts::documentSample` and its existing tests.
+- Add `batch` to the core metadata-first snapshot and consume `authority.batch` directly. Remove the later uncapped `batchStateFromExecutionAuthority` hop from constrained document sampling. Ordinary batch mutation, closeout, merge-gate and listing paths remain unchanged.
+- The execution-only manifest census streams the transaction directory and counts every entry, including ignored temp entries. Preflight before opening: at most 256 directory entries/manifests, 64 KiB per manifest, 512 KiB aggregate manifest bytes, 256 members per manifest and 2,048 aggregate member references.
+- Preserve complete warning-aware ticket census semantics for extra stamped members and malformed endpoints, but make it metadata-first: at most 2,048 ticket endpoints, 64 KiB per record and 8 MiB aggregate ticket bytes. Preflight the complete census before reads, use the existing identity-checked fatal-UTF-8 handle reader, reuse the already authoritative selected item and reuse each bounded census record rather than rereading manifest members.
+- Bind manifest and ticket directory/file identities so symlink, junction, hard-link, replacement, growth and double-sample drift refuse. Normal isolated and active-batch behavior remains unchanged.
+- Negative cases: 64 KiB+1 isolated manifest with zero content read, 257 entries including ignored temps, >512 KiB aggregate manifests, 257 members, >64 KiB ticket, >8 MiB census, member read replacement/growth/close, manifest/member link escapes, valid active batch, extra stamped member, malformed unrelated ticket and drift across samples.
+
+### RC-15 — Make hosted direct-reader fixtures physical (F-021)
+
+- File/symbol: the two direct `readBoundedWorkspaceFile` tests in `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Retain each raw `fs.mkdtemp` path only for cleanup; pass `await fs.realpath(allocatedRoot)` as the reader root and derive fixture paths from it. Preserve every race hook and assertion. Do not broaden accepted errors or alter production code for this runner spelling.
+- Re-run the bounded-handle name pattern and complete collector suite before the authoritative MCP test command.
+
+### Fourth-remediation acceptance and stop
+
+- Add failed-first tests for RC-12 through RC-15, then implement the shared invariants in the already-authorized files.
+- Run core step-packet/store plus claims/batch regressions; collector and reconciliation suites; `npm run test:http -w @kanmer/mcp-server`; MCP/protocol smoke; scripts/prose/AGENTS checks; builds/typecheck; plugin build/check and `git diff --check`.
+- Do not run a duplicate full Windows rail inside implementation. Regenerate the committed bundle, commit one coherent correction, update the checklist/report/ticket commit, and return the same PR to Review without pushing, self-reviewing, merging, verifying or starting CORE-133.
+- The release controller then publishes the head and requires a fresh clean Windows rail, hosted `verify`, settled automated exact-head review, one fresh independent delta review over F-001 through F-021 and all affected callers/tests, synced-board `kanmer-gate`, merge and exact-merge verification.

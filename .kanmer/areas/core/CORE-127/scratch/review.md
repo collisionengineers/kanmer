@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "307"
-head_sha: "7d899869523ac5b55ef2debbf67d0324ebe4fb78"
+head_sha: "437c7182021137eae962228942b712b2045cdc57"
 verdict: needs-changes
-reviewer: "Codex subagent /root/core127_final_review"
+reviewer: "GitHub Codex exact-head review plus independent /root CORE-127 audits"
 independent: true
-plan_hash: "07b4c609bc102b46"
-ticket_updated: "2026-08-31T23:27:52.038Z"
+plan_hash: "2b6c6392f7f58292"
+ticket_updated: "2026-09-01T00:21:26.216Z"
 findings:
   - id: F-001
     severity: major
@@ -60,61 +60,69 @@ findings:
     severity: note
     summary: "Group-card metadata is not retained evidence when context.md is unchanged."
     disposition: rejected-with-reason
-    reason: "The approved retained evidence contract binds group context.md; group-card metadata remains double-sampled issuance metadata."
+    reason: "The approved retained shared-evidence contract binds group context.md; group-card metadata remains double-sampled issuance metadata."
   - id: F-014
     severity: major
-    summary: "A prechecked successor step can bypass packet issuance and reconciliation."
-    disposition: open
+    summary: "A prechecked successor step could bypass packet issuance and reconciliation."
+    disposition: fixed
   - id: F-015
     severity: major
-    summary: "Bounded authority decoding strips UTF-8 BOM bytes and diverges from normal revision/CAS readers."
-    disposition: open
+    summary: "Bounded authority decoding stripped UTF-8 BOM bytes and diverged from normal revision/CAS readers."
+    disposition: fixed
   - id: F-016
     severity: blocker
-    summary: "A clean tracked symlink can mutate outside the worktree without appearing in either workspace snapshot."
+    summary: "A clean tracked symlink could mutate outside the worktree without appearing in workspace snapshots."
+    disposition: fixed
+  - id: F-017
+    severity: major
+    summary: "Date-valued passthrough ticket metadata collapses to empty object authority and can evade revision staleness."
+    disposition: open
+  - id: F-018
+    severity: blocker
+    summary: "A tracked symlink chain may leave the worktree and return inside while its external hop remains unbound."
+    disposition: open
+  - id: F-019
+    severity: major
+    summary: "Batch manifests and the transitive ticket census are read and parsed before bounded execution-authority checks."
+    disposition: open
+  - id: F-020
+    severity: blocker
+    summary: "A clean tracked regular file may already be hard-linked outside the worktree at packet issuance."
+    disposition: open
+  - id: F-021
+    severity: minor
+    summary: "Two hosted handle-race tests pass an unphysical temporary-root alias and fail before their intended race hooks."
     disposition: open
 ---
 
-# Independent exact-head review — CORE-127 / PR #307
+# Consolidated exact-head review — CORE-127 / PR #307
 
-Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `7d899869523ac5b55ef2debbf67d0324ebe4fb78` after the hosted verifier and expected automated reviewer settled on that head. The worktree was clean and `git diff --check` passed.
+Reviewed exact base `4fda54b4489fa4bc4b6b091c2af67715245ffa08` through exact head `437c7182021137eae962228942b712b2045cdc57`. GitHub's expected automated review settled on this head at 2026-09-01T00:31:45Z. The implementation worktree is clean.
 
-The clean Windows `npm run verify` rail passed at this head from 2026-08-31T23:29:36.9215632Z through 2026-08-31T23:41:13.1373612Z on Node v24.15.0 and npm 11.14.1. Hosted `verify` passed in Actions run 33450867582, job 99680222069. Those results become historical when remediation changes source. `kanmer-gate` is correctly red because this needs-changes attestation and the current review threads block merge.
-
-## Independent evidence
-
-- Core focused suites: 206/206 PASS.
-- Workspace collector suite: 24/24 PASS.
-- `git diff --check`: PASS.
-- 16 GitHub review threads remain unresolved; seven are current at this exact head.
-- No source, board, PR, GitHub or release state was mutated by the reviewer, and no duplicate full verification rail ran.
+A clean local Windows `npm run verify` passed at this exact head from 2026-09-01T00:23:28.0186862Z through 2026-09-01T00:33:53.2609777Z on Node v24.15.0 and npm 11.14.1. Hosted Actions run 33454522677 failed 210/212 only because two direct handle-reader tests used the raw `fs.mkdtemp` spelling rather than its physical `realpath`; production already physicalizes the worktree before calling the reader. That required check remains red until the fixtures are corrected and rerun.
 
 ## Prior findings
 
-F-001 through F-012 remain fixed across their affected callers, contracts and focused tests. F-013 remains rejected-with-reason: the approved retained shared-evidence contract binds `<group-id>/context.md`; group-card metadata is double-sampled issuance metadata, so adding it as persisted packet authority would expand the product contract without a release criterion.
+F-001 through F-012 remain fixed across their affected callers and tests. F-013 remains rejected-with-reason under the approved group-context evidence contract. F-014 through F-016 are fixed at this head and their focused and authoritative local suites pass.
 
-## Blocking findings
+## Current exact-head findings
 
-### F-014 — major: prechecked successor bypass
+Independent disposable reproductions confirmed all four production findings:
 
-A checklist state of `[false, true]` compiles and strict-verifies for step 1. After step 1 is checked, `nextStepIndex` sees every step complete, so step 2 never receives a packet or prior-step reconciliation. Compilation and strict verification must enforce one marker-level frontier: earlier mapped steps are complete, the selected step contains unchecked work, and no later mapped marker is checked. Verification must derive those states from the exact checklist bytes rather than trusting re-signed packet metadata.
+- F-017 changed an unknown YAML timestamp plus the exact checklist tick. Raw revisions differed, `itemAuthority` remained identical, and reconciliation incorrectly returned PASS. Date values need a distinct deterministic authority encoding, while invalid dates, non-finite numbers, cycles and unsupported object prototypes refuse.
+- F-018 used a clean tracked link that traversed an external intermediate link and returned in-worktree. Equal before/after snapshots allowed an outside victim to change. Every link hop must stay confined; only the already-supported direct confined target remains admissible.
+- F-019 showed a 2 MiB manifest and 2 MiB ticket records are read before the packet budget. Batch facts must join the core metadata-first authority snapshot with bounded manifest and complete warning-aware ticket censuses, reusing exact handle reads.
+- F-020 showed a clean mode-100644 file with two links is accepted at issuance and can mutate an outside inode before later refusal. Both samples must metadata-check every already-bounded tracked regular entry before dispatch.
+- F-021 is test-only but blocks the hosted required check: retain the allocated temp root for cleanup and pass its physical `realpath` into the direct reader tests.
 
-### F-015 — major: BOM identity divergence
+## Required single remediation
 
-The bounded authority reader uses the default UTF-8 decoder BOM behavior, while canonical store reads retain U+FEFF. A BOM-prefixed fixture produced different normal/bounded document versions (`ebae2455941ee397` vs `eb390bca77822856`) and revisions (`rev1:0f75c489c47349d3` vs `rev1:f361d2863e0f1bd1`). Bounded decoding must preserve UTF-8 BOM bytes while remaining fatal on invalid UTF-8. Checklist parsing must recognize exactly one leading BOM without removing it from hashed authority or allowing it to change during the authorised marker transition.
-
-### F-016 — blocker: clean tracked-link escape
-
-A clean committed Git mode-`120000` link pointed outside the worktree. Writing through it changed external bytes while porcelain status remained empty and both bounded snapshots returned `ok: true`, `entries: []`. The shared snapshot collector must census tracked index modes and immutable object identities before both issuance and reconciliation, then fail closed for a link whose target cannot be proven confined to the physical worktree. Escaping, dangling, unreadable, unstable and budget-exhausted links must refuse. A clean internal link may remain supported only when its physical target is proven inside the worktree and its link/target identity participates in both samples. Gitlinks must also fail closed.
-
-## Required consolidated remediation
-
-1. Enforce the checklist frontier and content-derived step states in both packet compilation and strict verification.
-2. Preserve BOM identity in the metadata-first bounded authority reader and BOM-aware checklist parsing while retaining invalid-UTF-8 refusal.
-3. Extend the single bounded index census to cover modes/OIDs and physically confined tracked-link targets in both workspace samples.
-4. Add focused negative and drift tests, update affected prose guards only where the contract changes, and regenerate the existing MCP bundle.
-5. Add no tool, writer, stage, dependency, schema, board rewrite or unrelated feature.
+1. Close F-017 with type-distinct, bounded ticket-authority canonicalization and end-to-end stale-authority tests.
+2. Close F-018/F-020 at the shared tracked-index/filesystem-alias boundary, retaining direct confined links and refusing chained or multi-link authority before dispatch.
+3. Close F-019 by folding bounded batch state into `ExecutionAuthoritySnapshot`; leave ordinary batch mutation, closeout and merge-gate paths unchanged.
+4. Close F-021 without broadening error assertions or changing production behavior.
+5. Update only already-authorized source, tests, canonical prose where the contract needs clarification, and the generated MCP bundle. Add no tool, schema, dependency, stage, writer or unrelated behavior.
 
 ## Decision
 
-NEEDS CHANGES. Return the existing branch, worktree, lease and PR to Implementing for one consolidated F-014/F-015/F-016 root-cause remediation. Then require fresh exact-head automated settlement, one bounded independent delta review over all findings and changed callers, a clean Windows rail, hosted `verify`, synced-board `kanmer-gate`, merge and exact-merge verification.
+NEEDS CHANGES. Return the existing branch, worktree, lease and PR to Implementing for this one root-cause replan. Then require fresh exact-head hosted and local verification, automated settlement, one independent delta review over F-001 through F-021 and affected callers, synced-board `kanmer-gate`, merge and exact-merge verification.

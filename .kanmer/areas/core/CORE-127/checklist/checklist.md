@@ -31,6 +31,14 @@
 - [x] Step 18 — Register the existing collector suite in `packages/mcp-server`'s existing `test:http` command and prove it runs through that authoritative workspace test path.
 - [x] Step 19 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
 
+## Fourth exact-head root-cause remediation
+
+- [ ] Step 20 — Add bounded, type-distinct Date ticket authority and fail-closed unsupported-value tests, including the end-to-end stale-authority bypass.
+- [ ] Step 21 — Reject chained tracked links and preflight every clean tracked regular path for physical confinement and single-link identity in both samples.
+- [ ] Step 22 — Fold a bounded manifest and complete ticket census into the core execution-authority snapshot, preserving valid batch consistency without duplicate reads.
+- [ ] Step 23 — Physicalize the two direct-reader temporary roots while preserving their exact race assertions, then prove the hosted failure mechanism locally.
+- [ ] Step 24 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
+
 ## Acceptance census
 
 - [x] Escaping/absolute/unsupported paths fail closed; literal, `*` and `**` semantics are pinned by tests.
@@ -41,4 +49,4 @@
 - [x] Board, ticket and activity bytes are unchanged by packet-aware reconciliation.
 - [x] Tool roster remains 41 and no new apply action, workflow stage, board field or dependency appears.
 - [x] F-010 proof work, F-011 symbol fail-closed behavior and F-012 pre-allocation evidence bounds pass their real negative cases.
-- [ ] Focused tests—including the collector through workspace `test:http`—`npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact final head. Exact-head `7d899869523ac5b55ef2debbf67d0324ebe4fb78` passed local and hosted verification but is historical needs-changes evidence and did not include the collector in the authoritative rail; all earlier rails are retained, not final-head proof.
+- [ ] Date/type authority, tracked alias/hard-link safety, bounded batch authority, hosted physical-root fixtures and focused tests—including the collector through workspace `test:http`—`npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact final head. Exact-head `7d899869523ac5b55ef2debbf67d0324ebe4fb78` passed local and hosted verification but is historical needs-changes evidence and did not include the collector in the authoritative rail; all earlier rails are retained, not final-head proof.

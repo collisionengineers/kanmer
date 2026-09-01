@@ -390,6 +390,26 @@ describe("selecting the next step", () => {
     expect(nextStepIndex(plan, checklist)).toBe(2);
   });
 
+  it("does not grant named-step authority to explanatory checkbox prose", () => {
+    const checklist = [
+      "- [ ] Add a regression for step 1 timeout handling",
+      "- [x] Step 1 — bound the loop",
+      "- [ ] Step 2 — document the cap",
+      "",
+    ].join("\n");
+    const snapshot = stepChecklistSnapshot(plan, checklist, "checklist/checklist.md", "checklist-v1");
+
+    expect(nextStepIndex(plan, checklist)).toBe(2);
+    expect(snapshot.steps).toEqual([true, false]);
+    expect(snapshot.stepLines).toEqual([[1], [2]]);
+
+    const compiled = compileStepPacket(input({ select: 2, checklist }));
+    expect(compiled.ok).toBe(true);
+    if (!compiled.ok) return;
+    expect(compiled.packet.checklist.stepLines).toEqual([[1], [2]]);
+    expect(verifyStepPacket(compiled.packet)).toMatchObject({ ok: true });
+  });
+
   it("treats a step with one unticked named box as unfinished", () => {
     const checklist = "- [x] Step 1 — first half\n- [ ] Step 1 — second half\n- [x] Step 2 — done\n";
     expect(nextStepIndex(plan, checklist)).toBe(1);

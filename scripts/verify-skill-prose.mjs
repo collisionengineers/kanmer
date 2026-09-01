@@ -1559,9 +1559,20 @@ check(
 check(
   "constrained issuance requires a mapped unchecked checklist marker",
   [agentsGuide, planSkill, executeSkill, autoSkill, toolReference].every((body) =>
-    /at least one mapped\s+unchecked checklist\s+marker/.test(body),
+    /at least one mapped\s+unchecked checklist\s+marker/.test(body) &&
+    /checkbox label\s+begins with `Step N`/.test(body) &&
+    /explanatory\s+prose\s+mention\s+of\s+`step N`\s+never\s+maps\s+that\s+checkbox\s+to\s+a\s+step/.test(body),
   ),
-  "whole-ticket setup remains available but dead-on-arrival step packets are refused",
+  "whole-ticket setup remains available while auxiliary prose cannot acquire named-step authority",
+);
+check(
+  "structured plan steps use exact level-three headings and contiguous declared numbers",
+  constrainedDocs.every((body) =>
+    /exact level-three\s+`### Step N — <title>` heading is a structured\s+boundary/.test(body) &&
+    /declared numbers\s+start at 1 and remain contiguous/.test(body) &&
+    /nested\s+or\s+explanatory\s+headings\s+never\s+become steps/.test(body),
+  ),
+  "nested headings and contradictory declared numbering cannot become packet authority",
 );
 check(
   "exact checklist bytes enforce one contiguous packet frontier",
@@ -1672,11 +1683,13 @@ check(
     /bounded\s+complete\s+union\s+of\s+every\s+path\s+touched\s+by\s+every\s+intervening\s+commit/.test(body) &&
     /including\s+paths\s+later\s+reverted/.test(body) &&
     /non-ancestor\s+baseline\s+or\s+exhausted\s+history\s+is\s+`INCONCLUSIVE`/.test(body) &&
+    /history census validates both old and new modes from every\s+intervening\s+tree edge/.test(body) &&
+    /intervening\s+`120000`\s+symbolic-link\s+or\s+`160000`\s+Git-link\s+mode\s+refuses\s+even\s+if\s+a\s+later\s+commit\s+restores\s+a\s+regular\s+endpoint/.test(body) &&
     /owner-executable\s+bit,\s+every\s+clean\s+tracked\s+regular\s+path\s+must\s+agree\s+with\s+its\s+indexed\s+`100644`\/`100755`\s+executable\s+class/.test(body) &&
     /exactly\s+one\s+selected\s+ticket\s+endpoint\s+across\s+v2\s+areas\s+and\s+legacy\s+v1\s+storage/.test(body) &&
     /duplicates\s+refuse\s+before\s+either\s+record\s+is\s+opened/.test(body),
   ),
-  "reverted commits, hidden executable drift and duplicate ticket endpoints cannot become PASS authority",
+  "reverted paths or link modes, hidden executable drift and duplicate ticket endpoints cannot become PASS authority",
 );
 check(
   "constrained workers stop at the ignored and Git-metadata observation boundary",

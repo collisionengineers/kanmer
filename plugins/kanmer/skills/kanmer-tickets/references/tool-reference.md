@@ -49,10 +49,18 @@ Expected-file patterns authorize only equal-or-narrower step declarations;
 every intersecting forbidden pattern wins. Git-observed filenames retain exact
 bytes (including whitespace, Unicode and newlines) and are never declaration-
 normalized before classification.
+Only an exact level-three `### Step N — <title>` heading is a structured
+boundary: declared numbers start at 1 and remain contiguous, while nested or
+explanatory headings never become steps. Named checklist authority exists only
+when the checkbox label begins with `Step N`; an explanatory prose mention of
+`step N` never maps that checkbox to a step.
 The bounded Git census covers tracked, staged, unstaged and untracked paths plus
 both rename endpoints. Changed-path evidence also includes one bounded complete
 union of every path touched by every intervening commit, including paths later
 reverted; a non-ancestor baseline or exhausted history is `INCONCLUSIVE`.
+That history census validates both old and new modes from every intervening
+tree edge; any intervening `120000` symbolic-link or `160000` Git-link mode
+refuses even if a later commit restores a regular endpoint.
 A packet workspace HEAD is a full 40- or 64-character
 Git object ID. Every sample hashes one bounded NUL
 `git ls-files -v -s -z` index census, binding flag, mode, object id, stage and

@@ -305,6 +305,14 @@ function checklistLineForParsing(line: string, lineIndex: number): string {
   return lineIndex === 0 && line.startsWith("\uFEFF") ? line.slice(1) : line;
 }
 
+/** A named marker owns a step only when the checkbox label begins with `Step N`. */
+function namedChecklistStep(label: string): number | null {
+  const match = /^[ \t\u00a0]*step[ \t\u00a0]+(\d+)\b/i.exec(label);
+  if (!match) return null;
+  const index = Number(match[1]);
+  return Number.isSafeInteger(index) && index > 0 ? index : null;
+}
+
 /** Checklist lines that name a step, paired with their ticked state. */
 function boxesByStep(checklist: string | null): Map<number, boolean[]> {
   const byStep = new Map<number, boolean[]>();
@@ -312,9 +320,8 @@ function boxesByStep(checklist: string | null): Map<number, boolean[]> {
   for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
     const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
-    const named = /\bstep[\s ]+(\d+)\b/i.exec(box[2]);
-    if (!named) continue;
-    const index = Number(named[1]);
+    const index = namedChecklistStep(box[2]);
+    if (index === null) continue;
     const ticked = box[1].toLowerCase() === "x";
     byStep.set(index, [...(byStep.get(index) ?? []), ticked]);
   }
@@ -363,12 +370,17 @@ function checklistStepLines(plan: ParsedPlan, checklist: string | null): number[
   const result = plan.steps.map(() => [] as number[]);
   if (!checklist) return result;
   const lines = checklist.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
+  const named = lines.some((line, lineIndex) => {
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    return Boolean(box && namedChecklistStep(box[1]) !== null);
+  });
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
     const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
-    const stepIndex = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[2])?.[1] ?? 0) - 1 : positional++;
+    const declared = namedChecklistStep(box[2]);
+    if (named && declared === null) continue;
+    const stepIndex = named ? declared! - 1 : positional++;
     if (stepIndex >= 0 && stepIndex < result.length) result[stepIndex].push(lineIndex);
   }
   return result;
@@ -516,12 +528,17 @@ function checklistLineMap(content: string | null, total: number): number[][] {
   const result = Array.from({ length: total }, () => [] as number[]);
   if (content === null) return result;
   const lines = content.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
+  const named = lines.some((line, lineIndex) => {
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    return Boolean(box && namedChecklistStep(box[1]) !== null);
+  });
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
     const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
-    const selected = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[1])?.[1] ?? 0) - 1 : positional++;
+    const declared = namedChecklistStep(box[1]);
+    if (named && declared === null) continue;
+    const selected = named ? declared! - 1 : positional++;
     if (selected >= 0 && selected < total) result[selected].push(lineIndex);
   }
   return result;

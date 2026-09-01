@@ -39970,10 +39970,11 @@ function parseStepFields(body) {
   }
   return fields;
 }
-function buildStep(index, title, structured, body) {
+function buildStep(index, title, structured, body, declaredIndex = null) {
   const fields = structured ? parseStepFields(body) : {};
   return {
     index,
+    declaredIndex,
     id: `step-${index}`,
     title,
     structured,
@@ -39990,17 +39991,18 @@ function parseSteps(content) {
   const lines = withoutFences(content).split("\n");
   const headings = [];
   for (const [line, text] of lines.entries()) {
-    const match = /^(?: {0,3})#{3,6}(?:[ \t]+)(.*)$/.exec(text);
-    if (match) headings.push({ line, title: match[1].trim().replace(/[ \t]+#+[ \t]*$/, "").trim() });
+    const match = /^(?: {0,3})###[ \t]+step[ \t]+([0-9]+)[ \t]+—[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/i.exec(text);
+    if (match) headings.push({ line, declaredIndex: Number(match[1]), title: match[2].trim() });
   }
   if (headings.length) {
     return headings.map((heading, position) => {
       const end = headings[position + 1]?.line ?? lines.length;
       return buildStep(
         position + 1,
-        stepTitle(heading.title),
+        heading.title,
         true,
-        lines.slice(heading.line + 1, end).join("\n")
+        lines.slice(heading.line + 1, end).join("\n"),
+        heading.declaredIndex
       );
     });
   }
@@ -40226,6 +40228,18 @@ function stepFindings(plan, severity, selected, proofContext) {
       message: `The plan has ${plan.steps.length} ordered step(s); step ${selected} does not exist.`
     });
     return findings;
+  }
+  for (const step of plan.steps) {
+    if (!step.structured) continue;
+    if (Number.isSafeInteger(step.declaredIndex) && step.declaredIndex !== null && step.declaredIndex > 0 && step.declaredIndex === step.index) continue;
+    findings.push({
+      code: "PLAN_STEP_NUMBER_MISMATCH",
+      severity,
+      section: "Ordered steps",
+      step: step.index,
+      detail: String(step.declaredIndex),
+      message: `Structured step at position ${step.index} declares Step ${String(step.declaredIndex)}; declared step numbers must start at 1 and remain contiguous in document order.`
+    });
   }
   const declared = plan.expectedFiles.map((entry) => entry.path);
   const forbidden = plan.doNotModify;
@@ -40495,15 +40509,20 @@ function checklistBoxes(checklist) {
 function checklistLineForParsing(line, lineIndex) {
   return lineIndex === 0 && line.startsWith("\uFEFF") ? line.slice(1) : line;
 }
+function namedChecklistStep(label) {
+  const match = /^[ \t\u00a0]*step[ \t\u00a0]+(\d+)\b/i.exec(label);
+  if (!match) return null;
+  const index = Number(match[1]);
+  return Number.isSafeInteger(index) && index > 0 ? index : null;
+}
 function boxesByStep(checklist) {
   const byStep = /* @__PURE__ */ new Map();
   if (!checklist) return byStep;
   for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
     const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
-    const named = /\bstep[\s ]+(\d+)\b/i.exec(box[2]);
-    if (!named) continue;
-    const index = Number(named[1]);
+    const index = namedChecklistStep(box[2]);
+    if (index === null) continue;
     const ticked = box[1].toLowerCase() === "x";
     byStep.set(index, [...byStep.get(index) ?? [], ticked]);
   }
@@ -40541,12 +40560,17 @@ function checklistStepLines(plan, checklist) {
   const result = plan.steps.map(() => []);
   if (!checklist) return result;
   const lines = checklist.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
+  const named = lines.some((line, lineIndex) => {
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    return Boolean(box && namedChecklistStep(box[1]) !== null);
+  });
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
     const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
-    const stepIndex = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[2])?.[1] ?? 0) - 1 : positional++;
+    const declared = namedChecklistStep(box[2]);
+    if (named && declared === null) continue;
+    const stepIndex = named ? declared - 1 : positional++;
     if (stepIndex >= 0 && stepIndex < result.length) result[stepIndex].push(lineIndex);
   }
   return result;
@@ -40651,12 +40675,17 @@ function checklistLineMap(content, total) {
   const result = Array.from({ length: total }, () => []);
   if (content === null) return result;
   const lines = content.replace(/\r\n?/g, "\n").split("\n");
-  const named = lines.some((line, lineIndex) => /^[ \t]*[-*+][ \t]*\[[ xX]\].*\bstep[\s ]+\d+\b/i.test(checklistLineForParsing(line, lineIndex)));
+  const named = lines.some((line, lineIndex) => {
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    return Boolean(box && namedChecklistStep(box[1]) !== null);
+  });
   let positional = 0;
   for (const [lineIndex, line] of lines.entries()) {
     const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
-    const selected = named ? Number(/\bstep[\s ]+(\d+)\b/i.exec(box[1])?.[1] ?? 0) - 1 : positional++;
+    const declared = namedChecklistStep(box[1]);
+    if (named && declared === null) continue;
+    const selected = named ? declared - 1 : positional++;
     if (selected >= 0 && selected < total) result[selected].push(lineIndex);
   }
   return result;
@@ -48578,9 +48607,39 @@ function parseNameStatusZ(raw) {
   if (paths.length > MAX_ENTRIES) throw new Error(`HEAD diff has more than ${MAX_ENTRIES} changed paths`);
   return paths;
 }
-function parseNameOnlyZ(raw) {
-  const paths = splitNul(raw, "git log --name-only -z output").filter((token) => token.length > 0).map((token) => decode(token));
-  if (paths.length > MAX_ENTRIES) throw new Error(`HEAD history has more than ${MAX_ENTRIES} touched paths`);
+var COMMITTED_HISTORY_MODES = /* @__PURE__ */ new Set(["000000", "100644", "100755", "120000", "160000"]);
+function parseRawHistoryZ(raw) {
+  if (raw.length > GIT_MAX_BUFFER) throw new Error(`git log --raw history exceeds ${GIT_MAX_BUFFER} bytes`);
+  const tokens = splitNul(raw, "git log --raw -z output");
+  if (tokens.length % 2 !== 0) throw new Error("git log --raw emitted a truncated metadata/path pair");
+  const paths = [];
+  for (let index = 0; index < tokens.length; index += 2) {
+    const metadata = decode(tokens[index]);
+    const match = /^:([0-9]{6}) ([0-9]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-9a-f]{40}|[0-9a-f]{64}) ([ADMT])$/i.exec(metadata);
+    if (!match) throw new Error("git log --raw emitted malformed or unsupported history metadata");
+    const [, oldMode, newMode, oldObject, newObject] = match;
+    if (oldObject.length !== newObject.length) {
+      throw new Error("git log --raw emitted mixed-length object identities");
+    }
+    if (!COMMITTED_HISTORY_MODES.has(oldMode) || !COMMITTED_HISTORY_MODES.has(newMode)) {
+      throw new Error(`git log --raw emitted unsupported mode ${oldMode} -> ${newMode}`);
+    }
+    const pathToken = tokens[index + 1];
+    if (!pathToken || pathToken.length === 0) throw new Error("git log --raw omitted a touched path");
+    const observed = decode(pathToken);
+    const parsed = parsePlanPath(observed, { observed: true });
+    if (!parsed.ok || parsed.path !== observed) {
+      throw new Error(`git log --raw emitted unsafe touched path ${JSON.stringify(observed)}`);
+    }
+    if (oldMode === "120000" || newMode === "120000") {
+      throw new Error(`HEAD history path ${JSON.stringify(parsed.path)} has intervening symbolic-link mode 120000`);
+    }
+    if (oldMode === "160000" || newMode === "160000") {
+      throw new Error(`HEAD history path ${JSON.stringify(parsed.path)} has intervening Git-link mode 160000`);
+    }
+    paths.push(parsed.path);
+    if (paths.length > MAX_ENTRIES) throw new Error(`HEAD history has more than ${MAX_ENTRIES} touched paths`);
+  }
   return paths;
 }
 function parseIndexFlagCensus(raw) {
@@ -49132,8 +49191,10 @@ async function collectWorkspaceSnapshot(input) {
       const historyRaw = await run(physical, [
         "log",
         "--format=",
-        "--name-only",
+        "--raw",
         "-z",
+        "--full-index",
+        "--no-abbrev",
         "-m",
         "--no-renames",
         "--topo-order",
@@ -49141,7 +49202,7 @@ async function collectWorkspaceSnapshot(input) {
         range,
         "--"
       ]);
-      headChanges = [.../* @__PURE__ */ new Set([...parseNameStatusZ(endpointRaw), ...parseNameOnlyZ(historyRaw)])];
+      headChanges = [.../* @__PURE__ */ new Set([...parseNameStatusZ(endpointRaw), ...parseRawHistoryZ(historyRaw)])];
       if (headChanges.length > MAX_ENTRIES) throw new Error(`HEAD evidence has more than ${MAX_ENTRIES} distinct changed paths`);
       for (const changed of headChanges) {
         assertCollectionDeadline(deadline);

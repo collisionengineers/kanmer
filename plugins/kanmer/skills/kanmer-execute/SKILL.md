@@ -113,7 +113,12 @@ touch and any descriptive symbols, the files it must not, its exact tests, comma
 output, done condition, deviation stop, and a stop condition that ends the work
 after that one step. Issuance requires at least one mapped unchecked checklist
 marker for the selected ordered step; a plan-only or unrelated checklist
-refuses normally while the whole-ticket setup packet remains available. Both
+refuses normally while the whole-ticket setup packet remains available. Only
+an exact level-three `### Step N — <title>` heading is a structured boundary:
+declared numbers start at 1 and remain contiguous, while nested or explanatory
+headings never become steps. Named checklist authority exists only when the
+checkbox label begins with `Step N`; an explanatory prose mention of `step N`
+never maps that checkbox to a step. Both
 routes use one lexical, de-duplicated group census: counted ticket documents
 plus unique group ids are capped at 256 before any group or context read, and a
 missing or conflicting resolved identity refuses. Core binds the requested
@@ -163,6 +168,9 @@ This Git evidence covers tracked, staged, unstaged and untracked paths plus both
 rename endpoints. Changed-path evidence also includes one bounded complete union
 of every path touched by every intervening commit, including paths later
 reverted; a non-ancestor baseline or exhausted history is `INCONCLUSIVE`.
+That history census validates both old and new modes from every intervening
+tree edge; any intervening `120000` symbolic-link or `160000` Git-link mode
+refuses even if a later commit restores a regular endpoint.
 A packet workspace HEAD is a full 40- or 64-character Git
 object ID. Every sample also hashes one bounded NUL
 `git ls-files -v -s -z` index census, binding flag, mode, object id, stage and

@@ -56,7 +56,13 @@ resolve time, so its `profiles:` block is not the effective set.
    When the work will be executed one bounded step at a time by a constrained
    worker, write each ordered step as its own `### Step N — <title>`
    sub-section with the template's labelled bullets, and pin the evidence
-   versions in Starting state. That is what `get_execution_packet id: <ID>,
+   versions in Starting state. Only an exact level-three
+   `### Step N — <title>` heading is a structured boundary: declared numbers
+   start at 1 and remain contiguous,
+   while nested or explanatory headings never become steps. Named checklist
+   authority exists only when the checkbox label begins with `Step N`; an
+   explanatory prose mention of `step N` never maps that checkbox to a step.
+   That is what `get_execution_packet id: <ID>,
    step: <n>` compiles into a `step-packet/2` limited to that step's files and
    carrying any declared symbols as descriptive, fail-closed authority;
    a plan without it still executes normally, it simply cannot be compiled.

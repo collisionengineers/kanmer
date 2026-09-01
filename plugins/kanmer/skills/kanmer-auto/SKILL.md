@@ -477,7 +477,12 @@ worker text or current board/Git state. A successor step is issued only after
 the exact retained predecessor reconciles PASS and is supplied whole as
 `prior_step_packet`. Initial issuance likewise requires at least one mapped
 unchecked checklist marker for the selected ordered step; a plan-only or
-unrelated checklist cannot become worker authority. Exact checklist bytes
+unrelated checklist cannot become worker authority. Only an exact level-three
+`### Step N — <title>` heading is a structured boundary: declared numbers
+start at 1 and remain contiguous, while nested or explanatory headings never
+become steps. Named checklist authority exists only when the checkbox label
+begins with `Step N`; an explanatory prose mention of `step N` never maps that
+checkbox to a step. Exact checklist bytes
 retain a leading UTF-8 BOM. Compilation and strict verification derive every
 marker state from those bytes, require a completed prefix and unfinished
 selected step, and refuse any checked successor marker. Whole-ticket and
@@ -524,7 +529,9 @@ The constrained Git census covers tracked, staged, unstaged and untracked
 paths plus both rename endpoints. Changed-path evidence also includes one bounded
 complete union of every path touched by every intervening commit, including
 paths later reverted; a non-ancestor baseline or exhausted history is
-`INCONCLUSIVE`. A packet workspace HEAD is a full 40- or
+`INCONCLUSIVE`. That history census validates both old and new modes from every
+intervening tree edge; any intervening `120000` symbolic-link or `160000`
+Git-link mode refuses even if a later commit restores a regular endpoint. A packet workspace HEAD is a full 40- or
 64-character Git object ID. Every sample also hashes one bounded NUL
 `git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
 path: assume-unchanged or skip-worktree entries refuse; nonzero stages and

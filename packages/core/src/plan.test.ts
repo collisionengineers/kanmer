@@ -151,6 +151,27 @@ describe("parsePlan", () => {
     const fenced = parsePlan("## Ordered steps\n\n```\n### Step 9 — not a step\n```\n\n### Step 1 — real\n- Change: yes\n");
     expect(fenced.steps.map((step) => step.title)).toEqual(["real"]);
   });
+
+  it("admits only exact level-three Step headings as structured boundaries", () => {
+    const parsed = parsePlan([
+      "## Ordered steps",
+      "",
+      "### Step 1 — first",
+      "- Change: first change",
+      "#### Details",
+      "- Tests: nested detail",
+      "### Notes",
+      "- Commands: explanatory note",
+      "### Step 2 — second",
+      "- Change: second change",
+      "",
+    ].join("\n"));
+
+    expect(parsed.steps.map((step) => [step.index, step.title])).toEqual([
+      [1, "first"],
+      [2, "second"],
+    ]);
+  });
 });
 
 describe("validatePlan without a selected step", () => {
@@ -257,6 +278,18 @@ describe("validatePlan with a selected step", () => {
   it("blocks an unstructured step", () => {
     const report = validatePlan(parsePlan("## Ordered steps\n1. Do it all.\n"), { step: 1 });
     expect(report.findings.some((f) => f.code === "PLAN_STEP_UNSTRUCTURED" && f.severity === "blocker")).toBe(true);
+  });
+
+  it.each([
+    ["duplicate", "### Step 1 — Record the cap in the changelog"],
+    ["gap", "### Step 3 — Record the cap in the changelog"],
+    ["non-positive", "### Step 0 — Record the cap in the changelog"],
+  ])("blocks %s declared structured-step numbering", (_label, replacement) => {
+    const plan = parsePlan(GOOD_PLAN.replace("### Step 2 — Record the cap in the changelog", replacement));
+    const report = validatePlan(plan, { step: 1 });
+    expect(report.findings.some(
+      (finding) => finding.code === "PLAN_STEP_NUMBER_MISMATCH" && finding.severity === "blocker",
+    )).toBe(true);
   });
 
   it("blocks a missing required field only on the selected step", () => {

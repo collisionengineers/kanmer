@@ -225,12 +225,47 @@ export function parseNameStatusZ(raw: Buffer): string[] {
   return paths;
 }
 
-/** `git log --format= --name-only -z --no-renames` emits only NUL paths. */
-export function parseNameOnlyZ(raw: Buffer): string[] {
-  const paths = splitNul(raw, "git log --name-only -z output")
-    .filter((token) => token.length > 0)
-    .map((token) => decode(token));
-  if (paths.length > MAX_ENTRIES) throw new Error(`HEAD history has more than ${MAX_ENTRIES} touched paths`);
+const COMMITTED_HISTORY_MODES = new Set(["000000", "100644", "100755", "120000", "160000"]);
+
+/**
+ * Parse `git log --format= --raw -z --full-index --no-abbrev -m --no-renames`.
+ *
+ * Every raw entry is one metadata/path pair. Touches are charged before the
+ * caller de-duplicates names, and unsafe link modes are refused even when a
+ * later commit restores a regular endpoint.
+ */
+export function parseRawHistoryZ(raw: Buffer): string[] {
+  if (raw.length > GIT_MAX_BUFFER) throw new Error(`git log --raw history exceeds ${GIT_MAX_BUFFER} bytes`);
+  const tokens = splitNul(raw, "git log --raw -z output");
+  if (tokens.length % 2 !== 0) throw new Error("git log --raw emitted a truncated metadata/path pair");
+  const paths: string[] = [];
+  for (let index = 0; index < tokens.length; index += 2) {
+    const metadata = decode(tokens[index]);
+    const match = /^:([0-9]{6}) ([0-9]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-9a-f]{40}|[0-9a-f]{64}) ([ADMT])$/i.exec(metadata);
+    if (!match) throw new Error("git log --raw emitted malformed or unsupported history metadata");
+    const [, oldMode, newMode, oldObject, newObject] = match;
+    if (oldObject.length !== newObject.length) {
+      throw new Error("git log --raw emitted mixed-length object identities");
+    }
+    if (!COMMITTED_HISTORY_MODES.has(oldMode) || !COMMITTED_HISTORY_MODES.has(newMode)) {
+      throw new Error(`git log --raw emitted unsupported mode ${oldMode} -> ${newMode}`);
+    }
+    const pathToken = tokens[index + 1];
+    if (!pathToken || pathToken.length === 0) throw new Error("git log --raw omitted a touched path");
+    const observed = decode(pathToken);
+    const parsed = parsePlanPath(observed, { observed: true });
+    if (!parsed.ok || parsed.path !== observed) {
+      throw new Error(`git log --raw emitted unsafe touched path ${JSON.stringify(observed)}`);
+    }
+    if (oldMode === "120000" || newMode === "120000") {
+      throw new Error(`HEAD history path ${JSON.stringify(parsed.path)} has intervening symbolic-link mode 120000`);
+    }
+    if (oldMode === "160000" || newMode === "160000") {
+      throw new Error(`HEAD history path ${JSON.stringify(parsed.path)} has intervening Git-link mode 160000`);
+    }
+    paths.push(parsed.path);
+    if (paths.length > MAX_ENTRIES) throw new Error(`HEAD history has more than ${MAX_ENTRIES} touched paths`);
+  }
   return paths;
 }
 
@@ -938,9 +973,10 @@ export async function collectWorkspaceSnapshot(input: {
       }
       const endpointRaw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", baselineHead, first.snapshot.head!, "--"]);
       const historyRaw = await run(physical, [
-        "log", "--format=", "--name-only", "-z", "-m", "--no-renames", "--topo-order", "--reverse", range, "--",
+        "log", "--format=", "--raw", "-z", "--full-index", "--no-abbrev", "-m", "--no-renames",
+        "--topo-order", "--reverse", range, "--",
       ]);
-      headChanges = [...new Set([...parseNameStatusZ(endpointRaw), ...parseNameOnlyZ(historyRaw)])];
+      headChanges = [...new Set([...parseNameStatusZ(endpointRaw), ...parseRawHistoryZ(historyRaw)])];
       if (headChanges.length > MAX_ENTRIES) throw new Error(`HEAD evidence has more than ${MAX_ENTRIES} distinct changed paths`);
       for (const changed of headChanges) {
         assertCollectionDeadline(deadline);

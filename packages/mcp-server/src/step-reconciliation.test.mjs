@@ -9,7 +9,7 @@ import {
   collectStepDocumentSnapshot,
   collectWorkspaceSnapshot,
   parseIndexFlagCensus,
-  parseNameOnlyZ,
+  parseRawHistoryZ,
   parseNameStatusZ,
   parsePorcelainV1Z,
   physicalExecutableModeAgreesWithIndex,
@@ -24,8 +24,12 @@ function indexEntry(cwd, mode, name, content) {
   const blob = execFileSync("git", ["-C", cwd, "hash-object", "-w", "--stdin"], {
     input: Buffer.from(content, "utf8"), encoding: "utf8", windowsHide: true,
   }).trim();
+  indexObjectEntry(cwd, mode, name, blob);
+}
+
+function indexObjectEntry(cwd, mode, name, objectId) {
   execFileSync("git", ["-C", cwd, "update-index", "-z", "--index-info"], {
-    input: Buffer.from(`${mode} ${blob}\t${name}\0`, "utf8"), windowsHide: true,
+    input: Buffer.from(`${mode} ${objectId}\t${name}\0`, "utf8"), windowsHide: true,
   });
 }
 
@@ -71,11 +75,19 @@ test("porcelain and name-status parsers preserve both rename endpoints and rejec
   assert.throws(() => parsePorcelainV1Z(Buffer.from([0x3f, 0x3f, 0x20, 0xff, 0])), /encoded data|encoding/i);
 });
 
-test("the complete-history name parser preserves NUL paths and bounds duplicate touches", () => {
-  assert.deepEqual(parseNameOnlyZ(Buffer.from("line\n雪.ts\0ordinary.ts\0", "utf8")), ["line\n雪.ts", "ordinary.ts"]);
-  assert.throws(() => parseNameOnlyZ(Buffer.from("unterminated", "utf8")), /terminated by NUL/);
+test("the complete-history raw parser preserves paths, validates metadata and bounds duplicate touches", () => {
+  const oid = "a".repeat(40);
+  const record = (oldMode, newMode, status, name) => `:${oldMode} ${newMode} ${oid} ${oid} ${status}\0${name}\0`;
+  assert.deepEqual(parseRawHistoryZ(Buffer.from(
+    record("100644", "100755", "M", "line\n雪.ts") + record("100644", "100644", "M", "ordinary.ts"),
+    "utf8",
+  )), ["line\n雪.ts", "ordinary.ts"]);
+  assert.throws(() => parseRawHistoryZ(Buffer.from("unterminated", "utf8")), /terminated by NUL/);
+  assert.throws(() => parseRawHistoryZ(Buffer.from(`:100644 100644 ${oid} ${oid} R100\0old\0new\0`, "utf8")), /metadata/i);
+  assert.throws(() => parseRawHistoryZ(Buffer.from(record("100644", "120000", "T", "link.txt"), "utf8")), /symbolic-link mode/i);
+  assert.throws(() => parseRawHistoryZ(Buffer.from(record("160000", "100644", "T", "module"), "utf8")), /Git-link mode/i);
   assert.throws(
-    () => parseNameOnlyZ(Buffer.from(Array.from({ length: 513 }, () => "same.ts\0").join(""), "utf8")),
+    () => parseRawHistoryZ(Buffer.from(Array.from({ length: 513 }, () => record("100644", "100644", "M", "same.ts")).join(""), "utf8")),
     /more than 512 touched paths/i,
   );
 });
@@ -876,6 +888,54 @@ test("every path touched by intervening commits remains visible after an endpoin
   });
   assert.equal(current.ok, true, current.ok ? undefined : current.reason);
   if (current.ok) assert.deepEqual(current.headChanges, ["forbidden/transient.txt"]);
+});
+
+test("an intervening symbolic-link mode remains unsafe after a regular-file endpoint restore", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const baseline = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(baseline.ok, true);
+  if (!baseline.ok) return;
+
+  indexEntry(worktree, "120000", "tracked.txt", "../external-victim");
+  git(worktree, "commit", "-m", "transient symbolic link");
+  indexEntry(worktree, "100644", "tracked.txt", "base\n");
+  git(worktree, "commit", "-m", "restore regular endpoint");
+  assert.equal(git(worktree, "status", "--porcelain=v1"), "");
+  assert.equal(git(worktree, "diff", "--name-only", baseline.snapshot.head, "HEAD"), "");
+
+  const current = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    baseline: baseline.snapshot,
+  });
+  assert.equal(current.ok, false);
+  if (!current.ok) assert.match(current.reason, /intervening.*symbolic link|symbolic-link mode|mode 120000/i);
+});
+
+test("an intervening Git-link mode remains unsafe after a regular-file endpoint restore", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const baseline = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(baseline.ok, true);
+  if (!baseline.ok) return;
+
+  indexObjectEntry(worktree, "160000", "tracked.txt", baseline.snapshot.head);
+  git(worktree, "commit", "-m", "transient Git link");
+  indexEntry(worktree, "100644", "tracked.txt", "base\n");
+  git(worktree, "commit", "-m", "restore regular endpoint");
+  assert.equal(git(worktree, "status", "--porcelain=v1"), "");
+  assert.equal(git(worktree, "diff", "--name-only", baseline.snapshot.head, "HEAD"), "");
+
+  const current = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    baseline: baseline.snapshot,
+  });
+  assert.equal(current.ok, false);
+  if (!current.ok) assert.match(current.reason, /intervening.*Git link|Git-link mode|mode 160000/i);
 });
 
 test("a live HEAD that no longer descends from the packet baseline is inconclusive", async (t) => {

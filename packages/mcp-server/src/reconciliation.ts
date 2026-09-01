@@ -32,7 +32,7 @@ export {
   collectStepDocumentSnapshot,
   collectWorkspaceSnapshot,
   parseIndexFlagCensus,
-  parseNameOnlyZ,
+  parseRawHistoryZ,
   parseNameStatusZ,
   parsePorcelainV1Z,
   physicalExecutableModeAgreesWithIndex,

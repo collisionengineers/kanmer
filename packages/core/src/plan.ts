@@ -146,6 +146,8 @@ const FIELD_BY_LABEL = new Map<string, PlanStepField>(
 export interface PlanStep {
   /** 1-based position within `## Ordered steps`. */
   index: number;
+  /** Number written in an exact structured `### Step N — title` heading. */
+  declaredIndex: number | null;
   /** Stable identity within the plan: `step-<index>`. */
   id: string;
   /** The heading (or list item) text, with any `Step N —` prefix removed. */
@@ -857,10 +859,17 @@ function parseStepFields(body: string): Partial<Record<PlanStepField, string>> {
   return fields;
 }
 
-function buildStep(index: number, title: string, structured: boolean, body: string): PlanStep {
+function buildStep(
+  index: number,
+  title: string,
+  structured: boolean,
+  body: string,
+  declaredIndex: number | null = null,
+): PlanStep {
   const fields = structured ? parseStepFields(body) : {};
   return {
     index,
+    declaredIndex,
     id: `step-${index}`,
     title,
     structured,
@@ -884,10 +893,10 @@ function buildStep(index: number, title: string, structured: boolean, body: stri
 function parseSteps(content: string | null): PlanStep[] {
   if (!content) return [];
   const lines = withoutFences(content).split("\n");
-  const headings: Array<{ line: number; title: string }> = [];
+  const headings: Array<{ line: number; title: string; declaredIndex: number }> = [];
   for (const [line, text] of lines.entries()) {
-    const match = /^(?: {0,3})#{3,6}(?:[ \t]+)(.*)$/.exec(text);
-    if (match) headings.push({ line, title: match[1].trim().replace(/[ \t]+#+[ \t]*$/, "").trim() });
+    const match = /^(?: {0,3})###[ \t]+step[ \t]+([0-9]+)[ \t]+—[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/i.exec(text);
+    if (match) headings.push({ line, declaredIndex: Number(match[1]), title: match[2].trim() });
   }
 
   if (headings.length) {
@@ -895,9 +904,10 @@ function parseSteps(content: string | null): PlanStep[] {
       const end = headings[position + 1]?.line ?? lines.length;
       return buildStep(
         position + 1,
-        stepTitle(heading.title),
+        heading.title,
         true,
         lines.slice(heading.line + 1, end).join("\n"),
+        heading.declaredIndex,
       );
     });
   }
@@ -961,6 +971,7 @@ export type PlanFindingCode =
   | "PLAN_RISK_EVIDENCE_MISSING"
   | "PLAN_STEPS_MISSING"
   | "PLAN_STEP_NOT_FOUND"
+  | "PLAN_STEP_NUMBER_MISMATCH"
   | "PLAN_STEP_UNSTRUCTURED"
   | "PLAN_STEP_FIELD_MISSING"
   | "PLAN_STEP_FILE_UNDECLARED"
@@ -1229,6 +1240,26 @@ function stepFindings(
       message: `The plan has ${plan.steps.length} ordered step(s); step ${selected} does not exist.`,
     });
     return findings;
+  }
+
+  for (const step of plan.steps) {
+    if (!step.structured) continue;
+    if (
+      Number.isSafeInteger(step.declaredIndex) &&
+      step.declaredIndex !== null &&
+      step.declaredIndex > 0 &&
+      step.declaredIndex === step.index
+    ) continue;
+    findings.push({
+      code: "PLAN_STEP_NUMBER_MISMATCH",
+      severity,
+      section: "Ordered steps",
+      step: step.index,
+      detail: String(step.declaredIndex),
+      message:
+        `Structured step at position ${step.index} declares Step ${String(step.declaredIndex)}; ` +
+        "declared step numbers must start at 1 and remain contiguous in document order.",
+    });
   }
 
   const declared = plan.expectedFiles.map((entry) => entry.path);

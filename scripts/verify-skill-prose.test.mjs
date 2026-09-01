@@ -2475,6 +2475,20 @@ test("constrained-step prose validator rejects weakened authority, path and reco
       failure: "constrained issuance requires a mapped unchecked checklist marker",
     },
     {
+      label: "named-marker-anchor",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "checkbox label begins with `Step N`; an\n   explanatory prose mention of `step N` never maps that checkbox to a step",
+      to: "checkbox prose mentions a step number anywhere",
+      failure: "constrained issuance requires a mapped unchecked checklist marker",
+    },
+    {
+      label: "structured-step-boundary",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "Only an exact level-three\n   `### Step N — <title>` heading is a structured boundary: declared numbers\n   start at 1 and remain contiguous,\n   while nested or explanatory headings never become steps",
+      to: "Every nested heading is silently renumbered as a structured step",
+      failure: "structured plan steps use exact level-three headings and contiguous declared numbers",
+    },
+    {
       label: "checklist-terminators",
       file: (fixture) => skillFile(fixture, "kanmer-execute"),
       from: "CRLF/CR/LF terminator",
@@ -2570,6 +2584,13 @@ test("constrained-step prose validator rejects weakened authority, path and reco
       file: (fixture) => skillFile(fixture, "kanmer-execute"),
       from: "bounded complete union\nof every path touched by every intervening commit",
       to: "endpoint-only union\nof paths visible in the final tree",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
+      label: "intervening-history-modes",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "history census validates both old and new modes from every intervening\ntree edge",
+      to: "history census retains names but discards every intervening mode",
       failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
     },
     {

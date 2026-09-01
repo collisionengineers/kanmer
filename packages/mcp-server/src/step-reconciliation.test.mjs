@@ -27,6 +27,17 @@ function indexEntry(cwd, mode, name, content) {
   });
 }
 
+async function materializeTrackedLink(cwd, name, target) {
+  const absolute = path.join(cwd, ...name.split("/"));
+  await fs.mkdir(path.dirname(absolute), { recursive: true });
+  if (process.platform === "win32") {
+    git(cwd, "config", "core.symlinks", "false");
+    await fs.writeFile(absolute, target);
+  }
+  else await fs.symlink(target, absolute, "file");
+  indexEntry(cwd, "120000", name, target);
+}
+
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-reconcile-"));
   t.after(() => removeTreeWithRetry(root));
@@ -338,6 +349,54 @@ test("clean in-worktree and outside-and-back tracked-link chains fail closed", a
     const result = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
     assert.equal(result.ok, false);
     assert.match(result.reason, /direct|chain|symbolic-link or junction component|lexically outside/i);
+  }
+});
+
+test("raw tracked-link components refuse an erased external hop and retain confined parent traversal", async (t) => {
+  {
+    const { root, worktree, board } = await fixture(t);
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-erased-hop-"));
+    t.after(() => removeTreeWithRetry(outside));
+    await fs.writeFile(path.join(worktree, ".gitignore"), "ignored-hop\n");
+    await fs.writeFile(path.join(worktree, "victim.txt"), "in-worktree decoy\n");
+    git(worktree, "add", ".gitignore", "victim.txt");
+    git(worktree, "commit", "-m", "add erased-hop controls");
+    try {
+      await fs.symlink(outside, path.join(worktree, "ignored-hop"), process.platform === "win32" ? "junction" : "dir");
+    } catch (error) {
+      t.skip(`filesystem cannot create the erased-hop fixture: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    await materializeTrackedLink(worktree, "tracked-erased-hop.txt", "ignored-hop/../victim.txt");
+    git(worktree, "commit", "-m", "add raw erased-hop link");
+    assert.equal(git(worktree, "status", "--porcelain=v1", "--untracked-files=all"), "");
+    const result = await collectWorkspaceSnapshot({
+      repoRoot: root,
+      boardRoot: board,
+      worktree: ".worktrees/ticket",
+      branch: "ticket-step",
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /raw target.*symbolic-link or junction|symbolic-link or junction component before normalization/i);
+  }
+
+  {
+    const { root, worktree, board } = await fixture(t);
+    await fs.mkdir(path.join(worktree, "normal"));
+    await fs.writeFile(path.join(worktree, "victim.txt"), "victim\n");
+    git(worktree, "add", "victim.txt");
+    git(worktree, "commit", "-m", "add parent-traversal controls");
+    await materializeTrackedLink(worktree, "normal-parent-link.txt", "normal/../victim.txt");
+    await materializeTrackedLink(worktree, "links/confined-parent-link.txt", "../tracked.txt");
+    git(worktree, "commit", "-m", "add confined parent links");
+    assert.equal(git(worktree, "status", "--porcelain=v1", "--untracked-files=all"), "");
+    const result = await collectWorkspaceSnapshot({
+      repoRoot: root,
+      boardRoot: board,
+      worktree: ".worktrees/ticket",
+      branch: "ticket-step",
+    });
+    assert.equal(result.ok, true, result.ok ? undefined : result.reason);
   }
 });
 
@@ -787,7 +846,29 @@ test("timeout and content-budget overflow are inconclusive", async (t) => {
     run: async () => new Promise((resolve) => setTimeout(() => resolve(Buffer.alloc(0)), 50)),
   });
   assert.equal(aggregate.ok, false);
-  assert.match(aggregate.reason, /aggregate Git collection deadline exhausted/i);
+  assert.match(aggregate.reason, /aggregate workspace collection deadline exhausted/i);
+});
+
+test("the aggregate deadline is enforced inside the non-Git regular-file census", async (t) => {
+  const { root, board } = await fixture(t);
+  let now = 0;
+  let visited = null;
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    testHooks: {
+      now: () => now,
+      beforeRegularCensusEntry: (trackedPath) => {
+        visited = trackedPath;
+        now = 30_001;
+      },
+    },
+  });
+  assert.equal(visited, "tracked.txt");
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /aggregate workspace collection deadline exhausted/i);
 });
 
 test("missing, branch-mismatched and malformed output are inconclusive", async (t) => {

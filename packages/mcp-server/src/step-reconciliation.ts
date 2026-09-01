@@ -37,6 +37,68 @@ function literalPathspec(value: string): string {
 
 export type StepGitRun = (cwd: string, args: readonly string[]) => Promise<Buffer>;
 
+const COLLECTION_DEADLINE_REASON = "aggregate workspace collection deadline exhausted";
+
+interface CollectionDeadline {
+  expiresAt: number;
+  now: () => number;
+}
+
+function collectionDeadlineError(): Error {
+  return new Error(COLLECTION_DEADLINE_REASON);
+}
+
+function remainingCollectionTime(deadline: CollectionDeadline): number {
+  return deadline.expiresAt - deadline.now();
+}
+
+function assertCollectionDeadline(deadline?: CollectionDeadline): void {
+  if (deadline && remainingCollectionTime(deadline) <= 0) throw collectionDeadlineError();
+}
+
+/**
+ * Bound one resource-free filesystem observation to the shared collection
+ * deadline. Late completion is ignored but still observed by the attached
+ * handlers, so it cannot become an unhandled rejection.
+ */
+function deadlineObservation<T>(deadline: CollectionDeadline | undefined, operation: () => Promise<T>): Promise<T> {
+  if (!deadline) return operation();
+  const remaining = remainingCollectionTime(deadline);
+  if (remaining <= 0) return Promise.reject(collectionDeadlineError());
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(collectionDeadlineError());
+    }, remaining);
+    let observed: Promise<T>;
+    try {
+      observed = operation();
+    } catch (error) {
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+      return;
+    }
+    observed.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (remainingCollectionTime(deadline) <= 0) reject(collectionDeadlineError());
+        else resolve(value);
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(remainingCollectionTime(deadline) <= 0 ? collectionDeadlineError() : error);
+      },
+    );
+  });
+}
+
 const defaultRun = (cwd: string, args: readonly string[], timeout: number): Promise<Buffer> => new Promise((resolve, reject) => {
   execFile(
     "git",
@@ -46,42 +108,12 @@ const defaultRun = (cwd: string, args: readonly string[], timeout: number): Prom
   );
 });
 
-function deadlineRun(source: StepGitRun | undefined, deadline: number): StepGitRun {
+function deadlineRun(source: StepGitRun | undefined, deadline: CollectionDeadline): StepGitRun {
   return async (cwd, args) => {
-    const remaining = deadline - Date.now();
-    if (remaining <= 0) throw new Error("aggregate Git collection deadline exhausted");
+    const remaining = remainingCollectionTime(deadline);
+    if (remaining <= 0) throw collectionDeadlineError();
     const timeout = Math.max(1, Math.min(GIT_TIMEOUT_MS, remaining));
-    return new Promise<Buffer>((resolve, reject) => {
-      let settled = false;
-      const timer = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        reject(new Error("aggregate Git collection deadline exhausted"));
-      }, remaining);
-      let operation: Promise<Buffer>;
-      try {
-        operation = source ? source(cwd, args) : defaultRun(cwd, args, timeout);
-      } catch (error) {
-        settled = true;
-        clearTimeout(timer);
-        reject(error);
-        return;
-      }
-      operation.then(
-        (output) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          resolve(output);
-        },
-        (error) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          reject(Date.now() >= deadline ? new Error("aggregate Git collection deadline exhausted") : error);
-        },
-      );
-    });
+    return deadlineObservation(deadline, () => source ? source(cwd, args) : defaultRun(cwd, args, timeout));
   };
 }
 
@@ -112,11 +144,12 @@ export function isProtectedBoardExecutionWorktree(sourceRoot: string, boardRoot:
   return worktree === board || (board !== source && inside(board, worktree));
 }
 
-async function assertPhysicalContainment(root: string, absolute: string): Promise<void> {
+async function assertPhysicalContainment(root: string, absolute: string, deadline?: CollectionDeadline): Promise<void> {
   let cursor = absolute;
   for (;;) {
+    assertCollectionDeadline(deadline);
     try {
-      const resolved = await realpath(cursor);
+      const resolved = await deadlineObservation(deadline, () => realpath(cursor));
       const same = canonicalPath(resolved) === canonicalPath(root);
       if (!same && !inside(root, resolved)) throw new Error(`observed path resolves outside the physical worktree`);
       return;
@@ -307,11 +340,12 @@ export async function readBoundedWorkspaceFile(
     maxFileBytes: MAX_FILE_BYTES,
     maxTotalBytes: MAX_TOTAL_FILE_BYTES,
   },
+  deadline?: CollectionDeadline,
 ): Promise<{ bytes: Buffer; mode: string } | null> {
-  await assertPhysicalContainment(root, absolute);
+  await assertPhysicalContainment(root, absolute, deadline);
   let initialStat: BigIntStats;
   try {
-    initialStat = await lstat(absolute, { bigint: true });
+    initialStat = await deadlineObservation(deadline, () => lstat(absolute, { bigint: true }));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
@@ -324,39 +358,50 @@ export async function readBoundedWorkspaceFile(
   const allowed = Math.min(limits.maxFileBytes, remainingTotal);
   if (allowed < 0 || initial.size > BigInt(allowed)) throw new Error("observed content exceeds the bounded snapshot budget");
 
+  assertCollectionDeadline(deadline);
   await hooks.beforeOpen?.();
+  assertCollectionDeadline(deadline);
   const noFollow = typeof fsConstants.O_NOFOLLOW === "number" ? fsConstants.O_NOFOLLOW : 0;
   let handle: Awaited<ReturnType<typeof open>> | null = null;
   try {
     handle = await open(absolute, fsConstants.O_RDONLY | noFollow);
+    assertCollectionDeadline(deadline);
     const handleBefore = stableFileFacts(await handle.stat({ bigint: true }));
+    assertCollectionDeadline(deadline);
     if (!sameFileFacts(initial, handleBefore)) throw new Error("observed workspace path changed identity before its bounded read");
     await hooks.afterHandleValidated?.();
+    assertCollectionDeadline(deadline);
 
     const expected = Number(initial.size);
     const bytes = Buffer.alloc(expected + 1);
     const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
+    assertCollectionDeadline(deadline);
     if (bytesRead < expected) throw new Error("observed workspace file produced a short bounded read");
     if (bytesRead > expected) throw new Error("observed workspace file grew during its bounded read");
     await hooks.afterRead?.();
+    assertCollectionDeadline(deadline);
 
     const handleAfter = stableFileFacts(await handle.stat({ bigint: true }));
+    assertCollectionDeadline(deadline);
     let pathAfterStat: BigIntStats;
     try {
-      pathAfterStat = await lstat(absolute, { bigint: true });
+      pathAfterStat = await deadlineObservation(deadline, () => lstat(absolute, { bigint: true }));
     } catch (error) {
+      if (error instanceof Error && error.message === COLLECTION_DEADLINE_REASON) throw error;
       throw new Error(`observed workspace path disappeared after its bounded read: ${error instanceof Error ? error.message : String(error)}`);
     }
     const pathAfter = stableFileFacts(pathAfterStat);
     if (!sameFileFacts(initial, handleAfter) || !sameFileFacts(initial, pathAfter)) {
       throw new Error("observed workspace path changed identity, type, mode, links or size during its bounded read");
     }
-    await assertPhysicalContainment(root, absolute);
+    await assertPhysicalContainment(root, absolute, deadline);
     budget.total += expected;
+    assertCollectionDeadline(deadline);
     return { bytes: bytes.subarray(0, expected), mode: String(initial.mode) };
   } finally {
     if (handle) await handle.close();
     await hooks.afterClose?.();
+    assertCollectionDeadline(deadline);
   }
 }
 
@@ -380,6 +425,7 @@ async function confinedPathProof(
   root: string,
   absolute: string,
   terminal: "regular" | "link" | "regular-or-missing",
+  deadline?: CollectionDeadline,
 ): Promise<ConfinedPathProof> {
   if (!inside(root, absolute)) throw new Error("observed path is lexically outside the physical worktree");
   const relative = path.relative(root, absolute);
@@ -387,11 +433,12 @@ async function confinedPathProof(
   const identities: string[] = [];
   let cursor = root;
   for (let index = 0; index < components.length; index += 1) {
+    assertCollectionDeadline(deadline);
     cursor = path.join(cursor, components[index]!);
     const final = index === components.length - 1;
     let stat: BigIntStats;
     try {
-      stat = await lstat(cursor, { bigint: true });
+      stat = await deadlineObservation(deadline, () => lstat(cursor, { bigint: true }));
     } catch (error) {
       if (terminal === "regular-or-missing" && (error as NodeJS.ErrnoException).code === "ENOENT") {
         identities.push(`${components.slice(index).join("/")}:missing`);
@@ -421,38 +468,171 @@ async function confinedPathProof(
   throw new Error("observed path does not name a worktree descendant");
 }
 
+interface TrackedLinkTargetProof {
+  absolute: string;
+  proof: ConfinedPathProof;
+}
+
+function sameOrInside(root: string, candidate: string): boolean {
+  return canonicalPath(root) === canonicalPath(candidate) || inside(root, candidate);
+}
+
+function rawTargetSegments(value: string): string[] {
+  return value.split(process.platform === "win32" ? /[\\/]+/u : /\/+/u).filter((segment) => segment.length > 0);
+}
+
+function pathSpellingEqual(left: string, right: string): boolean {
+  return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
+}
+
+/**
+ * Follow raw tracked-link target components in kernel order. In particular,
+ * never collapse `hop/..` before proving that `hop` is a real directory: on
+ * POSIX the kernel follows a symlink at `hop` before it applies the parent
+ * component.
+ */
+async function trackedLinkTargetProof(
+  root: string,
+  linkAbsolute: string,
+  targetText: string,
+  deadline?: CollectionDeadline,
+): Promise<TrackedLinkTargetProof> {
+  if (!targetText || targetText.includes("\0")) throw new Error("tracked symbolic link has an empty or NUL target");
+  const targetParsed = path.parse(targetText);
+  let cursor: string;
+  let components: string[];
+  if (path.isAbsolute(targetText)) {
+    const rootParsed = path.parse(root);
+    if (!pathSpellingEqual(targetParsed.root, rootParsed.root)) {
+      throw new Error("tracked symbolic link target resolves outside the physical worktree");
+    }
+    const rootSegments = rawTargetSegments(root.slice(rootParsed.root.length));
+    const targetSegments = rawTargetSegments(targetText.slice(targetParsed.root.length));
+    if (targetSegments.length < rootSegments.length || rootSegments.some((segment, index) =>
+      !pathSpellingEqual(segment, targetSegments[index]!))) {
+      throw new Error("tracked symbolic link absolute target is outside the physical worktree because it does not directly share its prefix");
+    }
+    cursor = root;
+    components = targetSegments.slice(rootSegments.length);
+  } else {
+    if (targetParsed.root) throw new Error("tracked symbolic link has an unsupported drive-relative target");
+    cursor = path.dirname(linkAbsolute);
+    if (!sameOrInside(root, cursor)) throw new Error("tracked symbolic link parent is outside the physical worktree");
+    components = rawTargetSegments(targetText);
+  }
+  if (components.length === 0) throw new Error("tracked symbolic link target does not name a file");
+
+  const identities: string[] = [`base:${canonicalPath(cursor)}`];
+  let finalFacts: StableFileFacts | null = null;
+  for (let index = 0; index < components.length; index += 1) {
+    assertCollectionDeadline(deadline);
+    const component = components[index]!;
+    const final = index === components.length - 1;
+    if (component === ".") {
+      identities.push(".:same");
+      continue;
+    }
+    if (component === "..") {
+      const parent = path.dirname(cursor);
+      if (!sameOrInside(root, parent)) {
+        throw new Error("tracked symbolic link parent traversal is outside the physical worktree");
+      }
+      cursor = parent;
+      identities.push(`..:${canonicalPath(cursor)}`);
+      continue;
+    }
+
+    const candidate = path.join(cursor, component);
+    if (!sameOrInside(root, candidate)) throw new Error("tracked symbolic link target leaves the physical worktree");
+    const facts = stableFileFacts(await deadlineObservation(deadline, () => lstat(candidate, { bigint: true })));
+    if (!final) {
+      if (facts.symbolicLink || !facts.directory) {
+        throw new Error(
+          "tracked symbolic link raw target contains a symbolic-link or junction component before normalization",
+        );
+      }
+      identities.push(`${component}:${facts.dev}:${facts.ino}:${facts.mode}:${facts.directory}:${facts.symbolicLink}`);
+      cursor = candidate;
+      continue;
+    }
+    if (facts.symbolicLink || !facts.regular) throw new Error("tracked symbolic link final target is not a direct regular file");
+    if (facts.nlink !== 1n) throw new Error("tracked symbolic link final target is hard-linked outside its single workspace identity");
+    identities.push(`${component}:${stableFactsIdentity(facts)}`);
+    cursor = candidate;
+    finalFacts = facts;
+  }
+
+  if (!finalFacts) {
+    const facts = stableFileFacts(await deadlineObservation(deadline, () => lstat(cursor, { bigint: true })));
+    if (facts.symbolicLink || !facts.regular) throw new Error("tracked symbolic link final target is not a direct regular file");
+    if (facts.nlink !== 1n) throw new Error("tracked symbolic link final target is hard-linked outside its single workspace identity");
+    identities.push(`terminal:${stableFactsIdentity(facts)}`);
+    finalFacts = facts;
+  }
+  return {
+    absolute: cursor,
+    proof: { digest: digest(identities), final: finalFacts, missing: false },
+  };
+}
+
 async function trackedLinkIdentity(
   root: string,
   entry: IndexCensusEntry,
   budget: { total: number },
+  deadline?: CollectionDeadline,
 ): Promise<string> {
   const absolute = path.resolve(root, ...entry.path.split("/"));
   if (!inside(root, absolute)) throw new Error(`tracked symbolic link ${entry.path} escapes the worktree`);
+  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
+  const decodeTarget = (bytes: Buffer): string => {
+    if (bytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
+      throw new Error(`tracked symbolic link ${entry.path} target exceeds ${MAX_TRACKED_LINK_TEXT_BYTES} bytes`);
+    }
+    try {
+      return decode(bytes);
+    } catch (error) {
+      throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
   let initialProof: ConfinedPathProof;
   try {
-    initialProof = await confinedPathProof(root, absolute, "link");
+    initialProof = await confinedPathProof(root, absolute, "link", deadline);
   } catch (error) {
+    if (error instanceof Error && error.message === COLLECTION_DEADLINE_REASON) throw error;
     let placeholderProof: ConfinedPathProof;
     try {
-      placeholderProof = await confinedPathProof(root, absolute, "regular");
-    } catch {
+      placeholderProof = await confinedPathProof(root, absolute, "regular", deadline);
+    } catch (placeholderError) {
+      if (placeholderError instanceof Error && placeholderError.message === COLLECTION_DEADLINE_REASON) throw placeholderError;
       throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error instanceof Error ? error.message : String(error)}`);
     }
-    const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
-    const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits);
+    const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits, deadline);
     if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
-    const afterProof = await confinedPathProof(root, absolute, "regular");
-    if (placeholderProof.digest !== afterProof.digest) {
+    const targetText = decodeTarget(placeholder.bytes);
+    const targetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+    const resolved = await deadlineObservation(deadline, () => realpath(targetState.absolute));
+    if (canonicalPath(resolved) !== canonicalPath(targetState.absolute)) {
+      throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
+    }
+    const target = await readBoundedWorkspaceFile(root, targetState.absolute, budget, {}, limits, deadline);
+    if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
+    const afterTargetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+    const afterResolved = await deadlineObservation(deadline, () => realpath(afterTargetState.absolute));
+    const afterProof = await confinedPathProof(root, absolute, "regular", deadline);
+    if (placeholderProof.digest !== afterProof.digest || targetState.proof.digest !== afterTargetState.proof.digest ||
+        canonicalPath(targetState.absolute) !== canonicalPath(afterTargetState.absolute) ||
+        canonicalPath(resolved) !== canonicalPath(afterResolved)) {
       throw new Error(`tracked symbolic link ${entry.path} changed checkout representation during bounded inspection`);
     }
     return digest([
       entry.tag, entry.mode, entry.objectId, String(entry.stage), entry.path,
       "regular-placeholder", placeholderProof.digest, placeholder.mode, placeholder.bytes,
+      targetState.proof.digest, canonicalPath(resolved), target.mode, target.bytes,
     ]);
   }
-  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
 
-  const targetBytes = await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer;
+  const targetBytes = await deadlineObservation(deadline, async () =>
+    await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer);
   if (targetBytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
     throw new Error(`tracked symbolic link ${entry.path} target exceeds ${MAX_TRACKED_LINK_TEXT_BYTES} bytes`);
   }
@@ -460,46 +640,33 @@ async function trackedLinkIdentity(
     throw new Error(`tracked symbolic-link targets exceed ${MAX_TRACKED_LINK_TARGET_BYTES} aggregate bytes`);
   }
   budget.total += targetBytes.length;
-  let targetText: string;
-  try {
-    targetText = decode(targetBytes);
-  } catch (error) {
-    throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  const targetAbsolute = path.resolve(path.dirname(absolute), targetText);
-  if (!inside(root, targetAbsolute)) {
-    throw new Error(`tracked symbolic link ${entry.path} target resolves lexically outside the physical worktree`);
-  }
-  const targetProof = await confinedPathProof(root, targetAbsolute, "regular");
-  const resolved = await realpath(targetAbsolute);
-  if (canonicalPath(resolved) !== canonicalPath(targetAbsolute)) {
+  const targetText = decodeTarget(targetBytes);
+  const targetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+  const resolved = await deadlineObservation(deadline, () => realpath(targetState.absolute));
+  if (canonicalPath(resolved) !== canonicalPath(targetState.absolute)) {
     throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
   }
-  const target = await readBoundedWorkspaceFile(root, targetAbsolute, budget, {}, limits);
+  const target = await readBoundedWorkspaceFile(root, targetState.absolute, budget, {}, limits, deadline);
   if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
 
-  const afterProof = await confinedPathProof(root, absolute, "link");
-  const afterTargetBytes = await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer;
-  let afterTargetText: string;
-  try {
-    afterTargetText = decode(afterTargetBytes);
-  } catch (error) {
-    throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  const afterTargetAbsolute = path.resolve(path.dirname(absolute), afterTargetText);
-  const afterTargetProof = await confinedPathProof(root, afterTargetAbsolute, "regular");
-  const afterResolved = await realpath(afterTargetAbsolute);
+  const afterProof = await confinedPathProof(root, absolute, "link", deadline);
+  const afterTargetBytes = await deadlineObservation(deadline, async () =>
+    await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer);
+  const afterTargetText = decodeTarget(afterTargetBytes);
+  const afterTargetState = await trackedLinkTargetProof(root, absolute, afterTargetText, deadline);
+  const afterResolved = await deadlineObservation(deadline, () => realpath(afterTargetState.absolute));
   if (initialProof.digest !== afterProof.digest || !targetBytes.equals(afterTargetBytes) ||
-      canonicalPath(targetAbsolute) !== canonicalPath(afterTargetAbsolute) || targetProof.digest !== afterTargetProof.digest ||
+      canonicalPath(targetState.absolute) !== canonicalPath(afterTargetState.absolute) ||
+      targetState.proof.digest !== afterTargetState.proof.digest ||
       canonicalPath(resolved) !== canonicalPath(afterResolved)) {
     throw new Error(`tracked symbolic link ${entry.path} changed identity or target during bounded inspection`);
   }
-  if (canonicalPath(afterResolved) !== canonicalPath(afterTargetAbsolute)) {
+  if (canonicalPath(afterResolved) !== canonicalPath(afterTargetState.absolute)) {
     throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
   }
   return digest([
     entry.tag, entry.mode, entry.objectId, String(entry.stage), entry.path,
-    "symbolic-link", initialProof.digest, targetBytes, targetProof.digest, canonicalPath(resolved), target.mode, target.bytes,
+    "symbolic-link", initialProof.digest, targetBytes, targetState.proof.digest, canonicalPath(resolved), target.mode, target.bytes,
   ]);
 }
 
@@ -507,6 +674,8 @@ async function trackedRegularMetadataCensus(
   root: string,
   entries: readonly IndexCensusEntry[],
   status: readonly StatusPath[],
+  deadline: CollectionDeadline,
+  beforeEntry?: (path: string) => void | Promise<void>,
 ): Promise<{ count: number; digest: string }> {
   const regular = entries.filter((entry) => entry.mode === "100644" || entry.mode === "100755");
   const identities: string[] = [];
@@ -515,8 +684,12 @@ async function trackedRegularMetadataCensus(
     (observed.role === "rename-source" && observed.worktree === "R")
   ).map((observed) => observed.path));
   for (const entry of regular) {
+    assertCollectionDeadline(deadline);
+    await beforeEntry?.(entry.path);
+    assertCollectionDeadline(deadline);
     const absolute = path.resolve(root, ...entry.path.split("/"));
-    const proof = await confinedPathProof(root, absolute, "regular-or-missing");
+    const proof = await confinedPathProof(root, absolute, "regular-or-missing", deadline);
+    assertCollectionDeadline(deadline);
     const porcelainDeletion = porcelainRemovals.has(entry.path);
     if (proof.missing && !porcelainDeletion) {
       throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is missing without a matching porcelain worktree deletion`);
@@ -534,12 +707,14 @@ async function fileIdentity(
   observed: StatusPath,
   run: StepGitRun,
   budget: { total: number },
+  deadline: CollectionDeadline,
 ): Promise<string> {
+  assertCollectionDeadline(deadline);
   const parsed = parsePlanPath(observed.path, { observed: true });
   if (!parsed.ok) throw new Error(`unsafe observed path ${JSON.stringify(observed.path)}: ${parsed.reason}`);
   const absolute = path.resolve(root, ...parsed.path.split("/"));
   if (!inside(root, absolute)) throw new Error(`observed path ${parsed.path} escapes the worktree`);
-  await assertPhysicalContainment(root, absolute);
+  await assertPhysicalContainment(root, absolute, deadline);
   const indexStageBytes = await run(root, ["ls-files", "--stage", "-z", "--", literalPathspec(parsed.path)]);
   const indexStage = decode(indexStageBytes);
   for (const entry of indexStage.split("\0").filter(Boolean)) {
@@ -547,7 +722,7 @@ async function fileIdentity(
     if (mode === "120000") throw new Error(`observed path ${parsed.path} is an indexed symbolic link`);
     if (mode === "160000") throw new Error(`observed path ${parsed.path} is an unsupported Git link`);
   }
-  const worktree = await readBoundedWorkspaceFile(root, absolute, budget);
+  const worktree = await readBoundedWorkspaceFile(root, absolute, budget, {}, undefined, deadline);
   const mode = worktree?.mode ?? "missing";
   const worktreeBytes = worktree?.bytes ?? Buffer.alloc(0);
   let indexBytes: Buffer = Buffer.alloc(0);
@@ -556,6 +731,7 @@ async function fileIdentity(
     if (indexBytes.length > MAX_FILE_BYTES || budget.total + indexBytes.length > MAX_TOTAL_FILE_BYTES) throw new Error("index content exceeds the bounded snapshot budget");
     budget.total += indexBytes.length;
   }
+  assertCollectionDeadline(deadline);
   return digest([observed.index, observed.worktree, observed.role, mode, indexStageBytes, indexBytes, worktreeBytes]);
 }
 
@@ -565,13 +741,21 @@ interface WorkspaceCapture {
   regularFiles: { count: number; digest: string };
 }
 
-async function captureOnce(root: string, worktree: string, run: StepGitRun): Promise<WorkspaceCapture> {
+async function captureOnce(
+  root: string,
+  worktree: string,
+  run: StepGitRun,
+  deadline: CollectionDeadline,
+  beforeRegularCensusEntry?: (path: string) => void | Promise<void>,
+): Promise<WorkspaceCapture> {
+  assertCollectionDeadline(deadline);
   const [branchRaw, headRaw, statusRaw, indexFlagsRaw] = await Promise.all([
     run(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]),
     run(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
     run(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"]),
     run(root, ["ls-files", "-v", "-s", "-z", "--full-name", "--"]),
   ]);
+  assertCollectionDeadline(deadline);
   const branch = decode(branchRaw).trim();
   const head = decode(headRaw).trim();
   if (!branch) throw new Error("workspace HEAD is detached");
@@ -584,30 +768,33 @@ async function captureOnce(root: string, worktree: string, run: StepGitRun): Pro
   const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
   if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
   const status = parsePorcelainV1Z(statusRaw);
-  const regularFiles = await trackedRegularMetadataCensus(root, indexFlags.entries, status);
+  const regularFiles = await trackedRegularMetadataCensus(root, indexFlags.entries, status, deadline, beforeRegularCensusEntry);
   const budget = { total: 0 };
   const entries: StepWorkspaceEntry[] = [];
   for (const observed of status) {
+    assertCollectionDeadline(deadline);
     const parsed = parsePlanPath(observed.path, { observed: true });
     if (!parsed.ok) throw new Error(`unsafe observed path: ${parsed.reason}`);
     entries.push({
       path: parsed.path,
       index: observed.index,
       worktree: observed.worktree,
-      content: await fileIdentity(root, observed, run, budget),
+      content: await fileIdentity(root, observed, run, budget, deadline),
     });
   }
   const linkBudget = { total: 0 };
   for (const link of indexFlags.entries.filter((entry) => entry.mode === "120000")) {
+    assertCollectionDeadline(deadline);
     entries.push({
       path: link.path,
       index: ".",
       worktree: ".",
-      content: await trackedLinkIdentity(root, link, linkBudget),
+      content: await trackedLinkIdentity(root, link, linkBudget, deadline),
     });
   }
   if (entries.length > MAX_ENTRIES) throw new Error(`workspace has more than ${MAX_ENTRIES} retained dirty/link paths`);
   entries.sort((left, right) => lexicalCompare(left.path, right.path) || lexicalCompare(left.index, right.index) || lexicalCompare(left.worktree, right.worktree));
+  assertCollectionDeadline(deadline);
   return {
     snapshot: { branch, worktree, head: head.toLowerCase(), entries },
     indexFlags,
@@ -635,13 +822,21 @@ export async function collectWorkspaceSnapshot(input: {
   maxDurationMs?: number;
   /** Test-only deterministic seam for proving index-flag drift between samples. */
   betweenSamples?: () => void | Promise<void>;
+  /** Test-only deterministic seams for proving non-Git census deadlines. */
+  testHooks?: {
+    now?: () => number;
+    beforeRegularCensusEntry?: (path: string) => void | Promise<void>;
+  };
 }): Promise<WorkspaceSnapshotResult> {
   try {
     if (input.maxDurationMs !== undefined && (!Number.isFinite(input.maxDurationMs) || input.maxDurationMs <= 0)) {
       throw new Error("workspace collection duration must be a finite positive number");
     }
     const duration = Math.min(WORKSPACE_COLLECTION_TIMEOUT_MS, input.maxDurationMs ?? WORKSPACE_COLLECTION_TIMEOUT_MS);
-    const deadline = Date.now() + duration;
+    const now = input.testHooks?.now ?? Date.now;
+    const startedAt = now();
+    if (!Number.isFinite(startedAt)) throw new Error("workspace collection clock must be finite");
+    const deadline: CollectionDeadline = { expiresAt: startedAt + duration, now };
     const run = deadlineRun(input.run, deadline);
     const declared = parsePlanPath(input.worktree);
     if (!declared.ok || declared.path !== input.worktree) {
@@ -650,27 +845,30 @@ export async function collectWorkspaceSnapshot(input: {
     const candidate = path.resolve(input.repoRoot, ...declared.path.split("/"));
     if (!inside(input.repoRoot, candidate)) throw new Error("recorded worktree escapes the source repository");
     const [physical, physicalSource, physicalBoard, candidateTopRaw, candidateCommonRaw, sourceCommonRaw] = await Promise.all([
-      realpath(candidate),
-      realpath(input.repoRoot),
-      realpath(input.boardRoot),
+      deadlineObservation(deadline, () => realpath(candidate)),
+      deadlineObservation(deadline, () => realpath(input.repoRoot)),
+      deadlineObservation(deadline, () => realpath(input.boardRoot)),
       run(candidate, ["rev-parse", "--show-toplevel"]),
       run(candidate, ["rev-parse", "--git-common-dir"]),
       run(input.repoRoot, ["rev-parse", "--git-common-dir"]),
     ]);
+    assertCollectionDeadline(deadline);
     if (!inside(physicalSource, physical)) throw new Error("recorded worktree resolves outside the physical source repository");
-    const candidateTop = await realpath(path.resolve(candidate, decode(candidateTopRaw).trim()));
+    const candidateTop = await deadlineObservation(deadline, () => realpath(path.resolve(candidate, decode(candidateTopRaw).trim())));
     if (isProtectedBoardExecutionWorktree(physicalSource, physicalBoard, physical)) {
       throw new Error("recorded workspace is the protected board worktree or one of its children");
     }
     if (canonicalPath(candidateTop) !== canonicalPath(physical)) {
       throw new Error("recorded worktree points inside a Git worktree instead of at its exact root");
     }
-    const candidateCommon = await realpath(path.resolve(candidate, decode(candidateCommonRaw).trim()));
-    const sourceCommon = await realpath(path.resolve(input.repoRoot, decode(sourceCommonRaw).trim()));
+    const candidateCommon = await deadlineObservation(deadline, () => realpath(path.resolve(candidate, decode(candidateCommonRaw).trim())));
+    const sourceCommon = await deadlineObservation(deadline, () => realpath(path.resolve(input.repoRoot, decode(sourceCommonRaw).trim())));
     if (canonicalPath(candidateCommon) !== canonicalPath(sourceCommon)) throw new Error("recorded workspace belongs to a foreign repository");
-    const first = await captureOnce(physical, input.worktree, run);
+    const first = await captureOnce(physical, input.worktree, run, deadline, input.testHooks?.beforeRegularCensusEntry);
+    assertCollectionDeadline(deadline);
     await input.betweenSamples?.();
-    const second = await captureOnce(physical, input.worktree, run);
+    assertCollectionDeadline(deadline);
+    const second = await captureOnce(physical, input.worktree, run, deadline, input.testHooks?.beforeRegularCensusEntry);
     if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("workspace changed during the bounded double-sample");
     if (first.indexFlags.assumeUnchanged.length) {
       throw new Error(`tracked path ${JSON.stringify(first.indexFlags.assumeUnchanged[0])} has assume-unchanged index authority`);
@@ -684,12 +882,13 @@ export async function collectWorkspaceSnapshot(input: {
       const raw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", input.baseline.head!, first.snapshot.head!, "--"]);
       headChanges = parseNameStatusZ(raw);
       for (const changed of headChanges) {
+        assertCollectionDeadline(deadline);
         const parsed = parsePlanPath(changed, { observed: true });
         if (!parsed.ok) throw new Error(`unsafe HEAD-diff path: ${parsed.reason}`);
         const absolute = path.resolve(physical, ...parsed.path.split("/"));
-        await assertPhysicalContainment(physical, absolute);
+        await assertPhysicalContainment(physical, absolute, deadline);
         try {
-          const stat = await lstat(absolute);
+          const stat = await deadlineObservation(deadline, () => lstat(absolute));
           if (stat.isSymbolicLink()) throw new Error(`HEAD-diff path ${parsed.path} is a symbolic link`);
           if (stat.isFile() && stat.nlink > 1) throw new Error(`HEAD-diff path ${parsed.path} is hard-linked outside its single workspace identity`);
         } catch (error) {
@@ -702,7 +901,7 @@ export async function collectWorkspaceSnapshot(input: {
         }
       }
     }
-    if (Date.now() >= deadline) throw new Error("aggregate Git collection deadline exhausted");
+    assertCollectionDeadline(deadline);
     return { ok: true, snapshot: first.snapshot, headChanges };
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };

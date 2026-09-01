@@ -49,3 +49,18 @@ Checks that were previously advisory — an unreviewed merge, a stale review, an
 A cluster of intermittent Windows test failures — teardown races on locked files, timeouts sized for a quiet machine rather than a loaded one, and a lock held far shorter than the work it protected — is fixed at the root cause rather than retried around. `npm run verify` on Windows no longer needs a retained failing attempt explained away.
 
 **Upgrading from 0.3.x:** boards written by this release stay fully readable by a v0.3.12 server; `project.json` and every lease field are additive and ignored by older code, so there is no board migration prompt to expect. After updating, re-run `kanmer-setup` to refresh AGENTS.md and your installed skills.
+
+## Prepare attempt 1 — 2026-09-01T20:25Z — refused (dirty tree)
+
+`npm run release -- 0.4.0 --ticket CORE-136` in the fresh clone refused: "the working tree is not clean" — the controller's own `release-prepare.log`/`.pid` files were untracked inside the clone. Removed; log relocated to `C:\Users\Alex\Documents\KanmerBackups\release-prepare-0.4.0.log`.
+
+## Prepare attempt 2 — 2026-09-01T20:26Z–20:38Z — FAILED at step 6 (GUI build)
+
+Clone `C:\Users\Alex\Documents\GitHub\kanmer-release-0.4.0`, `main` a744fd76 + local notes commit 0e37dd3e. Verify rail: all steps exit 0 (core 826, GUI 524, server 236/1 skip, scripts 161, docs, smokes, mcpb, protocol, discovery, skills, agents-block, plugin:check 41 tools). Bump to 0.4.0 on `release/v0.4.0`, `npm install --package-lock-only`, `npm run build`, `build-plugin`, `build-mcpb` (kanmer-0.4.0.mcpb, 41 tools), `plugin:check` OK at v0.4.0. Then `npm run build -w @kanmer/gui` exit 1:
+
+```
+error during build:
+../../packages/core/dist/index.js (675:9): "createHash" is not exported by "__vite-browser-external", imported by "../../packages/core/dist/index.js".
+```
+
+No branch pushed, no PR, no tag. Clone reset: `git checkout -- . && git switch main && git branch -D release/v0.4.0` (notes commit retained). Root cause and fix filed as [[GUI-146]] (release blocker, HZN-008). Prepare attempt 3 follows GUI-146's merge; the clone will be fast-forwarded first and the notes commit re-applied on top.

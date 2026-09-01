@@ -25,11 +25,11 @@
 
 ## Third exact-head root-cause remediation
 
-- [ ] Step 15 — Reject prechecked successor markers during compilation and strict verification, deriving all packet checklist states from the exact content.
-- [ ] Step 16 — Preserve UTF-8 BOM bytes across bounded authority versions/revisions and BOM-aware checklist transitions while retaining fatal invalid-UTF-8 refusal.
-- [ ] Step 17 — Add the bounded tracked-index mode/object/link census and prove external, dangling, unstable and gitlink authority fails closed without index mutation.
-- [ ] Step 18 — Register the existing collector suite in `packages/mcp-server`'s existing `test:http` command and prove it runs through that authoritative workspace test path.
-- [ ] Step 19 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
+- [x] Step 15 — Reject prechecked successor markers during compilation and strict verification, deriving all packet checklist states from the exact content.
+- [x] Step 16 — Preserve UTF-8 BOM bytes across bounded authority versions/revisions and BOM-aware checklist transitions while retaining fatal invalid-UTF-8 refusal.
+- [x] Step 17 — Add the bounded tracked-index mode/object/link census and prove external, dangling, unstable and gitlink authority fails closed without index mutation.
+- [x] Step 18 — Register the existing collector suite in `packages/mcp-server`'s existing `test:http` command and prove it runs through that authoritative workspace test path.
+- [x] Step 19 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
 
 ## Acceptance census
 

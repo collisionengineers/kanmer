@@ -2,12 +2,13 @@
 id: CORE-136
 type: ticket
 title: Publish and validate v0.4.0 and promote it as the live control plane
-status: preparing
+status: implementing
 area: core
 assignee: ''
 profile: chore
 stageEntered:
   preparing: '2026-09-01T18:47:56.897Z'
+  implementing: '2026-09-01T19:44:34.466Z'
 labels:
   - release
   - v0.4.0
@@ -24,7 +25,7 @@ refs:
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-09-01T18:47:23.256Z'
-updated: '2026-09-01T18:48:10.301Z'
+updated: '2026-09-01T19:44:34.466Z'
 ---
 
 ## Why

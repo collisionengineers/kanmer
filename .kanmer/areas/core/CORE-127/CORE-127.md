@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Detect forbidden-file changes, stale evidence and plan deviation before the
   next step packet
-status: verifying
+status: done
 area: core
 assignee: codex-release-controller
 profile: feature
@@ -13,9 +13,7 @@ stageEntered:
   review: '2026-08-31T19:55:04.505Z'
   implementing: '2026-08-31T20:20:05.964Z'
   verifying: '2026-09-01T19:43:19.899Z'
-taken_at: '2026-08-31T17:37:10.569Z'
-branch: core-127-constrained-step-reconciliation
-worktree: .worktrees/core-127
+  done: '2026-09-01T20:24:39.145Z'
 labels:
   - reliable-autonomy
 groups:
@@ -40,7 +38,7 @@ prs:
   - '307'
 archived: false
 created: '2026-08-27T23:06:18.794Z'
-updated: '2026-09-01T19:43:19.899Z'
+updated: '2026-09-01T20:24:39.272Z'
 review_round: 1
 remediation_budget: 1
 ---
@@ -82,12 +80,31 @@ existing read-only `reconcile_ticket` inspector (CORE-122).
 
 ## Verification
 
-- [ ] A fixture worktree that touches a file outside the packet's allowed list
+- [x] A fixture worktree that touches a file outside the packet's allowed list
       produces a forbidden/undeclared finding, and one that stays inside does
       not.
-- [ ] A packet whose recorded plan version no longer matches the live document
+- [x] A packet whose recorded plan version no longer matches the live document
       is reported as stale before another step advances.
-- [ ] An unreadable or absent workspace is inconclusive, not a false pass, and
+- [x] An unreadable or absent workspace is inconclusive, not a false pass, and
       the inspector writes nothing.
 
 ## Outcome
+
+Shipped in PR #307, squash-merged to `main` as
+`a744fd7694b2de6c134e54a236aeede9fbb4e8f3`: the read-only `reconcile_ticket`
+inspector gained a `step-packet/2`-aware mode that classifies every actual
+changed path as allowed, forbidden or undeclared, reports plan, evidence,
+ticket-authority and checklist staleness independently, and refuses a later
+step packet without an exact PASS for the prior one — with unreadable or
+absent workspaces resolving to INCONCLUSIVE rather than a false pass and no
+board byte written. Exact-merge verification at that SHA is PASS: `npm run
+verify` exit 0 (core 826/826, GUI 524/524, server 236 pass / 1 documented
+Windows skip, scripts 161/161, smokes 381/381 and 50/50, plugin sync 41 tools),
+both smokes green against the committed bundle, and hosted run 33551121824
+success. The work took one budgeted remediation round (`review_round: 1` of
+`remediation_budget: 1`, commit `171c3697`) which fixed F-035 and F-037 and
+rejected F-036 with reasons pinned by existing tests. Residual risk is a single
+fail-safe path-grammar class — F-038 and F-039, both minor `accepted-risk` on
+`## Do not modify` span grammar — recorded once for a documentation follow-up;
+both can only over-restrict a plan into a visible typed finding, never
+authorise an unreviewed change.

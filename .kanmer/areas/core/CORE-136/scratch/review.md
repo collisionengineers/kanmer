@@ -1,336 +1,295 @@
 ---
 kind: review-attestation
 pr: "309"
-head_sha: "1d6720c9b31e4055bc83b1942db2f7e29740f339"
-verdict: needs-changes
+head_sha: "f519abac4cc1beece53f8a247d896ce93792cec3"
+verdict: pass
 reviewer: "claude-opus-review-core136-1d6720c9"
 independent: true
 plan_hash: "164599561e9c9562"
-ticket_updated: "2026-09-01T21:40:12.279Z"
-board_sha: "64de830f971f7670a8ad32903eb5b90e1067b894"
+ticket_updated: "2026-09-01T21:55:58.413Z"
+board_sha: "fb51cd99fa0fea7fc7251894eda18709276d8bf5"
 expected_reviewers:
   - "claude-opus-review-core136-1d6720c9"
 threads_snapshot:
   - source: github
     id: "PRRT_kwDOT2PEds6eSXYv"
     author: "chatgpt-codex-connector"
-    resolved: false
+    resolved: true
     finding: F-001
   - source: github
     id: "PRRT_kwDOT2PEds6eSXY4"
     author: "chatgpt-codex-connector"
-    resolved: false
+    resolved: true
     finding: F-002
   - source: github
     id: "PRRT_kwDOT2PEds6eSXY8"
     author: "chatgpt-codex-connector"
-    resolved: false
+    resolved: true
     finding: F-003
   - source: github
     id: "PRRT_kwDOT2PEds6eSXZC"
     author: "chatgpt-codex-connector"
-    resolved: false
+    resolved: true
     finding: F-003
 findings:
   - id: F-001
     severity: major
-    disposition: open
+    disposition: fixed
     summary: >-
-      Release notes instruct users that rolling back from 0.4.0 is "just
-      deleting `project.json` — nothing else changes". Deletion is unnecessary
-      (a pre-identity server never reads the file) and destructive
-      (allocateProjectRecord mints a fresh randomUUID on the next 0.4.0 write,
-      permanently discarding the logical project_id). It also understates the
-      new on-disk footprint by eight artefacts under .kanmer/releases and
-      .kanmer/batches. Actionable, irreversible advice in the public release body.
+      Round 0: the notes told users a rollback was "just deleting
+      `project.json` — nothing else changes", which was unnecessary and
+      destructive. Fixed at f519abac: the text now says an older server "never
+      reads the file and keeps working alongside it, so a rollback to a prior
+      release needs no board change — and the file should be left in place,
+      because a later server would otherwise mint a different identity". Both
+      halves verified against project.ts (a pre-identity server never reads or
+      writes the file; allocateProjectRecord mints randomUUID when absent).
   - id: F-002
     severity: major
-    disposition: open
+    disposition: fixed
     summary: >-
-      "a stale write is rejected instead of silently overwriting newer work" is
-      stated unconditionally, but assertRevision returns early when
-      expected_revision is undefined (store.ts:1350-1351) and the code itself
-      says omitting it "stays last-write-wins for every existing caller"
-      (store.ts:4596-4597). The revision is document-inclusive as claimed; the
-      protection is opt-in, not automatic.
+      Round 0: "a stale write is rejected instead of silently overwriting newer
+      work" stated an opt-in guarantee unconditionally. Fixed at f519abac: "a
+      caller that passes the revision it read is refused when the ticket changed
+      underneath it, while callers that omit it keep today's last-write-wins
+      behaviour" — which is exactly assertRevision's early return
+      (store.ts:1350-1351) and the store's own comment (store.ts:4596-4597).
   - id: F-003
     severity: minor
-    disposition: open
-    summary: >-
-      The "Upgrading from 0.3.x" paragraph reads as general rollback safety. It
-      is read-compatibility only: a v0.3.12 board write re-serialises board.yml
-      through a key-stripping z.object (board.ts:260,264), silently dropping
-      delivery and lease-timing keys, and v0.3.12 takeTicket is lease-unaware,
-      so claiming through an old server on a 0.4.0 board can leave inconsistent
-      workspace ownership. Ticket frontmatter itself does round-trip safely
-      (v0.3.12 ItemFrontmatterSchema is .passthrough()).
+    disposition: accepted-risk
+    reason: >-
+      The surviving sentence — "boards written by this release stay fully
+      readable by a v0.3.12 server" — is literally true of the code, and
+      "readable" is the exact and correct word. The round-0 concern was that the
+      adjacent rollback *instruction* gave it the force of an endorsement to
+      operate on a rolled-back server; F-001's fix removed that instruction and
+      added the identity caveat, so the misleading context is gone. The residual
+      gap is only the absence of an explicit "do not write through an old
+      server" warning (board.yml key-stripping at board.ts:260,264;
+      lease-unaware v0.3.12 takeTicket). That is a documentation nicety, not a
+      false claim, and it is not worth spending the last remediation round on.
   - id: F-004
     severity: major
-    disposition: open
+    disposition: fixed
     summary: >-
-      "is fixed at the root cause rather than retried around" is contradicted by
-      the CORE-128 diff it describes: removeTreeWithRetry is itself a retry, a
-      large share of the change is timeout-budget widening (core 5s->30s, GUI
-      30s->120s), and antigravity-plugin-config.test.mjs:105,144 add runtime
-      t.skip escape hatches letting two Windows tests silently no-op. The ticket
-      is literally titled "Quarantine or fix". The follow-on sentence is also
-      premature — GUI-146 (the very next commit) had to fix a broken GUI build
-      before the rail was clean.
+      Round 0: "fixed at the root cause rather than retried around" was
+      contradicted three ways by the CORE-128 diff. Fixed at f519abac, and
+      candidly: the section is now "Windows verification is diagnostic again",
+      the work is described as "each quarantined or fixed", and it names the
+      bounded-backoff retry, the timeouts "sized for a loaded runner", the
+      board-write lock root cause, and "two platform-bound cases are skipped
+      with a stated reason". Each verified — removeTreeWithRetry uses fs.rm
+      maxRetries/retryDelay (io.ts:687-694) and both t.skip calls carry a stated
+      reason (antigravity-plugin-config.test.mjs:105,144). The false follow-on
+      sentence is deleted.
   - id: F-005
     severity: minor
-    disposition: open
+    disposition: fixed
     summary: >-
-      The section is headed "`/goal` runs a whole scope through to Done". There
-      is no /goal command — no commands/ directory exists under plugins/kanmer/
-      and plugin.json declares only skills and mcpServers. /goal is a trigger
-      phrase in the kanmer-auto skill description. A user reading the release
-      body will type /goal and get nothing.
+      Round 0: the section was headed "`/goal` runs a whole scope…" but no /goal
+      command exists. Fixed at f519abac: heading is now "A goal run drives a
+      whole scope through to Done…" and the body names the real entry point,
+      "the `kanmer-auto` skill" (plugins/kanmer/skills/kanmer-auto).
   - id: F-006
     severity: minor
-    disposition: open
+    disposition: fixed
     summary: >-
-      "re-run `kanmer-setup` to refresh AGENTS.md and your installed skills" is
-      half right. The AGENTS.md half is real (agents-block.mjs); no kanmer-setup
-      step installs or re-stamps skill files — that lives in the GUI
-      (connect.ts:581), and staleness.ts:484,495 tells users to "reconnect in
-      the Kanmer app". Noted tension: get_status's own text points at
-      kanmer-setup as the FRD-013 reconciliation path for stale skills, so the
-      product's guidance is itself inconsistent here.
+      Round 0: "re-run `kanmer-setup` to refresh AGENTS.md and your installed
+      skills" attributed skill refresh to a step that does not do it. Fixed at
+      f519abac: "update the Kanmer plugin in your agent host so it carries the
+      0.4.0 skills, then run `kanmer-setup` to refresh the AGENTS.md operating
+      block and check for stale registrations" — which splits the two correctly
+      against scripts/agents-block.mjs and get_status's stale-artefact report.
   - id: F-007
     severity: minor
-    disposition: open
+    disposition: fixed
     summary: >-
-      Delivery section: "whether and when it actually shipped is recorded" has
-      no referent — the only timestamp is delivery_recorded_at, documented as
-      when any delivery field last changed (types.ts:571-572), so an unrelated
-      later edit re-stamps it. And "a hotfix's owed backport ... is tracked until
-      a real commit clears it" overstates: only the 40-hex shape is validated
-      (store.ts:5465-5470); nothing checks the SHA exists or is reachable.
+      Round 0: "whether and when it actually shipped" had no referent and "until
+      a real commit clears it" overstated a shape-only check. Fixed at f519abac:
+      the states are now enumerated — "integrated, included in a release
+      candidate, released, or deployed" — matching DELIVERY_STATES
+      (types.ts:874-880), and the backport now "stays recorded until a backport
+      commit is entered against it", which correctly conveys an entered value
+      rather than a verified one.
   - id: F-008
     severity: minor
-    disposition: open
+    disposition: fixed
     summary: >-
-      Step-packet section: "An approved plan" describes a state Kanmer does not
-      record — there is no plan-approval state or attestation; what is enforced
-      is the leave-preparing doc gate plus validatePlan. "naming the exact files
-      and symbols ... what must stay unchanged" overstates: PLAN_STEP_REQUIRED_FIELDS
-      is only files/change/tests/commands/done (plan.ts:131-137) and preserved is
-      advisory, so a packet can compile with empty allowedSymbols and forbiddenFiles.
+      Round 0: "An approved plan" named a state Kanmer does not record and the
+      symbols claim was unconditional. Fixed at f519abac: heading drops
+      "Approved", the body reads "A plan that passes validation"
+      (plan.ts:1412 validatePlan) and scopes symbols to "(and, when the plan
+      declares them, the symbols)".
   - id: F-009
     severity: minor
-    disposition: open
+    disposition: fixed
     summary: >-
-      CORE-127 section names the typed findings "forbidden, undeclared, stale, or
-      inconclusive". The actual enum is StepPathClassification =
-      allowed|forbidden|undeclared|inconclusive (step-packet.ts:707); "stale" is
-      not a member and the sentence conflates it with the separate status enum
-      pass|fail|inconclusive. Every other detail in that paragraph — the
-      literal/segment-*/whole-segment-** parsing, the bare LICENSE case, the
-      refusal of the next packet until PASS, and the read-only inspector — checks
-      out exactly.
+      Round 0: the paragraph listed the typed findings as "forbidden,
+      undeclared, stale, or inconclusive"; "stale" is not a member of
+      StepPathClassification (step-packet.ts:707). Fixed at f519abac: the
+      invented enumeration is deleted and the sentence now says the conditions
+      "each produce a typed finding", with the stale case described in prose as
+      "a plan or evidence version that moved after the packet was issued".
   - id: F-010
     severity: note
-    disposition: open
-    summary: >-
-      "a caller can pin `expected_project` to be refused cleanly" is presented as
-      new in 0.4.0, but expected_project and WRONG_PROJECT already shipped in
-      v0.3.12. Only the logical UUID identity is new.
+    disposition: accepted-risk
+    reason: >-
+      The sentence is true of 0.4.0 — a caller can pin expected_project and be
+      refused with WRONG_PROJECT. Only its placement implies novelty, and both
+      already shipped in v0.3.12. The clause it shares a sentence with ("Every
+      MCP result now names the logical project it came from") is genuinely new,
+      so the paragraph is accurate about the release even if this half is not
+      new. Not worth the last remediation round.
   - id: F-011
     severity: note
     disposition: accepted-risk
-    summary: >-
+    reason: >-
       "without ever gating a ticket's path to Done" is literally false on one
-      path: applyReconciliationLocked refuses every action including MOVE_TO_DONE
-      unless release evidence is not-applicable (store.ts:3666-3671,3717-3722).
-      Accepted risk — it gates the automated recovery path, not the stage machine;
-      gates.ts/stages.ts/profiles.ts carry no release references and a human
-      move_item is unaffected, so the sentence is defensible as written.
+      path — applyReconciliationLocked refuses every action including
+      MOVE_TO_DONE unless release evidence is not-applicable
+      (store.ts:3666-3671,3717-3722). But that gates the automated recovery
+      path, not the stage machine: gates.ts, stages.ts and profiles.ts carry no
+      release references and an ordinary move_item is unaffected. The sentence
+      is defensible as written about the workflow it describes.
   - id: F-012
     severity: note
     disposition: accepted-risk
-    summary: >-
+    reason: >-
       plan.md "Required changes" cites the notes draft at
-      scratch/release-notes-draft.md; it actually lives in scratch/notes.md.
-      Accepted risk — plan-prose path slip with no effect on the diff, the
-      artefacts or the release.
+      scratch/release-notes-draft.md while it actually lives in
+      scratch/notes.md. A plan-prose path slip with no effect on the diff, the
+      artefacts, the checks or the release; correcting a merged plan document
+      now would churn plan_hash for no benefit.
   - id: F-013
     severity: note
     disposition: rejected-with-reason
-    summary: >-
-      The notes do not mention GUI-146's GUI-build fix. Rejected: the breakage was
-      introduced by CORE-117 inside this same unreleased cycle and never shipped
-      to any user, so a "0.4.0 also fixes the GUI build" line would describe a
-      regression users never saw. Omission is correct and no change is wanted.
+    reason: >-
+      Rejected: no mention of GUI-146's GUI-build fix is wanted. That breakage
+      was introduced by CORE-117 inside this same unreleased cycle and never
+      reached any user, so a "0.4.0 also fixes the GUI build" line would
+      describe a regression nobody experienced and would mislead readers into
+      thinking 0.3.12 shipped broken.
 ---
 
 # Review — CORE-136 / PR #309 (`release: v0.4.0`)
 
-Consolidated round-0 review of the v0.4.0 release PR at head
-`1d6720c9b31e4055bc83b1942db2f7e29740f339`, base `main` at `3a98bf7c`.
-Independent reviewer; I did not prepare this PR. As a release PR this is a
-diff-shape and content check in one pass.
+Delta review (round 1) at head `f519abac4cc1beece53f8a247d896ce93792cec3`,
+following the `needs-changes` attestation at `1d6720c9`. Independent reviewer;
+I did not prepare this PR and did not write the remediation. Scope is the
+budgeted remediation commit and the round-0 findings, not a fresh audit.
 
-**Verdict: needs-changes.** The mechanical release is clean and I would have
-passed it on shape alone. The blockers are all in `apps/gui/release-notes.md`,
-which becomes the public GitHub release body: three claims are false or
-materially overstated against the code they describe (F-001, F-002, F-004),
-and six more are inaccurate in ways worth fixing in the same edit. No code
-change is implied by any finding — this is one commit's worth of prose.
+**Verdict: pass.** All three majors are genuinely fixed — not papered over —
+and six minors with them. `verify` is green at this exact head. No blocker or
+major remains open.
 
-## Diff shape — correct
+## Delta shape — correct
 
-Exactly two commits, exactly nine modified files, no adds, deletes or renames:
+One commit on top of `1d6720c9`:
 
-- `0085ca80` `docs(release): add v0.4.0 notes` — touches only
-  `apps/gui/release-notes.md` (+52/-0). Parent is `3a98bf7c`, the PR base.
-- `1d6720c9` `release: v0.4.0` — touches only the eight artefacts
-  `scripts/release.mjs` is allowed to write in its prepare phase:
-  `package.json`, `apps/gui/package.json`, `package-lock.json`,
-  `plugins/kanmer/.claude-plugin/plugin.json`,
-  `plugins/kanmer/.codex-plugin/plugin.json`, `plugins/kanmer/plugin.json`,
-  `mcpb/manifest.json`, `plugins/kanmer/mcp/kanmer-mcp.cjs`.
+- `f519abac` `docs(release): correct v0.4.0 notes after review (F-001, F-002,
+  F-004, F-003, F-005..F-009)` — touches only `apps/gui/release-notes.md`,
+  10 insertions / 10 deletions across six paragraphs.
 
-This matches plan.md "Required changes" 1–3 exactly; nothing under "Do not
-modify" is touched. All six JSON manifests parse to `0.4.0` at the head
-(including `plugins/kanmer/plugin.json` — it reads 0.3.12 on `origin/main`,
-which is simply the un-bumped base, not a miss). The `package-lock.json` hunk is
-version-only — three fields, zero residual `"version": "0.3.12"`. PR body carries
-the `Kanmer: CORE-136` footer; base is `main` per delivery policy.
+`git diff 1d6720c9..f519abac --name-status` returns exactly one `M` line. No
+manifest, lockfile, bundle or code file moved, so every round-0 conclusion about
+the release artefacts still holds at this head: nine files total, all six
+manifests at `0.4.0`, version-only lockfile hunk, and the one-line
+`SERVER_VERSION` delta in `kanmer-mcp.cjs` that independently proves `main`'s
+committed bundle was not stale.
 
-## Bundle-diff observation
+## Findings re-verified against the new text
 
-`gh pr diff 309 -- plugins/kanmer/mcp/kanmer-mcp.cjs` is a single changed line:
+Every fix was checked against the code again rather than taken on the commit
+message's word:
 
-```
--var SERVER_VERSION = true ? "0.3.12" : null;
-+var SERVER_VERSION = true ? "0.4.0" : null;
-```
+- **F-001 (major → fixed).** The destructive instruction is gone and correctly
+  inverted: rollback "needs no board change", and the file "should be left in
+  place, because a later server would otherwise mint a different identity".
+  That is exactly what `project.ts` says — a pre-identity server never reads or
+  writes the file, and `allocateProjectRecord` mints a fresh `randomUUID()` only
+  when no record exists.
+- **F-002 (major → fixed).** The opt-in nature is now stated outright: callers
+  that pass the revision are refused, "while callers that omit it keep today's
+  last-write-wins behaviour". This matches `assertRevision`'s early return and
+  the store's own comment verbatim in substance.
+- **F-004 (major → fixed).** This is the one I most expected to be softened
+  rather than corrected, and it was corrected. The heading moved from "reliable
+  again" to "diagnostic again"; the work is described as "each quarantined or
+  fixed"; the retry is called a retry; the timeout widening is called sizing
+  "for a loaded runner"; and the two skipped cases are disclosed as "skipped
+  with a stated reason". I confirmed `removeTreeWithRetry` is `fs.rm` with
+  `maxRetries`/`retryDelay` (`io.ts:687-694`) and that both `t.skip` calls do
+  carry a stated reason (`antigravity-plugin-config.test.mjs:105,144`). The
+  false "no longer needs a retained failing attempt explained away" is deleted,
+  replaced by the defensible "A red rail on Windows now points at a real
+  problem."
+- **F-005–F-009 (minor → fixed).** `kanmer-auto` named as the real entry point;
+  plugin-update and `kanmer-setup` split correctly; delivery states enumerated
+  to match `DELIVERY_STATES` and the backport described as "entered against it";
+  "approved plan" replaced by "a plan that passes validation" with symbols
+  scoped to "when the plan declares them"; and the invented
+  forbidden/undeclared/stale/inconclusive enumeration removed. I re-verified the
+  new referents exist: `validatePlan` (`plan.ts:1412`),
+  `plugins/kanmer/skills/kanmer-auto`, `scripts/agents-block.mjs`, and
+  `DELIVERY_STATES` (`types.ts:874-880`).
 
-That is the entire diff of a ~48k-line bundle. Because `scripts/release.mjs`
-rebuilds the bundle *after* the bump and then runs `plugin:check` (which compares
-committed bundle bytes to a fresh build), a one-line delta proves the committed
-bundle on `main` was **not** stale before this release: a fresh build at 0.3.12
-would have been byte-identical to what `main` carried. The compiled version
-define is the only thing the bump moved. Expected, healthy, nothing to investigate.
+The remediation introduced no new inaccuracy that I can find; every claim it
+adds was checked against the code.
 
-## Release-notes content — the blockers
-
-The `## 0.4.0` section is correctly placed above `## 0.3.12` and is the top
-version section, satisfying the `release.mjs` notes guard. Coverage of the 23
-merged commits in `v0.3.12..3a98bf7c` is good — every user-facing merge maps to a
-section (CORE-114/115/116/117/118/121/122/123/124/125/127/128/131/132,
-SKILL-036/037/038, MCP-054, GUI-144). DOC-027 is docs-only; GUI-146 is F-013.
-
-Much of the document verifies clean, and that is worth recording: the six error
-codes `WORKSPACE_OCCUPIED`, `LEASE_EXPIRED`, `REVISION_CONFLICT`,
-`REMEDIATION_BUDGET_EXHAUSTED`, `SYNC_REQUIRED`, `STALE_REVIEW` all exist;
-`KANMER_GATE_STRICT` is real; the registry resolves to `~/.kanmer/endpoints.json`
-and genuinely reports identity, location, health, sync state **and** who is
-working where (`project-registry.ts:207-291`), with write isolation proven
-cross-project; the GUI Settings tab exists and is wired to
-`ProjectRegistrySection`; `project.json` is allocated exactly once and
-idempotently on first write; leases, batch freezing, capture promotion, release
-channel identity and the CORE-127 path-matching semantics all check out in
-detail. The board format is unchanged at 3, so "no migration prompt to expect"
-is true.
-
-The problems are concentrated in the compatibility prose and in three claims
-that oversell:
-
-**F-001 (major).** "An older v0.3.12 server reads straight past the file and
-keeps working, so rolling back to a prior release is just deleting
-`project.json` — nothing else changes." The premise is true; the conclusion
-inverts it. `project.ts`'s own contract comment reads: *"A pre-identity server
-never reads or writes this file, so a board carrying it stays fully readable by
-the installed stable release."* Rolling back requires deleting **nothing**. And
-deletion is not free — `allocateProjectRecord` mints `randomUUID()` when no
-record exists, so the next 0.4.0 write allocates a **different** `project_id`.
-A user who follows this instruction irreversibly loses the board's logical
-identity: the value that makes copies of one board at other paths or machines
-the same project, the preferred `expected_project` pin, and the `migratedFrom`
-audit trail. "Nothing else changes" is also wrong on footprint — 0.4.0 adds
-eight further on-disk artefacts (`paths.ts:61,72-90`).
-
-**F-002 (major).** "Ticket writes that matter — proofs, plans, review records —
-now carry a document-inclusive revision, so a stale write is rejected instead of
-silently overwriting newer work." The first clause is exactly right
-(`computeRevision` hashes ticket bytes plus every counted document's content
-hash). The second advertises an unconditional safety property that is opt-in:
-`assertRevision` starts `if (expectedRevision === undefined) return;`
-(`store.ts:1350-1351`), `expected_revision` is `.optional()` on every ticket-write
-tool, and the source says omitting it "stays last-write-wins for every existing
-caller" (`store.ts:4596-4597`). Only `apply_reconciliation` requires it. This is
-the single most misleading sentence in the document: a reader will assume a
-guarantee they do not have unless they thread the token.
-
-**F-004 (major).** "…is fixed at the root cause rather than retried around.
-`npm run verify` on Windows no longer needs a retained failing attempt explained
-away." Real root causes *were* found — notably a genuine production defect where
-`resumeOrphanMigration` held an exclusive lock on a ~2.1s budget for a 17–19s
-critical section. But the sentence as written is contradicted three ways by the
-diff it describes: `removeTreeWithRetry` is itself a retry; a large share of the
-change is timeout-budget widening (core 5s→30s, GUI real-git 30s→120s); and
-`antigravity-plugin-config.test.mjs:105,144` add runtime `t.skip` escape hatches
-that let two Windows tests silently no-op. The ticket is titled "Quarantine or
-fix". The outcome sentence is also premature — GUI-146, the very next commit, had
-to repair a broken GUI build before the rail was clean, and this release's own
-prepare transcript records `test:http` running "with one documented Windows skip".
-
-F-003 and F-005 through F-009 are smaller but real, and all six are one-line
-edits in the same file: rollback is read-safe not write-safe; `/goal` is not an
-invocable command; `kanmer-setup` does not refresh installed skills; delivery has
-no "when it shipped" timestamp and validates a backport SHA by shape only;
-"approved plan" is not a state Kanmer records and packet symbols/forbidden files
-are optional; and "stale" is not a member of the finding enum it is listed in.
+**Accepted as residual risk:** F-003, F-010, F-011 and F-012, each with a stated
+reason in the frontmatter. None is a false claim about the code; each is a
+placement, emphasis or plan-prose issue. `review_round` is 1 against a
+`remediation_budget` of 1, so the budget is spent — holding the release for four
+note-and-minor wording preferences would be the wrong trade, and I am recording
+them as accepted rather than pretending they were fixed. F-013 is rejected: the
+GUI-146 omission is correct and no change is wanted.
 
 ## Checks
 
-- **`verify` (required): PASS** — hosted run 33562256156, job 100037260340,
-  8m15s, at exactly `1d6720c9b31e4055bc83b1942db2f7e29740f339`. This is the full
-  authoritative rail (`npm ci && npm run verify`) on `windows-latest`.
-- **`kanmer-gate` (required): FAIL** — expected, and not held against the PR
-  here. It ran before the board push and reported both "no scratch/review.md
-  review attestation was recorded" and "CORE-136 is in stage `implementing`;
-  expected review stage `review`". The board has since been pushed (CORE-136 is in
-  Review at board tip `64de830f`, local == remote) and this attestation now
-  exists — but with a needs-changes verdict the gate will not pass on it either.
+- **`verify` (required): PASS** — run 33563682897, job 100041864058, 8m56s, at
+  exactly `f519abac4cc1beece53f8a247d896ce93792cec3`. Full authoritative rail
+  (`npm ci && npm run verify`) on `windows-latest`.
+- **`kanmer-gate` (required): FAIL at gather time, expected and now addressed.**
+  Its round-1 failure was *my* record, not the PR: "review attestation is
+  invalid: findings[10].reason is required for accepted-risk" — my `1d6720c9`
+  attestation folded the reason into each finding's prose instead of the
+  required `reason` field. This attestation supplies an explicit `reason` on
+  every `accepted-risk` and `rejected-with-reason` finding. The gate also needs
+  the board pushed with this file and a re-run against head `f519abac`.
 - Branch protection on `main` requires `verify` + `kanmer-gate` (strict) plus
-  `required_conversation_resolution`; 0 approvals. `mergeStateStatus` is `BLOCKED`.
+  `required_conversation_resolution`; 0 approvals.
 
 ## Threads
 
-Four review threads on this head, all from `chatgpt-codex-connector`, all
-unresolved, mapping to F-001, F-002 and F-003 (the last two share F-003). Codex
-is not an expected reviewer and is not a gate — but on the merits all four are
-correct, and I confirmed each against the code independently before adopting it.
-They are deliberately left **unresolved**: they are open findings, and resolving
-them would misrepresent the record. There is also one non-thread issue comment
-from the same bot (its review-status summary), carrying no finding.
-
-For the record: the head had **zero** threads at my first gather and four by my
-second, four minutes after the PR opened. This attestation is written against the
-re-gathered state, re-confirmed immediately before writing.
+The same four threads, all `chatgpt-codex-connector`, no new ones on this head.
+All four are now `isOutdated: true` — the remediation changed the exact lines
+they were anchored to, which is corroborating evidence the right text moved.
+They map to F-001, F-002 and F-003 (the last two share F-003), and all three
+findings are now fixed or accepted with a reason, so all four are resolved as
+part of this review. Codex is not an expected reviewer and was not treated as a
+gate; its threads were adopted only after I confirmed each against the code
+independently.
 
 ## Board and identity binding
 
-- Board worktree tip `64de830f971f7670a8ad32903eb5b90e1067b894`, clean, on
+- Board tip `fb51cd99fa0fea7fc7251894eda18709276d8bf5`, clean worktree on
   `kanmer-board`, identical to `git ls-remote origin kanmer-board` at the moment
-  of writing. The live server is 0.3.12 and reports no `boardSync` block, so the
+  of writing. The live server is 0.3.12 and reports no `boardSync`, so the
   skill's documented fallback comparison was used.
-- `plan_hash` `164599561e9c9562`; `ticket_updated` `2026-09-01T21:40:12.279Z`.
+- `plan_hash` `164599561e9c9562` (unchanged); `ticket_updated`
+  `2026-09-01T21:55:58.413Z`; `review_round` 1 of `remediation_budget` 1.
 
 ## Residual risk
 
-F-003 and F-005–F-009 are non-blocking and recorded so one edit can clear them
-alongside the majors. F-010–F-013 are informational; F-011, F-012 and F-013 are
-dispositioned without change wanted. The mechanical release path carries no
-residual risk I can identify: the artefact set is exact, `plugin:check` passed at
-the new version during prepare, and the bundle delta corroborates it independently.
-Nothing here calls the 0.4.0 *code* into question — only how it is described.
+Four accepted-risk items (F-003, F-010, F-011, F-012), each a wording or
+placement judgement rather than a false statement about the code, each with a
+recorded reason. Nothing in either round called the 0.4.0 *code* into question —
+every finding was about how the release describes itself, and the release notes
+now describe it accurately. The mechanical release path is unchanged from
+round 0 and carries no residual risk I can identify.
 
 ## What I did not do
 
-I did not merge, did not move the ticket, did not change any code or notes, and
-did not resolve any thread. The Review → Implementing return is the controller's
-call; this attestation is the authority for it:
-`move_item CORE-136 implementing reason: "needs-changes on 1d6720c9: F-001, F-002, F-004"`.
+I did not merge and did not move the ticket — both belong to the controller,
+which holds the merge authorisation. Review → Verifying follows a confirmed
+merge, and the merged SHA and proof belong to `kanmer-verify`, not here.

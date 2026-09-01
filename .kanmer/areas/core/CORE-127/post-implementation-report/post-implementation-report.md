@@ -38,6 +38,7 @@ Implemented constrained-step reconciliation on exact base `4fda54b4489fa4bc4b6b0
 - `5302e445dc70714e89762dc19fb96754490e3fa9` — Harden constrained execution evidence.
 - `7d899869523ac5b55ef2debbf67d0324ebe4fb78` — Bind bounded execution authority.
 - `437c7182021137eae962228942b712b2045cdc57` — Close constrained authority gaps.
+- `c549e1febacbf210d74dc45cd04b647c4dd7be42` — Close final execution-authority races and bounds.
 
 Pull request: #307.
 
@@ -150,6 +151,53 @@ No implementation blocker remains. The intentional residual boundary is fail-clo
 - `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`
 - `scripts/verify-skill-prose.mjs`
 - `scripts/verify-skill-prose.test.mjs`
+
+## Fourth exact-head remediation
+
+Commit `c549e1febacbf210d74dc45cd04b647c4dd7be42` addresses F-017 through F-021 as one execution-authority correction:
+
+- F-017: ordinary JSON authority retains its pinned hash, while valid Dates receive a deterministic type-distinct ISO encoding. Invalid Dates, non-finite numbers, cycles, Buffer/typed arrays, Map/Set/RegExp and custom prototypes refuse; ordinary and null-prototype objects remain valid. A changed unknown YAML timestamp plus only the exact checklist tick now fails both ticket authority and revision staleness, while the unchanged control passes.
+- F-018/F-020: a tracked link is admissible only as one direct lexically confined target whose complete component walk is non-link/non-junction and whose final target is a single-link regular file. Both workspace samples metadata-check every mode-100644/100755 index entry; missing entries must agree with same-sample deletion or rename-source porcelain evidence, and the retained stable-facts digest exposes replacement/link drift.
+- F-019: `ExecutionAuthoritySnapshot.batch` now owns execution-only batch projection. Manifest enumeration counts every transaction entry and preflights 256 entries, 64 KiB per manifest, 512 KiB aggregate, 256 members and 2,048 references. Complete warning-aware ticket census preflights every structural entry and endpoint at 2,048 entries/endpoints, 64 KiB per record and 8 MiB aggregate, reuses the selected and retained records, and refuses link, replacement, growth and identity drift. The authority-only selected-ticket lookup is also bounded before any content open; ordinary CRUD and batch mutation/list/merge behavior is unchanged.
+- F-021: exactly the two direct bounded-reader fixtures retain their allocated cleanup roots but derive reader roots and fixture paths from `fs.realpath`; their race hooks and assertions are unchanged.
+- No canonical prose change was required because its existing contract already states the resulting type, confinement, index and metadata-first bounds. The committed standalone MCP bundle was regenerated and remains byte-identical to the build with 41 tools.
+
+### Failed-first evidence
+
+The failures were retained rather than replaced by the final passes:
+
+- `npm exec --workspace @kanmer/core -- vitest run src/step-packet.test.ts --reporter=verbose` first reported 56 PASS / 2 FAIL: two different Date values hashed identically, and changing the unknown YAML timestamp beside the exact checklist tick returned PASS instead of `STEP_TICKET_AUTHORITY_STALE`.
+- The initial collector run reported 30 PASS / 4 FAIL: an in-worktree tracked link chain was accepted, a clean multi-link regular file was accepted, a missing tracked path with dishonest porcelain was accepted, and the first same-byte replacement fixture exposed that its fixture used normalized LF instead of the repository's exact bytes. That fixture was corrected to reuse the exact original bytes before the final replacement result; no production assertion was weakened.
+- The independent pre-remediation F-019 reproduction recorded in `scratch/review.md` showed a 2 MiB manifest and 2 MiB ticket records being read before packet limits. The retained final tests now prove per-record, aggregate, member/reference, structural-name and selected-lookup refusal before sibling content opens.
+- The hosted F-021 failure at Actions run 33454522677 remains historical evidence: exactly two direct-reader tests failed before their intended race hooks when given the unphysical temporary-root spelling.
+
+### Final focused evidence
+
+All commands below exited 0 on the source committed as `c549e1febacbf210d74dc45cd04b647c4dd7be42`:
+
+- F-017 packet focus: 58/58 PASS.
+- Final core plan/packet/store matrix: 225/225 PASS. The complete core regression passed 813/813 before the final test-only legacy-v1 control was added; that control passed 1/1 and is included in the final 225-test matrix.
+- F-018/F-020 collector focus: 9/9 PASS, including staged rename, nested-directory deletion, parent-link, chain, hard-link and missing-status cases.
+- Authoritative `npm run test:http -w @kanmer/mcp-server`: 218/218 PASS, including the complete collector suite.
+- MCP stdio smoke: 381/381 PASS. Protocol smoke: 50/50 PASS. Both list exactly 41 tools.
+- `npm run test:scripts`: 161/161 PASS. `npm run verify:skills`: ALL CHECKS PASSED. `npm run verify:agents-block`: 31/31 PASS.
+- All-workspace `npm run typecheck`: PASS. Core and MCP development/standalone builds: PASS.
+- `npm run plugin:build` and `npm run plugin:check`: PASS; bundle bytes match and isolated MCP handshake lists 41 tools.
+- `git diff --check` and the staged diff check: PASS. The worktree is clean and the branch is ahead only by the one coherent final remediation commit.
+
+The implementation run intentionally did not run root `npm run verify`. The release controller owns the one fresh clean Windows rail after publication, hosted `verify`, exact-head automated settlement, independent delta review, synced-board `kanmer-gate`, merge and exact-merge verification.
+
+### Files changed in the fourth remediation
+
+- `packages/core/src/step-packet.ts`
+- `packages/core/src/step-packet.test.ts`
+- `packages/core/src/store.ts`
+- `packages/core/src/store.test.ts`
+- `packages/mcp-server/src/step-reconciliation.ts`
+- `packages/mcp-server/src/step-reconciliation.test.mjs`
+- `plugins/kanmer/mcp/kanmer-mcp.cjs`
+
+No implementation blocker remains. The intentional residual boundary stays fail-closed: unsupported/chained links, ambiguous or drifting index/filesystem facts, and over-limit manifest/ticket authority refuse rather than PASS. Node does not provide an atomic openat-style ancestor walk on this Windows path; repeated component proofs, single-handle file reads, retained identities and the double sample make that bounded sampling boundary explicit without claiming impossible atomicity.
 
 ## Scope confirmation
 

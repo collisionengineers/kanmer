@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Detect forbidden-file changes, stale evidence and plan deviation before the
   next step packet
-status: implementing
+status: review
 area: core
 assignee: codex-release-controller
 profile: feature
@@ -29,11 +29,12 @@ commits:
   - 5302e445dc70714e89762dc19fb96754490e3fa9
   - 7d899869523ac5b55ef2debbf67d0324ebe4fb78
   - 437c7182021137eae962228942b712b2045cdc57
+  - c549e1febacbf210d74dc45cd04b647c4dd7be42
 prs:
   - '307'
 archived: false
 created: '2026-08-27T23:06:18.794Z'
-updated: '2026-09-01T00:49:51.249Z'
+updated: '2026-09-01T01:23:52.549Z'
 ---
 
 ## What

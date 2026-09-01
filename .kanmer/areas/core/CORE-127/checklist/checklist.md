@@ -33,11 +33,11 @@
 
 ## Fourth exact-head root-cause remediation
 
-- [ ] Step 20 — Add bounded, type-distinct Date ticket authority and fail-closed unsupported-value tests, including the end-to-end stale-authority bypass.
-- [ ] Step 21 — Reject chained tracked links and preflight every clean tracked regular path for physical confinement and single-link identity in both samples.
-- [ ] Step 22 — Fold a bounded manifest and complete ticket census into the core execution-authority snapshot, preserving valid batch consistency without duplicate reads.
-- [ ] Step 23 — Physicalize the two direct-reader temporary roots while preserving their exact race assertions, then prove the hosted failure mechanism locally.
-- [ ] Step 24 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
+- [x] Step 20 — Add bounded, type-distinct Date ticket authority and fail-closed unsupported-value tests, including the end-to-end stale-authority bypass.
+- [x] Step 21 — Reject chained tracked links and preflight every clean tracked regular path for physical confinement and single-link identity in both samples.
+- [x] Step 22 — Fold a bounded manifest and complete ticket census into the core execution-authority snapshot, preserving valid batch consistency without duplicate reads.
+- [x] Step 23 — Physicalize the two direct-reader temporary roots while preserving their exact race assertions, then prove the hosted failure mechanism locally.
+- [x] Step 24 — Regenerate affected prose pins/bundle, run the complete focused matrix on one clean remediation commit, update the report and return the same PR to Review.
 
 ## Acceptance census
 

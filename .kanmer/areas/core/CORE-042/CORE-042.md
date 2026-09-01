@@ -2,7 +2,7 @@
 id: CORE-042
 type: ticket
 title: Adapt release workflow for protected main
-status: verifying
+status: done
 area: core
 assignee: core-042-take
 profile: fix
@@ -33,7 +33,7 @@ prs:
   - '160'
 archived: false
 created: '2026-08-22T06:48:09.492Z'
-updated: '2026-08-23T00:50:04.743Z'
+updated: '2026-09-01T23:07:54.168Z'
 ---
 
 Deferred from CORE-033 review finding: scripts/release.mjs currently mutates and pushes main directly, which the new protected-main PR/verify boundary rejects. Design and implement the authorized release path so version bump/release commit reaches main through a compliant PR/check boundary while preserving tag publication and reachable release commits. No bypass push; retain dry-run and hosted release/update proof. Link [[CORE-033]].

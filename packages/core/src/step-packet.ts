@@ -305,9 +305,18 @@ function checklistLineForParsing(line: string, lineIndex: number): string {
   return lineIndex === 0 && line.startsWith("\uFEFF") ? line.slice(1) : line;
 }
 
-/** A named marker owns a step only when the checkbox label begins with `Step N`. */
+/**
+ * A named marker owns a step only when the checkbox label begins with `Step N`
+ * and the declared number ends at that integer: it must be followed by the end
+ * of the label, whitespace, or one of the documented title separators (an em or
+ * en dash, `:`, `.`, `-`) that is not itself followed by a digit. A word boundary
+ * alone would read `Step 1.5` as step 1, so a sub-step or range label could
+ * silently claim another step's authority.
+ */
+const NAMED_CHECKLIST_STEP = /^[ \t\u00a0]*step[ \t\u00a0]+(\d+)(?:$|(?=\s)|(?=[\u2014\u2013:.-](?!\d)))/i;
+
 function namedChecklistStep(label: string): number | null {
-  const match = /^[ \t\u00a0]*step[ \t\u00a0]+(\d+)\b/i.exec(label);
+  const match = NAMED_CHECKLIST_STEP.exec(label);
   if (!match) return null;
   const index = Number(match[1]);
   return Number.isSafeInteger(index) && index > 0 ? index : null;

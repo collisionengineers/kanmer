@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyPlanPath,
   createPlanPathMatchBudget,
   extractAtxSection,
   parsePlanPath,
@@ -115,6 +116,36 @@ describe("parsePlan", () => {
   it("reads the Do not modify paths and the Stop condition", () => {
     expect(plan.doNotModify).toEqual(["src/vendor/bundle.js"]);
     expect(plan.stopCondition).toBe("Stop when the PR is open.");
+  });
+
+  it("keeps extensionless top-level forbidden files while still dropping symbol spans", () => {
+    const forbidden = parsePlan([
+      "## Do not modify",
+      "- `LICENSE` and `Makefile` are release-owned.",
+      "- `src/vendor/` is generated output.",
+      "- `parsePlan()`, `KanmerStore#setDoc` and `Foo::bar` are symbols, not files.",
+      "",
+    ].join("\n")).doNotModify;
+    expect(forbidden).toEqual(["LICENSE", "Makefile", "src/vendor"]);
+  });
+
+  it("separates declared file paths from code symbols and blank spans", () => {
+    const cases: [span: string, classification: "path" | "symbol" | "empty"][] = [
+      ["LICENSE", "path"],
+      ["Makefile", "path"],
+      ["src/", "path"],
+      ["a.b", "path"],
+      ["**/*.ts", "path"],
+      ["foo/bar", "path"],
+      ["parsePlan()", "symbol"],
+      ["KanmerStore#setDoc", "symbol"],
+      ["Foo::bar", "symbol"],
+      ["", "empty"],
+      ["   ", "empty"],
+    ];
+    for (const [span, classification] of cases) {
+      expect([span, classifyPlanPath(span)]).toEqual([span, classification]);
+    }
   });
 
   it("reads the evidence pins from Starting state", () => {

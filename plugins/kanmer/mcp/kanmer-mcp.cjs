@@ -39479,6 +39479,20 @@ function normalisePlanPath(value) {
   const parsed = parsePlanPath(value, { allowPattern: true });
   return parsed.ok ? parsed.path : "";
 }
+var PLAN_SYMBOL_CHAIN = /^[A-Za-z_$][A-Za-z0-9_$]*(?:(?:::|#)[A-Za-z_$][A-Za-z0-9_$]*)*$/;
+function isPlanSymbolSpan(span) {
+  const call = /^([^()]*)\([^()]*\)$/.exec(span);
+  const base = call ? call[1] : span;
+  if (!PLAN_SYMBOL_CHAIN.test(base)) return false;
+  return call !== null || base.includes("::") || base.includes("#");
+}
+function classifyPlanPath(span) {
+  const candidate = span.trim().replace(/^`|`$/g, "").trim();
+  if (!candidate) return "empty";
+  if (!parsePlanPath(candidate, { allowPattern: true }).ok) return "symbol";
+  if (candidate.includes("/") || candidate.includes(".") || candidate.includes("*")) return "path";
+  return /^\S+$/.test(candidate) && !isPlanSymbolSpan(candidate) ? "path" : "symbol";
+}
 var MAX_PLAN_PATH_MATCH_STATES = 65536;
 var MAX_PLAN_PATH_MATCH_CODE_POINTS = 65536;
 var PLAN_PATH_MATCH_MAX_OPERATIONS = 1e6;
@@ -39939,10 +39953,10 @@ function parseDoNotModify(content) {
   if (!content) return [];
   const paths = [];
   for (const item of bulletItems(content)) {
-    const spans = codeSpans(item);
-    for (const span of spans) {
+    for (const span of codeSpans(item)) {
+      if (classifyPlanPath(span) !== "path") continue;
       const path132 = normalisePlanPath(span);
-      if (path132 && (path132.includes("/") || path132.includes("."))) paths.push(path132);
+      if (path132) paths.push(path132);
     }
   }
   return [...new Set(paths)];
@@ -40509,8 +40523,9 @@ function checklistBoxes(checklist) {
 function checklistLineForParsing(line, lineIndex) {
   return lineIndex === 0 && line.startsWith("\uFEFF") ? line.slice(1) : line;
 }
+var NAMED_CHECKLIST_STEP = /^[ \t\u00a0]*step[ \t\u00a0]+(\d+)(?:$|(?=\s)|(?=[\u2014\u2013:.-](?!\d)))/i;
 function namedChecklistStep(label) {
-  const match = /^[ \t\u00a0]*step[ \t\u00a0]+(\d+)\b/i.exec(label);
+  const match = NAMED_CHECKLIST_STEP.exec(label);
   if (!match) return null;
   const index = Number(match[1]);
   return Number.isSafeInteger(index) && index > 0 ? index : null;

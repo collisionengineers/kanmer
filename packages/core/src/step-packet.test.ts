@@ -410,6 +410,29 @@ describe("selecting the next step", () => {
     expect(verifyStepPacket(compiled.packet)).toMatchObject({ ok: true });
   });
 
+  it("ends a named marker's step number at the integer", () => {
+    // `claims` is whether the label owns plan step 1. `Step 10` names step 10,
+    // which this two-step plan does not have, so it owns nothing here either.
+    const cases: [label: string, claims: boolean][] = [
+      ["Step 1 — bound the loop", true],
+      ["Step 1", true],
+      ["Step 1: bound the loop", true],
+      ["Step 1. bound the loop", true],
+      ["Step 1— bound the loop", true],
+      ["Step 1.5 — subtask", false],
+      ["Step 1a — variant", false],
+      ["Step 1-2 — range", false],
+      ["Step 10 — much later", false],
+    ];
+    for (const [label, claims] of cases) {
+      const checklist = `- [x] ${label}\n- [ ] Step 2 — pending\n`;
+      const snapshot = stepChecklistSnapshot(plan, checklist, "checklist/checklist.md", "checklist-v1");
+      expect([label, snapshot.stepLines]).toEqual([label, [claims ? [0] : [], [1]]]);
+      expect([label, snapshot.steps]).toEqual([label, [claims, false]]);
+      expect([label, nextStepIndex(plan, checklist)]).toEqual([label, claims ? 2 : 1]);
+    }
+  });
+
   it("treats a step with one unticked named box as unfinished", () => {
     const checklist = "- [x] Step 1 — first half\n- [ ] Step 1 — second half\n- [x] Step 2 — done\n";
     expect(nextStepIndex(plan, checklist)).toBe(1);

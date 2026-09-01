@@ -243,6 +243,37 @@ export function normalisePlanPath(value: string): string {
   return parsed.ok ? parsed.path : "";
 }
 
+/** A dotted member chain is a path (`a.b`); only these markers make a bare token a symbol. */
+const PLAN_SYMBOL_CHAIN = /^[A-Za-z_$][A-Za-z0-9_$]*(?:(?:::|#)[A-Za-z_$][A-Za-z0-9_$]*)*$/;
+
+function isPlanSymbolSpan(span: string): boolean {
+  const call = /^([^()]*)\([^()]*\)$/.exec(span);
+  const base = call ? call[1] : span;
+  if (!PLAN_SYMBOL_CHAIN.test(base)) return false;
+  return call !== null || base.includes("::") || base.includes("#");
+}
+
+/**
+ * Classify one backticked plan span as a declared file, a code symbol, or
+ * nothing.
+ *
+ * A span is a `path` when it parses as a repository-relative path (or the
+ * supported `*` / `**` pattern subset) and it either contains `/`, contains
+ * `.`, ends with `/`, uses a wildcard, or is a bare top-level token carrying no
+ * symbol marker. So `LICENSE` and `Makefile` are the real top-level files they
+ * name, while `parsePlan()`, `KanmerStore#setDoc` and `Foo::bar` stay
+ * `symbol`. Anything else — prose, or a value that escapes the repository — is
+ * also `symbol`, because it cannot name a file a plan can declare or forbid. A
+ * blank span is `empty`.
+ */
+export function classifyPlanPath(span: string): "path" | "symbol" | "empty" {
+  const candidate = span.trim().replace(/^`|`$/g, "").trim();
+  if (!candidate) return "empty";
+  if (!parsePlanPath(candidate, { allowPattern: true }).ok) return "symbol";
+  if (candidate.includes("/") || candidate.includes(".") || candidate.includes("*")) return "path";
+  return /^\S+$/.test(candidate) && !isPlanSymbolSpan(candidate) ? "path" : "symbol";
+}
+
 const MAX_PLAN_PATH_MATCH_STATES = 65_536;
 const MAX_PLAN_PATH_MATCH_CODE_POINTS = 65_536;
 export const PLAN_PATH_MATCH_MAX_OPERATIONS = 1_000_000;
@@ -821,11 +852,11 @@ function parseDoNotModify(content: string | null): string[] {
   if (!content) return [];
   const paths: string[] = [];
   for (const item of bulletItems(content)) {
-    const spans = codeSpans(item);
-    for (const span of spans) {
-      const path = normalisePlanPath(span);
+    for (const span of codeSpans(item)) {
       // Only path-shaped spans; a backticked symbol name is not a file.
-      if (path && (path.includes("/") || path.includes("."))) paths.push(path);
+      if (classifyPlanPath(span) !== "path") continue;
+      const path = normalisePlanPath(span);
+      if (path) paths.push(path);
     }
   }
   return [...new Set(paths)];

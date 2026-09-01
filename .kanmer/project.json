@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "project_id": "dc201ffe-56fa-40b3-aa27-3a01b371c7db",
+  "board_id": "dc201ffe-56fa-40b3-aa27-3a01b371c7db",
+  "created": "2026-09-01T23:31:42.029Z",
+  "origin": "migrated",
+  "migratedFrom": {
+    "format": 3,
+    "at": "2026-09-01T23:31:42.029Z"
+  }
+}

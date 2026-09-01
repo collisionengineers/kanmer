@@ -2,7 +2,7 @@
 id: CORE-136
 type: ticket
 title: Publish and validate v0.4.0 and promote it as the live control plane
-status: review
+status: verifying
 area: core
 assignee: ''
 profile: chore
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-09-01T18:47:56.897Z'
   implementing: '2026-09-01T19:44:34.466Z'
   review: '2026-09-01T21:40:12.279Z'
+  verifying: '2026-09-01T22:32:32.128Z'
 labels:
   - release
   - v0.4.0
@@ -24,11 +25,11 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
-review_round: 1
-remediation_budget: 1
 archived: false
 created: '2026-09-01T18:47:23.256Z'
-updated: '2026-09-01T21:55:58.413Z'
+updated: '2026-09-01T22:32:32.128Z'
+review_round: 1
+remediation_budget: 1
 ---
 
 ## Why

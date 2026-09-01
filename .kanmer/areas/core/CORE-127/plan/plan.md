@@ -487,3 +487,38 @@ The exact-head automated review at `4a50a885cada3ce89119410d1d2b16e0677edda9` fo
 - Extend `scripts/verify-skill-prose.mjs` and mutation tests without weakening existing assertions. Regenerate `plugins/kanmer/mcp/kanmer-mcp.cjs` mechanically.
 - Run failed-first focused regressions, then the core step-packet/store matrix, complete collector, reconciliation suite, authoritative MCP `test:http`, smoke/protocol, script/prose/AGENTS checks, all-workspace typecheck, core/server builds, plugin build/check and `git diff --check`.
 - Update the report and checklist, commit/push one coherent correction, and return the same PR to Review. Then wait for hosted exact-head verification and automated review, obtain one fresh independent exact-head delta review, publicly disposition every thread, sync the board, pass `kanmer-gate`, merge and verify the exact merge SHA.
+
+## Eighth exact-head root-cause remediation — mode-complete history and exact step markers (F-032–F-034)
+
+Exact-head automated and independent review of `4bca89aafa1664eb550261fce93d65f29ddb46d7` confirmed every prior blocker/major disposition and found three remaining violations of the existing complete-history and exact-step-authority contracts. They are one bounded remediation in the already-authorised parser, packet, collector, canonical prose/test and generated-bundle files. No tool, stage, schema, dependency or persisted state is added.
+
+### RC-24 — Reject unsafe modes in every intervening tree edge (F-032)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts` bounded history parser and `collectWorkspaceSnapshot`; `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Replace the name-only history census with one bounded raw NUL-delimited census over every intervening commit and merge-parent edge. Validate every metadata/path pair and charge every touch before deduplication.
+- Retain the complete changed-path union, but reject any old or new `120000` symbolic-link or `160000` Git-link mode in intervening history. Malformed metadata, unsupported mode/status, truncated output, over-count, timeout or unsafe path remains INCONCLUSIVE.
+- Preserve the existing commit, path, output and aggregate-deadline bounds. Add no per-commit/per-path subprocess loop or history service.
+- Negative proof: a tracked regular path becomes a symbolic link or Git link in an intervening commit and is restored byte-for-byte to a regular endpoint; collection must refuse even though the final worktree is clean.
+
+### RC-25 — Anchor named checklist authority at the label start (F-033)
+
+- Files/symbols: `packages/core/src/step-packet.ts::boxesByStep`, `checklistStepLines`, one shared named-marker parser; `packages/core/src/step-packet.test.ts`.
+- Recognise named mode only when the checkbox label itself begins with `Step N` after optional whitespace. Explanatory prose that merely mentions “step N” is an ordinary auxiliary checkbox and cannot select, complete or receive mutation authority for that step.
+- Reuse the same parser for next-step selection, state projection and authorised checklist line mapping so those surfaces cannot disagree.
+- Preserve positional legacy checklists when no valid named marker exists.
+- Negative proof: an auxiliary checkbox saying “Add a regression for step 1” beside the real `Step 1` and `Step 2` markers does not hold Step 1 open or gain Step 1 line authority.
+
+### RC-26 — Parse only declared structured step headings and validate numbering (F-034)
+
+- Files/symbols: `packages/core/src/plan.ts::parseSteps`, `PlanStep`, `validatePlan`; `packages/core/src/plan.test.ts`.
+- Admit structured boundaries only from documented level-three `### Step N — title` headings. Nested headings and explanatory sections remain inside the surrounding step body and never consume an index.
+- Retain each declared number and emit a typed blocking finding unless structured step numbering is positive, contiguous and equal to document order. Do not silently renumber duplicates, gaps or out-of-order declarations.
+- Preserve the legacy unstructured numbered-list read path; it remains non-compilable as before.
+- Negative proof: `#### Details` and `### Notes` do not become steps; duplicate, skipped and out-of-order declared step numbers block packet compilation; a valid Step 1/Step 2 plan remains unchanged.
+
+### Canonical contract, commands and stop
+
+- Update canonical constrained-step prose only where needed to pin the existing invariants: complete history includes modes from every intervening edge, named checklist markers begin the label, and structured plan boundaries are exact `### Step N — title` headings with contiguous numbering.
+- Extend existing prose/mutation tests without weakening assertions. Regenerate `plugins/kanmer/mcp/kanmer-mcp.cjs` mechanically.
+- Run failed-first core plan/packet and MCP collector regressions, then core focused tests, collector/reconciliation suites, authoritative MCP `test:http`, smoke/protocol, script/prose/AGENTS checks, all-workspace typecheck, core/server builds, plugin build/check and `git diff --check`.
+- Update the report/checklist, commit and push one coherent correction, and return the same PR to Review. The release controller then runs one fresh clean Windows `npm run verify` at the new exact head, waits for hosted and automated settlement, obtains one bounded independent delta review of F-032–F-034 and affected callers/tests, publicly dispositions every thread, syncs the board, passes `kanmer-gate`, merges and verifies the exact merge SHA.

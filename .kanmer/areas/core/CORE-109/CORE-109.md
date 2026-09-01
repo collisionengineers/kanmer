@@ -2,16 +2,15 @@
 id: CORE-109
 type: ticket
 title: Publish and validate v0.3.10 recovery release
-status: review
+status: done
 area: core
 assignee: codex
 profile: chore
 stageEntered:
   preparing: '2026-08-25T12:44:51.759Z'
   review: '2026-08-25T12:55:23.671Z'
-taken_at: '2026-08-25T12:44:58.374Z'
-branch: core-109-release-v0-3-10
-worktree: .worktrees/core-109
+  verifying: '2026-09-01T18:45:38.837Z'
+  done: '2026-09-01T18:46:46.291Z'
 labels:
   - release
   - v0.3.10
@@ -31,7 +30,7 @@ prs:
   - '276'
 archived: false
 created: '2026-08-25T12:43:12.101Z'
-updated: '2026-08-25T13:06:16.147Z'
+updated: '2026-09-01T18:46:46.446Z'
 ---
 
 ## Purpose

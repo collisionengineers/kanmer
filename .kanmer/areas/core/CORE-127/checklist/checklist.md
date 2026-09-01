@@ -64,3 +64,11 @@
 - [x] Tool roster remains 41 and no new apply action, workflow stage, board field or dependency appears.
 - [x] F-010 proof work, F-011 symbol fail-closed behavior and F-012 pre-allocation evidence bounds pass their real negative cases.
 - [ ] Date/type authority, tracked alias/hard-link safety, bounded batch authority, hosted physical-root fixtures and focused tests—including the collector through workspace `test:http`—`npm run verify`, hosted `verify` and `kanmer-gate` pass at one exact final head. Exact-head `7d899869523ac5b55ef2debbf67d0324ebe4fb78` passed local and hosted verification but is historical needs-changes evidence and did not include the collector in the authoritative rail; all earlier rails are retained, not final-head proof.
+
+
+## Seventh exact-head root-cause remediation
+
+- [x] Step 32 — Add failed-first real regressions for reverted forbidden history, status-hidden executable-mode drift, and duplicate isolated ticket endpoints before authority reads.
+- [x] Step 33 — Collect and bound complete intervening commit path history, preserving all names while making ancestry, output, deadline and count failures INCONCLUSIVE.
+- [x] Step 34 — Refuse clean physical/index executable-mode disagreement where representable and complete the bounded unique selected-ticket endpoint census.
+- [x] Step 35 — Update canonical prose/tests, regenerate the bundle, pass focused and authoritative checks, update the report, commit/push, and return the same PR to Review.

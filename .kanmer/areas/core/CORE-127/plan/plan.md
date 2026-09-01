@@ -454,3 +454,36 @@ Exact-head automated and independent review of `a682057152c24fb30c84ff6b296cd97e
   - `npm run test:scripts`, `npm run verify:skills`, `npm run verify:agents-block`
   - `npm run plugin:build`, `npm run plugin:check`, `git diff --check`
 - Update the report and checklist, commit and push one coherent correction, and return the same PR to Review. The release controller then owns one fresh clean Windows `npm run verify` rail at the new head, hosted exact-head settlement, one fresh independent delta review, public dispositions and thread resolution, synced-board gate, merge and exact-merge verification.
+
+
+## Seventh exact-head root-cause remediation — complete changed-path and authority identity proof (F-029–F-031)
+
+The exact-head automated review at `4a50a885cada3ce89119410d1d2b16e0677edda9` found three in-scope safety gaps. They are one final root-cause batch: complete the changed-path census and refuse authority that Git or board storage can make ambiguous. The existing PR, ticket, branch and worktree are retained; no new tool, stage, dependency, workflow engine or persisted server state is introduced.
+
+### RC-21 — Classify every path touched by committed history, not only endpoint differences (F-029)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts` history parser and `collectWorkspaceSnapshot`; `packages/mcp-server/src/step-reconciliation.test.mjs`.
+- Require the packet HEAD to be an ancestor of the live HEAD. Bound the intervening commit census before reading path history, then collect one NUL-delimited, rename-disabled union of names from every intervening commit, including each merge-parent delta. Preserve Unicode/newline paths and charge duplicate commit touches before canonical de-duplication.
+- Combine that complete history union with live index/worktree entries. A forbidden or undeclared path remains reported even when a later commit restores the endpoint bytes. Missing ancestry, malformed output, too many commits/paths, deadline exhaustion or unreadable history is INCONCLUSIVE, never PASS.
+- Preserve current endpoint filesystem/link validation and the full 40/64-hex object-id contract. Do not persist commit history or add a Git service.
+
+### RC-22 — Close status-hidden regular-file mode drift without making legitimate content edits fail (F-030)
+
+- Files/symbols: `packages/mcp-server/src/step-reconciliation.ts::trackedRegularMetadataCensus`; its real Git fixtures; canonical constrained-step prose.
+- For filesystems that expose executable bits, require every clean tracked regular path's physical executable class to agree with its indexed 100644/100755 mode in each bounded sample. A mismatch hidden by `core.fileMode=false` refuses collection before reconciliation can PASS.
+- Continue to classify ordinary content, add/delete/rename and committed mode changes through porcelain plus the complete history union. Do not compare the existing aggregate inode/object/size digest across packet lifetime, because legitimate authorised writes and atomic-save implementations change those facts; both samples still bind identity, confinement, type, link count and size internally.
+- Negative proof sets `core.fileMode=false`, changes only the executable bit, proves Git porcelain is empty, and requires fail-closed collection on a filesystem that represents that bit. Windows, where Node reports no executable-bit distinction, retains its existing bounded type/link/confinement proof.
+
+### RC-23 — Refuse duplicate selected ticket endpoints before opening authority (F-031)
+
+- Files/symbols: `packages/core/src/store.ts::locateExecutionAuthorityItem`; `packages/core/src/store.test.ts`.
+- Complete the already-bounded target lookup across every area endpoint and legacy item type before selecting one location. Zero matches remains not-found; exactly one continues; two or more matching endpoints refuse as ambiguous before either ticket body is opened or signed.
+- Preserve the existing 2,048 structural-entry bound, path validation, later identity-bound capped read, complete batch census and ordinary CRUD lookup behavior. Do not broaden this authority-only correction into a board migration or silently choose lexical first.
+- Negative proof creates the same selected id under two area endpoints and asserts refusal before any candidate content open; a unique isolated v2 endpoint and the existing legacy-v1 control remain valid.
+
+### Canonical contract, commands and stop
+
+- Update `AGENTS.md`, `plugins/kanmer/skills/kanmer-execute/SKILL.md`, `plugins/kanmer/skills/kanmer-auto/SKILL.md` and `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` together: changed-path evidence is the bounded complete intervening commit union plus live status, clean physical executable mode must agree with indexed mode where representable, and execution authority requires one unique selected ticket endpoint.
+- Extend `scripts/verify-skill-prose.mjs` and mutation tests without weakening existing assertions. Regenerate `plugins/kanmer/mcp/kanmer-mcp.cjs` mechanically.
+- Run failed-first focused regressions, then the core step-packet/store matrix, complete collector, reconciliation suite, authoritative MCP `test:http`, smoke/protocol, script/prose/AGENTS checks, all-workspace typecheck, core/server builds, plugin build/check and `git diff --check`.
+- Update the report and checklist, commit/push one coherent correction, and return the same PR to Review. Then wait for hosted exact-head verification and automated review, obtain one fresh independent exact-head delta review, publicly disposition every thread, sync the board, pass `kanmer-gate`, merge and verify the exact merge SHA.

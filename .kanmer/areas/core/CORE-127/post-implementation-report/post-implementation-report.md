@@ -290,3 +290,57 @@ The implementation run intentionally did not treat historical verification as fi
 - `scripts/verify-skill-prose.test.mjs`
 
 No implementation blocker remains. Unsupported or unobservable link targets and unavailable authority stay fail-closed rather than being guessed into PASS.
+
+
+## Seventh exact-head root-cause remediation
+
+Commit `4bca89aafa1664eb550261fce93d65f29ddb46d7` addresses exact-head findings F-029 through F-031 together:
+
+- F-029: changed-path authority now requires the packet baseline to be an ancestor of live HEAD and includes a bounded union of endpoint differences plus every path touched by every intervening commit. A forbidden path remains visible after a later revert; non-ancestor, malformed, over-count, output-budget or deadline evidence stays INCONCLUSIVE.
+- F-030: on filesystems that expose POSIX executable mode, every clean indexed regular path must physically agree with its indexed `100644`/`100755` executable class. Native Windows retains the platform-safe exception because it does not expose a stable POSIX executable bit.
+- F-031: isolated execution authority now exhausts the bounded v2-area and legacy-v1 selected-ticket lookup and rejects more than one exact endpoint before either candidate record is opened.
+
+Canonical AGENTS, execute/auto skills and tool reference prose state the complete-history, physical-mode and unique-endpoint contracts. Mutation tests pin every statement, and the committed standalone MCP bundle was regenerated mechanically.
+
+### Failed-first evidence
+
+The targeted regressions were exercised before the production corrections:
+
+- Duplicate isolated v2 endpoints resolved instead of rejecting: 1 FAIL.
+- A forbidden committed path followed by its revert disappeared from endpoint evidence: 1 FAIL with actual changed paths `[]`.
+- The native POSIX `core.fileMode=false` fixture is not physically exercisable on Windows and is retained as an explicit platform skip; a portable mode-agreement matrix proves both accept and reject classes, and the real chmod fixture runs on POSIX.
+
+No assertion was weakened. The failed mechanisms remain durable regression cases.
+
+### Final implementation evidence
+
+All implementation-time commands exited 0 against the exact bytes committed as `4bca89aafa1664eb550261fce93d65f29ddb46d7`:
+
+- Core plan/packet/store matrix: 228/228 PASS.
+- Reconciliation integration: 42/42 PASS, including end-to-end `STEP_PATH_FORBIDDEN` after a committed revert.
+- Authoritative MCP workspace command `npm run test:http -w @kanmer/mcp-server`: 234 PASS / 0 FAIL / 1 platform skip.
+- MCP stdio smoke: 381/381 PASS; protocol smoke: 50/50 PASS; tool roster remains exactly 41.
+- Script suites: 161/161 PASS; canonical skill verification: ALL CHECKS PASSED; AGENTS block: 31/31 PASS.
+- All-workspace typecheck, core/MCP development and standalone builds, plugin build/check, exact bundle byte identity, isolated handshake, `git diff --check`, and staged diff check: PASS.
+- A bounded pre-commit invariant audit by `/root/core127_history_metadata_analysis` found no blocker or major defect in F-029, F-030 or F-031 and performed no mutation.
+- The branch was pushed to PR #307 at exact head `4bca89aafa1664eb550261fce93d65f29ddb46d7`; current merge-base remains `4fda54b4489fa4bc4b6b091c2af67715245ffa08`.
+
+The implementation run intentionally does not treat historical verification as final-head proof. One fresh clean Windows `npm run verify` at this exact head, hosted `verify`, exact-head automated settlement, one fresh independent delta review, public thread dispositions, synced-board `kanmer-gate`, merge and exact-merge verification remain controller-owned.
+
+### Files changed in the seventh remediation
+
+- `AGENTS.md`
+- `packages/core/src/store.ts`
+- `packages/core/src/store.test.ts`
+- `packages/mcp-server/src/reconciliation.ts`
+- `packages/mcp-server/src/reconciliation.test.mjs`
+- `packages/mcp-server/src/step-reconciliation.ts`
+- `packages/mcp-server/src/step-reconciliation.test.mjs`
+- `plugins/kanmer/mcp/kanmer-mcp.cjs`
+- `plugins/kanmer/skills/kanmer-auto/SKILL.md`
+- `plugins/kanmer/skills/kanmer-execute/SKILL.md`
+- `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`
+- `scripts/verify-skill-prose.mjs`
+- `scripts/verify-skill-prose.test.mjs`
+
+No implementation blocker remains. Exhausted or unavailable history, unrepresentable executable metadata and ambiguous ticket storage remain fail-closed rather than being guessed into PASS.

@@ -24,9 +24,11 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
+review_round: 1
+remediation_budget: 1
 archived: false
 created: '2026-09-01T18:47:23.256Z'
-updated: '2026-09-01T21:40:12.279Z'
+updated: '2026-09-01T21:55:58.413Z'
 ---
 
 ## Why

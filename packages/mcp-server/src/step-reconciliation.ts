@@ -25,6 +25,7 @@ const MAX_TRACKED_LINK_TEXT_BYTES = 64 * 1024;
 const MAX_TRACKED_LINK_TARGET_BYTES = 2 * 1024 * 1024;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_HEAD_COMMITS = 512;
 const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const FULL_GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
 
@@ -224,6 +225,15 @@ export function parseNameStatusZ(raw: Buffer): string[] {
   return paths;
 }
 
+/** `git log --format= --name-only -z --no-renames` emits only NUL paths. */
+export function parseNameOnlyZ(raw: Buffer): string[] {
+  const paths = splitNul(raw, "git log --name-only -z output")
+    .filter((token) => token.length > 0)
+    .map((token) => decode(token));
+  if (paths.length > MAX_ENTRIES) throw new Error(`HEAD history has more than ${MAX_ENTRIES} touched paths`);
+  return paths;
+}
+
 export interface IndexFlagCensus {
   digest: string;
   count: number;
@@ -408,6 +418,15 @@ export async function readBoundedWorkspaceFile(
 
 function stableFactsIdentity(facts: StableFileFacts): string {
   return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.directory, facts.symbolicLink].join(":");
+}
+
+/** Git tracks only the owner-executable class; native Windows does not expose it. */
+export function physicalExecutableModeAgreesWithIndex(
+  indexMode: "100644" | "100755",
+  physicalMode: bigint,
+  platform = process.platform,
+): boolean {
+  return platform === "win32" || (indexMode === "100755") === ((physicalMode & 0o100n) !== 0n);
 }
 
 interface ConfinedPathProof {
@@ -710,6 +729,13 @@ async function trackedRegularMetadataCensus(
     if (!proof.missing && porcelainDeletion) {
       throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is present despite a porcelain worktree deletion`);
     }
+    if (!proof.missing) {
+      if (!physicalExecutableModeAgreesWithIndex(entry.mode as "100644" | "100755", proof.final!.mode)) {
+        throw new Error(
+          `tracked regular path ${JSON.stringify(entry.path)} physical executable mode does not agree with its Git index mode`,
+        );
+      }
+    }
     identities.push(digest([entry.path, entry.mode, entry.objectId, String(entry.stage), proof.missing ? "missing" : "regular", proof.digest]));
   }
   return { count: regular.length, digest: digest(identities) };
@@ -895,8 +921,27 @@ export async function collectWorkspaceSnapshot(input: {
     if (first.snapshot.branch !== input.branch) throw new Error(`recorded branch ${input.branch} does not match checked-out branch ${first.snapshot.branch}`);
     let headChanges: string[] = [];
     if (input.baseline && input.baseline.head !== first.snapshot.head) {
-      const raw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", input.baseline.head!, first.snapshot.head!, "--"]);
-      headChanges = parseNameStatusZ(raw);
+      const baselineHead = input.baseline.head;
+      if (!baselineHead || !FULL_GIT_OBJECT_ID.test(baselineHead)) {
+        throw new Error("packet workspace baseline HEAD is not a full supported Git object ID");
+      }
+      const mergeBase = decode(await run(physical, ["merge-base", baselineHead, first.snapshot.head!])).trim();
+      if (!FULL_GIT_OBJECT_ID.test(mergeBase) || mergeBase.toLowerCase() !== baselineHead.toLowerCase()) {
+        throw new Error("packet workspace baseline HEAD is not an ancestor of the live workspace HEAD");
+      }
+      const range = `${baselineHead}..${first.snapshot.head!}`;
+      const commitsText = decode(await run(physical, ["rev-list", `--max-count=${MAX_HEAD_COMMITS + 1}`, "--topo-order", range, "--"])).trim();
+      const commits = commitsText ? commitsText.split(/\r?\n/u) : [];
+      if (commits.length > MAX_HEAD_COMMITS) throw new Error(`HEAD history has more than ${MAX_HEAD_COMMITS} intervening commits`);
+      if (commits.some((commit) => !FULL_GIT_OBJECT_ID.test(commit))) {
+        throw new Error("HEAD history emitted a malformed commit identity");
+      }
+      const endpointRaw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", baselineHead, first.snapshot.head!, "--"]);
+      const historyRaw = await run(physical, [
+        "log", "--format=", "--name-only", "-z", "-m", "--no-renames", "--topo-order", "--reverse", range, "--",
+      ]);
+      headChanges = [...new Set([...parseNameStatusZ(endpointRaw), ...parseNameOnlyZ(historyRaw)])];
+      if (headChanges.length > MAX_ENTRIES) throw new Error(`HEAD evidence has more than ${MAX_ENTRIES} distinct changed paths`);
       for (const changed of headChanges) {
         assertCollectionDeadline(deadline);
         const parsed = parsePlanPath(changed, { observed: true });

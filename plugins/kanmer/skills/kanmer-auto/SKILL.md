@@ -521,17 +521,25 @@ On every result or timeout, the controller:
 6. writes and reads back the run record before selecting another action.
 
 The constrained Git census covers tracked, staged, unstaged and untracked
-paths plus both rename endpoints. A packet workspace HEAD is a full 40- or
+paths plus both rename endpoints. Changed-path evidence also includes one bounded
+complete union of every path touched by every intervening commit, including
+paths later reverted; a non-ancestor baseline or exhausted history is
+`INCONCLUSIVE`. A packet workspace HEAD is a full 40- or
 64-character Git object ID. Every sample also hashes one bounded NUL
 `git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
 path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
-gitlinks refuse without index mutation; census drift is `INCONCLUSIVE`. A tracked
+gitlinks refuse without index mutation; census drift is `INCONCLUSIVE`. On
+filesystems that expose the owner-executable bit, every clean tracked regular
+path must agree with its indexed `100644`/`100755` executable class;
+disagreement refuses. A tracked
 mode-`120000` path is retained only when its checkout representation and capped
 target bytes are identity-bound and its physical target is an indexed tracked
 regular file inside the worktree; external, chained-external, dangling,
 unreadable, unstable or over-budget links refuse.
 Tracked-link target bytes retain a leading UTF-8 BOM.
 Ignored or untracked link targets refuse.
+Execution authority requires exactly one selected ticket endpoint across v2
+areas and legacy v1 storage; duplicates refuse before either record is opened.
 Ignored paths and `.git` / common-directory metadata are outside it and
 constrained workers must never mutate them. Any need or attempt is a deviation stop
 recorded as `INCONCLUSIVE`; absence from the census never authorizes such a write.

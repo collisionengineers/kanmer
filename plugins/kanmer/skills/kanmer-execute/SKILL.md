@@ -160,17 +160,24 @@ actual change while `allowedSymbols` is non-empty adds
 precedence. No-change invents no symbol finding, and empty symbols preserve
 file-scoped PASS.
 This Git evidence covers tracked, staged, unstaged and untracked paths plus both
-rename endpoints. A packet workspace HEAD is a full 40- or 64-character Git
+rename endpoints. Changed-path evidence also includes one bounded complete union
+of every path touched by every intervening commit, including paths later
+reverted; a non-ancestor baseline or exhausted history is `INCONCLUSIVE`.
+A packet workspace HEAD is a full 40- or 64-character Git
 object ID. Every sample also hashes one bounded NUL
 `git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
 path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
 gitlinks refuse without index mutation; census drift between samples is
-`INCONCLUSIVE`. A tracked mode-`120000` path is retained only when its checkout
+`INCONCLUSIVE`. On filesystems that expose the owner-executable bit, every clean
+tracked regular path must agree with its indexed `100644`/`100755` executable
+class; disagreement refuses. A tracked mode-`120000` path is retained only when its checkout
 representation and capped target bytes are identity-bound and its physical
 target is an indexed tracked regular file inside the worktree; external,
 chained-external, dangling, unreadable, unstable or over-budget links refuse.
 Tracked-link target bytes retain a leading UTF-8 BOM.
 Ignored or untracked link targets refuse.
+Execution authority requires exactly one selected ticket endpoint across v2
+areas and legacy v1 storage; duplicates refuse before either record is opened.
 Ignored paths and `.git` / common-directory metadata are outside it; a
 constrained worker must never mutate them. Any need or attempt is a deviation
 stop and the controller records `INCONCLUSIVE` — an absent path is not proof

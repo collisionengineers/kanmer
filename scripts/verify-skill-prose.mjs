@@ -1667,6 +1667,18 @@ check(
   "workspace authority accepts only complete SHA-1 or SHA-256 object identities",
 );
 check(
+  "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /bounded\s+complete\s+union\s+of\s+every\s+path\s+touched\s+by\s+every\s+intervening\s+commit/.test(body) &&
+    /including\s+paths\s+later\s+reverted/.test(body) &&
+    /non-ancestor\s+baseline\s+or\s+exhausted\s+history\s+is\s+`INCONCLUSIVE`/.test(body) &&
+    /owner-executable\s+bit,\s+every\s+clean\s+tracked\s+regular\s+path\s+must\s+agree\s+with\s+its\s+indexed\s+`100644`\/`100755`\s+executable\s+class/.test(body) &&
+    /exactly\s+one\s+selected\s+ticket\s+endpoint\s+across\s+v2\s+areas\s+and\s+legacy\s+v1\s+storage/.test(body) &&
+    /duplicates\s+refuse\s+before\s+either\s+record\s+is\s+opened/.test(body),
+  ),
+  "reverted commits, hidden executable drift and duplicate ticket endpoints cannot become PASS authority",
+);
+check(
   "constrained workers stop at the ignored and Git-metadata observation boundary",
   [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
     /tracked,\s*staged,\s*unstaged\s+and\s+untracked\s+paths\s+plus\s+both\s+rename\s+endpoints/.test(body) &&

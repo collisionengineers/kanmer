@@ -1075,6 +1075,7 @@ export class KanmerStore {
 
   private async locateExecutionAuthorityItem(id: string): Promise<ItemLocation | null> {
     itemFile(this.paths, "ticket", id);
+    const matches: ItemLocation[] = [];
     const areaFolders: string[] = [];
     try {
       for await (const entry of await fs.opendir(this.paths.areasRoot)) {
@@ -1095,7 +1096,7 @@ export class KanmerStore {
       const file = path.join(dir, `${id}.md`);
       try {
         await fs.lstat(file);
-        return { kind: "v2", file, dir, areaFolder };
+        matches.push({ kind: "v2", file, dir, areaFolder });
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
@@ -1104,12 +1105,17 @@ export class KanmerStore {
       const file = itemFile(this.paths, type, id);
       try {
         await fs.lstat(file);
-        return { kind: "v1", file, type };
+        matches.push({ kind: "v1", file, type });
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
     }
-    return null;
+    if (matches.length > 1) {
+      throw new Error(
+        `execution authority for "${id}" is ambiguous because ${matches.length} duplicate selected ticket endpoints exist`,
+      );
+    }
+    return matches[0] ?? null;
   }
 
   async getExecutionAuthoritySnapshot(id: string): Promise<ExecutionAuthoritySnapshot | null> {

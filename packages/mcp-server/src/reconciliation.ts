@@ -32,8 +32,10 @@ export {
   collectStepDocumentSnapshot,
   collectWorkspaceSnapshot,
   parseIndexFlagCensus,
+  parseNameOnlyZ,
   parseNameStatusZ,
   parsePorcelainV1Z,
+  physicalExecutableModeAgreesWithIndex,
   readBoundedWorkspaceFile,
   stepDocumentSnapshotAuthority,
 } from "./step-reconciliation.js";

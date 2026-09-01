@@ -9,8 +9,10 @@ import {
   collectStepDocumentSnapshot,
   collectWorkspaceSnapshot,
   parseIndexFlagCensus,
+  parseNameOnlyZ,
   parseNameStatusZ,
   parsePorcelainV1Z,
+  physicalExecutableModeAgreesWithIndex,
   readBoundedWorkspaceFile,
 } from "../dist/reconciliation.js";
 
@@ -67,6 +69,23 @@ test("porcelain and name-status parsers preserve both rename endpoints and rejec
   assert.deepEqual(parseNameStatusZ(Buffer.from("R100\0old name.txt\0renamed ü.txt\0", "utf8")), ["old name.txt", "renamed ü.txt"]);
   assert.throws(() => parsePorcelainV1Z(Buffer.from("?? incomplete", "utf8")), /terminated by NUL/);
   assert.throws(() => parsePorcelainV1Z(Buffer.from([0x3f, 0x3f, 0x20, 0xff, 0])), /encoded data|encoding/i);
+});
+
+test("the complete-history name parser preserves NUL paths and bounds duplicate touches", () => {
+  assert.deepEqual(parseNameOnlyZ(Buffer.from("line\n雪.ts\0ordinary.ts\0", "utf8")), ["line\n雪.ts", "ordinary.ts"]);
+  assert.throws(() => parseNameOnlyZ(Buffer.from("unterminated", "utf8")), /terminated by NUL/);
+  assert.throws(
+    () => parseNameOnlyZ(Buffer.from(Array.from({ length: 513 }, () => "same.ts\0").join(""), "utf8")),
+    /more than 512 touched paths/i,
+  );
+});
+
+test("physical executable authority agrees with Git index mode where the platform represents it", () => {
+  assert.equal(physicalExecutableModeAgreesWithIndex("100644", 0o100644n, "linux"), true);
+  assert.equal(physicalExecutableModeAgreesWithIndex("100755", 0o100755n, "linux"), true);
+  assert.equal(physicalExecutableModeAgreesWithIndex("100644", 0o100755n, "linux"), false);
+  assert.equal(physicalExecutableModeAgreesWithIndex("100755", 0o100644n, "linux"), false);
+  assert.equal(physicalExecutableModeAgreesWithIndex("100755", 0o100666n, "win32"), true);
 });
 
 test("index-flag census preserves raw NUL paths and rejects malformed or unbounded output", () => {
@@ -831,6 +850,76 @@ test("committed changes and rename endpoints are retained against the baseline H
   assert.equal(current.ok, true);
   if (!current.ok) return;
   assert.deepEqual(current.headChanges, ["tracked.txt", "renamed ü.txt"]);
+});
+
+test("every path touched by intervening commits remains visible after an endpoint revert", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  const baseline = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(baseline.ok, true);
+  if (!baseline.ok) return;
+
+  await fs.mkdir(path.join(worktree, "forbidden"));
+  await fs.writeFile(path.join(worktree, "forbidden", "transient.txt"), "must remain auditable\n");
+  git(worktree, "add", "forbidden/transient.txt");
+  git(worktree, "commit", "-m", "touch forbidden path");
+  await fs.rm(path.join(worktree, "forbidden", "transient.txt"));
+  git(worktree, "add", "-u", "forbidden/transient.txt");
+  git(worktree, "commit", "-m", "restore endpoint");
+  assert.equal(git(worktree, "diff", "--name-only", baseline.snapshot.head, "HEAD"), "");
+
+  const current = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    baseline: baseline.snapshot,
+  });
+  assert.equal(current.ok, true, current.ok ? undefined : current.reason);
+  if (current.ok) assert.deepEqual(current.headChanges, ["forbidden/transient.txt"]);
+});
+
+test("a live HEAD that no longer descends from the packet baseline is inconclusive", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  await fs.writeFile(path.join(worktree, "baseline.txt"), "baseline branch\n");
+  git(worktree, "add", "baseline.txt");
+  git(worktree, "commit", "-m", "packet baseline");
+  const baseline = await collectWorkspaceSnapshot({ repoRoot: root, boardRoot: board, worktree: ".worktrees/ticket", branch: "ticket-step" });
+  assert.equal(baseline.ok, true);
+  if (!baseline.ok) return;
+
+  git(worktree, "reset", "--hard", "HEAD~1");
+  await fs.writeFile(path.join(worktree, "divergent.txt"), "divergent branch\n");
+  git(worktree, "add", "divergent.txt");
+  git(worktree, "commit", "-m", "divergent history");
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+    baseline: baseline.snapshot,
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /not an ancestor/i);
+});
+
+test("a clean executable-bit change hidden by core.fileMode=false is refused", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("Windows does not expose a stable executable bit through Node stat");
+    return;
+  }
+  const { root, worktree, board } = await fixture(t);
+  git(worktree, "config", "core.fileMode", "false");
+  await fs.chmod(path.join(worktree, "tracked.txt"), 0o755);
+  assert.equal(git(worktree, "status", "--porcelain=v1"), "");
+
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /executable|mode.*index|index.*mode/i);
 });
 
 test("detached, foreign, board, symlink and parent-link workspaces fail closed", async (t) => {

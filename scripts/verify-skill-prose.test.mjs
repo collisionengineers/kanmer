@@ -2566,6 +2566,27 @@ test("constrained-step prose validator rejects weakened authority, path and reco
       failure: "packet workspace HEAD supports full SHA-1 and SHA-256 object ids",
     },
     {
+      label: "complete-commit-history",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "bounded complete union\nof every path touched by every intervening commit",
+      to: "endpoint-only union\nof paths visible in the final tree",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
+      label: "physical-executable-mode",
+      file: (fixture) => skillFile(fixture, "kanmer-auto"),
+      from: "owner-executable bit, every clean tracked regular\npath must agree with its indexed `100644`/`100755` executable class",
+      to: "owner-executable bit is ignored for clean tracked paths",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
+      label: "unique-ticket-authority",
+      file: (fixture) => join(fixture, "plugins", "kanmer", "skills", "kanmer-tickets", "references", "tool-reference.md"),
+      from: "exactly\none selected ticket endpoint across v2 areas and legacy v1 storage",
+      to: "the first\nselected ticket endpoint returned by storage",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
       label: "checklist-frontier",
       file: (fixture) => skillFile(fixture, "kanmer-execute"),
       from: "derive every marker state from those bytes",

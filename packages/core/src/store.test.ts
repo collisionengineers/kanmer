@@ -678,6 +678,50 @@ describe("format v2", () => {
     expect(second?.inventory.find((doc) => doc.doc === "scratch/exempt-000.md")?.content).toBe("changed scratch\n");
   });
 
+  it("refuses duplicate selected ticket endpoints before opening either authority record", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Unique authority", status: "implementing" });
+    const canonical = path.join(root, ".kanmer", "areas", "_none", ticket.id, `${ticket.id}.md`);
+    const duplicateDirectory = path.join(root, ".kanmer", "areas", "duplicate", ticket.id);
+    const duplicate = path.join(duplicateDirectory, `${ticket.id}.md`);
+    await fs.mkdir(duplicateDirectory, { recursive: true });
+    await fs.copyFile(canonical, duplicate);
+
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/duplicate|ambiguous.*endpoint/i);
+      expect(opened.filter((file) => file === path.resolve(canonical) || file === path.resolve(duplicate))).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("refuses a mixed v2 and legacy selected-ticket endpoint before opening either record", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Mixed authority", status: "implementing" });
+    const canonical = path.join(root, ".kanmer", "areas", "_none", ticket.id, `${ticket.id}.md`);
+    const legacyDirectory = path.join(root, ".kanmer", "tickets");
+    const legacy = path.join(legacyDirectory, `${ticket.id}.md`);
+    await fs.mkdir(legacyDirectory, { recursive: true });
+    await fs.copyFile(canonical, legacy);
+
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/duplicate|ambiguous.*endpoint/i);
+      expect(opened.filter((file) => file === path.resolve(canonical) || file === path.resolve(legacy))).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
   it("collects batch state inside the bounded authority snapshot without rereading retained endpoints", async () => {
     const fixture = await executionBatch("authority-batch");
     const opened: string[] = [];

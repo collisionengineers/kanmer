@@ -976,6 +976,27 @@ test("packet-aware reconcile_ticket classifies actual allowed changes and writes
   assert.equal(await directoryDigest(path.join(fixture.root, ".kanmer")), before);
 });
 
+test("packet-aware reconcile_ticket fails a forbidden path committed and later reverted", async (t) => {
+  const fixture = await stepFixture(t);
+  await fs.mkdir(path.join(fixture.worktree, "forbidden"));
+  await fs.writeFile(path.join(fixture.worktree, "forbidden", "transient.txt"), "forbidden history\n");
+  execFileSync("git", ["-C", fixture.worktree, "add", "forbidden/transient.txt"]);
+  execFileSync("git", ["-C", fixture.worktree, "commit", "-m", "touch forbidden path"], { stdio: "ignore" });
+  await fs.rm(path.join(fixture.worktree, "forbidden", "transient.txt"));
+  execFileSync("git", ["-C", fixture.worktree, "add", "-u", "forbidden/transient.txt"]);
+  execFileSync("git", ["-C", fixture.worktree, "commit", "-m", "restore endpoint"], { stdio: "ignore" });
+  assert.equal(execFileSync("git", ["-C", fixture.worktree, "diff", "--name-only", fixture.packet.workspace.head, "HEAD"], { encoding: "utf8" }).trim(), "");
+  await fixture.store.setDoc(fixture.ticket.id, "checklist", fixture.checklistText.replace("[ ] Step 1", "[x] Step 1"));
+
+  const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, {
+    stepPacket: fixture.packet,
+    stepProject: fixture.project,
+  });
+  assert.equal(result.step.status, "fail");
+  assert.ok(result.step.findings.some((finding) => finding.code === "STEP_PATH_FORBIDDEN" && finding.path === "forbidden/transient.txt"));
+  assert.deepEqual(result.step.changedPaths, [{ path: "forbidden/transient.txt", classification: "forbidden" }]);
+});
+
 for (const [label, checklist, expectedCode] of [
   ["an unticked selected step", (text) => text, "STEP_NOT_COMPLETED"],
   ["a later step marker", (text) => text.replace("[ ] Step 2", "[x] Step 2"), "STEP_LATER_ADVANCED"],

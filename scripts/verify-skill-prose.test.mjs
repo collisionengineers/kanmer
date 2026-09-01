@@ -2436,3 +2436,215 @@ test("goal contract validator rejects a run record that records no transient bud
     removeTreeWithRetrySync(fixture);
   }
 });
+
+test("constrained-step prose validator rejects weakened authority, path and reconciliation contracts", () => {
+  const mutations = [
+    {
+      label: "path-syntax",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "canonical repository-relative POSIX path",
+      to: "convenient project path",
+      failure: "constrained plans pin canonical repository-relative path syntax",
+    },
+    {
+      label: "backslash-direction",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "Benign declaration backslashes are\n   normalized to `/`",
+      to: "Declaration and observed backslashes are accepted without normalization",
+      failure: "constrained plans pin canonical repository-relative path syntax",
+    },
+    {
+      label: "packet-auth",
+      file: (fixture) => skillFile(fixture, "kanmer-auto"),
+      from: "Its `packetId` is tamper-evident identity, not authentication",
+      to: "Its `packetId` authenticates the worker result",
+      failure: "the controller retains the exact packet and treats packetId as non-authenticating",
+    },
+    {
+      label: "caller-paths",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "caller-supplied changed-path summaries are not proof",
+      to: "caller-supplied changed-path summaries are sufficient proof",
+      failure: "packet-aware reconciliation derives actual Git changes and fails closed",
+    },
+    {
+      label: "mapped-marker",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "at least one mapped unchecked checklist\n   marker",
+      to: "an optional prose note",
+      failure: "constrained issuance requires a mapped unchecked checklist marker",
+    },
+    {
+      label: "named-marker-anchor",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "checkbox label begins with `Step N`; an\n   explanatory prose mention of `step N` never maps that checkbox to a step",
+      to: "checkbox prose mentions a step number anywhere",
+      failure: "constrained issuance requires a mapped unchecked checklist marker",
+    },
+    {
+      label: "structured-step-boundary",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "Only an exact level-three\n   `### Step N — <title>` heading is a structured boundary: declared numbers\n   start at 1 and remain contiguous,\n   while nested or explanatory headings never become steps",
+      to: "Every nested heading is silently renumbered as a structured step",
+      failure: "structured plan steps use exact level-three headings and contiguous declared numbers",
+    },
+    {
+      label: "checklist-terminators",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "CRLF/CR/LF terminator",
+      to: "normalized line terminator",
+      failure: "path matching and checklist bytes fail closed at explicit bounds",
+    },
+    {
+      label: "group-census",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "one lexical, de-duplicated group census",
+      to: "one unbounded group list",
+      failure: "packet issuance bounds one canonical group census before group I/O",
+    },
+    {
+      label: "board-snapshot-handles",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "identity-bound capped handles",
+      to: "ordinary path reads",
+      failure: "packet issuance binds a metadata-first capped board snapshot",
+    },
+    {
+      label: "board-snapshot-junctions",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "Physical confinement is anchored at the configured project root",
+      to: "Physical confinement trusts every board-internal junction",
+      failure: "packet issuance binds a metadata-first capped board snapshot",
+    },
+    {
+      label: "symbol-fail-closed",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "`STEP_SYMBOL_SCOPE_INCONCLUSIVE`; forbidden or undeclared path FAIL takes\nprecedence",
+      to: "`STEP_SYMBOL_SCOPE_PASS`; symbol text authorizes every change",
+      failure: "free-form symbol authority fails closed on actual changes",
+    },
+    {
+      label: "glob-proof-context",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "Plan-time glob containment and intersection use one aggregate proof context",
+      to: "Plan-time glob proof is unbounded",
+      failure: "plan glob proof work shares one aggregate bounded context",
+    },
+    {
+      label: "matcher-charging",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "budget is charged before\n   raw path parsing and before every literal or wildcard comparison",
+      to: "budget is consulted after matching completes",
+      failure: "path matching charges parsing and each comparison to one shared budget",
+    },
+    {
+      label: "handle-bound-read",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "read once through one capped handle",
+      to: "read through any convenient path",
+      failure: "dirty file bytes stay bound to one capped verified handle",
+    },
+    {
+      label: "hidden-index-flags",
+      file: (fixture) => skillFile(fixture, "kanmer-auto"),
+      from: "`git ls-files -v -s -z` index census",
+      to: "`git status` note",
+      failure: "workspace samples bind complete index and tracked-link authority",
+    },
+    {
+      label: "tracked-link-bom",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "Tracked-link target bytes retain a leading UTF-8 BOM",
+      to: "Tracked-link target bytes discard a leading UTF-8 BOM",
+      failure: "workspace samples bind complete index and tracked-link authority",
+    },
+    {
+      label: "tracked-link-indexed-target",
+      file: (fixture) => skillFile(fixture, "kanmer-auto"),
+      from: "indexed tracked\nregular file inside the worktree",
+      to: "arbitrary in-worktree\nregular file",
+      failure: "workspace samples bind complete index and tracked-link authority",
+    },
+    {
+      label: "tracked-link-untracked-target",
+      file: (fixture) => join(fixture, "plugins", "kanmer", "skills", "kanmer-tickets", "references", "tool-reference.md"),
+      from: "Ignored or untracked link targets refuse",
+      to: "Ignored or untracked link targets are accepted",
+      failure: "workspace samples bind complete index and tracked-link authority",
+    },
+    {
+      label: "workspace-object-format",
+      file: (fixture) => join(fixture, "plugins", "kanmer", "skills", "kanmer-tickets", "references", "tool-reference.md"),
+      from: "full 40- or 64-character\nGit object ID",
+      to: "short hexadecimal\nGit object ID",
+      failure: "packet workspace HEAD supports full SHA-1 and SHA-256 object ids",
+    },
+    {
+      label: "complete-commit-history",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "bounded complete union\nof every path touched by every intervening commit",
+      to: "endpoint-only union\nof paths visible in the final tree",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
+      label: "intervening-history-modes",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "history census validates both old and new modes from every intervening\ntree edge",
+      to: "history census retains names but discards every intervening mode",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
+      label: "physical-executable-mode",
+      file: (fixture) => skillFile(fixture, "kanmer-auto"),
+      from: "owner-executable bit, every clean tracked regular\npath must agree with its indexed `100644`/`100755` executable class",
+      to: "owner-executable bit is ignored for clean tracked paths",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
+      label: "unique-ticket-authority",
+      file: (fixture) => join(fixture, "plugins", "kanmer", "skills", "kanmer-tickets", "references", "tool-reference.md"),
+      from: "exactly\none selected ticket endpoint across v2 areas and legacy v1 storage",
+      to: "the first\nselected ticket endpoint returned by storage",
+      failure: "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+    },
+    {
+      label: "checklist-frontier",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "derive every marker state from those bytes",
+      to: "trust the packet's stored marker summary",
+      failure: "exact checklist bytes enforce one contiguous packet frontier",
+    },
+    {
+      label: "ignored-boundary",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "Ignored paths and `.git` / common-directory metadata are",
+      to: "Ignored paths and Git metadata are fully observed and",
+      failure: "constrained workers stop at the ignored and Git-metadata observation boundary",
+    },
+    {
+      label: "successor-pass",
+      file: (fixture) => skillFile(fixture, "kanmer-execute"),
+      from: "Only PASS may authorize the next step",
+      to: "Any terminal result may authorize the next step",
+      failure: "successor steps require the complete exact prior PASS packet",
+    },
+    {
+      label: "schema-version",
+      file: (fixture) => skillFile(fixture, "kanmer-plan"),
+      from: "`step-packet/2`",
+      to: "`step-packet/1`",
+      failure: "canonical docs describe only step-packet/2",
+    },
+  ];
+  for (const mutation of mutations) {
+    const fixture = goalFixture(`kanmer-constrained-step-${mutation.label}-`);
+    try {
+      edit(mutation.file(fixture), mutation.from, mutation.to);
+      const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+      assert.notEqual(result.status, 0, `${mutation.label} mutation should fail the validator`);
+      expectFail(result.stdout, mutation.failure);
+    } finally {
+      removeTreeWithRetrySync(fixture);
+    }
+  }
+});

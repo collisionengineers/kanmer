@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path22) {
-      let input = path22;
+    function removeDotSegments(path23) {
+      let input = path23;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3479,8 +3479,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path22, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path22 && path22 !== "/" ? path22 : void 0;
+        const [path23, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path23 && path23 !== "/" ? path23 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -10187,12 +10187,12 @@ var require_stringify = __commonJS({
         throw new TypeError('expected "' + language + '.stringify" to be a function');
       }
       data = Object.assign({}, file.data, data);
-      const open = opts.delimiters[0];
+      const open2 = opts.delimiters[0];
       const close = opts.delimiters[1];
       const matter5 = engine.stringify(data, options2).trim();
       let buf = "";
       if (matter5 !== "{}") {
-        buf = newline(open) + newline(matter5) + newline(close);
+        buf = newline(open2) + newline(matter5) + newline(close);
       }
       if (typeof file.excerpt === "string" && file.excerpt !== "") {
         if (str2.indexOf(file.excerpt.trim()) === -1) {
@@ -10316,18 +10316,18 @@ var require_gray_matter = __commonJS({
     }
     function parseMatter(file, options2) {
       const opts = defaults(options2);
-      const open = opts.delimiters[0];
+      const open2 = opts.delimiters[0];
       const close = "\n" + opts.delimiters[1];
       let str2 = file.content;
       if (opts.language) {
         file.language = opts.language;
       }
-      const openLen = open.length;
-      if (!utils.startsWith(str2, open, openLen)) {
+      const openLen = open2.length;
+      if (!utils.startsWith(str2, open2, openLen)) {
         excerpt(file, opts);
         return file;
       }
-      if (str2.charAt(openLen) === open.slice(-1)) {
+      if (str2.charAt(openLen) === open2.slice(-1)) {
         return file;
       }
       str2 = str2.slice(openLen);
@@ -10383,9 +10383,9 @@ var require_gray_matter = __commonJS({
     };
     matter5.language = function(str2, options2) {
       const opts = defaults(options2);
-      const open = opts.delimiters[0];
+      const open2 = opts.delimiters[0];
       if (matter5.test(str2)) {
-        str2 = str2.slice(open.length);
+        str2 = str2.slice(open2.length);
       }
       const language = str2.slice(0, str2.search(/\r?\n/));
       return {
@@ -10478,17 +10478,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path22) {
-      const ctrl = callVisitor(key, node, visitor, path22);
+    function visit_(key, node, visitor, path23) {
+      const ctrl = callVisitor(key, node, visitor, path23);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path22, ctrl);
-        return visit_(key, ctrl, visitor, path22);
+        replaceNode(key, path23, ctrl);
+        return visit_(key, ctrl, visitor, path23);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path22 = Object.freeze(path22.concat(node));
+          path23 = Object.freeze(path23.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path22);
+            const ci = visit_(i, node.items[i], visitor, path23);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10499,13 +10499,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path22 = Object.freeze(path22.concat(node));
-          const ck = visit_("key", node.key, visitor, path22);
+          path23 = Object.freeze(path23.concat(node));
+          const ck = visit_("key", node.key, visitor, path23);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path22);
+          const cv = visit_("value", node.value, visitor, path23);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10526,17 +10526,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path22) {
-      const ctrl = await callVisitor(key, node, visitor, path22);
+    async function visitAsync_(key, node, visitor, path23) {
+      const ctrl = await callVisitor(key, node, visitor, path23);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path22, ctrl);
-        return visitAsync_(key, ctrl, visitor, path22);
+        replaceNode(key, path23, ctrl);
+        return visitAsync_(key, ctrl, visitor, path23);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path22 = Object.freeze(path22.concat(node));
+          path23 = Object.freeze(path23.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path22);
+            const ci = await visitAsync_(i, node.items[i], visitor, path23);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10547,13 +10547,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path22 = Object.freeze(path22.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path22);
+          path23 = Object.freeze(path23.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path23);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path22);
+          const cv = await visitAsync_("value", node.value, visitor, path23);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10580,23 +10580,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path22) {
+    function callVisitor(key, node, visitor, path23) {
       if (typeof visitor === "function")
-        return visitor(key, node, path22);
+        return visitor(key, node, path23);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path22);
+        return visitor.Map?.(key, node, path23);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path22);
+        return visitor.Seq?.(key, node, path23);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path22);
+        return visitor.Pair?.(key, node, path23);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path22);
+        return visitor.Scalar?.(key, node, path23);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path22);
+        return visitor.Alias?.(key, node, path23);
       return void 0;
     }
-    function replaceNode(key, path22, node) {
-      const parent = path22[path22.length - 1];
+    function replaceNode(key, path23, node) {
+      const parent = path23[path23.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -11206,10 +11206,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path22, value) {
+    function collectionFromPath(schema, path23, value) {
       let v = value;
-      for (let i = path22.length - 1; i >= 0; --i) {
-        const k = path22[i];
+      for (let i = path23.length - 1; i >= 0; --i) {
+        const k = path23[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -11228,7 +11228,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path22) => path22 == null || typeof path22 === "object" && !!path22[Symbol.iterator]().next().done;
+    var isEmptyPath = (path23) => path23 == null || typeof path23 === "object" && !!path23[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -11258,11 +11258,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path22, value) {
-        if (isEmptyPath(path22))
+      addIn(path23, value) {
+        if (isEmptyPath(path23))
           this.add(value);
         else {
-          const [key, ...rest] = path22;
+          const [key, ...rest] = path23;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -11276,8 +11276,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path22) {
-        const [key, ...rest] = path22;
+      deleteIn(path23) {
+        const [key, ...rest] = path23;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -11291,8 +11291,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path22, keepScalar) {
-        const [key, ...rest] = path22;
+      getIn(path23, keepScalar) {
+        const [key, ...rest] = path23;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -11310,8 +11310,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path22) {
-        const [key, ...rest] = path22;
+      hasIn(path23) {
+        const [key, ...rest] = path23;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -11321,8 +11321,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path22, value) {
-        const [key, ...rest] = path22;
+      setIn(path23, value) {
+        const [key, ...rest] = path23;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -13837,9 +13837,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path22, value) {
+      addIn(path23, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path22, value);
+          this.contents.addIn(path23, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -13914,14 +13914,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path22) {
-        if (Collection.isEmptyPath(path22)) {
+      deleteIn(path23) {
+        if (Collection.isEmptyPath(path23)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path22) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path23) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -13936,10 +13936,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path22, keepScalar) {
-        if (Collection.isEmptyPath(path22))
+      getIn(path23, keepScalar) {
+        if (Collection.isEmptyPath(path23))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path22, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path23, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -13950,10 +13950,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path22) {
-        if (Collection.isEmptyPath(path22))
+      hasIn(path23) {
+        if (Collection.isEmptyPath(path23))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path22) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path23) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -13970,13 +13970,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path22, value) {
-        if (Collection.isEmptyPath(path22)) {
+      setIn(path23, value) {
+        if (Collection.isEmptyPath(path23)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path22), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path23), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path22, value);
+          this.contents.setIn(path23, value);
         }
       }
       /**
@@ -15936,9 +15936,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path22) => {
+    visit.itemAtPath = (cst, path23) => {
       let item = cst;
-      for (const [field, index] of path22) {
+      for (const [field, index] of path23) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -15947,23 +15947,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path22) => {
-      const parent = visit.itemAtPath(cst, path22.slice(0, -1));
-      const field = path22[path22.length - 1][0];
+    visit.parentCollection = (cst, path23) => {
+      const parent = visit.itemAtPath(cst, path23.slice(0, -1));
+      const field = path23[path23.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path22, item, visitor) {
-      let ctrl = visitor(item, path22);
+    function _visit(path23, item, visitor) {
+      let ctrl = visitor(item, path23);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path22.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path23.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -15974,10 +15974,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path22);
+            ctrl = ctrl(item, path23);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path22) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path23) : ctrl;
     }
     exports2.visit = visit;
   }
@@ -17732,7 +17732,7 @@ var require_dist2 = __commonJS({
 var require_constants = __commonJS({
   "../../node_modules/picomatch/lib/constants.js"(exports2, module2) {
     "use strict";
-    var path22 = require("path");
+    var path23 = require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -17906,7 +17906,7 @@ var require_constants = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path22.sep,
+      SEP: path23.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -17933,7 +17933,7 @@ var require_constants = __commonJS({
 var require_utils3 = __commonJS({
   "../../node_modules/picomatch/lib/utils.js"(exports2) {
     "use strict";
-    var path22 = require("path");
+    var path23 = require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -17962,7 +17962,7 @@ var require_utils3 = __commonJS({
       if (options2 && typeof options2.windows === "boolean") {
         return options2.windows;
       }
-      return win32 === true || path22.sep === "\\";
+      return win32 === true || path23.sep === "\\";
     };
     exports2.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -18701,16 +18701,16 @@ var require_parse2 = __commonJS({
         const analysis = analyzeRepeatedExtglob(body, opts);
         if ((token.type === "plus" || token.type === "star") && analysis.risky) {
           const safeOutput = analysis.safeOutput ? (token.output ? "" : ONE_CHAR) + (opts.capture ? `(${analysis.safeOutput})` : analysis.safeOutput) : void 0;
-          const open = tokens[token.tokensIndex];
-          open.type = "text";
-          open.value = literal2;
-          open.output = safeOutput || utils.escapeRegex(literal2);
+          const open2 = tokens[token.tokensIndex];
+          open2.type = "text";
+          open2.value = literal2;
+          open2.output = safeOutput || utils.escapeRegex(literal2);
           for (let i = token.tokensIndex + 1; i < tokens.length; i++) {
             tokens[i].value = "";
             tokens[i].output = "";
             delete tokens[i].suffix;
           }
-          state.output = token.output + open.output;
+          state.output = token.output + open2.output;
           state.backtrack = true;
           push({ type: "paren", extglob: true, value, output: "" });
           decrement("parens");
@@ -18930,15 +18930,15 @@ var require_parse2 = __commonJS({
         }
         if (value === "{" && opts.nobrace !== true) {
           increment("braces");
-          const open = {
+          const open2 = {
             type: "brace",
             value,
             output: "(",
             outputIndex: state.output.length,
             tokensIndex: state.tokens.length
           };
-          braces.push(open);
-          push(open);
+          braces.push(open2);
+          push(open2);
           continue;
         }
         if (value === "}") {
@@ -19326,7 +19326,7 @@ var require_parse2 = __commonJS({
 var require_picomatch = __commonJS({
   "../../node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
     "use strict";
-    var path22 = require("path");
+    var path23 = require("path");
     var scan = require_scan();
     var parse4 = require_parse2();
     var utils = require_utils3();
@@ -19411,7 +19411,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options2, posix = utils.isWindows(options2)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options2);
-      return regex.test(path22.basename(input));
+      return regex.test(path23.basename(input));
     };
     picomatch.isMatch = (str2, patterns, options2) => picomatch(patterns, options2)(str2);
     picomatch.parse = (pattern, options2) => {
@@ -19482,8 +19482,8 @@ var require_readdirp = __commonJS({
     var picomatch = require_picomatch2();
     var readdir = promisify6(fs14.readdir);
     var stat = promisify6(fs14.stat);
-    var lstat2 = promisify6(fs14.lstat);
-    var realpath2 = promisify6(fs14.realpath);
+    var lstat3 = promisify6(fs14.lstat);
+    var realpath3 = promisify6(fs14.realpath);
     var BANG = "!";
     var RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
     var NORMAL_FLOW_ERRORS = /* @__PURE__ */ new Set(["ENOENT", "EPERM", "EACCES", "ELOOP", RECURSIVE_ERROR_CODE]);
@@ -19527,8 +19527,8 @@ var require_readdirp = __commonJS({
         return {
           root: ".",
           /* eslint-disable no-unused-vars */
-          fileFilter: (path22) => true,
-          directoryFilter: (path22) => true,
+          fileFilter: (path23) => true,
+          directoryFilter: (path23) => true,
           /* eslint-enable no-unused-vars */
           type: FILE_TYPE,
           lstat: false,
@@ -19546,9 +19546,9 @@ var require_readdirp = __commonJS({
         const { root, type } = opts;
         this._fileFilter = normalizeFilter(opts.fileFilter);
         this._directoryFilter = normalizeFilter(opts.directoryFilter);
-        const statMethod = opts.lstat ? lstat2 : stat;
+        const statMethod = opts.lstat ? lstat3 : stat;
         if (wantBigintFsStats) {
-          this._stat = (path22) => statMethod(path22, { bigint: true });
+          this._stat = (path23) => statMethod(path23, { bigint: true });
         } else {
           this._stat = statMethod;
         }
@@ -19569,9 +19569,9 @@ var require_readdirp = __commonJS({
         this.reading = true;
         try {
           while (!this.destroyed && batch > 0) {
-            const { path: path22, depth, files = [] } = this.parent || {};
+            const { path: path23, depth, files = [] } = this.parent || {};
             if (files.length > 0) {
-              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path22));
+              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path23));
               for (const entry of await Promise.all(slice)) {
                 if (this.destroyed) return;
                 const entryType = await this._getEntryType(entry);
@@ -19606,20 +19606,20 @@ var require_readdirp = __commonJS({
           this.reading = false;
         }
       }
-      async _exploreDir(path22, depth) {
+      async _exploreDir(path23, depth) {
         let files;
         try {
-          files = await readdir(path22, this._rdOptions);
+          files = await readdir(path23, this._rdOptions);
         } catch (error2) {
           this._onError(error2);
         }
-        return { files, depth, path: path22 };
+        return { files, depth, path: path23 };
       }
-      async _formatEntry(dirent, path22) {
+      async _formatEntry(dirent, path23) {
         let entry;
         try {
           const basename = this._isDirent ? dirent.name : dirent;
-          const fullPath = sysPath.resolve(sysPath.join(path22, basename));
+          const fullPath = sysPath.resolve(sysPath.join(path23, basename));
           entry = { path: sysPath.relative(this._root, fullPath), fullPath, basename };
           entry[this._statsProp] = this._isDirent ? dirent : await this._stat(fullPath);
         } catch (err) {
@@ -19648,8 +19648,8 @@ var require_readdirp = __commonJS({
         if (stats && stats.isSymbolicLink()) {
           const full = entry.fullPath;
           try {
-            const entryRealPath = await realpath2(full);
-            const entryRealPathStats = await lstat2(entryRealPath);
+            const entryRealPath = await realpath3(full);
+            const entryRealPathStats = await lstat3(entryRealPath);
             if (entryRealPathStats.isFile()) {
               return "file";
             }
@@ -19705,22 +19705,22 @@ var require_readdirp = __commonJS({
 var require_normalize_path = __commonJS({
   "../../node_modules/normalize-path/index.js"(exports2, module2) {
     "use strict";
-    module2.exports = function(path22, stripTrailing) {
-      if (typeof path22 !== "string") {
+    module2.exports = function(path23, stripTrailing) {
+      if (typeof path23 !== "string") {
         throw new TypeError("expected path to be a string");
       }
-      if (path22 === "\\" || path22 === "/") return "/";
-      var len = path22.length;
-      if (len <= 1) return path22;
+      if (path23 === "\\" || path23 === "/") return "/";
+      var len = path23.length;
+      if (len <= 1) return path23;
       var prefix = "";
-      if (len > 4 && path22[3] === "\\") {
-        var ch = path22[2];
-        if ((ch === "?" || ch === ".") && path22.slice(0, 2) === "\\\\") {
-          path22 = path22.slice(2);
+      if (len > 4 && path23[3] === "\\") {
+        var ch = path23[2];
+        if ((ch === "?" || ch === ".") && path23.slice(0, 2) === "\\\\") {
+          path23 = path23.slice(2);
           prefix = "//";
         }
       }
-      var segs = path22.split(/[/\\]+/);
+      var segs = path23.split(/[/\\]+/);
       if (stripTrailing !== false && segs[segs.length - 1] === "") {
         segs.pop();
       }
@@ -19758,17 +19758,17 @@ var require_anymatch = __commonJS({
       if (!isList && typeof _path !== "string") {
         throw new TypeError("anymatch: second argument must be a string: got " + Object.prototype.toString.call(_path));
       }
-      const path22 = normalizePath(_path, false);
+      const path23 = normalizePath(_path, false);
       for (let index = 0; index < negPatterns.length; index++) {
         const nglob = negPatterns[index];
-        if (nglob(path22)) {
+        if (nglob(path23)) {
           return returnIndex ? -1 : false;
         }
       }
-      const applied = isList && [path22].concat(args.slice(1));
+      const applied = isList && [path23].concat(args.slice(1));
       for (let index = 0; index < patterns.length; index++) {
         const pattern = patterns[index];
-        if (isList ? pattern(...applied) : pattern(path22)) {
+        if (isList ? pattern(...applied) : pattern(path23)) {
           return returnIndex ? index : true;
         }
       }
@@ -19884,9 +19884,9 @@ var require_is_glob = __commonJS({
           }
         }
         if (str2[index] === "\\") {
-          var open = str2[index + 1];
+          var open2 = str2[index + 1];
           index += 2;
-          var close = chars[open];
+          var close = chars[open2];
           if (close) {
             var n = str2.indexOf(close, index);
             if (n !== -1) {
@@ -19912,9 +19912,9 @@ var require_is_glob = __commonJS({
           return true;
         }
         if (str2[index] === "\\") {
-          var open = str2[index + 1];
+          var open2 = str2[index + 1];
           index += 2;
-          var close = chars[open];
+          var close = chars[open2];
           if (close) {
             var n = str2.indexOf(close, index);
             if (n !== -1) {
@@ -20878,7 +20878,7 @@ var require_parse3 = __commonJS({
           continue;
         }
         if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-          const open = value;
+          const open2 = value;
           let next;
           if (options2.keepQuotes !== true) {
             value = "";
@@ -20888,7 +20888,7 @@ var require_parse3 = __commonJS({
               value += next + advance();
               continue;
             }
-            if (next === open) {
+            if (next === open2) {
               if (options2.keepQuotes === true) value += next;
               break;
             }
@@ -20931,8 +20931,8 @@ var require_parse3 = __commonJS({
         if (value === CHAR_COMMA && depth > 0) {
           if (block.ranges > 0) {
             block.ranges = 0;
-            const open = block.nodes.shift();
-            block.nodes = [open, { type: "text", value: stringify(block) }];
+            const open2 = block.nodes.shift();
+            block.nodes = [open2, { type: "text", value: stringify(block) }];
           }
           push({ type: "comma", value });
           block.commas++;
@@ -21338,10 +21338,10 @@ var require_binary_extensions2 = __commonJS({
 var require_is_binary_path = __commonJS({
   "../../node_modules/is-binary-path/index.js"(exports2, module2) {
     "use strict";
-    var path22 = require("path");
+    var path23 = require("path");
     var binaryExtensions = require_binary_extensions2();
     var extensions = new Set(binaryExtensions);
-    module2.exports = (filePath) => extensions.has(path22.extname(filePath).slice(1).toLowerCase());
+    module2.exports = (filePath) => extensions.has(path23.extname(filePath).slice(1).toLowerCase());
   }
 });
 
@@ -21436,12 +21436,12 @@ var require_nodefs_handler = __commonJS({
       STAR
     } = require_constants3();
     var THROTTLE_MODE_WATCH = "watch";
-    var open = promisify6(fs14.open);
+    var open2 = promisify6(fs14.open);
     var stat = promisify6(fs14.stat);
-    var lstat2 = promisify6(fs14.lstat);
+    var lstat3 = promisify6(fs14.lstat);
     var close = promisify6(fs14.close);
     var fsrealpath = promisify6(fs14.realpath);
-    var statMethods = { lstat: lstat2, stat };
+    var statMethods = { lstat: lstat3, stat };
     var foreach = (val, fn) => {
       if (val instanceof Set) {
         val.forEach(fn);
@@ -21474,20 +21474,20 @@ var require_nodefs_handler = __commonJS({
     };
     var isEmptySet = (val) => val instanceof Set ? val.size === 0 : !val;
     var FsWatchInstances = /* @__PURE__ */ new Map();
-    function createFsWatchInstance(path22, options2, listener, errHandler, emitRaw) {
+    function createFsWatchInstance(path23, options2, listener, errHandler, emitRaw) {
       const handleEvent = (rawEvent, evPath) => {
-        listener(path22);
-        emitRaw(rawEvent, evPath, { watchedPath: path22 });
-        if (evPath && path22 !== evPath) {
+        listener(path23);
+        emitRaw(rawEvent, evPath, { watchedPath: path23 });
+        if (evPath && path23 !== evPath) {
           fsWatchBroadcast(
-            sysPath.resolve(path22, evPath),
+            sysPath.resolve(path23, evPath),
             KEY_LISTENERS,
-            sysPath.join(path22, evPath)
+            sysPath.join(path23, evPath)
           );
         }
       };
       try {
-        return fs14.watch(path22, options2, handleEvent);
+        return fs14.watch(path23, options2, handleEvent);
       } catch (error2) {
         errHandler(error2);
       }
@@ -21499,13 +21499,13 @@ var require_nodefs_handler = __commonJS({
         listener(val1, val2, val3);
       });
     };
-    var setFsWatchListener = (path22, fullPath, options2, handlers) => {
+    var setFsWatchListener = (path23, fullPath, options2, handlers) => {
       const { listener, errHandler, rawEmitter } = handlers;
       let cont = FsWatchInstances.get(fullPath);
       let watcher;
       if (!options2.persistent) {
         watcher = createFsWatchInstance(
-          path22,
+          path23,
           options2,
           listener,
           errHandler,
@@ -21519,7 +21519,7 @@ var require_nodefs_handler = __commonJS({
         addAndConvert(cont, KEY_RAW, rawEmitter);
       } else {
         watcher = createFsWatchInstance(
-          path22,
+          path23,
           options2,
           fsWatchBroadcast.bind(null, fullPath, KEY_LISTENERS),
           errHandler,
@@ -21532,7 +21532,7 @@ var require_nodefs_handler = __commonJS({
           cont.watcherUnusable = true;
           if (isWindows && error2.code === "EPERM") {
             try {
-              const fd = await open(path22, "r");
+              const fd = await open2(path23, "r");
               await close(fd);
               broadcastErr(error2);
             } catch (err) {
@@ -21563,7 +21563,7 @@ var require_nodefs_handler = __commonJS({
       };
     };
     var FsWatchFileInstances = /* @__PURE__ */ new Map();
-    var setFsWatchFileListener = (path22, fullPath, options2, handlers) => {
+    var setFsWatchFileListener = (path23, fullPath, options2, handlers) => {
       const { listener, rawEmitter } = handlers;
       let cont = FsWatchFileInstances.get(fullPath);
       let listeners = /* @__PURE__ */ new Set();
@@ -21589,7 +21589,7 @@ var require_nodefs_handler = __commonJS({
             });
             const currmtime = curr.mtimeMs;
             if (curr.size !== prev.size || currmtime > prev.mtimeMs || currmtime === 0) {
-              foreach(cont.listeners, (listener2) => listener2(path22, curr));
+              foreach(cont.listeners, (listener2) => listener2(path23, curr));
             }
           })
         };
@@ -21620,24 +21620,24 @@ var require_nodefs_handler = __commonJS({
        * @param {Function} listener on fs change
        * @returns {Function} closer for the watcher instance
        */
-      _watchWithNodeFs(path22, listener) {
+      _watchWithNodeFs(path23, listener) {
         const opts = this.fsw.options;
-        const directory = sysPath.dirname(path22);
-        const basename = sysPath.basename(path22);
+        const directory = sysPath.dirname(path23);
+        const basename = sysPath.basename(path23);
         const parent = this.fsw._getWatchedDir(directory);
         parent.add(basename);
-        const absolutePath = sysPath.resolve(path22);
+        const absolutePath = sysPath.resolve(path23);
         const options2 = { persistent: opts.persistent };
         if (!listener) listener = EMPTY_FN;
         let closer;
         if (opts.usePolling) {
           options2.interval = opts.enableBinaryInterval && isBinaryPath(basename) ? opts.binaryInterval : opts.interval;
-          closer = setFsWatchFileListener(path22, absolutePath, options2, {
+          closer = setFsWatchFileListener(path23, absolutePath, options2, {
             listener,
             rawEmitter: this.fsw._emitRaw
           });
         } else {
-          closer = setFsWatchListener(path22, absolutePath, options2, {
+          closer = setFsWatchListener(path23, absolutePath, options2, {
             listener,
             errHandler: this._boundHandleError,
             rawEmitter: this.fsw._emitRaw
@@ -21661,7 +21661,7 @@ var require_nodefs_handler = __commonJS({
         const parent = this.fsw._getWatchedDir(dirname);
         let prevStats = stats;
         if (parent.has(basename)) return;
-        const listener = async (path22, newStats) => {
+        const listener = async (path23, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5)) return;
           if (!newStats || newStats.mtimeMs === 0) {
             try {
@@ -21673,9 +21673,9 @@ var require_nodefs_handler = __commonJS({
                 this.fsw._emit(EV_CHANGE, file, newStats2);
               }
               if (isLinux && prevStats.ino !== newStats2.ino) {
-                this.fsw._closeFile(path22);
+                this.fsw._closeFile(path23);
                 prevStats = newStats2;
-                this.fsw._addPathCloser(path22, this._watchWithNodeFs(file, listener));
+                this.fsw._addPathCloser(path23, this._watchWithNodeFs(file, listener));
               } else {
                 prevStats = newStats2;
               }
@@ -21706,7 +21706,7 @@ var require_nodefs_handler = __commonJS({
        * @param {String} item basename of this item
        * @returns {Promise<Boolean>} true if no more processing is needed for this entry.
        */
-      async _handleSymlink(entry, directory, path22, item) {
+      async _handleSymlink(entry, directory, path23, item) {
         if (this.fsw.closed) {
           return;
         }
@@ -21716,7 +21716,7 @@ var require_nodefs_handler = __commonJS({
           this.fsw._incrReadyCount();
           let linkPath;
           try {
-            linkPath = await fsrealpath(path22);
+            linkPath = await fsrealpath(path23);
           } catch (e) {
             this.fsw._emitReady();
             return true;
@@ -21725,12 +21725,12 @@ var require_nodefs_handler = __commonJS({
           if (dir.has(item)) {
             if (this.fsw._symlinkPaths.get(full) !== linkPath) {
               this.fsw._symlinkPaths.set(full, linkPath);
-              this.fsw._emit(EV_CHANGE, path22, entry.stats);
+              this.fsw._emit(EV_CHANGE, path23, entry.stats);
             }
           } else {
             dir.add(item);
             this.fsw._symlinkPaths.set(full, linkPath);
-            this.fsw._emit(EV_ADD, path22, entry.stats);
+            this.fsw._emit(EV_ADD, path23, entry.stats);
           }
           this.fsw._emitReady();
           return true;
@@ -21758,9 +21758,9 @@ var require_nodefs_handler = __commonJS({
             return;
           }
           const item = entry.path;
-          let path22 = sysPath.join(directory, item);
+          let path23 = sysPath.join(directory, item);
           current.add(item);
-          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path22, item)) {
+          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path23, item)) {
             return;
           }
           if (this.fsw.closed) {
@@ -21769,8 +21769,8 @@ var require_nodefs_handler = __commonJS({
           }
           if (item === target || !target && !previous.has(item)) {
             this.fsw._incrReadyCount();
-            path22 = sysPath.join(dir, sysPath.relative(dir, path22));
-            this._addToNodeFs(path22, initialAdd, wh, depth + 1);
+            path23 = sysPath.join(dir, sysPath.relative(dir, path23));
+            this._addToNodeFs(path23, initialAdd, wh, depth + 1);
           }
         }).on(EV_ERROR, this._boundHandleError);
         return new Promise(
@@ -21807,7 +21807,7 @@ var require_nodefs_handler = __commonJS({
        * @param {String} realpath
        * @returns {Promise<Function>} closer for the watcher instance.
        */
-      async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath2) {
+      async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath3) {
         const parentDir = this.fsw._getWatchedDir(sysPath.dirname(dir));
         const tracked = parentDir.has(sysPath.basename(dir));
         if (!(initialAdd && this.fsw.options.ignoreInitial) && !target && !tracked) {
@@ -21818,7 +21818,7 @@ var require_nodefs_handler = __commonJS({
         let throttler;
         let closer;
         const oDepth = this.fsw.options.depth;
-        if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath2)) {
+        if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath3)) {
           if (!target) {
             await this._handleRead(dir, initialAdd, wh, target, dir, depth, throttler);
             if (this.fsw.closed) return;
@@ -21840,13 +21840,13 @@ var require_nodefs_handler = __commonJS({
        * @param {String=} target Child path actually targeted for watch
        * @returns {Promise}
        */
-      async _addToNodeFs(path22, initialAdd, priorWh, depth, target) {
+      async _addToNodeFs(path23, initialAdd, priorWh, depth, target) {
         const ready = this.fsw._emitReady;
-        if (this.fsw._isIgnored(path22) || this.fsw.closed) {
+        if (this.fsw._isIgnored(path23) || this.fsw.closed) {
           ready();
           return false;
         }
-        const wh = this.fsw._getWatchHelpers(path22, depth);
+        const wh = this.fsw._getWatchHelpers(path23, depth);
         if (!wh.hasGlob && priorWh) {
           wh.hasGlob = priorWh.hasGlob;
           wh.globFilter = priorWh.globFilter;
@@ -21860,11 +21860,11 @@ var require_nodefs_handler = __commonJS({
             ready();
             return false;
           }
-          const follow = this.fsw.options.followSymlinks && !path22.includes(STAR) && !path22.includes(BRACE_START);
+          const follow = this.fsw.options.followSymlinks && !path23.includes(STAR) && !path23.includes(BRACE_START);
           let closer;
           if (stats.isDirectory()) {
-            const absPath = sysPath.resolve(path22);
-            const targetPath = follow ? await fsrealpath(path22) : path22;
+            const absPath = sysPath.resolve(path23);
+            const targetPath = follow ? await fsrealpath(path23) : path23;
             if (this.fsw.closed) return;
             closer = await this._handleDir(wh.watchPath, stats, initialAdd, depth, target, wh, targetPath);
             if (this.fsw.closed) return;
@@ -21872,26 +21872,26 @@ var require_nodefs_handler = __commonJS({
               this.fsw._symlinkPaths.set(absPath, targetPath);
             }
           } else if (stats.isSymbolicLink()) {
-            const targetPath = follow ? await fsrealpath(path22) : path22;
+            const targetPath = follow ? await fsrealpath(path23) : path23;
             if (this.fsw.closed) return;
             const parent = sysPath.dirname(wh.watchPath);
             this.fsw._getWatchedDir(parent).add(wh.watchPath);
             this.fsw._emit(EV_ADD, wh.watchPath, stats);
-            closer = await this._handleDir(parent, stats, initialAdd, depth, path22, wh, targetPath);
+            closer = await this._handleDir(parent, stats, initialAdd, depth, path23, wh, targetPath);
             if (this.fsw.closed) return;
             if (targetPath !== void 0) {
-              this.fsw._symlinkPaths.set(sysPath.resolve(path22), targetPath);
+              this.fsw._symlinkPaths.set(sysPath.resolve(path23), targetPath);
             }
           } else {
             closer = this._handleFile(wh.watchPath, stats, initialAdd);
           }
           ready();
-          this.fsw._addPathCloser(path22, closer);
+          this.fsw._addPathCloser(path23, closer);
           return false;
         } catch (error2) {
           if (this.fsw._handleError(error2)) {
             ready();
-            return path22;
+            return path23;
           }
         }
       }
@@ -21950,9 +21950,9 @@ var require_fsevents_handler = __commonJS({
     } = require_constants3();
     var Depth = (value) => isNaN(value) ? {} : { depth: value };
     var stat = promisify6(fs14.stat);
-    var lstat2 = promisify6(fs14.lstat);
-    var realpath2 = promisify6(fs14.realpath);
-    var statMethods = { stat, lstat: lstat2 };
+    var lstat3 = promisify6(fs14.lstat);
+    var realpath3 = promisify6(fs14.realpath);
+    var statMethods = { stat, lstat: lstat3 };
     var FSEventsWatchers = /* @__PURE__ */ new Map();
     var consolidateThreshhold = 10;
     var wrongEventFlags = /* @__PURE__ */ new Set([
@@ -21965,18 +21965,18 @@ var require_fsevents_handler = __commonJS({
       131840,
       262912
     ]);
-    var createFSEventsInstance = (path22, callback) => {
-      const stop = fsevents.watch(path22, callback);
+    var createFSEventsInstance = (path23, callback) => {
+      const stop = fsevents.watch(path23, callback);
       return { stop };
     };
-    function setFSEventsListener(path22, realPath, listener, rawEmitter) {
+    function setFSEventsListener(path23, realPath, listener, rawEmitter) {
       let watchPath = sysPath.extname(realPath) ? sysPath.dirname(realPath) : realPath;
       const parentPath = sysPath.dirname(watchPath);
       let cont = FSEventsWatchers.get(watchPath);
       if (couldConsolidate(parentPath)) {
         watchPath = parentPath;
       }
-      const resolvedPath = sysPath.resolve(path22);
+      const resolvedPath = sysPath.resolve(path23);
       const hasSymlink = resolvedPath !== realPath;
       const filteredListener = (fullPath, flags, info) => {
         if (hasSymlink) fullPath = fullPath.replace(realPath, resolvedPath);
@@ -22021,10 +22021,10 @@ var require_fsevents_handler = __commonJS({
         }
       };
     }
-    var couldConsolidate = (path22) => {
+    var couldConsolidate = (path23) => {
       let count = 0;
       for (const watchPath of FSEventsWatchers.keys()) {
-        if (watchPath.indexOf(path22) === 0) {
+        if (watchPath.indexOf(path23) === 0) {
           count++;
           if (count >= consolidateThreshhold) {
             return true;
@@ -22034,9 +22034,9 @@ var require_fsevents_handler = __commonJS({
       return false;
     };
     var canUse = () => fsevents && FSEventsWatchers.size < 128;
-    var calcDepth = (path22, root) => {
+    var calcDepth = (path23, root) => {
       let i = 0;
-      while (!path22.indexOf(root) && (path22 = sysPath.dirname(path22)) !== root) i++;
+      while (!path23.indexOf(root) && (path23 = sysPath.dirname(path23)) !== root) i++;
       return i;
     };
     var sameTypes = (info, stats) => info.type === FSEVENT_TYPE_DIRECTORY && stats.isDirectory() || info.type === FSEVENT_TYPE_SYMLINK && stats.isSymbolicLink() || info.type === FSEVENT_TYPE_FILE && stats.isFile();
@@ -22047,41 +22047,41 @@ var require_fsevents_handler = __commonJS({
       constructor(fsw) {
         this.fsw = fsw;
       }
-      checkIgnored(path22, stats) {
+      checkIgnored(path23, stats) {
         const ipaths = this.fsw._ignoredPaths;
-        if (this.fsw._isIgnored(path22, stats)) {
-          ipaths.add(path22);
+        if (this.fsw._isIgnored(path23, stats)) {
+          ipaths.add(path23);
           if (stats && stats.isDirectory()) {
-            ipaths.add(path22 + ROOT_GLOBSTAR);
+            ipaths.add(path23 + ROOT_GLOBSTAR);
           }
           return true;
         }
-        ipaths.delete(path22);
-        ipaths.delete(path22 + ROOT_GLOBSTAR);
+        ipaths.delete(path23);
+        ipaths.delete(path23 + ROOT_GLOBSTAR);
       }
-      addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      addOrChange(path23, fullPath, realPath, parent, watchedDir, item, info, opts) {
         const event = watchedDir.has(item) ? EV_CHANGE : EV_ADD;
-        this.handleEvent(event, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+        this.handleEvent(event, path23, fullPath, realPath, parent, watchedDir, item, info, opts);
       }
-      async checkExists(path22, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      async checkExists(path23, fullPath, realPath, parent, watchedDir, item, info, opts) {
         try {
-          const stats = await stat(path22);
+          const stats = await stat(path23);
           if (this.fsw.closed) return;
           if (sameTypes(info, stats)) {
-            this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path23, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path23, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         } catch (error2) {
           if (error2.code === "EACCES") {
-            this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path23, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path23, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         }
       }
-      handleEvent(event, path22, fullPath, realPath, parent, watchedDir, item, info, opts) {
-        if (this.fsw.closed || this.checkIgnored(path22)) return;
+      handleEvent(event, path23, fullPath, realPath, parent, watchedDir, item, info, opts) {
+        if (this.fsw.closed || this.checkIgnored(path23)) return;
         if (event === EV_UNLINK) {
           const isDirectory = info.type === FSEVENT_TYPE_DIRECTORY;
           if (isDirectory || watchedDir.has(item)) {
@@ -22089,16 +22089,16 @@ var require_fsevents_handler = __commonJS({
           }
         } else {
           if (event === EV_ADD) {
-            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path22);
+            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path23);
             if (info.type === FSEVENT_TYPE_SYMLINK && opts.followSymlinks) {
               const curDepth = opts.depth === void 0 ? void 0 : calcDepth(fullPath, realPath) + 1;
-              return this._addToFsEvents(path22, false, true, curDepth);
+              return this._addToFsEvents(path23, false, true, curDepth);
             }
             this.fsw._getWatchedDir(parent).add(item);
           }
           const eventName = info.type === FSEVENT_TYPE_DIRECTORY ? event + DIR_SUFFIX : event;
-          this.fsw._emit(eventName, path22);
-          if (eventName === EV_ADD_DIR) this._addToFsEvents(path22, false, true);
+          this.fsw._emit(eventName, path23);
+          if (eventName === EV_ADD_DIR) this._addToFsEvents(path23, false, true);
         }
       }
       /**
@@ -22115,41 +22115,41 @@ var require_fsevents_handler = __commonJS({
         const watchCallback = async (fullPath, flags, info) => {
           if (this.fsw.closed) return;
           if (opts.depth !== void 0 && calcDepth(fullPath, realPath) > opts.depth) return;
-          const path22 = transform2(sysPath.join(
+          const path23 = transform2(sysPath.join(
             watchPath,
             sysPath.relative(watchPath, fullPath)
           ));
-          if (globFilter && !globFilter(path22)) return;
-          const parent = sysPath.dirname(path22);
-          const item = sysPath.basename(path22);
+          if (globFilter && !globFilter(path23)) return;
+          const parent = sysPath.dirname(path23);
+          const item = sysPath.basename(path23);
           const watchedDir = this.fsw._getWatchedDir(
-            info.type === FSEVENT_TYPE_DIRECTORY ? path22 : parent
+            info.type === FSEVENT_TYPE_DIRECTORY ? path23 : parent
           );
           if (wrongEventFlags.has(flags) || info.event === FSEVENT_UNKNOWN) {
             if (typeof opts.ignored === FUNCTION_TYPE) {
               let stats;
               try {
-                stats = await stat(path22);
+                stats = await stat(path23);
               } catch (error2) {
               }
               if (this.fsw.closed) return;
-              if (this.checkIgnored(path22, stats)) return;
+              if (this.checkIgnored(path23, stats)) return;
               if (sameTypes(info, stats)) {
-                this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.addOrChange(path23, fullPath, realPath, parent, watchedDir, item, info, opts);
               } else {
-                this.handleEvent(EV_UNLINK, path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.handleEvent(EV_UNLINK, path23, fullPath, realPath, parent, watchedDir, item, info, opts);
               }
             } else {
-              this.checkExists(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+              this.checkExists(path23, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           } else {
             switch (info.event) {
               case FSEVENT_CREATED:
               case FSEVENT_MODIFIED:
-                return this.addOrChange(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.addOrChange(path23, fullPath, realPath, parent, watchedDir, item, info, opts);
               case FSEVENT_DELETED:
               case FSEVENT_MOVED:
-                return this.checkExists(path22, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.checkExists(path23, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           }
         };
@@ -22175,18 +22175,18 @@ var require_fsevents_handler = __commonJS({
         this.fsw._symlinkPaths.set(fullPath, true);
         this.fsw._incrReadyCount();
         try {
-          const linkTarget = await realpath2(linkPath);
+          const linkTarget = await realpath3(linkPath);
           if (this.fsw.closed) return;
           if (this.fsw._isIgnored(linkTarget)) {
             return this.fsw._emitReady();
           }
           this.fsw._incrReadyCount();
-          this._addToFsEvents(linkTarget || linkPath, (path22) => {
+          this._addToFsEvents(linkTarget || linkPath, (path23) => {
             let aliasedPath = linkPath;
             if (linkTarget && linkTarget !== DOT_SLASH) {
-              aliasedPath = path22.replace(linkTarget, linkPath);
-            } else if (path22 !== DOT_SLASH) {
-              aliasedPath = sysPath.join(linkPath, path22);
+              aliasedPath = path23.replace(linkTarget, linkPath);
+            } else if (path23 !== DOT_SLASH) {
+              aliasedPath = sysPath.join(linkPath, path23);
             }
             return transform2(aliasedPath);
           }, false, curDepth);
@@ -22213,7 +22213,7 @@ var require_fsevents_handler = __commonJS({
           this.fsw._emit(isDir2 ? EV_ADD_DIR : EV_ADD, pp, stats);
         }
       }
-      initWatch(realPath, path22, wh, processPath) {
+      initWatch(realPath, path23, wh, processPath) {
         if (this.fsw.closed) return;
         const closer = this._watchWithFsEvents(
           wh.watchPath,
@@ -22221,7 +22221,7 @@ var require_fsevents_handler = __commonJS({
           processPath,
           wh.globFilter
         );
-        this.fsw._addPathCloser(path22, closer);
+        this.fsw._addPathCloser(path23, closer);
       }
       /**
        * Handle added path with fsevents
@@ -22231,13 +22231,13 @@ var require_fsevents_handler = __commonJS({
        * @param {Number=} priorDepth Level of subdirectories already traversed.
        * @returns {Promise<void>}
        */
-      async _addToFsEvents(path22, transform2, forceAdd, priorDepth) {
+      async _addToFsEvents(path23, transform2, forceAdd, priorDepth) {
         if (this.fsw.closed) {
           return;
         }
         const opts = this.fsw.options;
         const processPath = typeof transform2 === FUNCTION_TYPE ? transform2 : IDENTITY_FN;
-        const wh = this.fsw._getWatchHelpers(path22);
+        const wh = this.fsw._getWatchHelpers(path23);
         try {
           const stats = await statMethods[wh.statMethod](wh.watchPath);
           if (this.fsw.closed) return;
@@ -22245,7 +22245,7 @@ var require_fsevents_handler = __commonJS({
             throw null;
           }
           if (stats.isDirectory()) {
-            if (!wh.globFilter) this.emitAdd(processPath(path22), stats, processPath, opts, forceAdd);
+            if (!wh.globFilter) this.emitAdd(processPath(path23), stats, processPath, opts, forceAdd);
             if (priorDepth && priorDepth > opts.depth) return;
             this.fsw._readdirp(wh.watchPath, {
               fileFilter: (entry) => wh.filterPath(entry),
@@ -22279,14 +22279,14 @@ var require_fsevents_handler = __commonJS({
         }
         if (opts.persistent && forceAdd !== true) {
           if (typeof transform2 === FUNCTION_TYPE) {
-            this.initWatch(void 0, path22, wh, processPath);
+            this.initWatch(void 0, path23, wh, processPath);
           } else {
             let realPath;
             try {
-              realPath = await realpath2(wh.watchPath);
+              realPath = await realpath3(wh.watchPath);
             } catch (e) {
             }
-            this.initWatch(realPath, path22, wh, processPath);
+            this.initWatch(realPath, path23, wh, processPath);
           }
         }
       }
@@ -22380,19 +22380,19 @@ var require_chokidar = __commonJS({
       }
       return str2;
     };
-    var normalizePathToUnix = (path22) => toUnix(sysPath.normalize(toUnix(path22)));
-    var normalizeIgnored = (cwd = EMPTY_STR) => (path22) => {
-      if (typeof path22 !== STRING_TYPE) return path22;
-      return normalizePathToUnix(sysPath.isAbsolute(path22) ? path22 : sysPath.join(cwd, path22));
+    var normalizePathToUnix = (path23) => toUnix(sysPath.normalize(toUnix(path23)));
+    var normalizeIgnored = (cwd = EMPTY_STR) => (path23) => {
+      if (typeof path23 !== STRING_TYPE) return path23;
+      return normalizePathToUnix(sysPath.isAbsolute(path23) ? path23 : sysPath.join(cwd, path23));
     };
-    var getAbsolutePath = (path22, cwd) => {
-      if (sysPath.isAbsolute(path22)) {
-        return path22;
+    var getAbsolutePath = (path23, cwd) => {
+      if (sysPath.isAbsolute(path23)) {
+        return path23;
       }
-      if (path22.startsWith(BANG)) {
-        return BANG + sysPath.join(cwd, path22.slice(1));
+      if (path23.startsWith(BANG)) {
+        return BANG + sysPath.join(cwd, path23.slice(1));
       }
-      return sysPath.join(cwd, path22);
+      return sysPath.join(cwd, path23);
     };
     var undef = (opts, key) => opts[key] === void 0;
     var DirEntry = class {
@@ -22448,16 +22448,16 @@ var require_chokidar = __commonJS({
     var STAT_METHOD_F = "stat";
     var STAT_METHOD_L = "lstat";
     var WatchHelper = class {
-      constructor(path22, watchPath, follow, fsw) {
+      constructor(path23, watchPath, follow, fsw) {
         this.fsw = fsw;
-        this.path = path22 = path22.replace(REPLACER_RE, EMPTY_STR);
+        this.path = path23 = path23.replace(REPLACER_RE, EMPTY_STR);
         this.watchPath = watchPath;
         this.fullWatchPath = sysPath.resolve(watchPath);
-        this.hasGlob = watchPath !== path22;
-        if (path22 === EMPTY_STR) this.hasGlob = false;
+        this.hasGlob = watchPath !== path23;
+        if (path23 === EMPTY_STR) this.hasGlob = false;
         this.globSymlink = this.hasGlob && follow ? void 0 : false;
-        this.globFilter = this.hasGlob ? anymatch(path22, void 0, ANYMATCH_OPTS) : false;
-        this.dirParts = this.getDirParts(path22);
+        this.globFilter = this.hasGlob ? anymatch(path23, void 0, ANYMATCH_OPTS) : false;
+        this.dirParts = this.getDirParts(path23);
         this.dirParts.forEach((parts) => {
           if (parts.length > 1) parts.pop();
         });
@@ -22486,12 +22486,12 @@ var require_chokidar = __commonJS({
         const matchesGlob = this.hasGlob && typeof this.globFilter === FUNCTION_TYPE ? this.globFilter(resolvedPath) : true;
         return matchesGlob && this.fsw._isntIgnored(resolvedPath, stats) && this.fsw._hasReadPermissions(stats);
       }
-      getDirParts(path22) {
+      getDirParts(path23) {
         if (!this.hasGlob) return [];
         const parts = [];
-        const expandedPath = path22.includes(BRACE_START) ? braces.expand(path22) : [path22];
-        expandedPath.forEach((path23) => {
-          parts.push(sysPath.relative(this.watchPath, path23).split(SLASH_OR_BACK_SLASH_RE));
+        const expandedPath = path23.includes(BRACE_START) ? braces.expand(path23) : [path23];
+        expandedPath.forEach((path24) => {
+          parts.push(sysPath.relative(this.watchPath, path24).split(SLASH_OR_BACK_SLASH_RE));
         });
         return parts;
       }
@@ -22597,34 +22597,34 @@ var require_chokidar = __commonJS({
         this.closed = false;
         let paths = unifyPaths(paths_);
         if (cwd) {
-          paths = paths.map((path22) => {
-            const absPath = getAbsolutePath(path22, cwd);
-            if (disableGlobbing || !isGlob(path22)) {
+          paths = paths.map((path23) => {
+            const absPath = getAbsolutePath(path23, cwd);
+            if (disableGlobbing || !isGlob(path23)) {
               return absPath;
             }
             return normalizePath(absPath);
           });
         }
-        paths = paths.filter((path22) => {
-          if (path22.startsWith(BANG)) {
-            this._ignoredPaths.add(path22.slice(1));
+        paths = paths.filter((path23) => {
+          if (path23.startsWith(BANG)) {
+            this._ignoredPaths.add(path23.slice(1));
             return false;
           }
-          this._ignoredPaths.delete(path22);
-          this._ignoredPaths.delete(path22 + SLASH_GLOBSTAR);
+          this._ignoredPaths.delete(path23);
+          this._ignoredPaths.delete(path23 + SLASH_GLOBSTAR);
           this._userIgnored = void 0;
           return true;
         });
         if (this.options.useFsEvents && this._fsEventsHandler) {
           if (!this._readyCount) this._readyCount = paths.length;
           if (this.options.persistent) this._readyCount += paths.length;
-          paths.forEach((path22) => this._fsEventsHandler._addToFsEvents(path22));
+          paths.forEach((path23) => this._fsEventsHandler._addToFsEvents(path23));
         } else {
           if (!this._readyCount) this._readyCount = 0;
           this._readyCount += paths.length;
           Promise.all(
-            paths.map(async (path22) => {
-              const res = await this._nodeFsHandler._addToNodeFs(path22, !_internal, 0, 0, _origAdd);
+            paths.map(async (path23) => {
+              const res = await this._nodeFsHandler._addToNodeFs(path23, !_internal, 0, 0, _origAdd);
               if (res) this._emitReady();
               return res;
             })
@@ -22646,15 +22646,15 @@ var require_chokidar = __commonJS({
         if (this.closed) return this;
         const paths = unifyPaths(paths_);
         const { cwd } = this.options;
-        paths.forEach((path22) => {
-          if (!sysPath.isAbsolute(path22) && !this._closers.has(path22)) {
-            if (cwd) path22 = sysPath.join(cwd, path22);
-            path22 = sysPath.resolve(path22);
+        paths.forEach((path23) => {
+          if (!sysPath.isAbsolute(path23) && !this._closers.has(path23)) {
+            if (cwd) path23 = sysPath.join(cwd, path23);
+            path23 = sysPath.resolve(path23);
           }
-          this._closePath(path22);
-          this._ignoredPaths.add(path22);
-          if (this._watched.has(path22)) {
-            this._ignoredPaths.add(path22 + SLASH_GLOBSTAR);
+          this._closePath(path23);
+          this._ignoredPaths.add(path23);
+          if (this._watched.has(path23)) {
+            this._ignoredPaths.add(path23 + SLASH_GLOBSTAR);
           }
           this._userIgnored = void 0;
         });
@@ -22712,36 +22712,36 @@ var require_chokidar = __commonJS({
        * @param {*=} val3
        * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
        */
-      async _emit(event, path22, val1, val2, val3) {
+      async _emit(event, path23, val1, val2, val3) {
         if (this.closed) return;
         const opts = this.options;
-        if (isWindows) path22 = sysPath.normalize(path22);
-        if (opts.cwd) path22 = sysPath.relative(opts.cwd, path22);
-        const args = [event, path22];
+        if (isWindows) path23 = sysPath.normalize(path23);
+        if (opts.cwd) path23 = sysPath.relative(opts.cwd, path23);
+        const args = [event, path23];
         if (val3 !== void 0) args.push(val1, val2, val3);
         else if (val2 !== void 0) args.push(val1, val2);
         else if (val1 !== void 0) args.push(val1);
         const awf = opts.awaitWriteFinish;
         let pw;
-        if (awf && (pw = this._pendingWrites.get(path22))) {
+        if (awf && (pw = this._pendingWrites.get(path23))) {
           pw.lastChange = /* @__PURE__ */ new Date();
           return this;
         }
         if (opts.atomic) {
           if (event === EV_UNLINK) {
-            this._pendingUnlinks.set(path22, args);
+            this._pendingUnlinks.set(path23, args);
             setTimeout(() => {
-              this._pendingUnlinks.forEach((entry, path23) => {
+              this._pendingUnlinks.forEach((entry, path24) => {
                 this.emit(...entry);
                 this.emit(EV_ALL, ...entry);
-                this._pendingUnlinks.delete(path23);
+                this._pendingUnlinks.delete(path24);
               });
             }, typeof opts.atomic === "number" ? opts.atomic : 100);
             return this;
           }
-          if (event === EV_ADD && this._pendingUnlinks.has(path22)) {
+          if (event === EV_ADD && this._pendingUnlinks.has(path23)) {
             event = args[0] = EV_CHANGE;
-            this._pendingUnlinks.delete(path22);
+            this._pendingUnlinks.delete(path23);
           }
         }
         if (awf && (event === EV_ADD || event === EV_CHANGE) && this._readyEmitted) {
@@ -22759,15 +22759,15 @@ var require_chokidar = __commonJS({
               this.emitWithAll(event, args);
             }
           };
-          this._awaitWriteFinish(path22, awf.stabilityThreshold, event, awfEmit);
+          this._awaitWriteFinish(path23, awf.stabilityThreshold, event, awfEmit);
           return this;
         }
         if (event === EV_CHANGE) {
-          const isThrottled = !this._throttle(EV_CHANGE, path22, 50);
+          const isThrottled = !this._throttle(EV_CHANGE, path23, 50);
           if (isThrottled) return this;
         }
         if (opts.alwaysStat && val1 === void 0 && (event === EV_ADD || event === EV_ADD_DIR || event === EV_CHANGE)) {
-          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path22) : path22;
+          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path23) : path23;
           let stats;
           try {
             stats = await stat(fullPath);
@@ -22798,28 +22798,28 @@ var require_chokidar = __commonJS({
        * @param {Number} timeout duration of time to suppress duplicate actions
        * @returns {Object|false} tracking object or false if action should be suppressed
        */
-      _throttle(actionType, path22, timeout) {
+      _throttle(actionType, path23, timeout) {
         if (!this._throttled.has(actionType)) {
           this._throttled.set(actionType, /* @__PURE__ */ new Map());
         }
         const action = this._throttled.get(actionType);
-        const actionPath = action.get(path22);
+        const actionPath = action.get(path23);
         if (actionPath) {
           actionPath.count++;
           return false;
         }
         let timeoutObject;
         const clear = () => {
-          const item = action.get(path22);
+          const item = action.get(path23);
           const count = item ? item.count : 0;
-          action.delete(path22);
+          action.delete(path23);
           clearTimeout(timeoutObject);
           if (item) clearTimeout(item.timeoutObject);
           return count;
         };
         timeoutObject = setTimeout(clear, timeout);
         const thr = { timeoutObject, clear, count: 0 };
-        action.set(path22, thr);
+        action.set(path23, thr);
         return thr;
       }
       _incrReadyCount() {
@@ -22833,27 +22833,27 @@ var require_chokidar = __commonJS({
        * @param {EventName} event
        * @param {Function} awfEmit Callback to be called when ready for event to be emitted.
        */
-      _awaitWriteFinish(path22, threshold, event, awfEmit) {
+      _awaitWriteFinish(path23, threshold, event, awfEmit) {
         let timeoutHandler;
-        let fullPath = path22;
-        if (this.options.cwd && !sysPath.isAbsolute(path22)) {
-          fullPath = sysPath.join(this.options.cwd, path22);
+        let fullPath = path23;
+        if (this.options.cwd && !sysPath.isAbsolute(path23)) {
+          fullPath = sysPath.join(this.options.cwd, path23);
         }
         const now = /* @__PURE__ */ new Date();
         const awaitWriteFinish = (prevStat) => {
           fs14.stat(fullPath, (err, curStat) => {
-            if (err || !this._pendingWrites.has(path22)) {
+            if (err || !this._pendingWrites.has(path23)) {
               if (err && err.code !== "ENOENT") awfEmit(err);
               return;
             }
             const now2 = Number(/* @__PURE__ */ new Date());
             if (prevStat && curStat.size !== prevStat.size) {
-              this._pendingWrites.get(path22).lastChange = now2;
+              this._pendingWrites.get(path23).lastChange = now2;
             }
-            const pw = this._pendingWrites.get(path22);
+            const pw = this._pendingWrites.get(path23);
             const df = now2 - pw.lastChange;
             if (df >= threshold) {
-              this._pendingWrites.delete(path22);
+              this._pendingWrites.delete(path23);
               awfEmit(void 0, curStat);
             } else {
               timeoutHandler = setTimeout(
@@ -22864,11 +22864,11 @@ var require_chokidar = __commonJS({
             }
           });
         };
-        if (!this._pendingWrites.has(path22)) {
-          this._pendingWrites.set(path22, {
+        if (!this._pendingWrites.has(path23)) {
+          this._pendingWrites.set(path23, {
             lastChange: now,
             cancelWait: () => {
-              this._pendingWrites.delete(path22);
+              this._pendingWrites.delete(path23);
               clearTimeout(timeoutHandler);
               return event;
             }
@@ -22888,20 +22888,20 @@ var require_chokidar = __commonJS({
        * @param {fs.Stats=} stats result of fs.stat
        * @returns {Boolean}
        */
-      _isIgnored(path22, stats) {
-        if (this.options.atomic && DOT_RE.test(path22)) return true;
+      _isIgnored(path23, stats) {
+        if (this.options.atomic && DOT_RE.test(path23)) return true;
         if (!this._userIgnored) {
           const { cwd } = this.options;
           const ign = this.options.ignored;
           const ignored = ign && ign.map(normalizeIgnored(cwd));
-          const paths = arrify(ignored).filter((path23) => typeof path23 === STRING_TYPE && !isGlob(path23)).map((path23) => path23 + SLASH_GLOBSTAR);
+          const paths = arrify(ignored).filter((path24) => typeof path24 === STRING_TYPE && !isGlob(path24)).map((path24) => path24 + SLASH_GLOBSTAR);
           const list = this._getGlobIgnored().map(normalizeIgnored(cwd)).concat(ignored, paths);
           this._userIgnored = anymatch(list, void 0, ANYMATCH_OPTS);
         }
-        return this._userIgnored([path22, stats]);
+        return this._userIgnored([path23, stats]);
       }
-      _isntIgnored(path22, stat2) {
-        return !this._isIgnored(path22, stat2);
+      _isntIgnored(path23, stat2) {
+        return !this._isIgnored(path23, stat2);
       }
       /**
        * Provides a set of common helpers and properties relating to symlink and glob handling.
@@ -22909,10 +22909,10 @@ var require_chokidar = __commonJS({
        * @param {Number=} depth at any depth > 0, this isn't a glob
        * @returns {WatchHelper} object containing helpers for this path
        */
-      _getWatchHelpers(path22, depth) {
-        const watchPath = depth || this.options.disableGlobbing || !isGlob(path22) ? path22 : globParent(path22);
+      _getWatchHelpers(path23, depth) {
+        const watchPath = depth || this.options.disableGlobbing || !isGlob(path23) ? path23 : globParent(path23);
         const follow = this.options.followSymlinks;
-        return new WatchHelper(path22, watchPath, follow, this);
+        return new WatchHelper(path23, watchPath, follow, this);
       }
       // Directory helpers
       // -----------------
@@ -22951,66 +22951,66 @@ var require_chokidar = __commonJS({
        * @returns {void}
       */
       _remove(directory, item, isDirectory) {
-        const path22 = sysPath.join(directory, item);
-        const fullPath = sysPath.resolve(path22);
-        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path22) || this._watched.has(fullPath);
-        if (!this._throttle("remove", path22, 100)) return;
+        const path23 = sysPath.join(directory, item);
+        const fullPath = sysPath.resolve(path23);
+        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path23) || this._watched.has(fullPath);
+        if (!this._throttle("remove", path23, 100)) return;
         if (!isDirectory && !this.options.useFsEvents && this._watched.size === 1) {
           this.add(directory, item, true);
         }
-        const wp = this._getWatchedDir(path22);
+        const wp = this._getWatchedDir(path23);
         const nestedDirectoryChildren = wp.getChildren();
-        nestedDirectoryChildren.forEach((nested) => this._remove(path22, nested));
+        nestedDirectoryChildren.forEach((nested) => this._remove(path23, nested));
         const parent = this._getWatchedDir(directory);
         const wasTracked = parent.has(item);
         parent.remove(item);
         if (this._symlinkPaths.has(fullPath)) {
           this._symlinkPaths.delete(fullPath);
         }
-        let relPath = path22;
-        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path22);
+        let relPath = path23;
+        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path23);
         if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
           const event = this._pendingWrites.get(relPath).cancelWait();
           if (event === EV_ADD) return;
         }
-        this._watched.delete(path22);
+        this._watched.delete(path23);
         this._watched.delete(fullPath);
         const eventName = isDirectory ? EV_UNLINK_DIR : EV_UNLINK;
-        if (wasTracked && !this._isIgnored(path22)) this._emit(eventName, path22);
+        if (wasTracked && !this._isIgnored(path23)) this._emit(eventName, path23);
         if (!this.options.useFsEvents) {
-          this._closePath(path22);
+          this._closePath(path23);
         }
       }
       /**
        * Closes all watchers for a path
        * @param {Path} path
        */
-      _closePath(path22) {
-        this._closeFile(path22);
-        const dir = sysPath.dirname(path22);
-        this._getWatchedDir(dir).remove(sysPath.basename(path22));
+      _closePath(path23) {
+        this._closeFile(path23);
+        const dir = sysPath.dirname(path23);
+        this._getWatchedDir(dir).remove(sysPath.basename(path23));
       }
       /**
        * Closes only file-specific watchers
        * @param {Path} path
        */
-      _closeFile(path22) {
-        const closers = this._closers.get(path22);
+      _closeFile(path23) {
+        const closers = this._closers.get(path23);
         if (!closers) return;
         closers.forEach((closer) => closer());
-        this._closers.delete(path22);
+        this._closers.delete(path23);
       }
       /**
        *
        * @param {Path} path
        * @param {Function} closer
        */
-      _addPathCloser(path22, closer) {
+      _addPathCloser(path23, closer) {
         if (!closer) return;
-        let list = this._closers.get(path22);
+        let list = this._closers.get(path23);
         if (!list) {
           list = [];
-          this._closers.set(path22, list);
+          this._closers.set(path23, list);
         }
         list.push(closer);
       }
@@ -23534,8 +23534,8 @@ function getErrorMap() {
 
 // ../../node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path22, errorMaps, issueData } = params;
-  const fullPath = [...path22, ...issueData.path || []];
+  const { data, path: path23, errorMaps, issueData } = params;
+  const fullPath = [...path23, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -23651,11 +23651,11 @@ var errorUtil;
 
 // ../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path22, key) {
+  constructor(parent, value, path23, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path22;
+    this._path = path23;
     this._key = key;
   }
   get path() {
@@ -27292,10 +27292,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path22) {
-  if (!path22)
+function getElementAtPath(obj, path23) {
+  if (!path23)
     return obj;
-  return path22.reduce((acc, key) => acc?.[key], obj);
+  return path23.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -27615,11 +27615,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path22, issues) {
+function prefixIssues(path23, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path22);
+    iss.path.unshift(path23);
     return iss;
   });
 }
@@ -31030,11 +31030,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path22) {
-  if (path22.length === 0) {
+function getDotPath(path23) {
+  if (path23.length === 0) {
     return "object root";
   }
-  return path22.reduce((acc, seg, index) => {
+  return path23.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -37537,8 +37537,8 @@ var StdioServerTransport = class {
 };
 
 // src/index.ts
-var import_node_child_process5 = require("child_process");
-var import_node_path9 = __toESM(require("path"), 1);
+var import_node_child_process6 = require("child_process");
+var import_node_path10 = __toESM(require("path"), 1);
 var import_node_os = require("os");
 var import_node_util5 = require("util");
 
@@ -38418,20 +38418,20 @@ async function recoverStaleLock(lockFile, options2) {
   } catch (error2) {
     return error2.code === "ENOENT";
   }
-  const record2 = parseLockRecord(initialContents);
+  const record22 = parseLockRecord(initialContents);
   const now = options2.now();
-  const persistedAge = record2?.createdAt === void 0 ? 0 : now - record2.createdAt;
+  const persistedAge = record22?.createdAt === void 0 ? 0 : now - record22.createdAt;
   const filesystemAge = now - initialStat.mtimeMs;
   if (Math.max(0, persistedAge, filesystemAge) < options2.staleAfterMs) return false;
-  if (!record2 && isUnrecoverableMalformedRecord(initialContents)) return false;
-  if (record2?.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record2.token), options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs)) return false;
-  if (record2) {
+  if (!record22 && isUnrecoverableMalformedRecord(initialContents)) return false;
+  if (record22?.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record22.token), options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs)) return false;
+  if (record22) {
     let alive;
     try {
-      alive = options2.processAlive(record2.pid);
-      if (alive && record2.identity) {
-        const currentIdentity = options2.processIdentity(record2.pid);
-        alive = currentIdentity === void 0 || currentIdentity === record2.identity;
+      alive = options2.processAlive(record22.pid);
+      if (alive && record22.identity) {
+        const currentIdentity = options2.processIdentity(record22.pid);
+        alive = currentIdentity === void 0 || currentIdentity === record22.identity;
       }
     } catch {
       return false;
@@ -39445,8 +39445,462 @@ var FIELD_BY_LABEL = new Map(
     ([field, labels]) => labels.map((label) => [label, field])
   )
 );
+function parsePlanPath(value, options2 = {}) {
+  let candidate = options2.observed ? value : value.trim().replace(/^`|`$/g, "");
+  if (options2.observed && candidate.includes("\\")) return { ok: false, reason: "observed Git paths must use slash separators" };
+  if (!options2.observed) {
+    candidate = candidate.replace(/\\/g, "/");
+    if (candidate.startsWith("./")) candidate = candidate.slice(2);
+  }
+  if (!candidate || candidate === ".") return { ok: false, reason: "path is empty or dot" };
+  if (candidate.includes("\0")) return { ok: false, reason: "path contains NUL" };
+  if (candidate.startsWith("/") || candidate.startsWith("//")) {
+    return { ok: false, reason: "absolute and UNC paths are not repository-relative" };
+  }
+  if (candidate.includes(":")) {
+    return { ok: false, reason: "drive, URI and colon-qualified paths are not supported" };
+  }
+  if (!options2.observed && candidate.endsWith("/")) candidate = candidate.slice(0, -1);
+  const segments = candidate.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) {
+    return { ok: false, reason: "path contains an empty, dot or parent-traversal segment" };
+  }
+  if (segments.some((segment) => /[?\[\]{}]/.test(segment))) {
+    return { ok: false, reason: "path uses unsupported pattern syntax" };
+  }
+  const pattern = segments.some((segment) => segment.includes("*"));
+  if (pattern && !options2.allowPattern) return { ok: false, reason: "wildcards are not allowed in a literal path" };
+  if (segments.some((segment) => segment.includes("**") && segment !== "**")) {
+    return { ok: false, reason: "** is supported only as a complete path segment" };
+  }
+  return { ok: true, path: segments.join("/"), pattern };
+}
 function normalisePlanPath(value) {
-  return value.trim().replace(/^`|`$/g, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+  const parsed = parsePlanPath(value, { allowPattern: true });
+  return parsed.ok ? parsed.path : "";
+}
+var PLAN_SYMBOL_CHAIN = /^[A-Za-z_$][A-Za-z0-9_$]*(?:(?:::|#)[A-Za-z_$][A-Za-z0-9_$]*)*$/;
+function isPlanSymbolSpan(span) {
+  const call = /^([^()]*)\([^()]*\)$/.exec(span);
+  const base = call ? call[1] : span;
+  if (!PLAN_SYMBOL_CHAIN.test(base)) return false;
+  return call !== null || base.includes("::") || base.includes("#");
+}
+function classifyPlanPath(span) {
+  const candidate = span.trim().replace(/^`|`$/g, "").trim();
+  if (!candidate) return "empty";
+  if (!parsePlanPath(candidate, { allowPattern: true }).ok) return "symbol";
+  if (candidate.includes("/") || candidate.includes(".") || candidate.includes("*")) return "path";
+  return /^\S+$/.test(candidate) && !isPlanSymbolSpan(candidate) ? "path" : "symbol";
+}
+var MAX_PLAN_PATH_MATCH_STATES = 65536;
+var MAX_PLAN_PATH_MATCH_CODE_POINTS = 65536;
+var PLAN_PATH_MATCH_MAX_OPERATIONS = 1e6;
+function createPlanPathMatchBudget(maxOperations = PLAN_PATH_MATCH_MAX_OPERATIONS) {
+  return { remaining: Number.isFinite(maxOperations) && maxOperations > 0 ? Math.floor(maxOperations) : 0 };
+}
+function consumePlanPathMatchBudget(budget, amount = 1) {
+  if (!Number.isSafeInteger(amount) || amount < 0 || budget.remaining < amount) {
+    budget.remaining = 0;
+    return false;
+  }
+  budget.remaining -= amount;
+  return true;
+}
+function codePointsWithinBudget(value, budget) {
+  if (value.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  if (!consumePlanPathMatchBudget(budget, Math.max(1, value.length))) return null;
+  const points = Array.from(value);
+  if (points.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  return points;
+}
+function literalEquals(left, right, budget) {
+  const cost = left.length === right.length ? Math.max(1, left.length) : 1;
+  if (!consumePlanPathMatchBudget(budget, cost)) return null;
+  return left === right;
+}
+function exactAt(value, literal2, offset, budget) {
+  if (offset < 0 || offset + literal2.length > value.length) return false;
+  for (let index = 0; index < literal2.length; index += 1) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (value[offset + index] !== literal2[index]) return false;
+  }
+  return true;
+}
+function findLiteralChunk(value, literal2, start, end, budget) {
+  if (literal2.length === 0) return start;
+  const prefix = new Uint32Array(literal2.length);
+  for (let index = 1, matched = 0; index < literal2.length; ) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (literal2[index] === literal2[matched]) {
+      prefix[index++] = ++matched;
+    } else if (matched > 0) {
+      matched = prefix[matched - 1];
+    } else {
+      prefix[index++] = 0;
+    }
+  }
+  for (let index = start, matched = 0; index < end; ) {
+    if (!consumePlanPathMatchBudget(budget)) return null;
+    if (value[index] === literal2[matched]) {
+      index += 1;
+      matched += 1;
+      if (matched === literal2.length) return index - matched;
+    } else if (matched > 0) {
+      matched = prefix[matched - 1];
+    } else {
+      index += 1;
+    }
+  }
+  return -1;
+}
+function segmentMatches(pattern, value, budget) {
+  if (!consumePlanPathMatchBudget(budget, Math.max(1, pattern.length))) return null;
+  if (!pattern.includes("*")) return literalEquals(pattern, value, budget);
+  const valuePoints = codePointsWithinBudget(value, budget);
+  if (!valuePoints) return null;
+  const chunks = [];
+  for (const chunk of pattern.split("*")) {
+    const points = codePointsWithinBudget(chunk, budget);
+    if (!points) return null;
+    chunks.push(points);
+  }
+  let first = 0;
+  let last = chunks.length;
+  let cursor = 0;
+  let end = valuePoints.length;
+  if (!pattern.startsWith("*")) {
+    const prefix = chunks[first++];
+    const matched = exactAt(valuePoints, prefix, 0, budget);
+    if (matched !== true) return matched;
+    cursor = prefix.length;
+  }
+  if (!pattern.endsWith("*")) {
+    const suffix = chunks[--last];
+    const offset = end - suffix.length;
+    if (offset < cursor) return false;
+    const matched = exactAt(valuePoints, suffix, offset, budget);
+    if (matched !== true) return matched;
+    end = offset;
+  }
+  for (; first < last; first += 1) {
+    const chunk = chunks[first];
+    if (chunk.length === 0) continue;
+    const offset = findLiteralChunk(valuePoints, chunk, cursor, end, budget);
+    if (offset === null) return null;
+    if (offset < 0) return false;
+    cursor = offset + chunk.length;
+  }
+  return true;
+}
+function triAnd(left, right) {
+  if (left === 0 || right === false) return 0;
+  if (left === 2 || right === null) return 2;
+  return 1;
+}
+function triOr(left, right) {
+  if (left === 1 || right === 1) return 1;
+  if (left === 2 || right === 2) return 2;
+  return 0;
+}
+function planPathMatch(patternValue, pathValue, budget = createPlanPathMatchBudget()) {
+  if (budget.remaining <= 0) return null;
+  if (patternValue.length > MAX_PLAN_PATH_MATCH_CODE_POINTS || pathValue.length > MAX_PLAN_PATH_MATCH_CODE_POINTS) return null;
+  const parseCost = Math.max(1, patternValue.length) + Math.max(1, pathValue.length);
+  if (!consumePlanPathMatchBudget(budget, parseCost)) return null;
+  const pattern = parsePlanPath(patternValue, { allowPattern: true });
+  const observed = parsePlanPath(pathValue, { observed: true });
+  if (!pattern.ok || !observed.ok) return false;
+  if (!pattern.pattern) return literalEquals(pattern.path, observed.path, budget);
+  const splitCost = Math.max(1, pattern.path.length) + Math.max(1, observed.path.length);
+  if (!consumePlanPathMatchBudget(budget, splitCost)) return null;
+  const patterns = pattern.path.split("/").filter(
+    (segment, index, all) => segment !== "**" || all[index - 1] !== "**"
+  );
+  const values = observed.path.split("/");
+  const stateCount = (patterns.length + 1) * (values.length + 1);
+  if (!Number.isSafeInteger(stateCount) || stateCount > MAX_PLAN_PATH_MATCH_STATES) return null;
+  let previous = new Uint8Array(values.length + 1);
+  previous[0] = 1;
+  for (const segment of patterns) {
+    const current = new Uint8Array(values.length + 1);
+    if (segment === "**") {
+      current[0] = previous[0];
+      for (let index = 1; index <= values.length; index += 1) {
+        if (!consumePlanPathMatchBudget(budget)) return null;
+        current[index] = triOr(previous[index], current[index - 1]);
+      }
+    } else {
+      for (let index = 1; index <= values.length; index += 1) {
+        if (!consumePlanPathMatchBudget(budget)) return null;
+        const prior = previous[index - 1];
+        current[index] = prior === 0 ? 0 : triAnd(prior, segmentMatches(segment, values[index - 1], budget));
+      }
+    }
+    previous = current;
+  }
+  return previous[values.length] === 1 ? true : previous[values.length] === 2 ? null : false;
+}
+var MAX_GLOB_NFA_STATES = 8192;
+var MAX_GLOB_PRODUCT_STATES = 65536;
+var MAX_GLOB_CACHE_ENTRIES = 65536;
+var MAX_GLOB_QUEUE_ENTRIES = 65536;
+var GLOB_PROOF_MAX_OPERATIONS = 1e6;
+function createGlobProofContext(maxOperations = GLOB_PROOF_MAX_OPERATIONS) {
+  return { work: createPlanPathMatchBudget(maxOperations), cacheEntries: 0, queueEntries: 0 };
+}
+function consumeGlobProofWork(context, amount = 1) {
+  return consumePlanPathMatchBudget(context.work, amount);
+}
+var GlobAutomatonLimitError = class extends Error {
+};
+function compileGlobNfa(pattern, context) {
+  const transitions = [];
+  const state = () => {
+    if (transitions.length >= MAX_GLOB_NFA_STATES || !consumeGlobProofWork(context)) {
+      throw new GlobAutomatonLimitError();
+    }
+    transitions.push([]);
+    return transitions.length - 1;
+  };
+  const connect = (from, transition) => {
+    if (!consumeGlobProofWork(context)) throw new GlobAutomatonLimitError();
+    transitions[from].push(transition);
+  };
+  const epsilon = () => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "epsilon", to: end });
+    return { start, end };
+  };
+  const literal2 = (value) => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "literal", to: end, value });
+    return { start, end };
+  };
+  const nonSlash = () => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "non-slash", to: end });
+    return { start, end };
+  };
+  const sequence = (fragments) => {
+    if (fragments.length === 0) return epsilon();
+    for (let index = 1; index < fragments.length; index += 1) {
+      connect(fragments[index - 1].end, { kind: "epsilon", to: fragments[index].start });
+    }
+    return { start: fragments[0].start, end: fragments[fragments.length - 1].end };
+  };
+  const zeroOrMore = (fragment) => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "epsilon", to: end });
+    connect(start, { kind: "epsilon", to: fragment.start });
+    connect(fragment.end, { kind: "epsilon", to: end });
+    connect(fragment.end, { kind: "epsilon", to: fragment.start });
+    return { start, end };
+  };
+  const oneOrMore = (fragment) => {
+    const start = state();
+    const end = state();
+    connect(start, { kind: "epsilon", to: fragment.start });
+    connect(fragment.end, { kind: "epsilon", to: end });
+    connect(fragment.end, { kind: "epsilon", to: fragment.start });
+    return { start, end };
+  };
+  const anySegment = () => oneOrMore(nonSlash());
+  const ordinarySegment = (segment) => {
+    if (segment === "*") return anySegment();
+    return sequence(Array.from(segment, (character) => character === "*" ? zeroOrMore(nonSlash()) : literal2(character)));
+  };
+  try {
+    const segments = pattern.split("/").filter(
+      (segment, index, all) => segment !== "**" || all[index - 1] !== "**"
+    );
+    let compiled;
+    if (segments.length === 1 && segments[0] === "**") {
+      compiled = sequence([
+        anySegment(),
+        zeroOrMore(sequence([literal2("/"), anySegment()]))
+      ]);
+    } else {
+      const fragments = [];
+      for (let index = 0; index < segments.length; index += 1) {
+        const segment = segments[index];
+        if (segment === "**") {
+          fragments.push(index === 0 ? zeroOrMore(sequence([anySegment(), literal2("/")])) : zeroOrMore(sequence([literal2("/"), anySegment()])));
+          continue;
+        }
+        const followsLeadingRecursive = index === 1 && segments[0] === "**";
+        if (index > 0 && !followsLeadingRecursive) fragments.push(literal2("/"));
+        fragments.push(ordinarySegment(segment));
+      }
+      compiled = sequence(fragments);
+    }
+    return { transitions, start: compiled.start, accept: compiled.end };
+  } catch (error2) {
+    if (error2 instanceof GlobAutomatonLimitError) return null;
+    throw error2;
+  }
+}
+function epsilonClosure(nfa, seed, context) {
+  if (!consumeGlobProofWork(context, Math.max(1, seed.length))) return null;
+  const closure = new Set(seed);
+  const queue = [...seed];
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
+    const current = queue[cursor];
+    for (const transition of nfa.transitions[current]) {
+      if (!consumeGlobProofWork(context)) return null;
+      if (transition.kind !== "epsilon" || closure.has(transition.to)) continue;
+      closure.add(transition.to);
+      queue.push(transition.to);
+    }
+  }
+  if (!consumeGlobProofWork(context, Math.max(1, closure.size))) return null;
+  return [...closure].sort((left, right) => left - right);
+}
+function globAlphabet(left, right, context) {
+  const literals = /* @__PURE__ */ new Set();
+  for (const nfa of [left, right]) {
+    for (const transitions of nfa.transitions) {
+      if (!consumeGlobProofWork(context)) return null;
+      for (const transition of transitions) {
+        if (!consumeGlobProofWork(context)) return null;
+        if (transition.kind === "literal" && transition.value !== "/" && !literals.has(transition.value)) {
+          if (!consumeGlobProofWork(context)) return null;
+          literals.add(transition.value);
+        }
+      }
+    }
+  }
+  const sortCost = literals.size <= 1 ? 1 : literals.size * Math.ceil(Math.log2(literals.size));
+  if (!Number.isSafeInteger(sortCost) || !consumeGlobProofWork(context, sortCost)) return null;
+  const ordered = [...literals].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+  return ["/", ...ordered, null];
+}
+function globMove(nfa, states, character, cache, context) {
+  if (!consumeGlobProofWork(context, Math.max(1, states.length))) return null;
+  const characterKey = character === null ? "other" : `literal:${character}`;
+  const key = `${states.join(",")}|${characterKey}`;
+  if (cache.has(key)) return cache.get(key);
+  const next = /* @__PURE__ */ new Set();
+  for (const current of states) {
+    if (!consumeGlobProofWork(context)) return null;
+    for (const transition of nfa.transitions[current]) {
+      if (!consumeGlobProofWork(context)) return null;
+      if (transition.kind === "literal") {
+        if (character !== null && transition.value === character) next.add(transition.to);
+      } else if (transition.kind === "non-slash" && character !== "/") {
+        next.add(transition.to);
+      }
+    }
+  }
+  const result = epsilonClosure(nfa, [...next], context);
+  if (!result) return null;
+  if (context.cacheEntries >= MAX_GLOB_CACHE_ENTRIES || !consumeGlobProofWork(context)) return null;
+  context.cacheEntries += 1;
+  cache.set(key, result);
+  return result;
+}
+function globLanguageContained(authority, requested, context) {
+  const alphabet = globAlphabet(authority, requested, context);
+  if (!alphabet) return null;
+  const authorityCache = /* @__PURE__ */ new Map();
+  const requestedCache = /* @__PURE__ */ new Map();
+  const authorityStart = epsilonClosure(authority, [authority.start], context);
+  const requestedStart = epsilonClosure(requested, [requested.start], context);
+  if (!authorityStart || !requestedStart) return null;
+  const queue = [];
+  const queued = /* @__PURE__ */ new Set();
+  const enqueue = (entry) => {
+    if (!consumeGlobProofWork(context, Math.max(1, entry.authority.length + entry.requested.length))) return false;
+    const key = `${entry.authority.join(",")}|${entry.requested.join(",")}`;
+    if (queued.has(key)) return true;
+    if (context.queueEntries >= MAX_GLOB_QUEUE_ENTRIES || queued.size >= MAX_GLOB_PRODUCT_STATES || !consumeGlobProofWork(context)) return false;
+    context.queueEntries += 1;
+    queued.add(key);
+    queue.push(entry);
+    return true;
+  };
+  if (!enqueue({ authority: authorityStart, requested: requestedStart })) return null;
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
+    const current = queue[cursor];
+    if (!consumeGlobProofWork(context, current.authority.length + current.requested.length)) return null;
+    if (current.requested.includes(requested.accept) && !current.authority.includes(authority.accept)) {
+      return false;
+    }
+    for (const character of alphabet) {
+      if (!consumeGlobProofWork(context)) return null;
+      const nextRequested = globMove(requested, current.requested, character, requestedCache, context);
+      if (!nextRequested) return null;
+      if (nextRequested.length === 0) continue;
+      const nextAuthority = globMove(authority, current.authority, character, authorityCache, context);
+      if (!nextAuthority || !enqueue({ authority: nextAuthority, requested: nextRequested })) return null;
+    }
+  }
+  return true;
+}
+function globLanguagesOverlap(left, right, context) {
+  const alphabet = globAlphabet(left, right, context);
+  if (!alphabet) return null;
+  const leftCache = /* @__PURE__ */ new Map();
+  const rightCache = /* @__PURE__ */ new Map();
+  const leftStart = epsilonClosure(left, [left.start], context);
+  const rightStart = epsilonClosure(right, [right.start], context);
+  if (!leftStart || !rightStart) return null;
+  const queue = [];
+  const queued = /* @__PURE__ */ new Set();
+  const enqueue = (entry) => {
+    if (!consumeGlobProofWork(context, Math.max(1, entry.left.length + entry.right.length))) return false;
+    const key = `${entry.left.join(",")}|${entry.right.join(",")}`;
+    if (queued.has(key)) return true;
+    if (context.queueEntries >= MAX_GLOB_QUEUE_ENTRIES || queued.size >= MAX_GLOB_PRODUCT_STATES || !consumeGlobProofWork(context)) return false;
+    context.queueEntries += 1;
+    queued.add(key);
+    queue.push(entry);
+    return true;
+  };
+  if (!enqueue({ left: leftStart, right: rightStart })) return null;
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    if (!consumeGlobProofWork(context)) return null;
+    const current = queue[cursor];
+    if (!consumeGlobProofWork(context, current.left.length + current.right.length)) return null;
+    if (current.left.includes(left.accept) && current.right.includes(right.accept)) return true;
+    for (const character of alphabet) {
+      if (!consumeGlobProofWork(context)) return null;
+      const nextLeft = globMove(left, current.left, character, leftCache, context);
+      if (!nextLeft) return null;
+      if (nextLeft.length === 0) continue;
+      const nextRight = globMove(right, current.right, character, rightCache, context);
+      if (!nextRight) return null;
+      if (nextRight.length === 0) continue;
+      if (!enqueue({ left: nextLeft, right: nextRight })) return null;
+    }
+  }
+  return false;
+}
+function declarationCovers(authorityValue, requestedValue, context) {
+  const authority = parsePlanPath(authorityValue, { allowPattern: true });
+  const requested = parsePlanPath(requestedValue, { allowPattern: true });
+  if (!authority.ok || !requested.ok) return false;
+  if (authority.path === requested.path) return true;
+  const authorityNfa = compileGlobNfa(authority.path, context);
+  const requestedNfa = compileGlobNfa(requested.path, context);
+  if (!authorityNfa || !requestedNfa) return null;
+  return globLanguageContained(authorityNfa, requestedNfa, context);
+}
+function declarationsOverlap(leftValue, rightValue, context) {
+  const left = parsePlanPath(leftValue, { allowPattern: true });
+  const right = parsePlanPath(rightValue, { allowPattern: true });
+  if (!left.ok || !right.ok) return true;
+  if (left.path === right.path) return true;
+  const leftNfa = compileGlobNfa(left.path, context);
+  const rightNfa = compileGlobNfa(right.path, context);
+  if (!leftNfa || !rightNfa) return null;
+  return globLanguagesOverlap(leftNfa, rightNfa, context);
 }
 function sectionContent(sections, title) {
   const wanted = title.toLocaleLowerCase();
@@ -39499,10 +39953,10 @@ function parseDoNotModify(content) {
   if (!content) return [];
   const paths = [];
   for (const item of bulletItems(content)) {
-    const spans = codeSpans(item);
-    for (const span of spans) {
+    for (const span of codeSpans(item)) {
+      if (classifyPlanPath(span) !== "path") continue;
       const path132 = normalisePlanPath(span);
-      if (path132 && (path132.includes("/") || path132.includes("."))) paths.push(path132);
+      if (path132) paths.push(path132);
     }
   }
   return [...new Set(paths)];
@@ -39530,10 +39984,11 @@ function parseStepFields(body) {
   }
   return fields;
 }
-function buildStep(index, title, structured, body) {
+function buildStep(index, title, structured, body, declaredIndex = null) {
   const fields = structured ? parseStepFields(body) : {};
   return {
     index,
+    declaredIndex,
     id: `step-${index}`,
     title,
     structured,
@@ -39550,26 +40005,56 @@ function parseSteps(content) {
   const lines = withoutFences(content).split("\n");
   const headings = [];
   for (const [line, text] of lines.entries()) {
-    const match = /^(?: {0,3})#{3,6}(?:[ \t]+)(.*)$/.exec(text);
-    if (match) headings.push({ line, title: match[1].trim().replace(/[ \t]+#+[ \t]*$/, "").trim() });
+    const match = /^(?: {0,3})###[ \t]+step[ \t]+([0-9]+)[ \t]+—[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/i.exec(text);
+    if (match) headings.push({ line, declaredIndex: Number(match[1]), title: match[2].trim() });
   }
   if (headings.length) {
     return headings.map((heading, position) => {
       const end = headings[position + 1]?.line ?? lines.length;
       return buildStep(
         position + 1,
-        stepTitle(heading.title),
+        heading.title,
         true,
-        lines.slice(heading.line + 1, end).join("\n")
+        lines.slice(heading.line + 1, end).join("\n"),
+        heading.declaredIndex
       );
     });
   }
   const items = bulletItems(content);
   return items.map((item, position) => buildStep(position + 1, stepTitle(item), false, ""));
 }
+function collectPathIssues(sections, steps) {
+  const issues = [];
+  const add = (value, section, allowPattern, step) => {
+    const parsed = parsePlanPath(value, { allowPattern });
+    if (!parsed.ok) issues.push({ value, reason: parsed.reason, section, ...step === void 0 ? {} : { step } });
+  };
+  const expected = sectionContent(sections, "Expected files");
+  if (expected) {
+    for (const line of expected.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("|")) continue;
+      const cells = trimmed.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+      if (cells.length < 2 || cells[0].toLocaleLowerCase() === "action" || /^:?-{2,}:?$/.test(cells[1])) continue;
+      add(cells[1], "Expected files", true);
+    }
+  }
+  for (const item of bulletItems(sectionContent(sections, "Do not modify"))) {
+    for (const span of codeSpans(item)) add(span, "Do not modify", true);
+  }
+  const starting = sectionContent(sections, "Starting state") ?? "";
+  for (const match of starting.matchAll(/`([^`]+)`\s*@\s*`?([0-9a-fA-F]{8,64})`?/g)) {
+    add(match[1], "Starting state", false);
+  }
+  for (const step of steps) {
+    for (const value of step.fields.files ? listValues(step.fields.files) : []) add(value, "Ordered steps", true, step.index);
+  }
+  return issues;
+}
 function parsePlan(markdown) {
   const sections = parseAtxSections(markdown);
   const startingState = sectionContent(sections, "Starting state");
+  const steps = parseSteps(sectionContent(sections, "Ordered steps"));
   return {
     sections,
     objective: sectionContent(sections, "Objective"),
@@ -39579,7 +40064,8 @@ function parsePlan(markdown) {
     commands: bulletItems(sectionContent(sections, "Commands")),
     stopCondition: sectionContent(sections, "Stop condition"),
     evidencePins: parseEvidencePins(startingState),
-    steps: parseSteps(sectionContent(sections, "Ordered steps"))
+    steps,
+    pathIssues: collectPathIssues(sections, steps)
   };
 }
 var VAGUE_SCAN_SECTIONS = ["Required changes", "Constraints", "Ordered steps", "Acceptance checks"];
@@ -39681,14 +40167,30 @@ function riskFindings(plan) {
 }
 function evidenceFindings(plan, severity, options2) {
   if (!options2.liveEvidence) return [];
-  const live = new Map(options2.liveEvidence.map((entry) => [normalisePlanPath(entry.path), entry.version.toLowerCase()]));
+  const live = new Map(
+    options2.liveEvidence.flatMap((entry) => {
+      const parsed = parsePlanPath(entry.path);
+      return parsed.ok ? [[parsed.path, entry.version.toLowerCase()]] : [];
+    })
+  );
   const findings = [];
+  const seenPins = /* @__PURE__ */ new Set();
   for (const pin of plan.evidencePins) {
+    if (seenPins.has(pin.path)) {
+      findings.push({
+        code: "PLAN_EVIDENCE_DUPLICATE",
+        severity,
+        section: "Starting state",
+        message: `Evidence "${pin.path}" is pinned more than once; authority must be unambiguous.`,
+        detail: pin.path
+      });
+    }
+    seenPins.add(pin.path);
     const current = live.get(pin.path);
     if (current === void 0) {
       findings.push({
         code: "PLAN_EVIDENCE_UNKNOWN",
-        severity: "advisory",
+        severity,
         section: "Starting state",
         message: `The plan pins "${pin.path}", which is not among this ticket's current evidence documents.`,
         detail: pin.path
@@ -39705,17 +40207,22 @@ function evidenceFindings(plan, severity, options2) {
       });
     }
   }
-  if (options2.requireEvidencePin && plan.evidencePins.length === 0) {
-    findings.push({
-      code: "PLAN_EVIDENCE_UNRECORDED",
-      severity,
-      section: "Starting state",
-      message: "This ticket carries research/impact evidence, but the plan pins no evidence version in Starting state, so nothing can tell whether the plan was written against the current evidence."
-    });
+  if (options2.requireEvidencePin) {
+    const pinned = new Map(plan.evidencePins.map((entry) => [entry.path, entry.version]));
+    for (const [path132, version2] of live) {
+      if (!/^(?:research|files)\//.test(path132) || pinned.get(path132) === version2) continue;
+      findings.push({
+        code: "PLAN_EVIDENCE_UNRECORDED",
+        severity,
+        section: "Starting state",
+        detail: path132,
+        message: `Current evidence "${path132}"@${version2} has no matching pin in Starting state.`
+      });
+    }
   }
   return findings;
 }
-function stepFindings(plan, severity, selected) {
+function stepFindings(plan, severity, selected, proofContext) {
   const findings = [];
   if (plan.steps.length === 0) {
     findings.push({
@@ -39736,8 +40243,20 @@ function stepFindings(plan, severity, selected) {
     });
     return findings;
   }
-  const declared = new Set(plan.expectedFiles.map((entry) => entry.path));
-  const forbidden = new Set(plan.doNotModify);
+  for (const step of plan.steps) {
+    if (!step.structured) continue;
+    if (Number.isSafeInteger(step.declaredIndex) && step.declaredIndex !== null && step.declaredIndex > 0 && step.declaredIndex === step.index) continue;
+    findings.push({
+      code: "PLAN_STEP_NUMBER_MISMATCH",
+      severity,
+      section: "Ordered steps",
+      step: step.index,
+      detail: String(step.declaredIndex),
+      message: `Structured step at position ${step.index} declares Step ${String(step.declaredIndex)}; declared step numbers must start at 1 and remain contiguous in document order.`
+    });
+  }
+  const declared = plan.expectedFiles.map((entry) => entry.path);
+  const forbidden = plan.doNotModify;
   for (const step of plan.steps) {
     const chosen = selected !== void 0 && step.index === selected;
     const stepSeverity = chosen ? severity : "advisory";
@@ -39776,7 +40295,22 @@ function stepFindings(plan, severity, selected) {
       }
     }
     for (const file of step.files) {
-      if (!declared.has(file)) {
+      const declarationProofs = [];
+      for (const authority of declared) {
+        const proof = declarationCovers(authority, file, proofContext);
+        declarationProofs.push(proof);
+        if (proof === true) break;
+      }
+      if (!declarationProofs.includes(true) && declarationProofs.includes(null)) {
+        findings.push({
+          code: "PLAN_GLOB_COMPLEXITY",
+          severity: stepSeverity,
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} path "${file}" exceeds the bounded glob-containment proof budget; simplify its Expected files or step declaration.`,
+          detail: file
+        });
+      } else if (!declarationProofs.includes(true)) {
         findings.push({
           code: "PLAN_STEP_FILE_UNDECLARED",
           severity: stepSeverity,
@@ -39786,13 +40320,28 @@ function stepFindings(plan, severity, selected) {
           detail: file
         });
       }
-      if (forbidden.has(file)) {
+      const forbiddenProofs = [];
+      for (const pattern of forbidden) {
+        const proof = declarationsOverlap(pattern, file, proofContext);
+        forbiddenProofs.push(proof);
+        if (proof === true) break;
+      }
+      if (forbiddenProofs.includes(true)) {
         findings.push({
           code: "PLAN_STEP_FILE_FORBIDDEN",
           severity: stepSeverity,
           section: "Ordered steps",
           step: step.index,
           message: `Step ${step.index} names "${file}", which the plan's Do not modify section forbids.`,
+          detail: file
+        });
+      } else if (forbiddenProofs.includes(null)) {
+        findings.push({
+          code: "PLAN_GLOB_COMPLEXITY",
+          severity: stepSeverity,
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} path "${file}" exceeds the bounded forbidden-glob intersection proof budget; simplify its Do not modify or step declaration.`,
           detail: file
         });
       }
@@ -39806,6 +40355,7 @@ function acceptanceIsUsable(check2) {
 function validatePlan(plan, options2 = {}) {
   const structural = options2.step === void 0 ? "advisory" : "blocker";
   const findings = [];
+  const proofContext = createGlobProofContext(options2.maxGlobProofOperations);
   for (const title of PLAN_SECTIONS) {
     if (sectionContent(plan.sections, title) === null) {
       findings.push({
@@ -39818,6 +40368,17 @@ function validatePlan(plan, options2 = {}) {
   }
   findings.push(...vagueFindings(plan));
   findings.push(...riskFindings(plan));
+  for (const issue2 of plan.pathIssues) {
+    const selectedIssue = issue2.step === void 0 || issue2.step === options2.step;
+    findings.push({
+      code: "PLAN_PATH_INVALID",
+      severity: selectedIssue ? structural : "advisory",
+      section: issue2.section,
+      ...issue2.step === void 0 ? {} : { step: issue2.step },
+      detail: issue2.value,
+      message: `"${issue2.value}" is not a supported repository-relative path: ${issue2.reason}.`
+    });
+  }
   if (plan.expectedFiles.length === 0) {
     findings.push({
       code: "PLAN_ALLOWED_FILES_MISSING",
@@ -39843,25 +40404,140 @@ function validatePlan(plan, options2 = {}) {
     });
   }
   findings.push(...evidenceFindings(plan, structural, options2));
-  findings.push(...stepFindings(plan, structural, options2.step));
+  findings.push(...stepFindings(plan, structural, options2.step, proofContext));
   const blockers = findings.filter((finding2) => finding2.severity === "blocker").length;
   return { ok: blockers === 0, blockers, advisories: findings.length - blockers, findings };
 }
-var STEP_PACKET_VERSION = "step-packet/1";
+var STEP_PACKET_VERSION = "step-packet/2";
 var STEP_RETURN_STOP = "Complete only this step, then stop and report. The controller reconciles the actual changes and evidence before another packet is issued; do not begin the next step, merge, or start another ticket.";
+var STEP_PACKET_LIMITS = {
+  maxEncodedBytes: 512 * 1024,
+  maxStringBytes: 64 * 1024,
+  maxChecklistBytes: 128 * 1024,
+  maxChecklistLines: 4096,
+  maxArrayEntries: 512,
+  maxAggregateEntries: 2048,
+  maxObjectKeys: 128,
+  maxAggregateKeys: 4096,
+  maxDepth: 16,
+  maxDocuments: 256
+};
+var budgetEncoder = new TextEncoder();
+function checklistString(path132) {
+  const last = path132[path132.length - 1];
+  return last === "checklist" || last === "content" && path132[path132.length - 2] === "checklist";
+}
+function checkStepPacketBudget(value) {
+  let encodedBytes = 0;
+  let aggregateEntries = 0;
+  let aggregateKeys = 0;
+  const active = /* @__PURE__ */ new WeakSet();
+  const addBytes = (count) => {
+    encodedBytes += count;
+    return encodedBytes > STEP_PACKET_LIMITS.maxEncodedBytes ? { ok: false, reason: `step packet material exceeds ${STEP_PACKET_LIMITS.maxEncodedBytes} encoded bytes` } : { ok: true };
+  };
+  const visit = (entry, path132, depth) => {
+    if (depth > STEP_PACKET_LIMITS.maxDepth) return { ok: false, reason: `step packet material exceeds depth ${STEP_PACKET_LIMITS.maxDepth}` };
+    if (typeof entry === "string") {
+      if (entry.length > STEP_PACKET_LIMITS.maxChecklistBytes) {
+        return { ok: false, reason: "step packet string exceeds its encoded-byte budget" };
+      }
+      const bytes = budgetEncoder.encode(entry).length;
+      const limit = checklistString(path132) ? STEP_PACKET_LIMITS.maxChecklistBytes : STEP_PACKET_LIMITS.maxStringBytes;
+      if (bytes > limit) return { ok: false, reason: `${checklistString(path132) ? "checklist" : "step packet string"} exceeds ${limit} encoded bytes` };
+      if (checklistString(path132)) {
+        let lines = 1;
+        for (let index = 0; index < entry.length; index += 1) {
+          if (entry[index] === "\n" || entry[index] === "\r" && entry[index + 1] !== "\n") lines += 1;
+          if (lines > STEP_PACKET_LIMITS.maxChecklistLines) return { ok: false, reason: `checklist exceeds ${STEP_PACKET_LIMITS.maxChecklistLines} lines` };
+        }
+      }
+      return addBytes(bytes + 2);
+    }
+    if (typeof entry === "number" && !Number.isFinite(entry)) {
+      return { ok: false, reason: "step packet material contains a non-finite number" };
+    }
+    if (entry === null || entry === void 0 || typeof entry === "boolean" || typeof entry === "number") {
+      return addBytes(String(entry ?? null).length + 1);
+    }
+    if (typeof entry !== "object") return { ok: false, reason: "step packet material contains an unsupported value" };
+    if (entry instanceof Date) {
+      if (Object.getPrototypeOf(entry) !== Date.prototype || !Number.isFinite(entry.getTime())) {
+        return { ok: false, reason: "step packet material contains an invalid or unsupported Date" };
+      }
+      return addBytes(budgetEncoder.encode(entry.toISOString()).length + 16);
+    }
+    if (active.has(entry)) return { ok: false, reason: "step packet material is cyclic" };
+    active.add(entry);
+    try {
+      if (Array.isArray(entry)) {
+        if (Object.getPrototypeOf(entry) !== Array.prototype) {
+          return { ok: false, reason: "step packet material contains an unsupported object prototype" };
+        }
+        if (entry.length > STEP_PACKET_LIMITS.maxArrayEntries) return { ok: false, reason: `step packet array exceeds ${STEP_PACKET_LIMITS.maxArrayEntries} entries` };
+        aggregateEntries += entry.length;
+        if (aggregateEntries > STEP_PACKET_LIMITS.maxAggregateEntries) return { ok: false, reason: `step packet arrays exceed ${STEP_PACKET_LIMITS.maxAggregateEntries} aggregate entries` };
+        const structural2 = addBytes(entry.length + 2);
+        if (!structural2.ok) return structural2;
+        for (let index = 0; index < entry.length; index += 1) {
+          const nested = visit(entry[index], [...path132, String(index)], depth + 1);
+          if (!nested.ok) return nested;
+        }
+        return { ok: true };
+      }
+      const prototype = Object.getPrototypeOf(entry);
+      if (prototype !== Object.prototype && prototype !== null || Object.getOwnPropertySymbols(entry).length > 0) {
+        return { ok: false, reason: "step packet material contains an unsupported object prototype or symbol key" };
+      }
+      const entries = Object.entries(entry);
+      if (entries.length > STEP_PACKET_LIMITS.maxObjectKeys) return { ok: false, reason: `step packet object exceeds ${STEP_PACKET_LIMITS.maxObjectKeys} keys` };
+      aggregateKeys += entries.length;
+      if (aggregateKeys > STEP_PACKET_LIMITS.maxAggregateKeys) return { ok: false, reason: `step packet objects exceed ${STEP_PACKET_LIMITS.maxAggregateKeys} aggregate keys` };
+      const structural = addBytes(entries.length + 2);
+      if (!structural.ok) return structural;
+      for (const [key, nestedValue] of entries) {
+        const keyBudget = addBytes(budgetEncoder.encode(key).length + 3);
+        if (!keyBudget.ok) return keyBudget;
+        const nested = visit(nestedValue, [...path132, key], depth + 1);
+        if (!nested.ok) return nested;
+      }
+      return { ok: true };
+    } finally {
+      active.delete(entry);
+    }
+  };
+  return visit(value, [], 0);
+}
+function lexicalCompare(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
 function checklistBoxes(checklist) {
   if (!checklist) return [];
-  return [...checklist.matchAll(/^[ \t]*[-*+][ \t]*\[([ xX])\]/gm)].map((match) => match[1].toLowerCase() === "x");
+  const states = [];
+  for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
+    const match = /^[ \t]*[-*+][ \t]*\[([ xX])\]/.exec(checklistLineForParsing(line, lineIndex));
+    if (match) states.push(match[1].toLowerCase() === "x");
+  }
+  return states;
+}
+function checklistLineForParsing(line, lineIndex) {
+  return lineIndex === 0 && line.startsWith("\uFEFF") ? line.slice(1) : line;
+}
+var NAMED_CHECKLIST_STEP = /^[ \t\u00a0]*step[ \t\u00a0]+(\d+)(?:$|(?=\s)|(?=[\u2014\u2013:.-](?!\d)))/i;
+function namedChecklistStep(label) {
+  const match = NAMED_CHECKLIST_STEP.exec(label);
+  if (!match) return null;
+  const index = Number(match[1]);
+  return Number.isSafeInteger(index) && index > 0 ? index : null;
 }
 function boxesByStep(checklist) {
   const byStep = /* @__PURE__ */ new Map();
   if (!checklist) return byStep;
-  for (const line of checklist.replace(/\r\n?/g, "\n").split("\n")) {
-    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(line);
+  for (const [lineIndex, line] of checklist.replace(/\r\n?/g, "\n").split("\n").entries()) {
+    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
     if (!box) continue;
-    const named = /\bstep[\s ]+(\d+)\b/i.exec(box[2]);
-    if (!named) continue;
-    const index = Number(named[1]);
+    const index = namedChecklistStep(box[2]);
+    if (index === null) continue;
     const ticked = box[1].toLowerCase() === "x";
     byStep.set(index, [...byStep.get(index) ?? [], ticked]);
   }
@@ -39884,50 +40560,46 @@ function nextStepIndex(plan, checklist) {
   }
   return null;
 }
+function checklistStepStates(plan, checklist) {
+  const named = boxesByStep(checklist);
+  if (named.size > 0) {
+    return plan.steps.map((step) => {
+      const boxes2 = named.get(step.index);
+      return Boolean(boxes2?.length) && boxes2.every(Boolean);
+    });
+  }
+  const boxes = checklistBoxes(checklist);
+  return plan.steps.map((_, index) => boxes[index] === true);
+}
+function checklistStepLines(plan, checklist) {
+  const result = plan.steps.map(() => []);
+  if (!checklist) return result;
+  const lines = checklist.replace(/\r\n?/g, "\n").split("\n");
+  const named = lines.some((line, lineIndex) => {
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    return Boolean(box && namedChecklistStep(box[1]) !== null);
+  });
+  let positional = 0;
+  for (const [lineIndex, line] of lines.entries()) {
+    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    if (!box) continue;
+    const declared = namedChecklistStep(box[2]);
+    if (named && declared === null) continue;
+    const stepIndex = named ? declared - 1 : positional++;
+    if (stepIndex >= 0 && stepIndex < result.length) result[stepIndex].push(lineIndex);
+  }
+  return result;
+}
+function stepChecklistSnapshot(plan, content, path132, version2) {
+  return { path: path132, version: version2, content, steps: checklistStepStates(plan, content), stepLines: checklistStepLines(plan, content) };
+}
 function stepField(step, field) {
   return step.fields[field] ?? null;
 }
-function canonicalJson(value) {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (value && typeof value === "object") {
-    const entries = Object.entries(value).filter(([, entry]) => entry !== void 0).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
-    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(",")}}`;
-  }
-  return JSON.stringify(value ?? null);
-}
-function refusalReason(validation) {
-  const blockers = validation.findings.filter((finding2) => finding2.severity === "blocker");
-  return `The plan cannot be compiled into a bounded step packet: ${blockers.map((finding2) => finding2.message).join(" ")}`;
-}
-function compileStepPacket(input) {
-  const { plan, checklist, select } = input;
-  const liveEvidence = input.evidence.map((entry) => ({ path: entry.path, version: entry.version }));
-  const requireEvidencePin = input.evidence.some(
-    (entry) => entry.layer === "ticket" && /^(?:research|files)\//.test(entry.path)
-  );
-  const resolved = select === "next" ? nextStepIndex(plan, checklist) : select;
-  if (resolved === null) {
-    const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
-    return {
-      ok: false,
-      reason: plan.steps.length === 0 ? "The plan has no ordered steps, so there is no next step to compile." : "Every ordered step is already ticked in the checklist; there is no next step to compile.",
-      validation: validation2
-    };
-  }
-  const validation = validatePlan(plan, { step: resolved, liveEvidence, requireEvidencePin });
-  if (!validation.ok) return { ok: false, reason: refusalReason(validation), validation };
-  const step = plan.steps[resolved - 1];
-  const evidence = {
-    group: input.evidence.filter((entry) => entry.layer === "group"),
-    ticket: input.evidence.filter((entry) => entry.layer === "ticket")
-  };
-  const body = {
-    packetVersion: STEP_PACKET_VERSION,
-    project: input.project,
-    ticket: input.ticket,
-    batch: input.batch,
-    workspace: input.workspace,
-    plan: { path: input.planPath, version: input.planVersion },
+function stepPacketAuthority(plan, index, stopCondition) {
+  const step = plan.steps[index - 1];
+  if (!step) return null;
+  return {
     step: { index: step.index, total: plan.steps.length, id: step.id, title: step.title },
     allowedFiles: step.files,
     allowedSymbols: step.symbols,
@@ -39942,16 +40614,558 @@ function compileStepPacket(input) {
     expectedOutput: stepField(step, "expected"),
     doneCondition: stepField(step, "done"),
     deviationStop: stepField(step, "deviation"),
-    stopCondition: `${input.stopCondition.trim()}
+    stopCondition: `${stopCondition.trim()}
 
-${STEP_RETURN_STOP}`,
+${STEP_RETURN_STOP}`
+  };
+}
+function authorityOf(packet) {
+  return {
+    step: packet.step,
+    allowedFiles: packet.allowedFiles,
+    allowedSymbols: packet.allowedSymbols,
+    forbiddenFiles: packet.forbiddenFiles,
+    preconditions: packet.preconditions,
+    requiredBehaviour: packet.requiredBehaviour,
+    preservedBehaviour: packet.preservedBehaviour,
+    forbiddenBehaviour: packet.forbiddenBehaviour,
+    negativeCases: packet.negativeCases,
+    tests: packet.tests,
+    commands: packet.commands,
+    expectedOutput: packet.expectedOutput,
+    doneCondition: packet.doneCondition,
+    deviationStop: packet.deviationStop,
+    stopCondition: packet.stopCondition
+  };
+}
+function canonicalJson(value) {
+  if (value instanceof Date) return `@kanmer-date:${JSON.stringify(value.toISOString())}`;
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).filter(([, entry]) => entry !== void 0).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+function stepTicketAuthority(value) {
+  const budget = checkStepPacketBudget(value);
+  if (!budget.ok) throw new Error(`ticket authority cannot be hashed: ${budget.reason}`);
+  const item = record2(value);
+  if (!item) throw new Error("ticket authority requires an object");
+  const volatile = /* @__PURE__ */ new Set([
+    "updated",
+    "claim_expires_at",
+    "lease_revision",
+    "lease_phase",
+    "lease_heartbeat_at"
+  ]);
+  const authority = Object.fromEntries(Object.entries(item).filter(([key]) => !volatile.has(key)));
+  return (0, import_crypto2.createHash)("sha256").update(canonicalJson(authority), "utf8").digest("hex");
+}
+function stepPacketDigest(body) {
+  const budget = checkStepPacketBudget(body);
+  if (!budget.ok) throw new Error(`step packet cannot be hashed: ${budget.reason}`);
+  return (0, import_crypto2.createHash)("sha256").update(canonicalJson(body), "utf8").digest("hex");
+}
+function record2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+function stringOrNull(value) {
+  return value === null || typeof value === "string";
+}
+function stringArray(value) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string" && entry.trim().length > 0);
+}
+function exactKeys(value, keys) {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+function canonicalPacketPath(value, options2 = {}) {
+  if (typeof value !== "string") return false;
+  const parsed = parsePlanPath(value, options2);
+  return parsed.ok && parsed.path === value;
+}
+function checklistLineMap(content, total) {
+  const result = Array.from({ length: total }, () => []);
+  if (content === null) return result;
+  const lines = content.replace(/\r\n?/g, "\n").split("\n");
+  const named = lines.some((line, lineIndex) => {
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    return Boolean(box && namedChecklistStep(box[1]) !== null);
+  });
+  let positional = 0;
+  for (const [lineIndex, line] of lines.entries()) {
+    const box = /^[ \t]*[-*+][ \t]*\[[ xX]\][ \t]*(.*)$/.exec(checklistLineForParsing(line, lineIndex));
+    if (!box) continue;
+    const declared = namedChecklistStep(box[1]);
+    if (named && declared === null) continue;
+    const selected = named ? declared - 1 : positional++;
+    if (selected >= 0 && selected < total) result[selected].push(lineIndex);
+  }
+  return result;
+}
+function checklistStatesFromLineMap(content, stepLines) {
+  const lines = content === null ? [] : content.replace(/\r\n?/g, "\n").split("\n");
+  const markers = [];
+  for (const mapped of stepLines) {
+    const states = [];
+    for (const lineIndex of mapped) {
+      const line = lines[lineIndex];
+      if (line === void 0) return null;
+      const match = /^[ \t]*[-*+][ \t]*\[([ xX])\]/.exec(checklistLineForParsing(line, lineIndex));
+      if (!match) return null;
+      states.push(match[1].toLowerCase() === "x");
+    }
+    markers.push(states);
+  }
+  return { markers, steps: markers.map((states) => states.length > 0 && states.every(Boolean)) };
+}
+function nonEmptyStringOrNull(value) {
+  return value === null || typeof value === "string" && value.trim().length > 0;
+}
+function isFullGitObjectId(value) {
+  return typeof value === "string" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value);
+}
+function verifyStepPacket(value) {
+  const packet = record2(value);
+  if (!packet) return { ok: false, reason: "step_packet must be a complete object" };
+  const budget = checkStepPacketBudget(packet);
+  if (!budget.ok) return { ok: false, reason: budget.reason };
+  if (packet.packetVersion !== STEP_PACKET_VERSION) {
+    return { ok: false, reason: `step_packet version must be ${STEP_PACKET_VERSION}; older packets are not normalized` };
+  }
+  if (!exactKeys(packet, ["packetVersion", "packetId", "project", "ticket", "batch", "workspace", "plan", "checklist", "step", "allowedFiles", "allowedSymbols", "forbiddenFiles", "preconditions", "requiredBehaviour", "preservedBehaviour", "forbiddenBehaviour", "negativeCases", "tests", "commands", "expectedOutput", "doneCondition", "deviationStop", "stopCondition", "evidence"])) {
+    return { ok: false, reason: "step_packet has missing or unknown top-level fields" };
+  }
+  if (typeof packet.packetId !== "string" || !/^[0-9a-f]{64}$/.test(packet.packetId)) {
+    return { ok: false, reason: "step_packet.packetId is missing or malformed" };
+  }
+  const project = record2(packet.project);
+  const ticket = record2(packet.ticket);
+  const workspace = record2(packet.workspace);
+  const plan = record2(packet.plan);
+  const checklist = record2(packet.checklist);
+  const step = record2(packet.step);
+  const evidence = record2(packet.evidence);
+  if (!project || !ticket || !workspace || !plan || !checklist || !step || !evidence) {
+    return { ok: false, reason: "step_packet is missing a required identity, workspace, plan, checklist, step or evidence block" };
+  }
+  if (!exactKeys(project, ["project_id", "board_id", "fingerprint"]) || !nonEmptyStringOrNull(project.project_id) || !nonEmptyStringOrNull(project.board_id) || typeof project.fingerprint !== "string" || !project.fingerprint.trim()) {
+    return { ok: false, reason: "step_packet.project is malformed" };
+  }
+  if (!exactKeys(ticket, ["id", "revision", "itemAuthority", "documents"]) || typeof ticket.id !== "string" || !ticket.id.trim() || !nonEmptyStringOrNull(ticket.revision) || typeof ticket.itemAuthority !== "string" || !/^[0-9a-f]{64}$/.test(ticket.itemAuthority) || !Array.isArray(ticket.documents) || ticket.documents.length > STEP_PACKET_LIMITS.maxDocuments || !nonEmptyStringOrNull(packet.batch)) {
+    return { ok: false, reason: "step_packet ticket or batch identity is malformed" };
+  }
+  const documentKeys = [];
+  for (const value2 of ticket.documents) {
+    const document = record2(value2);
+    if (!document || !exactKeys(document, ["path", "version"]) || !canonicalPacketPath(document.path) || typeof document.version !== "string" || !document.version.trim()) {
+      return { ok: false, reason: "step_packet ticket document census is malformed" };
+    }
+    documentKeys.push(document.path);
+  }
+  if (new Set(documentKeys).size !== documentKeys.length || documentKeys.some((key, index) => index > 0 && lexicalCompare(documentKeys[index - 1], key) >= 0)) {
+    return { ok: false, reason: "step_packet ticket documents must be unique and canonically ordered" };
+  }
+  if (!exactKeys(workspace, ["branch", "worktree", "head", "entries"]) || typeof workspace.branch !== "string" || !workspace.branch.trim() || !canonicalPacketPath(workspace.worktree) || !isFullGitObjectId(workspace.head) || !Array.isArray(workspace.entries)) {
+    return { ok: false, reason: "step_packet.workspace is malformed" };
+  }
+  for (const entryValue of workspace.entries) {
+    const entry = record2(entryValue);
+    if (!entry || !exactKeys(entry, ["path", "index", "worktree", "content"]) || typeof entry.path !== "string" || typeof entry.index !== "string" || typeof entry.worktree !== "string" || typeof entry.content !== "string") {
+      return { ok: false, reason: "step_packet.workspace contains a malformed entry" };
+    }
+    if (!canonicalPacketPath(entry.path, { observed: true }) || !/^[.MADRCU?!T]$/.test(entry.index) || !/^[.MADRCU?!T]$/.test(entry.worktree) || !/^[0-9a-f]{64}$/.test(entry.content)) {
+      return { ok: false, reason: "step_packet.workspace contains an unsafe path or malformed content identity" };
+    }
+  }
+  const workspaceKeys = workspace.entries.map((entry) => `${entry.path}\0${entry.index}\0${entry.worktree}`);
+  if (new Set(workspaceKeys).size !== workspaceKeys.length || workspaceKeys.some((key, index) => index > 0 && lexicalCompare(workspaceKeys[index - 1], key) >= 0)) {
+    return { ok: false, reason: "step_packet.workspace entries must be unique and canonically ordered" };
+  }
+  if (!exactKeys(plan, ["path", "version"]) || !canonicalPacketPath(plan.path) || !nonEmptyStringOrNull(plan.version)) {
+    return { ok: false, reason: "step_packet.plan is malformed" };
+  }
+  if (!exactKeys(checklist, ["path", "version", "content", "steps", "stepLines"]) || !canonicalPacketPath(checklist.path) || !nonEmptyStringOrNull(checklist.version) || !stringOrNull(checklist.content) || !Array.isArray(checklist.steps) || !checklist.steps.every((state) => typeof state === "boolean") || !Array.isArray(checklist.stepLines) || !checklist.stepLines.every((lines) => Array.isArray(lines) && lines.every((line) => Number.isInteger(line) && line >= 0))) {
+    return { ok: false, reason: "step_packet.checklist is malformed" };
+  }
+  const checklistLineCount = typeof checklist.content === "string" ? checklist.content.replace(/\r\n?/g, "\n").split("\n").length : 0;
+  const allStepLines = checklist.stepLines.flat();
+  if (new Set(allStepLines).size !== allStepLines.length || allStepLines.some((line) => line >= checklistLineCount)) {
+    return { ok: false, reason: "step_packet.checklist stepLines are duplicate or outside the baseline content" };
+  }
+  if (!exactKeys(step, ["index", "total", "id", "title"]) || !Number.isInteger(step.index) || !Number.isInteger(step.total) || typeof step.id !== "string" || !step.id || typeof step.title !== "string" || !step.title || Number(step.index) < 1 || Number(step.total) < Number(step.index) || checklist.steps.length !== step.total || checklist.stepLines.length !== step.total) {
+    return { ok: false, reason: "step_packet.step or checklist step census is malformed" };
+  }
+  if (canonicalJson(checklistLineMap(checklist.content, Number(step.total))) !== canonicalJson(checklist.stepLines)) {
+    return { ok: false, reason: "step_packet.checklist stepLines do not match its exact baseline checkbox mapping" };
+  }
+  const derivedChecklist = checklistStatesFromLineMap(
+    checklist.content,
+    checklist.stepLines
+  );
+  if (!derivedChecklist || canonicalJson(derivedChecklist.steps) !== canonicalJson(checklist.steps)) {
+    return { ok: false, reason: "step_packet.checklist stored states do not match its exact content-derived marker states" };
+  }
+  const selected = Number(step.index) - 1;
+  if (checklist.stepLines[selected].length === 0 || derivedChecklist.steps[selected] !== false) {
+    return { ok: false, reason: "step_packet selected step must have at least one mapped unchecked checklist marker" };
+  }
+  if (derivedChecklist.steps.slice(0, selected).some((state) => state !== true)) {
+    return { ok: false, reason: "step_packet selected step must be the first unfinished checklist step" };
+  }
+  const checkedSuccessor = derivedChecklist.markers.slice(selected + 1).findIndex((states) => states.some(Boolean));
+  if (checkedSuccessor >= 0) {
+    return { ok: false, reason: `step_packet checklist successor step ${selected + checkedSuccessor + 2} already has a checked marker` };
+  }
+  for (const key of ["allowedFiles", "allowedSymbols", "forbiddenFiles", "negativeCases", "tests", "commands"]) {
+    if (!stringArray(packet[key])) return { ok: false, reason: `step_packet.${key} must be a string array` };
+  }
+  for (const pathValue of packet.allowedFiles) if (!canonicalPacketPath(pathValue, { allowPattern: true })) return { ok: false, reason: "step_packet.allowedFiles contains an unsafe or noncanonical path" };
+  for (const pathValue of packet.forbiddenFiles) if (!canonicalPacketPath(pathValue, { allowPattern: true })) return { ok: false, reason: "step_packet.forbiddenFiles contains an unsafe or noncanonical pattern" };
+  for (const key of ["preconditions", "requiredBehaviour", "preservedBehaviour", "forbiddenBehaviour", "expectedOutput", "doneCondition", "deviationStop"]) {
+    if (!nonEmptyStringOrNull(packet[key])) return { ok: false, reason: `step_packet.${key} must be a non-empty string or null` };
+  }
+  if (typeof packet.stopCondition !== "string" || !packet.stopCondition.trim()) return { ok: false, reason: "step_packet.stopCondition is malformed" };
+  if (!exactKeys(evidence, ["group", "ticket"])) return { ok: false, reason: "step_packet.evidence has missing or unknown fields" };
+  for (const layer of ["group", "ticket"]) {
+    if (!Array.isArray(evidence[layer])) return { ok: false, reason: `step_packet.evidence.${layer} must be an array` };
+    for (const entryValue of evidence[layer]) {
+      const entry = record2(entryValue);
+      if (!entry || !exactKeys(entry, ["layer", "group", "path", "version"]) || entry.layer !== layer || (layer === "group" ? typeof entry.group !== "string" || !entry.group.trim() : entry.group !== null) || !canonicalPacketPath(entry.path) || typeof entry.version !== "string" || !entry.version.trim()) {
+        return { ok: false, reason: `step_packet.evidence.${layer} contains a malformed entry` };
+      }
+    }
+    const keys = evidence[layer].map((entry) => `${entry.group ?? ""}\0${entry.path}`);
+    if (new Set(keys).size !== keys.length || keys.some((key, index) => index > 0 && lexicalCompare(keys[index - 1], key) >= 0)) {
+      return { ok: false, reason: `step_packet.evidence.${layer} must be unique and canonically ordered` };
+    }
+  }
+  const { packetId, ...body } = packet;
+  if (stepPacketDigest(body) !== packetId) {
+    return { ok: false, reason: "step_packet digest does not match its complete canonical content" };
+  }
+  return { ok: true, packet };
+}
+function exactChecklistLines(content) {
+  if (content === null) return [];
+  const lines = [];
+  let start = 0;
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    if (character !== "\r" && character !== "\n") continue;
+    const terminator = character === "\r" && content[index + 1] === "\n" ? "\r\n" : character;
+    lines.push({ body: content.slice(start, index), terminator });
+    if (terminator === "\r\n") index += 1;
+    start = index + 1;
+  }
+  lines.push({ body: content.slice(start), terminator: "" });
+  return lines;
+}
+function tickedChecklistLine(before, after) {
+  const beforeBom = before.startsWith("\uFEFF") ? "\uFEFF" : "";
+  const afterBom = after.startsWith("\uFEFF") ? "\uFEFF" : "";
+  if (beforeBom !== afterBom) return false;
+  const beforeBody = before.slice(beforeBom.length);
+  const afterBody = after.slice(afterBom.length);
+  const marker = /^([ \t]*[-*+][ \t]*)\[ \]/.exec(beforeBody);
+  if (!marker) return false;
+  const suffix = beforeBody.slice(marker[0].length);
+  return afterBody === `${marker[1]}[x]${suffix}` || afterBody === `${marker[1]}[X]${suffix}`;
+}
+function untickedChecklistLine(line) {
+  return /^[ \t]*[-*+][ \t]*\[ \]/.test(line.startsWith("\uFEFF") ? line.slice(1) : line);
+}
+function checklistOnlyTransition(packet, current) {
+  const before = exactChecklistLines(packet.checklist.content);
+  const after = exactChecklistLines(current.content);
+  if (before.length !== after.length) return false;
+  const allowedLines = new Set(packet.checklist.stepLines[packet.step.index - 1] ?? []);
+  let transitions = 0;
+  for (let index = 0; index < before.length; index += 1) {
+    const baseline = before[index];
+    const observed = after[index];
+    if (baseline.terminator !== observed.terminator) return false;
+    if (!allowedLines.has(index)) {
+      if (baseline.body !== observed.body) return false;
+      continue;
+    }
+    if (untickedChecklistLine(baseline.body)) {
+      if (!tickedChecklistLine(baseline.body, observed.body)) return false;
+      transitions += 1;
+    } else if (baseline.body !== observed.body) {
+      return false;
+    }
+  }
+  return transitions > 0;
+}
+function entryChanges(before, after) {
+  const identities = (workspace) => {
+    const grouped = /* @__PURE__ */ new Map();
+    for (const entry of workspace.entries) {
+      const values = grouped.get(entry.path) ?? [];
+      values.push(canonicalJson(entry));
+      grouped.set(entry.path, values);
+    }
+    return new Map([...grouped].map(([path132, values]) => [path132, canonicalJson(values.sort(lexicalCompare))]));
+  };
+  const baseline = identities(before);
+  const current = identities(after);
+  return [.../* @__PURE__ */ new Set([...baseline.keys(), ...current.keys()])].filter((path132) => baseline.get(path132) !== current.get(path132));
+}
+function anyPathMatch(patterns, observed, budget) {
+  let inconclusive = false;
+  for (const pattern of patterns) {
+    if (budget.remaining <= 0) return null;
+    const matched = planPathMatch(pattern, observed, budget);
+    if (matched === true) return true;
+    if (matched === null) inconclusive = true;
+  }
+  return inconclusive ? null : false;
+}
+function reconcileStepPacket(value, facts) {
+  const verified = verifyStepPacket(value);
+  if (!verified.ok) {
+    return { status: "inconclusive", packetId: null, changedPaths: [], findings: [{ code: "STEP_PACKET_INVALID", message: verified.reason }] };
+  }
+  const packet = verified.packet;
+  const factsBudget = checkStepPacketBudget(facts);
+  if (!factsBudget.ok) {
+    return { status: "inconclusive", packetId: packet.packetId, changedPaths: [], findings: [{ code: "STEP_FACTS_BUDGET_EXCEEDED", message: factsBudget.reason }] };
+  }
+  const failures = [];
+  const inconclusive = [];
+  if (canonicalJson(packet.project) !== canonicalJson(facts.project) || packet.ticket.id !== facts.ticket.id || packet.batch !== facts.batch) {
+    failures.push({ code: "STEP_IDENTITY_MISMATCH", message: "The packet project, ticket or batch identity does not match the live request." });
+  }
+  if (!facts.plan) inconclusive.push({ code: "STEP_PLAN_UNAVAILABLE", message: "The current plan could not be read." });
+  else if (facts.plan.path !== packet.plan.path || facts.plan.version !== packet.plan.version) {
+    failures.push({ code: "STEP_PLAN_STALE", message: "The plan path or version changed after packet issuance." });
+  } else if (facts.plan.authority === null || canonicalJson(facts.plan.authority) !== canonicalJson(authorityOf(packet))) {
+    failures.push({ code: "STEP_PLAN_AUTHORITY_MISMATCH", message: "The packet's worker authority does not match the selected step in the current plan." });
+  }
+  if (!facts.evidence) inconclusive.push({ code: "STEP_EVIDENCE_UNAVAILABLE", message: "Current research/files/group evidence could not be read." });
+  else {
+    const live = new Map(facts.evidence.map((entry) => [`${entry.layer}:${entry.group ?? ""}:${entry.path}`, entry.version]));
+    const expected = new Set([...packet.evidence.group, ...packet.evidence.ticket].map((entry) => `${entry.layer}:${entry.group ?? ""}:${entry.path}`));
+    for (const entry of [...packet.evidence.group, ...packet.evidence.ticket]) {
+      const version2 = live.get(`${entry.layer}:${entry.group ?? ""}:${entry.path}`);
+      if (version2 === void 0) inconclusive.push({ code: "STEP_EVIDENCE_MISSING", message: `Evidence ${entry.path} is unavailable.` });
+      else if (version2 !== entry.version) failures.push({ code: "STEP_EVIDENCE_STALE", message: `Evidence ${entry.path} changed after packet issuance.`, path: entry.path });
+    }
+    for (const key of live.keys()) if (!expected.has(key)) failures.push({ code: "STEP_EVIDENCE_SET_CHANGED", message: `Unexpected current evidence ${key} was not in the packet.` });
+  }
+  if (!facts.checklist) inconclusive.push({ code: "STEP_CHECKLIST_UNAVAILABLE", message: "The current checklist could not be read." });
+  else if (facts.checklist.path !== packet.checklist.path || facts.checklist.steps.length !== packet.checklist.steps.length) {
+    failures.push({ code: "STEP_CHECKLIST_STALE", message: "The checklist identity or step census changed after packet issuance." });
+  } else {
+    const selected = packet.step.index - 1;
+    if (packet.checklist.steps[selected] || !facts.checklist.steps[selected]) {
+      failures.push({ code: "STEP_NOT_COMPLETED", message: `Authorised step ${packet.step.index} was not an unticked-to-ticked completion.` });
+    }
+    for (let index = 0; index < facts.checklist.steps.length; index += 1) {
+      if (index === selected) continue;
+      if (facts.checklist.steps[index] !== packet.checklist.steps[index]) {
+        failures.push({ code: index > selected ? "STEP_LATER_ADVANCED" : "STEP_EARLIER_CHANGED", message: `Checklist step ${index + 1} changed outside the authorised marker transition.` });
+      }
+    }
+    if (!checklistOnlyTransition(packet, facts.checklist)) failures.push({ code: "STEP_CHECKLIST_CONTENT_CHANGED", message: "Checklist content changed beyond the selected unchecked-to-checked marker(s)." });
+  }
+  if (facts.ticket.itemAuthority !== packet.ticket.itemAuthority) {
+    failures.push({ code: "STEP_TICKET_AUTHORITY_STALE", message: "Ticket authority changed outside the renewable lease-heartbeat projection." });
+  }
+  const withoutChecklist = (documents) => documents.filter((document) => document.path !== packet.checklist.path);
+  if (canonicalJson(withoutChecklist(facts.ticket.documents)) !== canonicalJson(withoutChecklist(packet.ticket.documents))) {
+    failures.push({ code: "STEP_TICKET_DOCUMENTS_STALE", message: "A counted non-checklist ticket document changed after packet issuance." });
+  }
+  const permitsRevisionChange = facts.checklist !== null && checklistOnlyTransition(packet, facts.checklist) && facts.ticket.itemAuthority === packet.ticket.itemAuthority && canonicalJson(withoutChecklist(facts.ticket.documents)) === canonicalJson(withoutChecklist(packet.ticket.documents));
+  if (facts.ticket.revision !== packet.ticket.revision && !permitsRevisionChange) {
+    failures.push({ code: "STEP_TICKET_REVISION_STALE", message: "The ticket revision changed without the exact authorised checklist transition." });
+  }
+  const changedPaths = [];
+  let observedChangeCount = 0;
+  if (!facts.workspace) inconclusive.push({ code: "STEP_WORKSPACE_UNAVAILABLE", message: "The recorded workspace could not be inspected." });
+  else if (facts.workspace.snapshot.branch !== packet.workspace.branch || facts.workspace.snapshot.worktree !== packet.workspace.worktree) {
+    failures.push({ code: "STEP_WORKSPACE_MISMATCH", message: "The live workspace branch or worktree does not match the packet." });
+  } else {
+    if (facts.workspace.snapshot.head !== packet.workspace.head && facts.workspace.headChanges === null) {
+      inconclusive.push({ code: "STEP_HEAD_DIFF_UNAVAILABLE", message: "Workspace HEAD changed but the bounded Git diff could not be read." });
+    }
+    const observedChanges = [
+      ...entryChanges(packet.workspace, facts.workspace.snapshot),
+      ...facts.workspace.headChanges ?? []
+    ];
+    const matchBudget = createPlanPathMatchBudget();
+    const distinctObservedChanges = [...new Set(observedChanges)];
+    observedChangeCount = distinctObservedChanges.length;
+    for (const rawPath of distinctObservedChanges) {
+      const observed = parsePlanPath(rawPath, { observed: true });
+      if (!observed.ok) {
+        inconclusive.push({ code: "STEP_CHANGED_PATH_INVALID", message: observed.reason, path: rawPath });
+        continue;
+      }
+      const path132 = observed.path;
+      const forbidden = anyPathMatch(packet.forbiddenFiles, path132, matchBudget);
+      const allowed = forbidden === false ? anyPathMatch(packet.allowedFiles, path132, matchBudget) : false;
+      const classification = forbidden === true ? "forbidden" : forbidden === null ? "inconclusive" : allowed === true ? "allowed" : allowed === null ? "inconclusive" : "undeclared";
+      changedPaths.push({ path: path132, classification });
+      if (classification === "forbidden") failures.push({ code: "STEP_PATH_FORBIDDEN", message: `${path132} is forbidden.`, path: path132 });
+      else if (classification === "undeclared") failures.push({ code: "STEP_PATH_UNDECLARED", message: `${path132} is undeclared.`, path: path132 });
+      else if (classification === "inconclusive") inconclusive.push({
+        code: "STEP_PATH_MATCH_INCONCLUSIVE",
+        message: `The bounded path matcher could not prove whether ${path132} is allowed or forbidden.`,
+        path: path132
+      });
+    }
+  }
+  if (observedChangeCount > 0 && packet.allowedSymbols.length > 0) {
+    inconclusive.push({
+      code: "STEP_SYMBOL_SCOPE_INCONCLUSIVE",
+      message: "The packet declares free-form symbol authority, but the language-neutral collector cannot prove changed source ranges against those symbols."
+    });
+  }
+  const findings = [...failures, ...inconclusive];
+  return {
+    status: failures.length ? "fail" : inconclusive.length ? "inconclusive" : "pass",
+    packetId: packet.packetId,
+    changedPaths,
+    findings
+  };
+}
+function refusalReason(validation) {
+  const blockers = validation.findings.filter((finding2) => finding2.severity === "blocker");
+  return `The plan cannot be compiled into a bounded step packet: ${blockers.map((finding2) => finding2.message).join(" ")}`;
+}
+function budgetRefusal(reason) {
+  return {
+    ok: false,
+    reason: `The plan cannot be compiled into a bounded step packet: ${reason}.`,
+    validation: {
+      ok: false,
+      blockers: 1,
+      advisories: 0,
+      findings: [{
+        code: "PLAN_PACKET_BUDGET_EXCEEDED",
+        severity: "blocker",
+        section: "Ordered steps",
+        message: reason
+      }]
+    }
+  };
+}
+function canonicalEvidence(input) {
+  const entries = /* @__PURE__ */ new Map();
+  for (const entry of input) {
+    const key = `${entry.layer}\0${entry.group ?? ""}\0${entry.path}`;
+    const previous = entries.get(key);
+    if (!previous) {
+      entries.set(key, entry);
+      continue;
+    }
+    if (canonicalJson(previous) !== canonicalJson(entry)) {
+      return {
+        ok: false,
+        reason: `Conflicting duplicate evidence was supplied for ${entry.path}.`,
+        entries: [...entries.values()]
+      };
+    }
+  }
+  return { ok: true, entries: [...entries.values()] };
+}
+function compileStepPacket(input) {
+  const inputBudget = checkStepPacketBudget(input);
+  if (!inputBudget.ok) return budgetRefusal(inputBudget.reason);
+  if (input.ticket.documents.length > STEP_PACKET_LIMITS.maxDocuments) {
+    return budgetRefusal(`ticket document census exceeds ${STEP_PACKET_LIMITS.maxDocuments} entries`);
+  }
+  const { plan, checklist, select } = input;
+  const normalizedEvidence = canonicalEvidence(input.evidence);
+  const liveEvidence = normalizedEvidence.entries.map((entry) => ({ path: entry.path, version: entry.version }));
+  const requireEvidencePin = normalizedEvidence.entries.some(
+    (entry) => entry.layer === "ticket" && /^(?:research|files)\//.test(entry.path)
+  );
+  if (!normalizedEvidence.ok) {
+    const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
+    return { ok: false, reason: normalizedEvidence.reason, validation: validation2 };
+  }
+  if (typeof select === "number" && (!Number.isFinite(select) || !Number.isInteger(select) || select <= 0)) {
+    const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
+    return { ok: false, reason: "A numeric step selection must be a finite positive integer.", validation: validation2 };
+  }
+  if (!input.workspace?.branch || !input.workspace.worktree || !isFullGitObjectId(input.workspace.head)) {
+    const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
+    return {
+      ok: false,
+      reason: "A constrained step packet requires a proven recorded branch, worktree and full 40- or 64-character Git object ID for HEAD.",
+      validation: validation2
+    };
+  }
+  const workspace = input.workspace;
+  const resolved = select === "next" ? nextStepIndex(plan, checklist) : select;
+  if (resolved === null) {
+    const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
+    return {
+      ok: false,
+      reason: plan.steps.length === 0 ? "The plan has no ordered steps, so there is no next step to compile." : "Every ordered step is already ticked in the checklist; there is no next step to compile.",
+      validation: validation2
+    };
+  }
+  const validation = validatePlan(plan, { step: resolved, liveEvidence, requireEvidencePin });
+  if (!validation.ok) return { ok: false, reason: refusalReason(validation), validation };
+  const checklistSnapshot = stepChecklistSnapshot(plan, checklist, input.checklistPath, input.checklistVersion);
+  const states = checklistSnapshot.steps;
+  if (states[resolved - 1] === true) {
+    return { ok: false, reason: `Ordered step ${resolved} is already complete in the checklist and cannot be re-issued.`, validation };
+  }
+  if ((checklistSnapshot.stepLines[resolved - 1] ?? []).length === 0) {
+    return {
+      ok: false,
+      reason: `Ordered step ${resolved} requires at least one mapped unchecked checklist marker before a constrained packet can be issued.`,
+      validation
+    };
+  }
+  const markerStates = checklistStatesFromLineMap(checklistSnapshot.content, checklistSnapshot.stepLines);
+  const checkedSuccessor = markerStates?.markers.slice(resolved).findIndex((states2) => states2.some(Boolean)) ?? -1;
+  if (checkedSuccessor >= 0) {
+    return {
+      ok: false,
+      reason: `Ordered successor step ${resolved + checkedSuccessor + 1} already has a checked checklist marker and cannot bypass its own packet.`,
+      validation
+    };
+  }
+  const currentNext = nextStepIndex(plan, checklist);
+  if (typeof select === "number" && currentNext !== null && select !== currentNext) {
+    return { ok: false, reason: `Ordered step ${select} cannot be issued while step ${currentNext} is the current unfinished step.`, validation };
+  }
+  const evidence = {
+    group: normalizedEvidence.entries.filter((entry) => entry.layer === "group").sort((left, right) => lexicalCompare(`${left.group ?? ""}\0${left.path}`, `${right.group ?? ""}\0${right.path}`)),
+    ticket: normalizedEvidence.entries.filter((entry) => entry.layer === "ticket").sort((left, right) => lexicalCompare(left.path, right.path))
+  };
+  const authority = stepPacketAuthority(plan, resolved, input.stopCondition);
+  const body = {
+    packetVersion: STEP_PACKET_VERSION,
+    project: input.project,
+    ticket: input.ticket,
+    batch: input.batch,
+    workspace,
+    plan: { path: input.planPath, version: input.planVersion },
+    checklist: checklistSnapshot,
+    ...authority,
     evidence
   };
-  return {
-    ok: true,
-    packet: { ...body, packetId: (0, import_crypto2.createHash)("sha256").update(canonicalJson(body), "utf8").digest("hex").slice(0, 16) },
-    validation
-  };
+  const bodyBudget = checkStepPacketBudget(body);
+  if (!bodyBudget.ok) return budgetRefusal(bodyBudget.reason);
+  const packet = { ...body, packetId: stepPacketDigest(body) };
+  const verified = verifyStepPacket(packet);
+  if (!verified.ok) {
+    return {
+      ok: false,
+      reason: `The compiled step packet failed its own strict verification: ${verified.reason}`,
+      validation
+    };
+  }
+  return { ok: true, packet: verified.packet, validation };
 }
 function deriveMembers(group, items, lastStage) {
   const members = items.filter((i) => (i.groups ?? []).includes(group.id)).map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived, profile: i.profile })).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true }));
@@ -40463,7 +41677,7 @@ async function allocateProjectRecord(paths, opts) {
   if (existing) return { record: existing, allocated: false };
   const at = (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))();
   const id = (0, import_crypto4.randomUUID)();
-  const record2 = {
+  const record22 = {
     schema: 1,
     project_id: id,
     board_id: id,
@@ -40471,24 +41685,24 @@ async function allocateProjectRecord(paths, opts) {
     origin: opts.origin
   };
   if (opts.origin === "migrated") {
-    record2.migratedFrom = {
+    record22.migratedFrom = {
       ...opts.fallbackFingerprint ? { fingerprint: opts.fallbackFingerprint } : {},
       format: opts.format,
       at
     };
   }
-  const contents = `${JSON.stringify(record2, null, 2)}
+  const contents = `${JSON.stringify(record22, null, 2)}
 `;
   try {
     await writeFileExclusive(paths.projectFile, contents);
-    return { record: record2, allocated: true };
+    return { record: record22, allocated: true };
   } catch (err) {
     if (err.code !== "EEXIST") throw err;
   }
   const winner = await readProjectRecord(paths);
   if (winner) return { record: winner, allocated: false };
   await writeFileAtomic(paths.projectFile, contents);
-  return { record: record2, allocated: true };
+  return { record: record22, allocated: true };
 }
 var REVISION_EXEMPT_PREFIXES = ["scratch/", "reference/"];
 function revisionCountsDocument(docPath) {
@@ -40568,10 +41782,10 @@ function deliveryPolicyVersion(policy) {
 }
 function candidateIdentity(channel, integrationSha, ordinal) {
   const canonicalChannel = normalizeReleaseChannel(channel);
-  const digest2 = (0, import_crypto5.createHash)("sha256").update(`${canonicalChannel}
+  const digest22 = (0, import_crypto5.createHash)("sha256").update(`${canonicalChannel}
 ${integrationSha}
 ${ordinal}`, "utf8").digest("hex").slice(0, 16);
-  return `${CANDIDATE_ID_PREFIX}:${digest2}`;
+  return `${CANDIDATE_ID_PREFIX}:${digest22}`;
 }
 function candidateRefFor(policy, channel, ordinal) {
   const pattern = policy.releaseCandidatePattern;
@@ -40722,65 +41936,65 @@ function isRetrySchedule(value) {
 }
 function isChannelRecord(value) {
   if (!hasExactKeys(value, RELEASE_CHANNEL_FIELDS)) return false;
-  const record2 = value;
-  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  const record22 = value;
+  if (!record22 || record22.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record22.channel)) return false;
   let channel;
   try {
-    channel = normalizeReleaseChannel(record2.channel);
+    channel = normalizeReleaseChannel(record22.channel);
   } catch {
     return false;
   }
-  const parsed = typeof record2.attempt_id === "string" ? parseAttemptId(record2.attempt_id) : null;
+  const parsed = typeof record22.attempt_id === "string" ? parseAttemptId(record22.attempt_id) : null;
   return Boolean(
-    channel === record2.channel && parsed?.channel === channel && isNonEmptyString(record2.lease_id) && Number.isInteger(record2.lease_revision) && record2.lease_revision >= 1 && isNonEmptyString(record2.owner) && isIsoTimestamp(record2.acquired_at) && isIsoTimestamp(record2.expires_at) && isIsoTimestamp(record2.heartbeat_at)
+    channel === record22.channel && parsed?.channel === channel && isNonEmptyString(record22.lease_id) && Number.isInteger(record22.lease_revision) && record22.lease_revision >= 1 && isNonEmptyString(record22.owner) && isIsoTimestamp(record22.acquired_at) && isIsoTimestamp(record22.expires_at) && isIsoTimestamp(record22.heartbeat_at)
   );
 }
 function isChannelHeadRecord(value) {
   if (!hasExactKeys(value, RELEASE_HEAD_FIELDS)) return false;
-  const record2 = value;
-  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  const record22 = value;
+  if (!record22 || record22.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record22.channel)) return false;
   let channel;
   try {
-    channel = normalizeReleaseChannel(record2.channel);
+    channel = normalizeReleaseChannel(record22.channel);
   } catch {
     return false;
   }
-  const latest = typeof record2.latest_attempt_id === "string" ? parseAttemptId(record2.latest_attempt_id) : null;
+  const latest = typeof record22.latest_attempt_id === "string" ? parseAttemptId(record22.latest_attempt_id) : null;
   return Boolean(
-    channel === record2.channel && latest?.channel === channel && Number.isSafeInteger(record2.next_ordinal) && record2.next_ordinal === latest.ordinal + 1
+    channel === record22.channel && latest?.channel === channel && Number.isSafeInteger(record22.next_ordinal) && record22.next_ordinal === latest.ordinal + 1
   );
 }
 function isReleaseStateRecord(value) {
   if (!hasExactKeys(value, RELEASE_STATE_FIELDS)) return false;
-  const record2 = value;
-  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  const record22 = value;
+  if (!record22 || record22.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record22.channel)) return false;
   let channel;
   try {
-    channel = normalizeReleaseChannel(record2.channel);
+    channel = normalizeReleaseChannel(record22.channel);
   } catch {
     return false;
   }
   return Boolean(
-    channel === record2.channel && Number.isSafeInteger(record2.revision) && record2.revision >= 1 && (record2.phase === "pending" || record2.phase === "stable") && isNonEmptyString(record2.transaction_id)
+    channel === record22.channel && Number.isSafeInteger(record22.revision) && record22.revision >= 1 && (record22.phase === "pending" || record22.phase === "stable") && isNonEmptyString(record22.transaction_id)
   );
 }
 function isAttemptRecord(value) {
   if (!hasExactKeys(value, RELEASE_ATTEMPT_FIELDS)) return false;
-  const record2 = value;
-  if (!record2 || record2.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record2.channel)) return false;
+  const record22 = value;
+  if (!record22 || record22.schema !== RELEASE_RECORD_SCHEMA || !isNonEmptyString(record22.channel)) return false;
   let channel;
   try {
-    channel = normalizeReleaseChannel(record2.channel);
+    channel = normalizeReleaseChannel(record22.channel);
   } catch {
     return false;
   }
-  const parsed = typeof record2.attempt_id === "string" ? parseAttemptId(record2.attempt_id) : null;
-  const outcome = record2.outcome;
+  const parsed = typeof record22.attempt_id === "string" ? parseAttemptId(record22.attempt_id) : null;
+  const outcome = record22.outcome;
   const terminal = outcome === "released" || outcome === "failed" || outcome === "superseded";
-  const predecessor = record2.supersedes === null ? null : typeof record2.supersedes === "string" ? parseAttemptId(record2.supersedes) : void 0;
-  const successor = record2.successor === null ? null : typeof record2.successor === "string" ? parseAttemptId(record2.successor) : void 0;
+  const predecessor = record22.supersedes === null ? null : typeof record22.supersedes === "string" ? parseAttemptId(record22.supersedes) : void 0;
+  const successor = record22.successor === null ? null : typeof record22.successor === "string" ? parseAttemptId(record22.successor) : void 0;
   return Boolean(
-    channel === record2.channel && parsed?.channel === channel && parsed.ordinal === record2.ordinal && Number.isInteger(record2.ordinal) && record2.ordinal >= 1 && typeof record2.integration_sha === "string" && /^[0-9a-f]{40}$/.test(record2.integration_sha) && record2.candidate_id === candidateIdentity(channel, record2.integration_sha, record2.ordinal) && (record2.candidate_ref === null || typeof record2.candidate_ref === "string" && isValidGitBranchName(record2.candidate_ref)) && isNonEmptyString(record2.release_branch) && isValidGitBranchName(record2.release_branch) && typeof record2.delivery_policy_version === "string" && /^[0-9a-f]{64}$/.test(record2.delivery_policy_version) && isIsoTimestamp(record2.created_at) && isNonEmptyString(record2.owner) && predecessor !== void 0 && (predecessor === null || predecessor.channel === channel && predecessor.ordinal < record2.ordinal) && (record2.release_tag === null || typeof record2.release_tag === "string") && isStringArray(record2.included_prs) && isStringArray(record2.included_tickets) && isStringArray(record2.artifact_manifest) && (record2.verification_state === "pending" || record2.verification_state === "passed" || record2.verification_state === "failed") && (record2.retry === null || isRetrySchedule(record2.retry)) && (outcome === "active" || terminal) && (terminal ? isIsoTimestamp(record2.terminal_at) : record2.terminal_at === null) && successor !== void 0 && (successor === null || successor.channel === channel && successor.ordinal > record2.ordinal) && (record2.failure_reason === null || typeof record2.failure_reason === "string") && (outcome !== "failed" || isNonEmptyString(record2.failure_reason)) && (outcome !== "superseded" || successor !== null) && (outcome !== "active" || successor === null)
+    channel === record22.channel && parsed?.channel === channel && parsed.ordinal === record22.ordinal && Number.isInteger(record22.ordinal) && record22.ordinal >= 1 && typeof record22.integration_sha === "string" && /^[0-9a-f]{40}$/.test(record22.integration_sha) && record22.candidate_id === candidateIdentity(channel, record22.integration_sha, record22.ordinal) && (record22.candidate_ref === null || typeof record22.candidate_ref === "string" && isValidGitBranchName(record22.candidate_ref)) && isNonEmptyString(record22.release_branch) && isValidGitBranchName(record22.release_branch) && typeof record22.delivery_policy_version === "string" && /^[0-9a-f]{64}$/.test(record22.delivery_policy_version) && isIsoTimestamp(record22.created_at) && isNonEmptyString(record22.owner) && predecessor !== void 0 && (predecessor === null || predecessor.channel === channel && predecessor.ordinal < record22.ordinal) && (record22.release_tag === null || typeof record22.release_tag === "string") && isStringArray(record22.included_prs) && isStringArray(record22.included_tickets) && isStringArray(record22.artifact_manifest) && (record22.verification_state === "pending" || record22.verification_state === "passed" || record22.verification_state === "failed") && (record22.retry === null || isRetrySchedule(record22.retry)) && (outcome === "active" || terminal) && (terminal ? isIsoTimestamp(record22.terminal_at) : record22.terminal_at === null) && successor !== void 0 && (successor === null || successor.channel === channel && successor.ordinal > record22.ordinal) && (record22.failure_reason === null || typeof record22.failure_reason === "string") && (outcome !== "failed" || isNonEmptyString(record22.failure_reason)) && (outcome !== "superseded" || successor !== null) && (outcome !== "active" || successor === null)
   );
 }
 function attemptEqualExcept(before, after, mutable) {
@@ -41038,53 +42252,53 @@ async function readReleaseSnapshot(paths) {
 }
 async function readChannelRecord(paths, channel) {
   const canonical = normalizeReleaseChannel(channel);
-  const record2 = await readOptionalRecord(channelFile(paths, canonical), isChannelRecord, `release channel "${canonical}"`);
-  if (record2 && record2.channel !== canonical) {
-    throw new Error(`RELEASE_RECORD_UNREADABLE: channel file "${canonical}" contains ownership for "${record2.channel}".`);
+  const record22 = await readOptionalRecord(channelFile(paths, canonical), isChannelRecord, `release channel "${canonical}"`);
+  if (record22 && record22.channel !== canonical) {
+    throw new Error(`RELEASE_RECORD_UNREADABLE: channel file "${canonical}" contains ownership for "${record22.channel}".`);
   }
-  return record2;
+  return record22;
 }
 async function readChannelHeadRecord(paths, channel) {
   const canonical = normalizeReleaseChannel(channel);
-  const record2 = await readOptionalRecord(
+  const record22 = await readOptionalRecord(
     channelHeadFile(paths, canonical),
     isChannelHeadRecord,
     `release channel head "${canonical}"`
   );
-  if (record2 && record2.channel !== canonical) {
-    throw new Error(`RELEASE_RECORD_UNREADABLE: channel head "${canonical}" contains history for "${record2.channel}".`);
+  if (record22 && record22.channel !== canonical) {
+    throw new Error(`RELEASE_RECORD_UNREADABLE: channel head "${canonical}" contains history for "${record22.channel}".`);
   }
-  return record2;
+  return record22;
 }
 async function readReleaseStateRecord(paths) {
   return readOptionalRecord(paths.releaseStateFile, isReleaseStateRecord, "release transaction state");
 }
 async function readAttemptRecord(paths, attemptId) {
-  const record2 = await readOptionalRecord(attemptFile(paths, attemptId), isAttemptRecord, `release attempt "${attemptId}"`);
-  if (record2 && record2.attempt_id !== attemptId) {
-    throw new Error(`RELEASE_RECORD_UNREADABLE: attempt file "${attemptId}" contains evidence for "${record2.attempt_id}".`);
+  const record22 = await readOptionalRecord(attemptFile(paths, attemptId), isAttemptRecord, `release attempt "${attemptId}"`);
+  if (record22 && record22.attempt_id !== attemptId) {
+    throw new Error(`RELEASE_RECORD_UNREADABLE: attempt file "${attemptId}" contains evidence for "${record22.attempt_id}".`);
   }
-  return record2;
+  return record22;
 }
-function serialise(record2) {
-  return `${JSON.stringify(record2, null, 2)}
+function serialise(record22) {
+  return `${JSON.stringify(record22, null, 2)}
 `;
 }
-async function writeAttemptRecord(paths, record2) {
+async function writeAttemptRecord(paths, record22) {
   await ensureDir(paths.releaseAttemptsDir);
-  await writeFileAtomic(attemptFile(paths, record2.attempt_id), serialise(record2));
+  await writeFileAtomic(attemptFile(paths, record22.attempt_id), serialise(record22));
 }
-async function writeChannelRecord(paths, record2) {
+async function writeChannelRecord(paths, record22) {
   await ensureDir(paths.releaseChannelsDir);
-  await writeFileAtomic(channelFile(paths, record2.channel), serialise(record2));
+  await writeFileAtomic(channelFile(paths, record22.channel), serialise(record22));
 }
-async function writeChannelHeadRecord(paths, record2) {
+async function writeChannelHeadRecord(paths, record22) {
   await ensureDir(paths.releaseHeadsDir);
-  await writeFileAtomic(channelHeadFile(paths, record2.channel), serialise(record2));
+  await writeFileAtomic(channelHeadFile(paths, record22.channel), serialise(record22));
 }
-async function writeReleaseStateRecord(paths, record2) {
+async function writeReleaseStateRecord(paths, record22) {
   await ensureDir(paths.releasesRoot);
-  await writeFileAtomic(paths.releaseStateFile, serialise(record2));
+  await writeFileAtomic(paths.releaseStateFile, serialise(record22));
 }
 async function removeChannelRecord(paths, channel) {
   await removeFile(channelFile(paths, channel));
@@ -42085,6 +43299,172 @@ function referencePath(dir, name) {
 function nowIso() {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
+var EXECUTION_AUTHORITY_LIMITS = {
+  maxInventoryEntries: STEP_PACKET_LIMITS.maxAggregateEntries,
+  maxCountedDocuments: STEP_PACKET_LIMITS.maxDocuments,
+  maxAggregateBytes: STEP_PACKET_LIMITS.maxEncodedBytes,
+  maxFileBytes: STEP_PACKET_LIMITS.maxStringBytes,
+  maxChecklistBytes: STEP_PACKET_LIMITS.maxChecklistBytes,
+  maxBatchDirectoryEntries: 256,
+  maxBatchManifestBytes: 64 * 1024,
+  maxBatchManifestAggregateBytes: 512 * 1024,
+  maxBatchManifestMembers: 256,
+  maxBatchMemberReferences: 2048,
+  maxTicketCensusEntries: 2048,
+  maxTicketEndpoints: 2048,
+  maxTicketRecordBytes: 64 * 1024,
+  maxTicketCensusBytes: 8 * 1024 * 1024
+};
+function authorityFileFacts(stat) {
+  return {
+    dev: stat.dev,
+    ino: stat.ino,
+    mode: stat.mode,
+    nlink: stat.nlink,
+    size: stat.size,
+    regular: stat.isFile(),
+    directory: stat.isDirectory(),
+    symbolicLink: stat.isSymbolicLink()
+  };
+}
+function sameAuthorityFileFacts(left, right) {
+  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.nlink === right.nlink && left.size === right.size && left.regular === right.regular && left.directory === right.directory && left.symbolicLink === right.symbolicLink;
+}
+function authorityPathKey(value) {
+  const resolved = import_path11.default.resolve(value).replace(/\\/g, "/");
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+async function confinedAuthorityPhysicalPath(candidate, label, confinement) {
+  const absolute = import_path11.default.resolve(candidate);
+  const relative = import_path11.default.relative(confinement.lexicalRoot, absolute);
+  if (relative === ".." || relative.startsWith(`..${import_path11.default.sep}`) || import_path11.default.isAbsolute(relative)) {
+    throw new Error(`${label} is outside canonical board storage`);
+  }
+  const expected = import_path11.default.resolve(confinement.physicalRoot, relative);
+  const physical = await import_promises8.default.realpath(absolute);
+  if (authorityPathKey(physical) !== authorityPathKey(expected)) {
+    throw new Error(`${label} escapes canonical board storage through a symbolic-link or junction component`);
+  }
+  return physical;
+}
+async function authorityFileMetadata(file, label, maxBytes, confinement, optional2 = false) {
+  let stat;
+  try {
+    stat = await import_promises8.default.lstat(file, { bigint: true });
+  } catch (error2) {
+    if (optional2 && error2.code === "ENOENT") return null;
+    throw error2;
+  }
+  const facts = authorityFileFacts(stat);
+  if (facts.symbolicLink || !facts.regular) throw new Error(`${label} is not a regular file`);
+  if (facts.nlink !== 1n) throw new Error(`${label} has more than one filesystem link`);
+  if (facts.size > BigInt(maxBytes)) throw new Error(`${label} exceeds ${maxBytes} pre-read bytes`);
+  const physical = await confinedAuthorityPhysicalPath(file, label, confinement);
+  return { file, label, facts, physical, confinement };
+}
+async function authorityDirectoryMetadata(directory, label, confinement, optional2 = false) {
+  let stat;
+  try {
+    stat = await import_promises8.default.lstat(directory, { bigint: true });
+  } catch (error2) {
+    if (optional2 && error2.code === "ENOENT") return null;
+    throw error2;
+  }
+  const facts = authorityFileFacts(stat);
+  if (facts.symbolicLink || !facts.directory) throw new Error(`${label} is not a regular directory`);
+  const physical = await confinedAuthorityPhysicalPath(directory, label, confinement);
+  return { directory, label, facts, physical, confinement };
+}
+async function confirmAuthorityDirectory(metadata) {
+  const after = authorityFileFacts(await import_promises8.default.lstat(metadata.directory, { bigint: true }));
+  const physical = await confinedAuthorityPhysicalPath(metadata.directory, metadata.label, metadata.confinement);
+  if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
+    throw new Error(`${metadata.label} changed identity during its bounded census`);
+  }
+}
+async function confirmAuthorityFile(metadata) {
+  const after = authorityFileFacts(await import_promises8.default.lstat(metadata.file, { bigint: true }));
+  const physical = await confinedAuthorityPhysicalPath(metadata.file, metadata.label, metadata.confinement);
+  if (!sameAuthorityFileFacts(metadata.facts, after) || authorityPathKey(metadata.physical) !== authorityPathKey(physical)) {
+    throw new Error(`${metadata.label} changed identity during its bounded census`);
+  }
+}
+async function readAuthorityText(metadata) {
+  const noFollow = typeof import_fs5.constants.O_NOFOLLOW === "number" ? import_fs5.constants.O_NOFOLLOW : 0;
+  let handle = null;
+  try {
+    handle = await import_promises8.default.open(metadata.file, import_fs5.constants.O_RDONLY | noFollow);
+    const before = authorityFileFacts(await handle.stat({ bigint: true }));
+    if (!sameAuthorityFileFacts(metadata.facts, before)) {
+      throw new Error(`${metadata.label} changed identity before its bounded read`);
+    }
+    const size = Number(metadata.facts.size);
+    if (!Number.isSafeInteger(size)) throw new Error(`${metadata.label} has an unsupported size`);
+    const buffer = Buffer.alloc(size + 1);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset, offset);
+      if (bytesRead === 0) break;
+      offset += bytesRead;
+    }
+    if (offset !== size) {
+      throw new Error(`${metadata.label} changed size during its bounded read`);
+    }
+    const afterHandle = authorityFileFacts(await handle.stat({ bigint: true }));
+    const afterPath = authorityFileFacts(await import_promises8.default.lstat(metadata.file, { bigint: true }));
+    const afterPhysical = await confinedAuthorityPhysicalPath(metadata.file, metadata.label, metadata.confinement);
+    if (!sameAuthorityFileFacts(metadata.facts, afterHandle) || !sameAuthorityFileFacts(metadata.facts, afterPath) || authorityPathKey(metadata.physical) !== authorityPathKey(afterPhysical)) {
+      throw new Error(`${metadata.label} changed identity during its bounded read`);
+    }
+    try {
+      return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(buffer.subarray(0, size));
+    } catch {
+      throw new Error(`${metadata.label} is not valid UTF-8`);
+    }
+  } finally {
+    await handle?.close();
+  }
+}
+async function boundedAuthorityInventory(ticketDir, confinement) {
+  const allFiles = [];
+  let entries = 0;
+  const walk = async (absolute, relative) => {
+    const metadata = await authorityDirectoryMetadata(
+      absolute,
+      `ticket authority directory ${relative}`,
+      confinement,
+      true
+    );
+    if (!metadata) return;
+    const directory = await import_promises8.default.opendir(absolute);
+    for await (const entry of directory) {
+      entries += 1;
+      if (entries > EXECUTION_AUTHORITY_LIMITS.maxInventoryEntries) {
+        throw new Error(`ticket authority inventory exceeds ${EXECUTION_AUTHORITY_LIMITS.maxInventoryEntries} entries`);
+      }
+      const rel = relative ? `${relative}/${entry.name}` : entry.name;
+      const child = import_path11.default.join(absolute, entry.name);
+      const stat = await import_promises8.default.lstat(child, { bigint: true });
+      const facts = authorityFileFacts(stat);
+      if (facts.directory) {
+        if (facts.symbolicLink) throw new Error(`ticket authority directory ${rel} is a symbolic link`);
+        await walk(child, rel);
+      } else {
+        if (facts.symbolicLink || !facts.regular) {
+          throw new Error(`ticket authority inventory entry ${rel} is not a regular file`);
+        }
+        if (facts.nlink !== 1n) {
+          throw new Error(`ticket authority inventory entry ${rel} has more than one filesystem link`);
+        }
+        allFiles.push(rel.replace(/\\/g, "/"));
+      }
+    }
+    await confirmAuthorityDirectory(metadata);
+  };
+  for (const type of TICKET_DIRS) await walk(docDirIn(ticketDir, type), type);
+  allFiles.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  return { allFiles, documents: allFiles.filter((file) => file.toLowerCase().endsWith(".md")) };
+}
 var BATCH_DECLARATION_SCHEMA = 1;
 function sha256(value) {
   return (0, import_crypto7.createHash)("sha256").update(value, "utf8").digest("hex");
@@ -42108,7 +43488,7 @@ function batchRequestSha256(batchId, id, actor, controllerRun, members, input, s
     force: input.force === true
   }));
 }
-function exactKeys(value, keys) {
+function exactKeys2(value, keys) {
   const actual = Object.keys(value).sort();
   const expected = [...keys].sort();
   return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
@@ -42124,27 +43504,27 @@ function hasClaimResidue(item) {
 }
 function isBatchDeclarationJournal(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const record2 = value;
-  const state = record2.state;
+  const record22 = value;
+  const state = record22.state;
   const expectedKeys = state === "pending" ? ["schema", "state", "transaction_id", "request_sha256", "batch_id", "controller", "controller_run", "frozen_at", "members", "workspace", "branch", "take", "lease_id", "claim_expires_at", "documents_sha256", "writes"] : ["schema", "state", "request_sha256", "declaring_ticket", "batch_id", "controller", "controller_run", "frozen_at", "members", "workspace", "branch"];
-  if (!exactKeys(record2, expectedKeys)) return false;
-  if (record2.schema !== BATCH_DECLARATION_SCHEMA || state !== "pending" && state !== "active" && state !== "releasing" || typeof record2.batch_id !== "string" || record2.batch_id.length === 0 || record2.batch_id.trim() !== record2.batch_id || typeof record2.controller !== "string" || record2.controller.length === 0 || record2.controller.trim() !== record2.controller || typeof record2.controller_run !== "string" || record2.controller_run.length === 0 || record2.controller_run.trim() !== record2.controller_run || typeof record2.frozen_at !== "string" || Number.isNaN(Date.parse(record2.frozen_at)) || new Date(record2.frozen_at).toISOString() !== record2.frozen_at || !Array.isArray(record2.members) || record2.members.length < 2 || !record2.members.every((id) => typeof id === "string" && id.length > 0 && id.trim() === id) || typeof record2.workspace !== "string" || record2.workspace.length === 0 || record2.workspace.trim() !== record2.workspace || typeof record2.branch !== "string" || record2.branch.length === 0 || record2.branch.trim() !== record2.branch || typeof record2.request_sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(record2.request_sha256)) return false;
-  const members = record2.members;
+  if (!exactKeys2(record22, expectedKeys)) return false;
+  if (record22.schema !== BATCH_DECLARATION_SCHEMA || state !== "pending" && state !== "active" && state !== "releasing" || typeof record22.batch_id !== "string" || record22.batch_id.length === 0 || record22.batch_id.trim() !== record22.batch_id || typeof record22.controller !== "string" || record22.controller.length === 0 || record22.controller.trim() !== record22.controller || typeof record22.controller_run !== "string" || record22.controller_run.length === 0 || record22.controller_run.trim() !== record22.controller_run || typeof record22.frozen_at !== "string" || Number.isNaN(Date.parse(record22.frozen_at)) || new Date(record22.frozen_at).toISOString() !== record22.frozen_at || !Array.isArray(record22.members) || record22.members.length < 2 || !record22.members.every((id) => typeof id === "string" && id.length > 0 && id.trim() === id) || typeof record22.workspace !== "string" || record22.workspace.length === 0 || record22.workspace.trim() !== record22.workspace || typeof record22.branch !== "string" || record22.branch.length === 0 || record22.branch.trim() !== record22.branch || typeof record22.request_sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(record22.request_sha256)) return false;
+  const members = record22.members;
   if (new Set(members).size !== members.length || members.some((id, index) => index > 0 && members[index - 1].localeCompare(id) >= 0)) return false;
   if (state !== "pending") {
-    return typeof record2.declaring_ticket === "string" && members.includes(record2.declaring_ticket);
+    return typeof record22.declaring_ticket === "string" && members.includes(record22.declaring_ticket);
   }
-  if (typeof record2.transaction_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(record2.transaction_id) || !record2.take || typeof record2.take !== "object" || Array.isArray(record2.take) || typeof record2.lease_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(record2.lease_id) || typeof record2.claim_expires_at !== "string" || Number.isNaN(Date.parse(record2.claim_expires_at)) || new Date(record2.claim_expires_at).toISOString() !== record2.claim_expires_at || Date.parse(record2.claim_expires_at) <= Date.parse(record2.frozen_at) || !Array.isArray(record2.writes)) return false;
-  const take = record2.take;
-  if (!exactKeys(take, ["ticket_id", "branch", "worktree", "stage", "from_stage", "assignee", "controller_label", "controller_run", "worker_run", "provider", "phase", "expected_revision", "force"])) return false;
-  if (typeof take.ticket_id !== "string" || !members.includes(take.ticket_id) || typeof take.branch !== "string" || take.branch.length === 0 || take.branch.trim() !== take.branch || take.branch !== record2.branch || take.worktree !== null && (typeof take.worktree !== "string" || take.worktree.length === 0 || take.worktree.trim() !== take.worktree) || typeof take.stage !== "string" || !isStageId(take.stage) || typeof take.from_stage !== "string" || !isStageId(take.from_stage) || ![take.assignee, take.controller_label, take.controller_run, take.worker_run, take.provider, take.expected_revision].every((entry) => entry === null || typeof entry === "string") || take.controller_run !== record2.controller_run || typeof take.phase !== "string" || !LEASE_PHASES.some((phase) => phase === take.phase) || typeof take.force !== "boolean") return false;
-  if (typeof record2.documents_sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(record2.documents_sha256)) return false;
-  const writes = record2.writes;
+  if (typeof record22.transaction_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(record22.transaction_id) || !record22.take || typeof record22.take !== "object" || Array.isArray(record22.take) || typeof record22.lease_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(record22.lease_id) || typeof record22.claim_expires_at !== "string" || Number.isNaN(Date.parse(record22.claim_expires_at)) || new Date(record22.claim_expires_at).toISOString() !== record22.claim_expires_at || Date.parse(record22.claim_expires_at) <= Date.parse(record22.frozen_at) || !Array.isArray(record22.writes)) return false;
+  const take = record22.take;
+  if (!exactKeys2(take, ["ticket_id", "branch", "worktree", "stage", "from_stage", "assignee", "controller_label", "controller_run", "worker_run", "provider", "phase", "expected_revision", "force"])) return false;
+  if (typeof take.ticket_id !== "string" || !members.includes(take.ticket_id) || typeof take.branch !== "string" || take.branch.length === 0 || take.branch.trim() !== take.branch || take.branch !== record22.branch || take.worktree !== null && (typeof take.worktree !== "string" || take.worktree.length === 0 || take.worktree.trim() !== take.worktree) || typeof take.stage !== "string" || !isStageId(take.stage) || typeof take.from_stage !== "string" || !isStageId(take.from_stage) || ![take.assignee, take.controller_label, take.controller_run, take.worker_run, take.provider, take.expected_revision].every((entry) => entry === null || typeof entry === "string") || take.controller_run !== record22.controller_run || typeof take.phase !== "string" || !LEASE_PHASES.some((phase) => phase === take.phase) || typeof take.force !== "boolean") return false;
+  if (typeof record22.documents_sha256 !== "string" || !/^[0-9a-f]{64}$/u.test(record22.documents_sha256)) return false;
+  const writes = record22.writes;
   if (writes.length !== members.length) return false;
   return writes.every((entry, index) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
     const write = entry;
-    return exactKeys(write, ["id", "before_sha256", "after_sha256"]) && write.id === members[index] && typeof write.before_sha256 === "string" && /^[0-9a-f]{64}$/u.test(write.before_sha256) && typeof write.after_sha256 === "string" && /^[0-9a-f]{64}$/u.test(write.after_sha256);
+    return exactKeys2(write, ["id", "before_sha256", "after_sha256"]) && write.id === members[index] && typeof write.before_sha256 === "string" && /^[0-9a-f]{64}$/u.test(write.before_sha256) && typeof write.after_sha256 === "string" && /^[0-9a-f]{64}$/u.test(write.after_sha256);
   });
 }
 var KanmerStore = class _KanmerStore {
@@ -42253,6 +43633,467 @@ var KanmerStore = class _KanmerStore {
       ]);
     }
     return result;
+  }
+  /**
+   * Collect the exact bounded ticket, document and group bytes that authorize
+   * an execution packet. Legacy-layout tickets expose only their parsed item.
+   */
+  async executionBatchManifests(confinement) {
+    const directory = await authorityDirectoryMetadata(
+      this.paths.batchTransactionsDir,
+      "batch declaration transaction directory",
+      confinement,
+      true
+    );
+    if (!directory) return [];
+    const names = [];
+    const stream = await import_promises8.default.opendir(directory.directory);
+    for await (const entry of stream) {
+      names.push(entry.name);
+      if (names.length > EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch declaration transaction directory exceeds ${EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries} entries.`
+        );
+      }
+    }
+    names.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    const bounded = [];
+    let aggregateBytes = 0;
+    for (const name of names) {
+      if (/^\.[0-9a-f]{64}\.json\.tmp-\d+-\d+$/u.test(name)) continue;
+      if (!/^[0-9a-f]{64}\.json$/u.test(name)) {
+        throw new Error(`BATCH_TRANSACTION_INVALID: unexpected batch declaration manifest ${name} was retained.`);
+      }
+      const metadata = await authorityFileMetadata(
+        import_path11.default.join(directory.directory, name),
+        `batch declaration manifest ${name}`,
+        EXECUTION_AUTHORITY_LIMITS.maxBatchManifestBytes,
+        confinement
+      );
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxBatchManifestAggregateBytes) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch declaration manifests exceed ${EXECUTION_AUTHORITY_LIMITS.maxBatchManifestAggregateBytes} aggregate pre-read bytes.`
+        );
+      }
+      aggregateBytes += size;
+      bounded.push({ name, metadata });
+    }
+    await confirmAuthorityDirectory(directory);
+    const manifests = [];
+    const owners = /* @__PURE__ */ new Map();
+    let memberReferences = 0;
+    for (const { name, metadata } of bounded) {
+      let parsed;
+      try {
+        parsed = JSON.parse(await readAuthorityText(metadata));
+      } catch (error2) {
+        if (error2 instanceof SyntaxError) {
+          throw new Error(`BATCH_TRANSACTION_INVALID: batch declaration manifest ${name} is malformed and was retained.`);
+        }
+        throw error2;
+      }
+      if (!isBatchDeclarationJournal(parsed) || `${sha256(parsed.batch_id)}.json` !== name) {
+        throw new Error(`BATCH_TRANSACTION_INVALID: batch declaration manifest ${name} is malformed and was retained.`);
+      }
+      this.assertBatchJournalWorkspace(parsed);
+      if (parsed.members.length > EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch ${parsed.batch_id} exceeds ${EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers} manifest members.`
+        );
+      }
+      memberReferences += parsed.members.length;
+      if (memberReferences > EXECUTION_AUTHORITY_LIMITS.maxBatchMemberReferences) {
+        throw new Error(
+          `BATCH_TRANSACTION_INVALID: batch manifests exceed ${EXECUTION_AUTHORITY_LIMITS.maxBatchMemberReferences} aggregate member references.`
+        );
+      }
+      for (const member of parsed.members) {
+        const prior = owners.get(member);
+        if (prior && prior !== parsed.batch_id) {
+          throw new Error(
+            `BATCH_TRANSACTION_INVALID: "${member}" is named by overlapping batch manifests ${prior} and ${parsed.batch_id}; both were retained.`
+          );
+        }
+        owners.set(member, parsed.batch_id);
+      }
+      manifests.push(parsed);
+    }
+    await confirmAuthorityDirectory(directory);
+    return manifests;
+  }
+  async executionTicketCensus(selected, confinement) {
+    const endpoints = [];
+    const directories = /* @__PURE__ */ new Map();
+    let aggregateBytes = 0;
+    let censusEntries = 0;
+    const chargeCensusEntry = () => {
+      censusEntries += 1;
+      if (censusEntries > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries) {
+        throw new Error(
+          `BATCH_INCONSISTENT: complete ticket census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries} enumerated entries.`
+        );
+      }
+    };
+    const rememberDirectory = (metadata) => {
+      directories.set(authorityPathKey(metadata.directory), metadata);
+    };
+    const addEndpoint = async (file, expectedId, areaFolder) => {
+      const metadata = await authorityFileMetadata(
+        file,
+        `ticket census endpoint ${expectedId}`,
+        EXECUTION_AUTHORITY_LIMITS.maxTicketRecordBytes,
+        confinement,
+        true
+      );
+      if (!metadata) return;
+      endpoints.push({ metadata, expectedId, areaFolder });
+      if (endpoints.length > EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints) {
+        throw new Error(`BATCH_INCONSISTENT: complete ticket census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints} endpoints.`);
+      }
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusBytes) {
+        throw new Error(
+          `BATCH_INCONSISTENT: complete ticket census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusBytes} aggregate pre-read bytes.`
+        );
+      }
+      aggregateBytes += size;
+    };
+    const areas = await authorityDirectoryMetadata(this.paths.areasRoot, "ticket census areas directory", confinement, true);
+    if (areas) {
+      rememberDirectory(areas);
+      const areaNames = [];
+      for await (const entry of await import_promises8.default.opendir(areas.directory)) {
+        chargeCensusEntry();
+        areaNames.push(entry.name);
+      }
+      areaNames.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+      for (const areaFolder of areaNames) {
+        const areaPath = import_path11.default.join(areas.directory, areaFolder);
+        const areaFacts = authorityFileFacts(await import_promises8.default.lstat(areaPath, { bigint: true }));
+        if (areaFacts.symbolicLink) throw new Error(`BATCH_INCONSISTENT: ticket census area ${areaFolder} is a symbolic link or junction.`);
+        if (!areaFacts.directory) continue;
+        const area = await authorityDirectoryMetadata(areaPath, `ticket census area ${areaFolder}`, confinement);
+        rememberDirectory(area);
+        const ticketNames = [];
+        for await (const entry of await import_promises8.default.opendir(areaPath)) {
+          chargeCensusEntry();
+          ticketNames.push(entry.name);
+        }
+        ticketNames.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+        for (const ticketFolder of ticketNames) {
+          const ticketDirectoryPath = import_path11.default.join(areaPath, ticketFolder);
+          const ticketFacts = authorityFileFacts(await import_promises8.default.lstat(ticketDirectoryPath, { bigint: true }));
+          if (ticketFacts.symbolicLink) {
+            throw new Error(`BATCH_INCONSISTENT: ticket census directory ${ticketFolder} is a symbolic link or junction.`);
+          }
+          if (!ticketFacts.directory) continue;
+          const ticketDirectory = await authorityDirectoryMetadata(
+            ticketDirectoryPath,
+            `ticket census directory ${ticketFolder}`,
+            confinement
+          );
+          rememberDirectory(ticketDirectory);
+          await addEndpoint(import_path11.default.join(ticketDirectoryPath, `${ticketFolder}.md`), ticketFolder, areaFolder);
+        }
+      }
+    }
+    const legacy = await authorityDirectoryMetadata(this.paths.tickets, "legacy ticket census directory", confinement, true);
+    if (legacy) {
+      rememberDirectory(legacy);
+      const names = [];
+      for await (const entry of await import_promises8.default.opendir(legacy.directory)) {
+        chargeCensusEntry();
+        names.push(entry.name);
+      }
+      names.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+      for (const name of names) {
+        if (!name.endsWith(".md")) continue;
+        await addEndpoint(import_path11.default.join(legacy.directory, name), import_path11.default.basename(name, ".md"), null);
+      }
+    }
+    for (const directory of directories.values()) await confirmAuthorityDirectory(directory);
+    const items = [];
+    const ids = /* @__PURE__ */ new Map();
+    let selectedMatches = 0;
+    for (const endpoint of endpoints.sort(
+      (left, right) => authorityPathKey(left.metadata.file) < authorityPathKey(right.metadata.file) ? -1 : 1
+    )) {
+      const selectedPath = authorityPathKey(endpoint.metadata.file) === authorityPathKey(selected.metadata.file);
+      let item;
+      if (selectedPath) {
+        selectedMatches += 1;
+        if (!sameAuthorityFileFacts(endpoint.metadata.facts, selected.metadata.facts) || authorityPathKey(endpoint.metadata.physical) !== authorityPathKey(selected.metadata.physical)) {
+          throw new Error(`BATCH_INCONSISTENT: selected ticket endpoint changed during the complete census.`);
+        }
+        await confirmAuthorityFile(selected.metadata);
+        item = selected.item;
+      } else {
+        try {
+          item = parseItem(await readAuthorityText(endpoint.metadata));
+        } catch (error2) {
+          throw new Error(
+            `BATCH_INCONSISTENT: complete ticket census could not read ${endpoint.metadata.file}: ${error2 instanceof Error ? error2.message : String(error2)}`
+          );
+        }
+      }
+      if (item.type !== "ticket" || item.id !== endpoint.expectedId) {
+        throw new Error(
+          `BATCH_INCONSISTENT: ticket census endpoint ${endpoint.metadata.file} resolved as ${item.type} identity "${item.id}" instead of "${endpoint.expectedId}".`
+        );
+      }
+      if (endpoint.areaFolder !== null) {
+        const expectedArea = safeAreaFolder(item.area);
+        if (expectedArea === null || expectedArea !== endpoint.areaFolder) {
+          throw new Error(
+            `BATCH_INCONSISTENT: ticket "${item.id}" area is "${item.area || "(none)"}" but its endpoint is under areas/${endpoint.areaFolder}/.`
+          );
+        }
+      }
+      const prior = ids.get(item.id);
+      if (prior) {
+        throw new Error(`BATCH_INCONSISTENT: duplicate ticket identity "${item.id}" exists at ${prior} and ${endpoint.metadata.file}.`);
+      }
+      ids.set(item.id, endpoint.metadata.file);
+      items.push(item);
+    }
+    if (selectedMatches !== 1) {
+      throw new Error(`BATCH_INCONSISTENT: selected ticket endpoint was not retained exactly once by the complete census.`);
+    }
+    for (const directory of directories.values()) await confirmAuthorityDirectory(directory);
+    return items.sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+  }
+  batchStateFromExecutionRecords(item, tickets, manifests) {
+    const manifestForItem = manifests.find((manifest) => manifest.members.includes(item.id)) ?? null;
+    if (!item.lease_batch && !manifestForItem) {
+      if (hasBatchOwnership(item)) {
+        throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      }
+      return null;
+    }
+    const byId = new Map(tickets.map((ticket) => [ticket.id, ticket]));
+    const requireManifestMembers = (manifest) => {
+      const missing = manifest.members.find((member) => !byId.has(member));
+      if (missing) throw new Error(`BATCH_INCONSISTENT: manifest member "${missing}" is missing from batch ${manifest.batch_id}.`);
+    };
+    if (item.lease_batch) {
+      const manifest = manifests.find((entry) => entry.batch_id === item.lease_batch) ?? null;
+      if (manifest) requireManifestMembers(manifest);
+      const state = this.batchStateOf(item.lease_batch, tickets, manifest);
+      return manifest ? state : { ...state, declaration: "inconsistent" };
+    }
+    if (manifestForItem) {
+      requireManifestMembers(manifestForItem);
+      return this.batchStateOf(manifestForItem.batch_id, tickets, manifestForItem);
+    }
+    if (hasBatchOwnership(item)) {
+      throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+    }
+    return null;
+  }
+  async locateExecutionAuthorityItem(id) {
+    itemFile(this.paths, "ticket", id);
+    const matches = [];
+    const areaFolders = [];
+    try {
+      for await (const entry of await import_promises8.default.opendir(this.paths.areasRoot)) {
+        areaFolders.push(entry.name);
+        if (areaFolders.length > EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries) {
+          throw new Error(
+            `execution authority ticket lookup exceeds ${EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries} area entries`
+          );
+        }
+      }
+    } catch (error2) {
+      if (error2.code !== "ENOENT") throw error2;
+    }
+    areaFolders.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    for (const areaFolder of areaFolders) {
+      const dir = import_path11.default.join(this.paths.areasRoot, areaFolder, id);
+      const file = import_path11.default.join(dir, `${id}.md`);
+      try {
+        await import_promises8.default.lstat(file);
+        matches.push({ kind: "v2", file, dir, areaFolder });
+      } catch (error2) {
+        if (error2.code !== "ENOENT") throw error2;
+      }
+    }
+    for (const type of ITEM_TYPES) {
+      const file = itemFile(this.paths, type, id);
+      try {
+        await import_promises8.default.lstat(file);
+        matches.push({ kind: "v1", file, type });
+      } catch (error2) {
+        if (error2.code !== "ENOENT") throw error2;
+      }
+    }
+    if (matches.length > 1) {
+      throw new Error(
+        `execution authority for "${id}" is ambiguous because ${matches.length} duplicate selected ticket endpoints exist`
+      );
+    }
+    return matches[0] ?? null;
+  }
+  async getExecutionAuthoritySnapshot(id) {
+    const loc = await this.locateExecutionAuthorityItem(id);
+    if (!loc) return null;
+    const confinement = {
+      lexicalRoot: import_path11.default.resolve(this.paths.projectRoot),
+      physicalRoot: await import_promises8.default.realpath(this.paths.projectRoot)
+    };
+    const ticketDirectory = loc.kind === "v2" ? await authorityDirectoryMetadata(loc.dir, `ticket directory ${id}`, confinement) : null;
+    const ticketMetadata = await authorityFileMetadata(
+      loc.file,
+      `ticket record ${id}`,
+      EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+      confinement
+    );
+    const ticketText = await readAuthorityText(ticketMetadata);
+    const item = parseItem(ticketText);
+    if (item.id !== id || item.type !== "ticket") {
+      throw new Error(`Ticket record "${id}" resolved as ${item.type} identity "${item.id}"`);
+    }
+    const manifests = await this.executionBatchManifests(confinement);
+    const requiresTicketCensus = Boolean(item.lease_batch) || manifests.some((manifest) => manifest.members.includes(item.id));
+    const batchTickets = requiresTicketCensus ? await this.executionTicketCensus({ item, metadata: ticketMetadata }, confinement) : [];
+    const batch = this.batchStateFromExecutionRecords(item, batchTickets, manifests);
+    if (loc.kind !== "v2") {
+      return { item, revision: null, gates: null, fixed: [], inventory: [], groups: [], batch };
+    }
+    const census = await boundedAuthorityInventory(loc.dir, confinement);
+    const countedDocuments = census.documents.filter(revisionCountsDocument);
+    const groupIds = [...new Set(item.groups ?? [])].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+    if (countedDocuments.length + groupIds.length > EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments) {
+      throw new Error(
+        `combined counted-document and unique-group census exceeds ${EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments} entries`
+      );
+    }
+    let aggregateBytes = Number(ticketMetadata.facts.size);
+    const charge = (metadata) => {
+      if (!metadata) return;
+      const size = Number(metadata.facts.size);
+      if (!Number.isSafeInteger(size) || aggregateBytes + size > EXECUTION_AUTHORITY_LIMITS.maxAggregateBytes) {
+        throw new Error(`execution authority exceeds ${EXECUTION_AUTHORITY_LIMITS.maxAggregateBytes} aggregate pre-read bytes`);
+      }
+      aggregateBytes += size;
+    };
+    const documentMetadata = [];
+    for (const doc of census.documents) {
+      const maxBytes = doc === "checklist/checklist.md" ? EXECUTION_AUTHORITY_LIMITS.maxChecklistBytes : EXECUTION_AUTHORITY_LIMITS.maxFileBytes;
+      const metadata = await authorityFileMetadata(
+        docPathIn(loc.dir, doc),
+        `ticket document ${doc}`,
+        maxBytes,
+        confinement
+      );
+      charge(metadata);
+      documentMetadata.push({ doc, metadata });
+    }
+    const groupMetadata = [];
+    for (const groupId of groupIds) {
+      const directory = await authorityDirectoryMetadata(
+        groupDir(this.paths, groupId),
+        `group directory ${groupId}`,
+        confinement
+      );
+      const record22 = await authorityFileMetadata(
+        groupFile(this.paths, groupId),
+        `group record ${groupId}`,
+        EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+        confinement
+      );
+      const context = await authorityFileMetadata(
+        groupDocPath(this.paths, groupId, "context.md"),
+        `group context ${groupId}/context.md`,
+        EXECUTION_AUTHORITY_LIMITS.maxFileBytes,
+        confinement,
+        true
+      );
+      charge(record22);
+      charge(context);
+      groupMetadata.push({ id: groupId, directory, record: record22, context });
+    }
+    const inventory = [];
+    for (const { doc, metadata } of documentMetadata) {
+      const content = await readAuthorityText(metadata);
+      inventory.push({ doc, exists: true, content, version: contentVersion(content) });
+    }
+    const byDocument = new Map(inventory.map((document) => [document.doc, document]));
+    const fixed = ["plan", "checklist", "files"].map((doc) => {
+      const stored = byDocument.get(`${doc}/${doc}.md`);
+      return stored ? { ...stored, doc } : { doc, exists: false, content: null, version: null };
+    });
+    const groups = [];
+    for (const entry of groupMetadata) {
+      const group = parseGroup(await readAuthorityText(entry.record));
+      if (group.id !== entry.id) {
+        throw new Error(`Group "${entry.id}" resolved as conflicting identity "${group.id}"`);
+      }
+      const context = entry.context ? await readAuthorityText(entry.context) : null;
+      groups.push({ group, context, contextVersion: context === null ? null : contentVersion(context) });
+      await confirmAuthorityDirectory(entry.directory);
+    }
+    const board = await this.getBoard();
+    const gates = await this.gateReportFromExecutionAuthority(board, item, inventory, census.allFiles);
+    const documentVersions = inventory.filter((document) => revisionCountsDocument(document.doc)).map((document) => ({ path: document.doc, version: document.version }));
+    await confirmAuthorityDirectory(ticketDirectory);
+    return {
+      item,
+      revision: {
+        revision: computeRevision(ticketText, documentVersions),
+        updated: item.updated,
+        documents: documentVersions.length
+      },
+      gates,
+      fixed,
+      inventory,
+      groups,
+      batch
+    };
+  }
+  async gateReportFromExecutionAuthority(board, item, inventory, allFiles) {
+    const area = board.areas.find((candidate) => candidate.id === item.area);
+    const profileId = resolveProfileId(
+      item.profile,
+      area?.defaultProfile,
+      board.defaultProfile
+    );
+    const documentsOfType = (type) => inventory.filter((document) => document.doc.startsWith(`${type}/`));
+    return evaluateGateReport({
+      profiles: resolveProfiles(board),
+      profileId,
+      inlineRequires: item.requires,
+      stage: item.status,
+      evidence: {
+        hasType: async (type) => !isGateExempt(type) && documentsOfType(type).length > 0,
+        hasNamed: async (type, named) => {
+          if (isGateExempt(type)) return false;
+          const wanted = named.toLowerCase().replace(/\.md$/, "");
+          return documentsOfType(type).some(
+            (document) => document.doc.slice(type.length + 1).toLowerCase().replace(/\.md$/, "") === wanted
+          );
+        },
+        hasGoverningDoc: () => {
+          if (item.docs_todo === true) return true;
+          return (item.refs ?? []).some((rel) => repoDocKindOf(board, rel) !== null);
+        },
+        hasProofImages: async () => allFiles.some((file) => /^proof\/.*\.(?:png|jpe?g|gif|webp|svg|bmp)$/i.test(file)),
+        unresolvedQuestions: async () => {
+          let checked = 0;
+          let total = 0;
+          for (const document of documentsOfType("open-questions")) {
+            for (const line of (document.content ?? "").split("\n")) {
+              if (PARKED_HEADING_RE.test(line)) break;
+              const match = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
+              if (!match) continue;
+              total += 1;
+              if (match[1] !== " ") checked += 1;
+            }
+          }
+          return total - checked;
+        }
+      }
+    });
   }
   /**
    * The document-inclusive revision of a ticket (FRD-029): changes whenever
@@ -42467,6 +44308,9 @@ var KanmerStore = class _KanmerStore {
    * and tickets whose folder disagrees with their frontmatter area.
    */
   async listItemsWithWarnings(filter = {}) {
+    return this.listItemsWithWarningsInternal(filter);
+  }
+  async listItemsWithWarningsInternal(filter, authoritativeItem) {
     const items = [];
     const warnings = [];
     let areaFolders = [];
@@ -42488,7 +44332,7 @@ var KanmerStore = class _KanmerStore {
         const file = import_path11.default.join(areaPath, ticketFolder, `${ticketFolder}.md`);
         if (!await pathExists(file)) continue;
         try {
-          const item = parseItem(await readText(file));
+          const item = authoritativeItem?.id === ticketFolder ? authoritativeItem : parseItem(await readText(file));
           if (item.id !== ticketFolder) {
             warnings.push({
               file,
@@ -42524,8 +44368,8 @@ var KanmerStore = class _KanmerStore {
         if (!name.endsWith(".md")) continue;
         const file = import_path11.default.join(dir, name);
         try {
-          const item = parseItem(await readText(file));
           const fromName = import_path11.default.basename(name, ".md");
+          const item = authoritativeItem?.id === fromName && authoritativeItem.type === type ? authoritativeItem : parseItem(await readText(file));
           if (item.id !== fromName) {
             warnings.push({
               file,
@@ -43182,8 +45026,11 @@ ${entry}`;
       );
     }
   }
-  async batchTicketCensus() {
-    const listed = await this.listItemsWithWarnings({ type: "ticket", includeArchived: true });
+  async batchTicketCensus(authoritativeItem) {
+    const listed = await this.listItemsWithWarningsInternal(
+      { type: "ticket", includeArchived: true },
+      authoritativeItem
+    );
     if (listed.warnings.length > 0) {
       throw new Error(
         `BATCH_INCONSISTENT: complete ticket census has ${listed.warnings.length} unreadable item file(s): ` + listed.warnings.map((warning) => `${warning.file}: ${warning.message}`).join("; ")
@@ -43191,10 +45038,14 @@ ${entry}`;
     }
     return listed.items;
   }
-  async readManifestMembers(manifest, census) {
+  async readManifestMembers(manifest, census, authoritativeItem) {
     if (!census) await this.batchTicketCensus();
     const members = [];
     for (const id of manifest.members) {
+      if (authoritativeItem?.id === id) {
+        members.push(authoritativeItem);
+        continue;
+      }
       const loc = await this.locateItem(id);
       if (!loc) throw new Error(`BATCH_INCONSISTENT: manifest member "${id}" is missing from batch ${manifest.batch_id}.`);
       const member = parseItem(await readText(loc.file));
@@ -43268,11 +45119,27 @@ ${entry}`;
   async batchState(id) {
     const item = await this.getItem(id);
     if (!item || item.type !== "ticket") return null;
-    const tickets = await this.batchTicketCensus();
+    return this.batchStateForItem(item);
+  }
+  /** Resolve batch authority while retaining an already identity-bound ticket record. */
+  async batchStateFromExecutionAuthority(item) {
+    if (item.type !== "ticket") return null;
+    return this.batchStateForItem(item, true);
+  }
+  async batchStateForItem(item, boundedItem = false) {
+    const authoritativeItem = boundedItem ? item : void 0;
     const manifests = await this.listBatchManifests();
+    const manifestForItem = manifests.find((manifest) => manifest.members.includes(item.id)) ?? null;
+    if (!item.lease_batch && !manifestForItem) {
+      if (hasBatchOwnership(item)) {
+        throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      }
+      return null;
+    }
+    const tickets = await this.batchTicketCensus(authoritativeItem);
     if (item.lease_batch) {
       const manifest = manifests.find((entry) => entry.batch_id === item.lease_batch) ?? null;
-      const direct = manifest ? await this.readManifestMembers(manifest, tickets) : [];
+      const direct = manifest ? await this.readManifestMembers(manifest, tickets, authoritativeItem) : [];
       const directById = new Map(direct.map((member) => [member.id, member]));
       const state = this.batchStateOf(
         item.lease_batch,
@@ -43281,19 +45148,17 @@ ${entry}`;
       );
       return manifest ? state : { ...state, declaration: "inconsistent" };
     }
-    for (const manifest of manifests) {
-      if (manifest.members.includes(id)) {
-        const direct = await this.readManifestMembers(manifest, tickets);
-        const directById = new Map(direct.map((member) => [member.id, member]));
-        return this.batchStateOf(
-          manifest.batch_id,
-          tickets.map((ticket) => directById.get(ticket.id) ?? ticket),
-          manifest
-        );
-      }
+    if (manifestForItem) {
+      const direct = await this.readManifestMembers(manifestForItem, tickets, authoritativeItem);
+      const directById = new Map(direct.map((member) => [member.id, member]));
+      return this.batchStateOf(
+        manifestForItem.batch_id,
+        tickets.map((ticket) => directById.get(ticket.id) ?? ticket),
+        manifestForItem
+      );
     }
     if (hasBatchOwnership(item)) {
-      throw new Error(`BATCH_INCONSISTENT: "${id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
+      throw new Error(`BATCH_INCONSISTENT: "${item.id}" has batch ownership fields without a resolvable batch id and authoritative manifest.`);
     }
     return null;
   }
@@ -43430,8 +45295,8 @@ ${entry}`;
         throw new Error(`BATCH_TRANSACTION_CONFLICT: member "${write.id}" disappeared during batch ${journal.batch_id} declaration. The journal was retained.`);
       }
       const raw = await readText(loc.file);
-      const digest2 = sha256(raw);
-      const state = digest2 === write.before_sha256 ? "before" : digest2 === write.after_sha256 ? "after" : null;
+      const digest22 = sha256(raw);
+      const state = digest22 === write.before_sha256 ? "before" : digest22 === write.after_sha256 ? "after" : null;
       if (!state) {
         throw new Error(`BATCH_TRANSACTION_CONFLICT: member "${write.id}" differs from both the observed and intended bytes for batch ${journal.batch_id}. The journal was retained.`);
       }
@@ -46353,11 +48218,11 @@ async function migrateIdentity(store2, opts = {}) {
     return { allocated: false, wouldAllocate: false, project_id: existing.project_id, origin: existing.origin };
   }
   if (opts.dryRun) return { allocated: false, wouldAllocate: true, project_id: null, origin: null };
-  const { record: record2, allocated } = await store2.ensureProject({
+  const { record: record22, allocated } = await store2.ensureProject({
     origin: "migrated",
     fallbackFingerprint: opts.fallbackFingerprint
   });
-  return { allocated, wouldAllocate: false, project_id: record2.project_id, origin: record2.origin };
+  return { allocated, wouldAllocate: false, project_id: record22.project_id, origin: record22.origin };
 }
 function watchKanmer(projectRoot2, onChange, options2 = {}) {
   const paths = resolvePaths(projectRoot2);
@@ -46531,9 +48396,9 @@ async function readTicketDocuments(store2, id, docs) {
 }
 
 // src/execution-packet.ts
-var import_node_child_process = require("child_process");
-var import_promises10 = require("fs/promises");
-var import_node_path5 = __toESM(require("path"), 1);
+var import_node_child_process2 = require("child_process");
+var import_promises11 = require("fs/promises");
+var import_node_path6 = __toESM(require("path"), 1);
 var import_node_util = require("util");
 
 // src/project-identity.ts
@@ -46586,8 +48451,846 @@ function expectedProjectMatches(sent, project) {
   return project.project_id !== null && sent === project.project_id;
 }
 
+// src/step-reconciliation.ts
+var import_node_child_process = require("child_process");
+var import_node_crypto3 = require("crypto");
+var import_node_fs3 = require("fs");
+var import_promises10 = require("fs/promises");
+var import_node_path5 = __toESM(require("path"), 1);
+var GIT_TIMEOUT_MS = 15e3;
+var WORKSPACE_COLLECTION_TIMEOUT_MS = 3e4;
+var GIT_MAX_BUFFER = 2 * 1024 * 1024;
+var MAX_ENTRIES = 512;
+var MAX_INDEX_FLAG_ENTRIES = 16384;
+var MAX_TRACKED_LINK_ENTRIES = 256;
+var MAX_TRACKED_LINK_TEXT_BYTES = 64 * 1024;
+var MAX_TRACKED_LINK_TARGET_BYTES = 2 * 1024 * 1024;
+var MAX_FILE_BYTES = 2 * 1024 * 1024;
+var MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
+var MAX_HEAD_COMMITS = 512;
+var decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+var FULL_GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
+function lexicalCompare2(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+function literalPathspec(value) {
+  return `:(literal)${value}`;
+}
+var COLLECTION_DEADLINE_REASON = "aggregate workspace collection deadline exhausted";
+function collectionDeadlineError() {
+  return new Error(COLLECTION_DEADLINE_REASON);
+}
+function remainingCollectionTime(deadline) {
+  return deadline.expiresAt - deadline.now();
+}
+function assertCollectionDeadline(deadline) {
+  if (deadline && remainingCollectionTime(deadline) <= 0) throw collectionDeadlineError();
+}
+function deadlineObservation(deadline, operation) {
+  if (!deadline) return operation();
+  const remaining = remainingCollectionTime(deadline);
+  if (remaining <= 0) return Promise.reject(collectionDeadlineError());
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(collectionDeadlineError());
+    }, remaining);
+    let observed;
+    try {
+      observed = operation();
+    } catch (error2) {
+      settled = true;
+      clearTimeout(timer);
+      reject(error2);
+      return;
+    }
+    observed.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (remainingCollectionTime(deadline) <= 0) reject(collectionDeadlineError());
+        else resolve(value);
+      },
+      (error2) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(remainingCollectionTime(deadline) <= 0 ? collectionDeadlineError() : error2);
+      }
+    );
+  });
+}
+var defaultRun = (cwd, args, timeout) => new Promise((resolve, reject) => {
+  (0, import_node_child_process.execFile)(
+    "git",
+    ["--no-optional-locks", "-C", cwd, ...args],
+    { encoding: "buffer", windowsHide: true, timeout, maxBuffer: GIT_MAX_BUFFER },
+    (error2, stdout) => error2 ? reject(error2) : resolve(Buffer.from(stdout))
+  );
+});
+function deadlineRun(source, deadline) {
+  return async (cwd, args) => {
+    const remaining = remainingCollectionTime(deadline);
+    if (remaining <= 0) throw collectionDeadlineError();
+    const timeout = Math.max(1, Math.min(GIT_TIMEOUT_MS, remaining));
+    return deadlineObservation(deadline, () => source ? source(cwd, args) : defaultRun(cwd, args, timeout));
+  };
+}
+function decode(buffer) {
+  return decoder.decode(buffer);
+}
+function canonicalPath(value) {
+  const resolved = import_node_path5.default.resolve(value).replace(/[\\/]+$/, "");
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+function inside(root, candidate) {
+  const relative = import_node_path5.default.relative(root, candidate);
+  return relative !== "" && !relative.startsWith(`..${import_node_path5.default.sep}`) && relative !== ".." && !import_node_path5.default.isAbsolute(relative);
+}
+function isProtectedBoardExecutionWorktree(sourceRoot, boardRoot, candidate) {
+  const source = canonicalPath(sourceRoot);
+  const board = canonicalPath(boardRoot);
+  const worktree = canonicalPath(candidate);
+  return worktree === board || board !== source && inside(board, worktree);
+}
+async function assertPhysicalContainment(root, absolute, deadline) {
+  let cursor = absolute;
+  for (; ; ) {
+    assertCollectionDeadline(deadline);
+    try {
+      const resolved = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(cursor));
+      const same = canonicalPath(resolved) === canonicalPath(root);
+      if (!same && !inside(root, resolved)) throw new Error(`observed path resolves outside the physical worktree`);
+      return;
+    } catch (error2) {
+      if (error2.code !== "ENOENT") throw error2;
+      const parent = import_node_path5.default.dirname(cursor);
+      if (parent === cursor) throw error2;
+      cursor = parent;
+    }
+  }
+}
+function splitNul(raw, label) {
+  if (raw.length === 0) return [];
+  if (raw[raw.length - 1] !== 0) throw new Error(`${label} is not terminated by NUL`);
+  const tokens = [];
+  let start = 0;
+  for (let index = 0; index < raw.length; index += 1) {
+    if (raw[index] !== 0) continue;
+    tokens.push(raw.subarray(start, index));
+    start = index + 1;
+  }
+  return tokens;
+}
+function parsePorcelainV1Z(raw) {
+  const tokens = splitNul(raw, "git status --porcelain=v1 -z output");
+  const paths = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token.length < 4 || token[2] !== 32) throw new Error("git status emitted a malformed porcelain token");
+    const left = String.fromCharCode(token[0]);
+    const right = String.fromCharCode(token[1]);
+    const destination = decode(token.subarray(3));
+    paths.push({ path: destination, index: left === " " ? "." : left, worktree: right === " " ? "." : right, role: "path" });
+    if (/[RC]/.test(left) || /[RC]/.test(right)) {
+      const sourceToken = tokens[++index];
+      if (!sourceToken) throw new Error("git status omitted a rename/copy source path");
+      paths.push({ path: decode(sourceToken), index: left === " " ? "." : left, worktree: right === " " ? "." : right, role: "rename-source" });
+    }
+  }
+  if (paths.length > MAX_ENTRIES) throw new Error(`workspace has more than ${MAX_ENTRIES} dirty paths`);
+  return paths;
+}
+function parseNameStatusZ(raw) {
+  const tokens = splitNul(raw, "git diff --name-status -z output");
+  const paths = [];
+  for (let index = 0; index < tokens.length; ) {
+    const status = decode(tokens[index++]);
+    if (!/^(?:[ACDMRTUXB]|R\d{1,3}|C\d{1,3})$/.test(status)) throw new Error(`git diff emitted unsupported status ${status}`);
+    const first = tokens[index++];
+    if (!first) throw new Error("git diff omitted a changed path");
+    paths.push(decode(first));
+    if (/^[RC]/.test(status)) {
+      const second = tokens[index++];
+      if (!second) throw new Error("git diff omitted a rename/copy destination");
+      paths.push(decode(second));
+    }
+  }
+  if (paths.length > MAX_ENTRIES) throw new Error(`HEAD diff has more than ${MAX_ENTRIES} changed paths`);
+  return paths;
+}
+var COMMITTED_HISTORY_MODES = /* @__PURE__ */ new Set(["000000", "100644", "100755", "120000", "160000"]);
+function parseRawHistoryZ(raw) {
+  if (raw.length > GIT_MAX_BUFFER) throw new Error(`git log --raw history exceeds ${GIT_MAX_BUFFER} bytes`);
+  const tokens = splitNul(raw, "git log --raw -z output");
+  if (tokens.length % 2 !== 0) throw new Error("git log --raw emitted a truncated metadata/path pair");
+  const paths = [];
+  for (let index = 0; index < tokens.length; index += 2) {
+    const metadata = decode(tokens[index]);
+    const match = /^:([0-9]{6}) ([0-9]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-9a-f]{40}|[0-9a-f]{64}) ([ADMT])$/i.exec(metadata);
+    if (!match) throw new Error("git log --raw emitted malformed or unsupported history metadata");
+    const [, oldMode, newMode, oldObject, newObject] = match;
+    if (oldObject.length !== newObject.length) {
+      throw new Error("git log --raw emitted mixed-length object identities");
+    }
+    if (!COMMITTED_HISTORY_MODES.has(oldMode) || !COMMITTED_HISTORY_MODES.has(newMode)) {
+      throw new Error(`git log --raw emitted unsupported mode ${oldMode} -> ${newMode}`);
+    }
+    const pathToken = tokens[index + 1];
+    if (!pathToken || pathToken.length === 0) throw new Error("git log --raw omitted a touched path");
+    const observed = decode(pathToken);
+    const parsed = parsePlanPath(observed, { observed: true });
+    if (!parsed.ok || parsed.path !== observed) {
+      throw new Error(`git log --raw emitted unsafe touched path ${JSON.stringify(observed)}`);
+    }
+    if (oldMode === "120000" || newMode === "120000") {
+      throw new Error(`HEAD history path ${JSON.stringify(parsed.path)} has intervening symbolic-link mode 120000`);
+    }
+    if (oldMode === "160000" || newMode === "160000") {
+      throw new Error(`HEAD history path ${JSON.stringify(parsed.path)} has intervening Git-link mode 160000`);
+    }
+    paths.push(parsed.path);
+    if (paths.length > MAX_ENTRIES) throw new Error(`HEAD history has more than ${MAX_ENTRIES} touched paths`);
+  }
+  return paths;
+}
+function parseIndexFlagCensus(raw) {
+  if (raw.length > GIT_MAX_BUFFER) throw new Error(`git ls-files flag census exceeds ${GIT_MAX_BUFFER} bytes`);
+  const tokens = splitNul(raw, "git ls-files -v -s -z output");
+  if (tokens.length > MAX_INDEX_FLAG_ENTRIES) {
+    throw new Error(`git ls-files flag census exceeds ${MAX_INDEX_FLAG_ENTRIES} tracked entries`);
+  }
+  const assumeUnchanged = [];
+  const skipWorktree = [];
+  const entries = [];
+  let trackedLinks = 0;
+  for (const token of tokens) {
+    const tab = token.indexOf(9);
+    if (tab < 0) throw new Error("git ls-files emitted a malformed index census token");
+    const header = decode(token.subarray(0, tab));
+    const match = /^([HSMRCK?]) ([0-9]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-3])$/i.exec(header);
+    if (!match) throw new Error("git ls-files emitted a malformed index census header");
+    const [, tag, mode, objectId, stageText] = match;
+    const observed = decode(token.subarray(tab + 1));
+    if (!observed) throw new Error("git ls-files emitted an empty tracked path");
+    const parsed = parsePlanPath(observed, { observed: true });
+    if (!parsed.ok || parsed.path !== observed) throw new Error(`git ls-files emitted unsafe tracked path ${JSON.stringify(observed)}`);
+    if (/^[a-z]$/.test(tag)) assumeUnchanged.push(observed);
+    if (tag === "S" || tag === "s") skipWorktree.push(observed);
+    if (mode === "120000") trackedLinks += 1;
+    entries.push({ tag, mode, objectId: objectId.toLowerCase(), stage: Number(stageText), path: observed });
+  }
+  if (trackedLinks > MAX_TRACKED_LINK_ENTRIES) {
+    throw new Error(`git ls-files census exceeds ${MAX_TRACKED_LINK_ENTRIES} tracked symbolic links`);
+  }
+  return {
+    digest: (0, import_node_crypto3.createHash)("sha256").update(raw).digest("hex"),
+    count: tokens.length,
+    assumeUnchanged,
+    skipWorktree,
+    entries
+  };
+}
+function digest2(parts) {
+  const hash = (0, import_node_crypto3.createHash)("sha256");
+  for (const part of parts) {
+    const bytes = typeof part === "string" ? Buffer.from(part, "utf8") : part;
+    hash.update(Buffer.from(String(bytes.length), "ascii"));
+    hash.update(Buffer.from([0]));
+    hash.update(bytes);
+  }
+  return hash.digest("hex");
+}
+function stableFileFacts(stat) {
+  return {
+    dev: stat.dev,
+    ino: stat.ino,
+    mode: stat.mode,
+    nlink: stat.nlink,
+    size: stat.size,
+    regular: stat.isFile(),
+    directory: stat.isDirectory(),
+    symbolicLink: stat.isSymbolicLink()
+  };
+}
+function sameFileFacts(left, right) {
+  return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.nlink === right.nlink && left.size === right.size && left.regular === right.regular && left.directory === right.directory && left.symbolicLink === right.symbolicLink;
+}
+async function readBoundedWorkspaceFile(root, absolute, budget, hooks = {}, limits = {
+  maxFileBytes: MAX_FILE_BYTES,
+  maxTotalBytes: MAX_TOTAL_FILE_BYTES
+}, deadline) {
+  await assertPhysicalContainment(root, absolute, deadline);
+  let initialStat;
+  try {
+    initialStat = await deadlineObservation(deadline, () => (0, import_promises10.lstat)(absolute, { bigint: true }));
+  } catch (error2) {
+    if (error2.code === "ENOENT") return null;
+    throw error2;
+  }
+  const initial = stableFileFacts(initialStat);
+  if (initial.symbolicLink) throw new Error("observed workspace path is a symbolic link");
+  if (!initial.regular) throw new Error("observed workspace path is not a regular file");
+  if (initial.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
+  const remainingTotal = limits.maxTotalBytes - budget.total;
+  const allowed = Math.min(limits.maxFileBytes, remainingTotal);
+  if (allowed < 0 || initial.size > BigInt(allowed)) throw new Error("observed content exceeds the bounded snapshot budget");
+  assertCollectionDeadline(deadline);
+  await hooks.beforeOpen?.();
+  assertCollectionDeadline(deadline);
+  const noFollow = typeof import_node_fs3.constants.O_NOFOLLOW === "number" ? import_node_fs3.constants.O_NOFOLLOW : 0;
+  let handle = null;
+  try {
+    handle = await (0, import_promises10.open)(absolute, import_node_fs3.constants.O_RDONLY | noFollow);
+    assertCollectionDeadline(deadline);
+    const handleBefore = stableFileFacts(await handle.stat({ bigint: true }));
+    assertCollectionDeadline(deadline);
+    if (!sameFileFacts(initial, handleBefore)) throw new Error("observed workspace path changed identity before its bounded read");
+    await hooks.afterHandleValidated?.();
+    assertCollectionDeadline(deadline);
+    const expected = Number(initial.size);
+    const bytes = Buffer.alloc(expected + 1);
+    const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
+    assertCollectionDeadline(deadline);
+    if (bytesRead < expected) throw new Error("observed workspace file produced a short bounded read");
+    if (bytesRead > expected) throw new Error("observed workspace file grew during its bounded read");
+    await hooks.afterRead?.();
+    assertCollectionDeadline(deadline);
+    const handleAfter = stableFileFacts(await handle.stat({ bigint: true }));
+    assertCollectionDeadline(deadline);
+    let pathAfterStat;
+    try {
+      pathAfterStat = await deadlineObservation(deadline, () => (0, import_promises10.lstat)(absolute, { bigint: true }));
+    } catch (error2) {
+      if (error2 instanceof Error && error2.message === COLLECTION_DEADLINE_REASON) throw error2;
+      throw new Error(`observed workspace path disappeared after its bounded read: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+    const pathAfter = stableFileFacts(pathAfterStat);
+    if (!sameFileFacts(initial, handleAfter) || !sameFileFacts(initial, pathAfter)) {
+      throw new Error("observed workspace path changed identity, type, mode, links or size during its bounded read");
+    }
+    await assertPhysicalContainment(root, absolute, deadline);
+    budget.total += expected;
+    assertCollectionDeadline(deadline);
+    return { bytes: bytes.subarray(0, expected), mode: String(initial.mode) };
+  } finally {
+    if (handle) await handle.close();
+    await hooks.afterClose?.();
+    assertCollectionDeadline(deadline);
+  }
+}
+function stableFactsIdentity(facts) {
+  return [facts.dev, facts.ino, facts.mode, facts.nlink, facts.size, facts.regular, facts.directory, facts.symbolicLink].join(":");
+}
+function physicalExecutableModeAgreesWithIndex(indexMode, physicalMode, platform = process.platform) {
+  return platform === "win32" || indexMode === "100755" === ((physicalMode & 0o100n) !== 0n);
+}
+async function confinedPathProof(root, absolute, terminal, deadline) {
+  if (!inside(root, absolute)) throw new Error("observed path is lexically outside the physical worktree");
+  const relative = import_node_path5.default.relative(root, absolute);
+  const components = relative.split(import_node_path5.default.sep).filter(Boolean);
+  const identities = [];
+  let cursor = root;
+  for (let index = 0; index < components.length; index += 1) {
+    assertCollectionDeadline(deadline);
+    cursor = import_node_path5.default.join(cursor, components[index]);
+    const final = index === components.length - 1;
+    let stat;
+    try {
+      stat = await deadlineObservation(deadline, () => (0, import_promises10.lstat)(cursor, { bigint: true }));
+    } catch (error2) {
+      if (terminal === "regular-or-missing" && error2.code === "ENOENT") {
+        identities.push(`${components.slice(index).join("/")}:missing`);
+        return { digest: digest2(identities), final: null, missing: true };
+      }
+      throw error2;
+    }
+    const facts = stableFileFacts(stat);
+    if (!final) {
+      if (facts.symbolicLink || !facts.directory) {
+        throw new Error(
+          "observed path is outside the physical worktree direct-component contract because it contains a symbolic-link or junction component"
+        );
+      }
+      identities.push(`${components[index]}:${facts.dev}:${facts.ino}:${facts.mode}:${facts.directory}:${facts.symbolicLink}`);
+      continue;
+    }
+    if (terminal === "link") {
+      if (!facts.symbolicLink) throw new Error("tracked symbolic link changed checkout representation");
+    } else {
+      if (facts.symbolicLink || !facts.regular) throw new Error("observed workspace path is not a direct regular file");
+      if (facts.nlink !== 1n) throw new Error("observed workspace path is hard-linked outside its single workspace identity");
+    }
+    identities.push(`${components[index]}:${stableFactsIdentity(facts)}`);
+    return { digest: digest2(identities), final: facts, missing: false };
+  }
+  throw new Error("observed path does not name a worktree descendant");
+}
+function sameOrInside(root, candidate) {
+  return canonicalPath(root) === canonicalPath(candidate) || inside(root, candidate);
+}
+function rawTargetSegments(value) {
+  return value.split(process.platform === "win32" ? /[\\/]+/u : /\/+/u).filter((segment) => segment.length > 0);
+}
+function pathSpellingEqual(left, right) {
+  return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
+}
+async function trackedLinkTargetProof(root, linkAbsolute, targetText, deadline) {
+  if (!targetText || targetText.includes("\0")) throw new Error("tracked symbolic link has an empty or NUL target");
+  const targetParsed = import_node_path5.default.parse(targetText);
+  let cursor;
+  let components;
+  if (import_node_path5.default.isAbsolute(targetText)) {
+    const rootParsed = import_node_path5.default.parse(root);
+    if (!pathSpellingEqual(targetParsed.root, rootParsed.root)) {
+      throw new Error("tracked symbolic link target resolves outside the physical worktree");
+    }
+    const rootSegments = rawTargetSegments(root.slice(rootParsed.root.length));
+    const targetSegments = rawTargetSegments(targetText.slice(targetParsed.root.length));
+    if (targetSegments.length < rootSegments.length || rootSegments.some((segment, index) => !pathSpellingEqual(segment, targetSegments[index]))) {
+      throw new Error("tracked symbolic link absolute target is outside the physical worktree because it does not directly share its prefix");
+    }
+    cursor = root;
+    components = targetSegments.slice(rootSegments.length);
+  } else {
+    if (targetParsed.root) throw new Error("tracked symbolic link has an unsupported drive-relative target");
+    cursor = import_node_path5.default.dirname(linkAbsolute);
+    if (!sameOrInside(root, cursor)) throw new Error("tracked symbolic link parent is outside the physical worktree");
+    components = rawTargetSegments(targetText);
+  }
+  if (components.length === 0) throw new Error("tracked symbolic link target does not name a file");
+  const identities = [`base:${canonicalPath(cursor)}`];
+  let finalFacts = null;
+  for (let index = 0; index < components.length; index += 1) {
+    assertCollectionDeadline(deadline);
+    const component = components[index];
+    const final = index === components.length - 1;
+    if (component === ".") {
+      identities.push(".:same");
+      continue;
+    }
+    if (component === "..") {
+      const parent = import_node_path5.default.dirname(cursor);
+      if (!sameOrInside(root, parent)) {
+        throw new Error("tracked symbolic link parent traversal is outside the physical worktree");
+      }
+      cursor = parent;
+      identities.push(`..:${canonicalPath(cursor)}`);
+      continue;
+    }
+    const candidate = import_node_path5.default.join(cursor, component);
+    if (!sameOrInside(root, candidate)) throw new Error("tracked symbolic link target leaves the physical worktree");
+    const facts = stableFileFacts(await deadlineObservation(deadline, () => (0, import_promises10.lstat)(candidate, { bigint: true })));
+    if (!final) {
+      if (facts.symbolicLink || !facts.directory) {
+        throw new Error(
+          "tracked symbolic link raw target contains a symbolic-link or junction component before normalization"
+        );
+      }
+      identities.push(`${component}:${facts.dev}:${facts.ino}:${facts.mode}:${facts.directory}:${facts.symbolicLink}`);
+      cursor = candidate;
+      continue;
+    }
+    if (facts.symbolicLink || !facts.regular) throw new Error("tracked symbolic link final target is not a direct regular file");
+    if (facts.nlink !== 1n) throw new Error("tracked symbolic link final target is hard-linked outside its single workspace identity");
+    identities.push(`${component}:${stableFactsIdentity(facts)}`);
+    cursor = candidate;
+    finalFacts = facts;
+  }
+  if (!finalFacts) {
+    const facts = stableFileFacts(await deadlineObservation(deadline, () => (0, import_promises10.lstat)(cursor, { bigint: true })));
+    if (facts.symbolicLink || !facts.regular) throw new Error("tracked symbolic link final target is not a direct regular file");
+    if (facts.nlink !== 1n) throw new Error("tracked symbolic link final target is hard-linked outside its single workspace identity");
+    identities.push(`terminal:${stableFactsIdentity(facts)}`);
+    finalFacts = facts;
+  }
+  return {
+    absolute: cursor,
+    proof: { digest: digest2(identities), final: finalFacts, missing: false }
+  };
+}
+async function trackedLinkIdentity(root, entry, budget, trackedRegularTargets, deadline) {
+  const absolute = import_node_path5.default.resolve(root, ...entry.path.split("/"));
+  if (!inside(root, absolute)) throw new Error(`tracked symbolic link ${entry.path} escapes the worktree`);
+  const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
+  const decodeTarget = (bytes) => {
+    if (bytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
+      throw new Error(`tracked symbolic link ${entry.path} target exceeds ${MAX_TRACKED_LINK_TEXT_BYTES} bytes`);
+    }
+    try {
+      return decode(bytes);
+    } catch (error2) {
+      throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+  };
+  const requireTrackedRegularTarget = (target2) => {
+    if (trackedRegularTargets.has(canonicalPath(target2.absolute))) return;
+    const relative = import_node_path5.default.relative(root, target2.absolute).split(import_node_path5.default.sep).join("/");
+    throw new Error(
+      `tracked symbolic link ${entry.path} target ${JSON.stringify(relative)} is not an indexed tracked regular path`
+    );
+  };
+  let initialProof;
+  try {
+    initialProof = await confinedPathProof(root, absolute, "link", deadline);
+  } catch (error2) {
+    if (error2 instanceof Error && error2.message === COLLECTION_DEADLINE_REASON) throw error2;
+    let placeholderProof;
+    try {
+      placeholderProof = await confinedPathProof(root, absolute, "regular", deadline);
+    } catch (placeholderError) {
+      if (placeholderError instanceof Error && placeholderError.message === COLLECTION_DEADLINE_REASON) throw placeholderError;
+      throw new Error(`tracked symbolic link ${entry.path} is dangling or unreadable: ${error2 instanceof Error ? error2.message : String(error2)}`);
+    }
+    const placeholder = await readBoundedWorkspaceFile(root, absolute, budget, {}, limits, deadline);
+    if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
+    const targetText2 = decodeTarget(placeholder.bytes);
+    const targetState2 = await trackedLinkTargetProof(root, absolute, targetText2, deadline);
+    requireTrackedRegularTarget(targetState2);
+    const resolved2 = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(targetState2.absolute));
+    if (canonicalPath(resolved2) !== canonicalPath(targetState2.absolute)) {
+      throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
+    }
+    const target2 = await readBoundedWorkspaceFile(root, targetState2.absolute, budget, {}, limits, deadline);
+    if (!target2) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
+    const afterTargetState2 = await trackedLinkTargetProof(root, absolute, targetText2, deadline);
+    requireTrackedRegularTarget(afterTargetState2);
+    const afterResolved2 = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(afterTargetState2.absolute));
+    const afterProof2 = await confinedPathProof(root, absolute, "regular", deadline);
+    if (placeholderProof.digest !== afterProof2.digest || targetState2.proof.digest !== afterTargetState2.proof.digest || canonicalPath(targetState2.absolute) !== canonicalPath(afterTargetState2.absolute) || canonicalPath(resolved2) !== canonicalPath(afterResolved2)) {
+      throw new Error(`tracked symbolic link ${entry.path} changed checkout representation during bounded inspection`);
+    }
+    return digest2([
+      entry.tag,
+      entry.mode,
+      entry.objectId,
+      String(entry.stage),
+      entry.path,
+      "regular-placeholder",
+      placeholderProof.digest,
+      placeholder.mode,
+      placeholder.bytes,
+      targetState2.proof.digest,
+      canonicalPath(resolved2),
+      target2.mode,
+      target2.bytes
+    ]);
+  }
+  const targetBytes = await deadlineObservation(deadline, async () => await (0, import_promises10.readlink)(absolute, { encoding: "buffer" }));
+  if (targetBytes.length > MAX_TRACKED_LINK_TEXT_BYTES) {
+    throw new Error(`tracked symbolic link ${entry.path} target exceeds ${MAX_TRACKED_LINK_TEXT_BYTES} bytes`);
+  }
+  if (budget.total + targetBytes.length > MAX_TRACKED_LINK_TARGET_BYTES) {
+    throw new Error(`tracked symbolic-link targets exceed ${MAX_TRACKED_LINK_TARGET_BYTES} aggregate bytes`);
+  }
+  budget.total += targetBytes.length;
+  const targetText = decodeTarget(targetBytes);
+  const targetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+  requireTrackedRegularTarget(targetState);
+  const resolved = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(targetState.absolute));
+  if (canonicalPath(resolved) !== canonicalPath(targetState.absolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
+  }
+  const target = await readBoundedWorkspaceFile(root, targetState.absolute, budget, {}, limits, deadline);
+  if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
+  const afterProof = await confinedPathProof(root, absolute, "link", deadline);
+  const afterTargetBytes = await deadlineObservation(deadline, async () => await (0, import_promises10.readlink)(absolute, { encoding: "buffer" }));
+  const afterTargetText = decodeTarget(afterTargetBytes);
+  const afterTargetState = await trackedLinkTargetProof(root, absolute, afterTargetText, deadline);
+  requireTrackedRegularTarget(afterTargetState);
+  const afterResolved = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(afterTargetState.absolute));
+  if (initialProof.digest !== afterProof.digest || !targetBytes.equals(afterTargetBytes) || canonicalPath(targetState.absolute) !== canonicalPath(afterTargetState.absolute) || targetState.proof.digest !== afterTargetState.proof.digest || canonicalPath(resolved) !== canonicalPath(afterResolved)) {
+    throw new Error(`tracked symbolic link ${entry.path} changed identity or target during bounded inspection`);
+  }
+  if (canonicalPath(afterResolved) !== canonicalPath(afterTargetState.absolute)) {
+    throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
+  }
+  return digest2([
+    entry.tag,
+    entry.mode,
+    entry.objectId,
+    String(entry.stage),
+    entry.path,
+    "symbolic-link",
+    initialProof.digest,
+    targetBytes,
+    targetState.proof.digest,
+    canonicalPath(resolved),
+    target.mode,
+    target.bytes
+  ]);
+}
+async function trackedRegularMetadataCensus(root, entries, status, deadline, beforeEntry) {
+  const regular = entries.filter((entry) => entry.mode === "100644" || entry.mode === "100755");
+  const identities = [];
+  const porcelainRemovals = new Set(status.filter(
+    (observed) => observed.role === "path" && observed.worktree === "D" || observed.role === "rename-source" && observed.worktree === "R"
+  ).map((observed) => observed.path));
+  for (const entry of regular) {
+    assertCollectionDeadline(deadline);
+    await beforeEntry?.(entry.path);
+    assertCollectionDeadline(deadline);
+    const absolute = import_node_path5.default.resolve(root, ...entry.path.split("/"));
+    const proof = await confinedPathProof(root, absolute, "regular-or-missing", deadline);
+    assertCollectionDeadline(deadline);
+    const porcelainDeletion = porcelainRemovals.has(entry.path);
+    if (proof.missing && !porcelainDeletion) {
+      throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is missing without a matching porcelain worktree deletion`);
+    }
+    if (!proof.missing && porcelainDeletion) {
+      throw new Error(`tracked regular path ${JSON.stringify(entry.path)} is present despite a porcelain worktree deletion`);
+    }
+    if (!proof.missing) {
+      if (!physicalExecutableModeAgreesWithIndex(entry.mode, proof.final.mode)) {
+        throw new Error(
+          `tracked regular path ${JSON.stringify(entry.path)} physical executable mode does not agree with its Git index mode`
+        );
+      }
+    }
+    identities.push(digest2([entry.path, entry.mode, entry.objectId, String(entry.stage), proof.missing ? "missing" : "regular", proof.digest]));
+  }
+  return { count: regular.length, digest: digest2(identities) };
+}
+async function fileIdentity(root, observed, run, budget, deadline) {
+  assertCollectionDeadline(deadline);
+  const parsed = parsePlanPath(observed.path, { observed: true });
+  if (!parsed.ok) throw new Error(`unsafe observed path ${JSON.stringify(observed.path)}: ${parsed.reason}`);
+  const absolute = import_node_path5.default.resolve(root, ...parsed.path.split("/"));
+  if (!inside(root, absolute)) throw new Error(`observed path ${parsed.path} escapes the worktree`);
+  await assertPhysicalContainment(root, absolute, deadline);
+  const indexStageBytes = await run(root, ["ls-files", "--stage", "-z", "--", literalPathspec(parsed.path)]);
+  const indexStage = decode(indexStageBytes);
+  for (const entry of indexStage.split("\0").filter(Boolean)) {
+    const mode2 = entry.split(" ", 1)[0];
+    if (mode2 === "120000") throw new Error(`observed path ${parsed.path} is an indexed symbolic link`);
+    if (mode2 === "160000") throw new Error(`observed path ${parsed.path} is an unsupported Git link`);
+  }
+  const worktree = await readBoundedWorkspaceFile(root, absolute, budget, {}, void 0, deadline);
+  const mode = worktree?.mode ?? "missing";
+  const worktreeBytes = worktree?.bytes ?? Buffer.alloc(0);
+  let indexBytes = Buffer.alloc(0);
+  if (![".", "?", "D"].includes(observed.index) && observed.role !== "rename-source") {
+    indexBytes = await run(root, ["show", "--no-textconv", `:${parsed.path}`]);
+    if (indexBytes.length > MAX_FILE_BYTES || budget.total + indexBytes.length > MAX_TOTAL_FILE_BYTES) throw new Error("index content exceeds the bounded snapshot budget");
+    budget.total += indexBytes.length;
+  }
+  assertCollectionDeadline(deadline);
+  return digest2([observed.index, observed.worktree, observed.role, mode, indexStageBytes, indexBytes, worktreeBytes]);
+}
+async function captureOnce(root, worktree, run, deadline, beforeRegularCensusEntry) {
+  assertCollectionDeadline(deadline);
+  const [branchRaw, headRaw, statusRaw, indexFlagsRaw] = await Promise.all([
+    run(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]),
+    run(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
+    run(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"]),
+    run(root, ["ls-files", "-v", "-s", "-z", "--full-name", "--"])
+  ]);
+  assertCollectionDeadline(deadline);
+  const branch = decode(branchRaw).trim();
+  const head = decode(headRaw).trim();
+  if (!branch) throw new Error("workspace HEAD is detached");
+  if (!FULL_GIT_OBJECT_ID.test(head)) throw new Error("workspace HEAD is not a full supported Git object ID");
+  const indexFlags = parseIndexFlagCensus(indexFlagsRaw);
+  const unsupportedMode = indexFlags.entries.find((entry) => !["100644", "100755", "120000", "160000"].includes(entry.mode));
+  if (unsupportedMode) throw new Error(`tracked path ${JSON.stringify(unsupportedMode.path)} has unsupported Git mode ${unsupportedMode.mode}`);
+  const stagedConflict = indexFlags.entries.find((entry) => entry.stage !== 0);
+  if (stagedConflict) throw new Error(`tracked path ${JSON.stringify(stagedConflict.path)} has unsupported non-zero index stage ${stagedConflict.stage}`);
+  const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
+  if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
+  const status = parsePorcelainV1Z(statusRaw);
+  const trackedRegularTargets = new Set(indexFlags.entries.filter((entry) => entry.mode === "100644" || entry.mode === "100755").map((entry) => canonicalPath(import_node_path5.default.resolve(root, ...entry.path.split("/")))));
+  const regularFiles = await trackedRegularMetadataCensus(root, indexFlags.entries, status, deadline, beforeRegularCensusEntry);
+  const budget = { total: 0 };
+  const entries = [];
+  for (const observed of status) {
+    assertCollectionDeadline(deadline);
+    const parsed = parsePlanPath(observed.path, { observed: true });
+    if (!parsed.ok) throw new Error(`unsafe observed path: ${parsed.reason}`);
+    entries.push({
+      path: parsed.path,
+      index: observed.index,
+      worktree: observed.worktree,
+      content: await fileIdentity(root, observed, run, budget, deadline)
+    });
+  }
+  const linkBudget = { total: 0 };
+  for (const link of indexFlags.entries.filter((entry) => entry.mode === "120000")) {
+    assertCollectionDeadline(deadline);
+    entries.push({
+      path: link.path,
+      index: ".",
+      worktree: ".",
+      content: await trackedLinkIdentity(root, link, linkBudget, trackedRegularTargets, deadline)
+    });
+  }
+  if (entries.length > MAX_ENTRIES) throw new Error(`workspace has more than ${MAX_ENTRIES} retained dirty/link paths`);
+  entries.sort((left, right) => lexicalCompare2(left.path, right.path) || lexicalCompare2(left.index, right.index) || lexicalCompare2(left.worktree, right.worktree));
+  assertCollectionDeadline(deadline);
+  return {
+    snapshot: { branch, worktree, head: head.toLowerCase(), entries },
+    indexFlags,
+    regularFiles
+  };
+}
+async function collectWorkspaceSnapshot(input) {
+  try {
+    if (input.maxDurationMs !== void 0 && (!Number.isFinite(input.maxDurationMs) || input.maxDurationMs <= 0)) {
+      throw new Error("workspace collection duration must be a finite positive number");
+    }
+    const duration3 = Math.min(WORKSPACE_COLLECTION_TIMEOUT_MS, input.maxDurationMs ?? WORKSPACE_COLLECTION_TIMEOUT_MS);
+    const now = input.testHooks?.now ?? Date.now;
+    const startedAt = now();
+    if (!Number.isFinite(startedAt)) throw new Error("workspace collection clock must be finite");
+    const deadline = { expiresAt: startedAt + duration3, now };
+    const run = deadlineRun(input.run, deadline);
+    const declared = parsePlanPath(input.worktree);
+    if (!declared.ok || declared.path !== input.worktree) {
+      throw new Error(`recorded worktree is not a canonical repository-relative path${declared.ok ? "" : `: ${declared.reason}`}`);
+    }
+    const candidate = import_node_path5.default.resolve(input.repoRoot, ...declared.path.split("/"));
+    if (!inside(input.repoRoot, candidate)) throw new Error("recorded worktree escapes the source repository");
+    const [physical, physicalSource, physicalBoard, candidateTopRaw, candidateCommonRaw, sourceCommonRaw] = await Promise.all([
+      deadlineObservation(deadline, () => (0, import_promises10.realpath)(candidate)),
+      deadlineObservation(deadline, () => (0, import_promises10.realpath)(input.repoRoot)),
+      deadlineObservation(deadline, () => (0, import_promises10.realpath)(input.boardRoot)),
+      run(candidate, ["rev-parse", "--show-toplevel"]),
+      run(candidate, ["rev-parse", "--git-common-dir"]),
+      run(input.repoRoot, ["rev-parse", "--git-common-dir"])
+    ]);
+    assertCollectionDeadline(deadline);
+    if (!inside(physicalSource, physical)) throw new Error("recorded worktree resolves outside the physical source repository");
+    const candidateTop = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(import_node_path5.default.resolve(candidate, decode(candidateTopRaw).trim())));
+    if (isProtectedBoardExecutionWorktree(physicalSource, physicalBoard, physical)) {
+      throw new Error("recorded workspace is the protected board worktree or one of its children");
+    }
+    if (canonicalPath(candidateTop) !== canonicalPath(physical)) {
+      throw new Error("recorded worktree points inside a Git worktree instead of at its exact root");
+    }
+    const candidateCommon = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(import_node_path5.default.resolve(candidate, decode(candidateCommonRaw).trim())));
+    const sourceCommon = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(import_node_path5.default.resolve(input.repoRoot, decode(sourceCommonRaw).trim())));
+    if (canonicalPath(candidateCommon) !== canonicalPath(sourceCommon)) throw new Error("recorded workspace belongs to a foreign repository");
+    const first = await captureOnce(physical, input.worktree, run, deadline, input.testHooks?.beforeRegularCensusEntry);
+    assertCollectionDeadline(deadline);
+    await input.betweenSamples?.();
+    assertCollectionDeadline(deadline);
+    const second = await captureOnce(physical, input.worktree, run, deadline, input.testHooks?.beforeRegularCensusEntry);
+    if (JSON.stringify(first) !== JSON.stringify(second)) throw new Error("workspace changed during the bounded double-sample");
+    if (first.indexFlags.assumeUnchanged.length) {
+      throw new Error(`tracked path ${JSON.stringify(first.indexFlags.assumeUnchanged[0])} has assume-unchanged index authority`);
+    }
+    if (first.indexFlags.skipWorktree.length) {
+      throw new Error(`tracked path ${JSON.stringify(first.indexFlags.skipWorktree[0])} has skip-worktree index authority`);
+    }
+    if (first.snapshot.branch !== input.branch) throw new Error(`recorded branch ${input.branch} does not match checked-out branch ${first.snapshot.branch}`);
+    let headChanges = [];
+    if (input.baseline && input.baseline.head !== first.snapshot.head) {
+      const baselineHead = input.baseline.head;
+      if (!baselineHead || !FULL_GIT_OBJECT_ID.test(baselineHead)) {
+        throw new Error("packet workspace baseline HEAD is not a full supported Git object ID");
+      }
+      const mergeBase = decode(await run(physical, ["merge-base", baselineHead, first.snapshot.head])).trim();
+      if (!FULL_GIT_OBJECT_ID.test(mergeBase) || mergeBase.toLowerCase() !== baselineHead.toLowerCase()) {
+        throw new Error("packet workspace baseline HEAD is not an ancestor of the live workspace HEAD");
+      }
+      const range = `${baselineHead}..${first.snapshot.head}`;
+      const commitsText = decode(await run(physical, ["rev-list", `--max-count=${MAX_HEAD_COMMITS + 1}`, "--topo-order", range, "--"])).trim();
+      const commits = commitsText ? commitsText.split(/\r?\n/u) : [];
+      if (commits.length > MAX_HEAD_COMMITS) throw new Error(`HEAD history has more than ${MAX_HEAD_COMMITS} intervening commits`);
+      if (commits.some((commit) => !FULL_GIT_OBJECT_ID.test(commit))) {
+        throw new Error("HEAD history emitted a malformed commit identity");
+      }
+      const endpointRaw = await run(physical, ["diff", "--name-status", "-z", "--find-renames", baselineHead, first.snapshot.head, "--"]);
+      const historyRaw = await run(physical, [
+        "log",
+        "--format=",
+        "--raw",
+        "-z",
+        "--full-index",
+        "--no-abbrev",
+        "-m",
+        "--no-renames",
+        "--topo-order",
+        "--reverse",
+        range,
+        "--"
+      ]);
+      headChanges = [.../* @__PURE__ */ new Set([...parseNameStatusZ(endpointRaw), ...parseRawHistoryZ(historyRaw)])];
+      if (headChanges.length > MAX_ENTRIES) throw new Error(`HEAD evidence has more than ${MAX_ENTRIES} distinct changed paths`);
+      for (const changed of headChanges) {
+        assertCollectionDeadline(deadline);
+        const parsed = parsePlanPath(changed, { observed: true });
+        if (!parsed.ok) throw new Error(`unsafe HEAD-diff path: ${parsed.reason}`);
+        const absolute = import_node_path5.default.resolve(physical, ...parsed.path.split("/"));
+        await assertPhysicalContainment(physical, absolute, deadline);
+        try {
+          const stat = await deadlineObservation(deadline, () => (0, import_promises10.lstat)(absolute));
+          if (stat.isSymbolicLink()) throw new Error(`HEAD-diff path ${parsed.path} is a symbolic link`);
+          if (stat.isFile() && stat.nlink > 1) throw new Error(`HEAD-diff path ${parsed.path} is hard-linked outside its single workspace identity`);
+        } catch (error2) {
+          if (error2.code !== "ENOENT") throw error2;
+        }
+        for (const tree of [input.baseline.head, first.snapshot.head]) {
+          const treeEntry = decode(await run(physical, ["ls-tree", "-z", tree, "--", literalPathspec(parsed.path)]));
+          if (/^120000 /.test(treeEntry)) throw new Error(`HEAD-diff path ${parsed.path} is a committed symbolic link`);
+          if (/^160000 /.test(treeEntry)) throw new Error(`HEAD-diff path ${parsed.path} is an unsupported Git link`);
+        }
+      }
+    }
+    assertCollectionDeadline(deadline);
+    return { ok: true, snapshot: first.snapshot, headChanges };
+  } catch (error2) {
+    return { ok: false, reason: error2 instanceof Error ? error2.message : String(error2) };
+  }
+}
+function stepDocumentSnapshotAuthority(snapshot) {
+  return {
+    ...snapshot,
+    inventory: snapshot.inventory.filter((document) => revisionCountsDocument(document.doc))
+  };
+}
+async function documentSample(store2, id) {
+  const authority = await store2.getExecutionAuthoritySnapshot(id);
+  if (!authority) throw new Error(`No ticket with id "${id}"`);
+  const { item, revision, gates, fixed, inventory, batch } = authority;
+  if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
+  if (!gates) throw new Error(`Ticket "${id}" has no document-gate report`);
+  const groups = authority.groups.map(({ group, context, contextVersion }) => ({
+    id: group.id,
+    kind: group.kind,
+    title: group.title,
+    body: group.body,
+    context,
+    version: contextVersion
+  }));
+  const canonicalItem = item.groups === void 0 ? item : { ...item, groups: groups.map((group) => group.id) };
+  const evidence = [
+    ...groups.filter((group) => group.version !== null).map((group) => ({ layer: "group", group: group.id, path: `${group.id}/context.md`, version: group.version })),
+    ...inventory.filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket", group: null, path: doc.doc, version: doc.version }))
+  ];
+  const snapshot = { item: canonicalItem, revision: revision?.revision ?? null, gates, fixed, inventory, evidence, groups, batch, batchId: batch?.id ?? null };
+  const authorityBudget = checkStepPacketBudget(stepDocumentSnapshotAuthority(snapshot));
+  if (!authorityBudget.ok) throw new Error(`step document authority is outside its bounded snapshot: ${authorityBudget.reason}`);
+  return snapshot;
+}
+async function collectStepDocumentSnapshot(store2, id, samples = 2) {
+  try {
+    const first = await documentSample(store2, id);
+    if (samples === 1) return { ok: true, snapshot: first };
+    const second = await documentSample(store2, id);
+    if (JSON.stringify(stepDocumentSnapshotAuthority(first)) !== JSON.stringify(stepDocumentSnapshotAuthority(second))) {
+      throw new Error("ticket, counted documents or group context changed during the bounded double-sample");
+    }
+    return { ok: true, snapshot: second };
+  } catch (error2) {
+    return { ok: false, reason: error2 instanceof Error ? error2.message : String(error2) };
+  }
+}
+
 // src/execution-packet.ts
-var execFileAsync = (0, import_node_util.promisify)(import_node_child_process.execFile);
+var execFileAsync = (0, import_node_util.promisify)(import_node_child_process2.execFile);
 var EXECUTION_STOP_FALLBACK = "Stop at the checklist; do not merge; do not start another ticket.";
 var EXECUTION_COMMANDS_FALLBACK = "Use only the commands named in the plan/checklist, record exact exit codes, and stop on a failure.";
 async function resolveBaseSha(cwd, branch) {
@@ -46660,7 +49363,7 @@ function isWindowsAbsolute2(input) {
   return /^[A-Za-z]:[\\/]/.test(input) || /^\\\\/.test(input);
 }
 function canonicalPathFrom(base, input) {
-  const absolute = import_node_path5.default.isAbsolute(input) || isWindowsAbsolute2(input) ? input : import_node_path5.default.join(base, input);
+  const absolute = import_node_path6.default.isAbsolute(input) || isWindowsAbsolute2(input) ? input : import_node_path6.default.join(base, input);
   return canonicalProjectPath(absolute);
 }
 function canonicalWorktreePath(project, worktree) {
@@ -46671,7 +49374,7 @@ function sameWorktreePath(left, right) {
 }
 async function physicalExistingPath(input) {
   try {
-    return { ok: true, path: canonicalProjectPath(await (0, import_promises10.realpath)(input)) };
+    return { ok: true, path: canonicalProjectPath(await (0, import_promises11.realpath)(input)) };
   } catch (error2) {
     return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
   }
@@ -46768,6 +49471,12 @@ async function unsafeExecutionWorktree(store2, project, item, workspace, batchId
       warnings: []
     };
   }
+  if (isProtectedBoardExecutionWorktree(sourceCheckout.path, boardWorktree.path, candidate.path)) {
+    return {
+      refusal: `Ticket "${item.id}" records a worktree inside the protected dedicated board worktree; this is not a resumable ticket worktree.`,
+      warnings: []
+    };
+  }
   const warnings = [];
   for (const other of await store2.listItems()) {
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
@@ -46846,35 +49555,6 @@ function unresolvedQuestion(gates) {
   const requirements = gates.boundaries.flatMap((boundary) => boundary.requirements);
   return requirements.some((requirement) => requirement.type === "questions-resolved" && !requirement.satisfied);
 }
-async function groupContexts(store2, item) {
-  const groups = item.groups ?? [];
-  return Promise.all(
-    groups.map(async (id) => {
-      const group = await store2.getGroup(id);
-      if (!group) {
-        return {
-          id,
-          kind: null,
-          title: null,
-          body: null,
-          context: null,
-          version: null,
-          warning: `Group "${id}" is missing from the board.`
-        };
-      }
-      const context = await store2.getGroupDoc(id, "context.md");
-      return {
-        id,
-        kind: group.kind,
-        title: group.title,
-        body: group.body,
-        context,
-        version: context === null ? null : contentVersion(context),
-        ...context === null ? { warning: `Group "${id}" has no context.md.` } : {}
-      };
-    })
-  );
-}
 function indexDocuments(results) {
   const byDoc = new Map(results.map((result) => [result.doc, result]));
   const entry = (doc) => {
@@ -46893,13 +49573,16 @@ function sectionFromPlan(plan, titles, fallback) {
   return fallback;
 }
 async function getExecutionPacket(input) {
-  const { store: store2, id, actor, controllerRun, project, resume, logical, step } = input;
-  const item = await store2.getItem(id);
-  if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
+  const { store: store2, id, actor, controllerRun, project, resume, logical, step, priorStepPacket } = input;
+  const stable = await collectStepDocumentSnapshot(store2, id, step === void 0 ? 1 : 2);
+  if (!stable.ok) {
+    return refuse(project, `A bounded execution-authority snapshot could not be collected: ${stable.reason}`, []);
+  }
+  let item = stable.snapshot.item;
   if (item.type !== "ticket") {
     return refuse(project, `"${id}" is a ${item.type}, not a ticket; execution packets are ticket-only.`, []);
   }
-  const gates = await store2.getDocGates(id);
+  let gates = stable.snapshot.gates;
   if (!gates) {
     return refuse(project, `"${id}" uses a legacy layout without a format-3 ticket folder.`, [], item);
   }
@@ -46915,6 +49598,10 @@ async function getExecutionPacket(input) {
   }
   if (unresolvedQuestion(gates)) {
     return refuse(project, "Execution is blocked by unresolved questions.", ["questions-resolved"], item, gates);
+  }
+  const verifiedPrior = priorStepPacket === void 0 ? null : verifyStepPacket(priorStepPacket);
+  if (verifiedPrior && !verifiedPrior.ok) {
+    return refuse(project, `The prior step packet is invalid: ${verifiedPrior.reason}`, [], item, gates);
   }
   if (item.taken_at && (!item.branch || !item.worktree)) {
     return refuse(
@@ -46936,7 +49623,7 @@ async function getExecutionPacket(input) {
   }
   let batch;
   try {
-    batch = await store2.batchState(id);
+    batch = stable.snapshot.batch;
   } catch (error2) {
     return refuse(
       project,
@@ -47056,46 +49743,97 @@ async function getExecutionPacket(input) {
       gates
     );
   }
-  const [fixed, inventory] = await Promise.all([
-    readTicketDocuments(store2, id, ["plan", "checklist", "files"]),
-    store2.listTicketDocsWithVersions(id)
-  ]);
+  const [fixed, inventory] = [stable.snapshot.fixed, stable.snapshot.inventory];
   const planDoc = fixed.find((doc) => doc.doc === "plan");
   const plan = planDoc?.content ?? null;
   const checklist = fixed.find((doc) => doc.doc === "checklist")?.content ?? null;
   const extraDocs = (inventory ?? []).filter((doc) => !["plan/plan.md", "checklist/checklist.md", "files/files.md"].includes(doc.doc)).map((doc) => ({ path: doc.doc, version: doc.version }));
-  const contexts = await groupContexts(store2, item);
-  const evidence = [
-    ...contexts.filter((context) => context.version !== null).map((context) => ({
-      layer: "group",
-      group: context.id,
-      path: `${context.id}/context.md`,
-      version: context.version
-    })),
-    ...(inventory ?? []).filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket", group: null, path: doc.doc, version: doc.version }))
-  ];
+  const ticketDocuments = (inventory ?? []).filter((doc) => revisionCountsDocument(doc.doc)).map((doc) => ({ path: doc.doc, version: doc.version })).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  const contexts = stable.snapshot.groups.map((context) => ({
+    id: context.id,
+    kind: context.kind,
+    title: context.title,
+    body: context.body,
+    context: context.context,
+    version: context.version,
+    ...context.context === null ? { warning: `Group "${context.id}" has no context.md.` } : {}
+  }));
+  const evidence = stable.snapshot.evidence;
   const liveEvidence = evidence.map((entry) => ({ path: entry.path, version: entry.version }));
   const requireEvidencePin = evidence.some((entry) => entry.layer === "ticket");
   const parsedPlan = parsePlan(plan ?? "");
   const stopCondition = sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK);
-  const revision = (await store2.getRevision(id))?.revision ?? null;
+  const revision = stable.snapshot.revision;
   let validation = validatePlan(parsedPlan, { liveEvidence, requireEvidencePin });
   let compiled;
   if (step !== void 0) {
+    const selected = step === "next" ? nextStepIndex(parsedPlan, checklist) : step;
+    const needsPrior = selected !== null && selected > 1;
+    if (needsPrior && !verifiedPrior) {
+      return refuse(project, `Ordered step ${selected} requires the complete exact prior_step_packet; packet_id alone is not accepted.`, [], item, gates);
+    }
+    if (needsPrior && verifiedPrior?.ok && verifiedPrior.packet.step.index !== selected - 1) {
+      return refuse(project, `prior_step_packet authorises step ${verifiedPrior.packet.step.index}, not the immediately preceding step ${selected - 1}.`, [], item, gates);
+    }
+    if (!workspace.branch || !workspace.worktree) {
+      return refuse(project, `A constrained step packet requires a proven recorded branch and worktree.`, [], item, gates);
+    }
+    const workspaceSnapshotInput = {
+      repoRoot: store2.paths.repoRoot,
+      boardRoot: project.boardRoot,
+      worktree: workspace.worktree,
+      branch: workspace.branch,
+      ...needsPrior && verifiedPrior?.ok ? { baseline: verifiedPrior.packet.workspace } : {}
+    };
+    const observedWorkspace = await collectWorkspaceSnapshot(workspaceSnapshotInput);
+    if (!observedWorkspace.ok) {
+      return refuse(project, `The recorded workspace is inconclusive for constrained execution: ${observedWorkspace.reason}`, [], item, gates);
+    }
+    const confirmedStable = await collectStepDocumentSnapshot(store2, id);
+    if (!confirmedStable.ok || JSON.stringify(stepDocumentSnapshotAuthority(confirmedStable.snapshot)) !== JSON.stringify(stepDocumentSnapshotAuthority(stable.snapshot))) {
+      const reason = confirmedStable.ok ? "ticket, gate, document, group or batch facts changed around the Git observation" : confirmedStable.reason;
+      return refuse(project, `The constrained execution snapshot is inconclusive: ${reason}`, [], item, gates);
+    }
+    const confirmedWorkspace = await collectWorkspaceSnapshot(workspaceSnapshotInput);
+    if (!confirmedWorkspace.ok || JSON.stringify(confirmedWorkspace) !== JSON.stringify(observedWorkspace)) {
+      const reason = confirmedWorkspace.ok ? "workspace HEAD, status or fingerprints changed during the bounded composite sample" : confirmedWorkspace.reason;
+      return refuse(project, `The constrained execution snapshot is inconclusive: ${reason}`, [], item, gates);
+    }
+    const packetProject = {
+      project_id: logical?.project_id ?? null,
+      board_id: logical?.board_id ?? null,
+      fingerprint: project.fingerprint
+    };
+    if (needsPrior && verifiedPrior?.ok) {
+      const prior = reconcileStepPacket(verifiedPrior.packet, {
+        project: packetProject,
+        ticket: { id: item.id, revision, itemAuthority: stepTicketAuthority(item), documents: ticketDocuments },
+        batch: claim.batch?.id ?? null,
+        plan: {
+          path: "plan/plan.md",
+          version: planDoc?.version ?? null,
+          authority: stepPacketAuthority(parsedPlan, verifiedPrior.packet.step.index, stopCondition)
+        },
+        checklist: stepChecklistSnapshot(parsedPlan, checklist, "checklist/checklist.md", fixed.find((doc) => doc.doc === "checklist")?.version ?? null),
+        evidence,
+        workspace: { snapshot: confirmedWorkspace.snapshot, headChanges: confirmedWorkspace.headChanges }
+      });
+      if (prior.status !== "pass") {
+        return refuse(project, `The exact prior step reconciled as ${prior.status}; no later packet was issued. ${prior.findings.map((finding2) => finding2.message).join(" ")}`, [], item, gates);
+      }
+    }
     const result = compileStepPacket({
       plan: parsedPlan,
       planPath: "plan/plan.md",
       planVersion: planDoc?.version ?? null,
-      project: {
-        project_id: logical?.project_id ?? null,
-        board_id: logical?.board_id ?? null,
-        fingerprint: project.fingerprint
-      },
-      ticket: { id: item.id, revision },
+      project: packetProject,
+      ticket: { id: item.id, revision, itemAuthority: stepTicketAuthority(item), documents: ticketDocuments },
       batch: claim.batch?.id ?? null,
-      workspace,
+      workspace: confirmedWorkspace.snapshot,
       evidence,
       checklist,
+      checklistPath: "checklist/checklist.md",
+      checklistVersion: fixed.find((doc) => doc.doc === "checklist")?.version ?? null,
       select: step,
       stopCondition
     });
@@ -47123,9 +49861,9 @@ async function getExecutionPacket(input) {
 }
 
 // src/reconciliation.ts
-var import_node_child_process3 = require("child_process");
-var import_promises11 = __toESM(require("fs/promises"), 1);
-var import_node_path6 = __toESM(require("path"), 1);
+var import_node_child_process4 = require("child_process");
+var import_promises12 = __toESM(require("fs/promises"), 1);
+var import_node_path7 = __toESM(require("path"), 1);
 var import_node_util3 = require("util");
 var import_gray_matter4 = __toESM(require_gray_matter(), 1);
 
@@ -47178,12 +49916,12 @@ function failCoded(error2, project) {
 }
 
 // src/git-reachability.mjs
-var import_node_child_process2 = require("child_process");
+var import_node_child_process3 = require("child_process");
 var import_node_util2 = require("util");
-var execFile3 = (0, import_node_util2.promisify)(import_node_child_process2.execFile);
+var execFile4 = (0, import_node_util2.promisify)(import_node_child_process3.execFile);
 var FULL_SHA_RE = /^[0-9a-f]{40}$/i;
 var COMMIT_ID_RE = /^[0-9a-f]{4,40}$/i;
-async function collectCommitReachabilityFromTarget({ commits, targetSha, cwd, run = execFile3 }) {
+async function collectCommitReachabilityFromTarget({ commits, targetSha, cwd, run = execFile4 }) {
   if (!FULL_SHA_RE.test(targetSha)) {
     throw new Error("pull request merge SHA is not a full hexadecimal Git object id");
   }
@@ -47210,19 +49948,19 @@ async function collectCommitReachabilityFromTarget({ commits, targetSha, cwd, ru
 }
 
 // src/reconciliation.ts
-var execFile4 = (0, import_node_util3.promisify)(import_node_child_process3.execFile);
-var GIT_TIMEOUT_MS = 15e3;
+var execFile5 = (0, import_node_util3.promisify)(import_node_child_process4.execFile);
+var GIT_TIMEOUT_MS2 = 15e3;
 var GH_TIMEOUT_MS = 15e3;
-var GIT_MAX_BUFFER = 32 * 1024;
+var GIT_MAX_BUFFER2 = 32 * 1024;
 var GH_MAX_BUFFER = 1024 * 1024;
 function gitOptions(cwd) {
-  return { cwd, windowsHide: true, timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER };
+  return { cwd, windowsHide: true, timeout: GIT_TIMEOUT_MS2, maxBuffer: GIT_MAX_BUFFER2 };
 }
 function ghOptions(cwd) {
   return { cwd, windowsHide: true, timeout: GH_TIMEOUT_MS, maxBuffer: GH_MAX_BUFFER };
 }
 function normalPath(value) {
-  return import_node_path6.default.resolve(value).replace(/[\\/]+$/, "").toLowerCase();
+  return import_node_path7.default.resolve(value).replace(/[\\/]+$/, "").toLowerCase();
 }
 function runErrorCode(error2) {
   const code = error2?.code;
@@ -47339,16 +50077,16 @@ async function collectPullRequestEvidence(store2, refs, run) {
     }
   }
   const exactly = (state) => observed.filter((entry) => entry.evidence.state === state);
-  const open = exactly("open");
+  const open2 = exactly("open");
   const merged = exactly("merged");
   const closed = exactly("closed-unmerged");
-  const selected = open.length === 1 ? open[0] : open.length > 1 ? void 0 : merged.length === 1 ? merged[0] : merged.length > 1 ? void 0 : closed.length === 1 ? closed[0] : void 0;
+  const selected = open2.length === 1 ? open2[0] : open2.length > 1 ? void 0 : merged.length === 1 ? merged[0] : merged.length > 1 ? void 0 : closed.length === 1 ? closed[0] : void 0;
   if (!selected) return { state: "unavailable", requiredChecks: "unavailable" };
   return pullRequestEvidence(selected.raw, await requiredChecksFor(store2, selected.selector, run));
 }
-async function workspaceEvidence(store2, worktree, branch, run, stat = import_promises11.default.stat, resolveCommonDir = gitCommonDirectory) {
+async function workspaceEvidence(store2, worktree, branch, run, stat = import_promises12.default.stat, resolveCommonDir = gitCommonDirectory) {
   if (!worktree) return { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" };
-  const candidate = import_node_path6.default.resolve(store2.paths.repoRoot, worktree);
+  const candidate = import_node_path7.default.resolve(store2.paths.repoRoot, worktree);
   if (normalPath(candidate) === normalPath(store2.paths.projectRoot)) return { state: "unavailable", recordedWorktree: worktree, boardWorktree: true, claimIdentity: "unavailable" };
   try {
     await stat(candidate);
@@ -47397,7 +50135,7 @@ async function commitEvidence(commits, pullRequest, store2, run) {
     return { values, reachability: "unavailable" };
   }
 }
-async function collectReconciliationEvidence(store2, id, run = execFile4, options2 = {}) {
+async function collectReconciliationEvidence(store2, id, run = execFile5, options2 = {}) {
   const item = await store2.getItem(id);
   if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
   const board = await store2.getBoard();
@@ -47428,7 +50166,7 @@ async function collectReconciliationEvidence(store2, id, run = execFile4, option
     commits: await commitEvidence(item.commits ?? [], pullRequest, store2, run),
     pullRequest,
     proof: proofEvidence(await store2.getDoc(id, "proof")),
-    workspace: await workspaceEvidence(store2, item.worktree, item.branch, run, import_promises11.default.stat, options2.resolveCommonDir),
+    workspace: await workspaceEvidence(store2, item.worktree, item.branch, run, import_promises12.default.stat, options2.resolveCommonDir),
     // Persisted release attempts (CORE-132, FRD-031). Read from
     // `.kanmer/releases/` with plain fs reads — outside every lock, like every
     // other evidence read here — and classified by the pure core function that
@@ -47449,13 +50187,118 @@ function leaseRecoverySummary(evidence) {
     proof: evidence.proof.state
   };
 }
+function preGitAuthorityFailure(findings) {
+  const codes = new Set(findings.map((finding2) => finding2.code));
+  return codes.has("STEP_IDENTITY_MISMATCH") || codes.has("STEP_PLAN_AUTHORITY_MISMATCH");
+}
 async function reconcileTicket(store2, id, run, options2) {
+  const packetVerification = options2?.stepPacket === void 0 ? null : verifyStepPacket(options2.stepPacket);
+  const invalidStep = packetVerification && !packetVerification.ok ? { status: "inconclusive", packetId: null, changedPaths: [], findings: [{ code: "STEP_PACKET_INVALID", message: packetVerification.reason }] } : null;
+  const stable = packetVerification?.ok ? await collectStepDocumentSnapshot(store2, id) : null;
+  const currentDocuments = stable?.ok ? stable.snapshot.inventory.filter((document) => revisionCountsDocument(document.doc)).map((document) => ({ path: document.doc, version: document.version })).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0) : [];
+  let preflight = null;
+  let planDoc;
+  let checklistDoc;
+  let parsed = parsePlan("");
+  let stopCondition = EXECUTION_STOP_FALLBACK;
+  let provenanceBlocksStepObservation = false;
+  if (packetVerification?.ok && stable?.ok) {
+    planDoc = stable.snapshot.fixed.find((doc) => doc.doc === "plan");
+    checklistDoc = stable.snapshot.fixed.find((doc) => doc.doc === "checklist");
+    parsed = parsePlan(planDoc?.content ?? "");
+    stopCondition = planDoc?.content && extractAtxSection(planDoc.content, "Stop condition") || EXECUTION_STOP_FALLBACK;
+    preflight = reconcileStepPacket(packetVerification.packet, {
+      project: options2?.stepProject ?? packetVerification.packet.project,
+      ticket: { id: stable.snapshot.item.id, revision: stable.snapshot.revision, itemAuthority: stepTicketAuthority(stable.snapshot.item), documents: currentDocuments },
+      batch: stable.snapshot.batchId,
+      plan: {
+        path: "plan/plan.md",
+        version: planDoc?.version ?? null,
+        authority: stepPacketAuthority(parsed, packetVerification.packet.step.index, stopCondition)
+      },
+      checklist: stepChecklistSnapshot(parsed, checklistDoc?.content ?? null, "checklist/checklist.md", checklistDoc?.version ?? null),
+      evidence: stable.snapshot.evidence,
+      workspace: null
+    });
+    if (preGitAuthorityFailure(preflight.findings)) {
+      provenanceBlocksStepObservation = true;
+    }
+  }
   const result = reconcileEvidence(await collectReconciliationEvidence(store2, id, run, options2));
-  if (!result.recommendation) return result;
-  const revision = await store2.getRevision(id);
+  let withRevision = result;
+  if (result.recommendation) {
+    const revision = await store2.getRevision(id);
+    withRevision = {
+      ...result,
+      recommendation: { ...result.recommendation, ticketId: id, revision: revision?.revision ?? null }
+    };
+  }
+  if (packetVerification === null) return withRevision;
+  if (!packetVerification.ok) return { ...withRevision, step: invalidStep };
+  if (provenanceBlocksStepObservation) return { ...withRevision, step: preflight };
+  if (!stable?.ok) {
+    const reason = stable && !stable.ok ? stable.reason : "the bounded ticket/document authority snapshot is unavailable";
+    return {
+      ...withRevision,
+      step: {
+        status: "inconclusive",
+        packetId: packetVerification.packet.packetId,
+        changedPaths: [],
+        findings: [{
+          code: "STEP_AUTHORITY_UNAVAILABLE",
+          message: `The bounded ticket, document, group and batch authority snapshot is unavailable. ${reason}`
+        }]
+      }
+    };
+  }
+  const workspace = stable.snapshot.item.worktree && stable.snapshot.item.branch ? await collectWorkspaceSnapshot({
+    repoRoot: store2.paths.repoRoot,
+    boardRoot: store2.paths.projectRoot,
+    worktree: stable.snapshot.item.worktree,
+    branch: stable.snapshot.item.branch,
+    baseline: packetVerification.packet.workspace,
+    ...options2?.stepRun ? { run: options2.stepRun } : {}
+  }) : null;
+  const confirmedStable = await collectStepDocumentSnapshot(store2, id);
+  const confirmedWorkspace = stable.snapshot.item.worktree && stable.snapshot.item.branch ? await collectWorkspaceSnapshot({
+    repoRoot: store2.paths.repoRoot,
+    boardRoot: store2.paths.projectRoot,
+    worktree: stable.snapshot.item.worktree,
+    branch: stable.snapshot.item.branch,
+    baseline: packetVerification.packet.workspace,
+    ...options2?.stepRun ? { run: options2.stepRun } : {}
+  }) : null;
+  if (!confirmedStable.ok || JSON.stringify(stepDocumentSnapshotAuthority(confirmedStable.snapshot)) !== JSON.stringify(stepDocumentSnapshotAuthority(stable.snapshot)) || JSON.stringify(confirmedWorkspace) !== JSON.stringify(workspace)) {
+    return {
+      ...withRevision,
+      step: {
+        status: "inconclusive",
+        packetId: packetVerification.packet.packetId,
+        changedPaths: [],
+        findings: [{ code: "STEP_SNAPSHOT_UNSTABLE", message: "Ticket, document, group, batch or workspace facts changed during the bounded composite sample." }]
+      }
+    };
+  }
+  const reconciledStep = reconcileStepPacket(packetVerification.packet, {
+    project: options2?.stepProject ?? packetVerification.packet.project,
+    ticket: { id: stable.snapshot.item.id, revision: stable.snapshot.revision, itemAuthority: stepTicketAuthority(stable.snapshot.item), documents: currentDocuments },
+    batch: stable.snapshot.batchId,
+    plan: {
+      path: "plan/plan.md",
+      version: planDoc?.version ?? null,
+      authority: stepPacketAuthority(parsed, packetVerification.packet.step.index, stopCondition)
+    },
+    checklist: stepChecklistSnapshot(parsed, checklistDoc?.content ?? null, "checklist/checklist.md", checklistDoc?.version ?? null),
+    evidence: stable.snapshot.evidence,
+    workspace: workspace?.ok ? { snapshot: workspace.snapshot, headChanges: workspace.headChanges } : null
+  });
+  const step = workspace && !workspace.ok ? {
+    ...reconciledStep,
+    findings: reconciledStep.findings.map((finding2) => finding2.code === "STEP_WORKSPACE_UNAVAILABLE" ? { ...finding2, message: `${finding2.message} ${workspace.reason}` } : finding2)
+  } : reconciledStep;
   return {
-    ...result,
-    recommendation: { ...result.recommendation, ticketId: id, revision: revision?.revision ?? null }
+    ...withRevision,
+    step
   };
 }
 async function applyReconciliation(store2, input, run, options2) {
@@ -47501,9 +50344,9 @@ async function applyReconciliation(store2, input, run, options2) {
 }
 
 // src/release.ts
-var import_node_child_process4 = require("child_process");
+var import_node_child_process5 = require("child_process");
 var import_node_util4 = require("util");
-var execFile5 = (0, import_node_util4.promisify)(import_node_child_process4.execFile);
+var execFile6 = (0, import_node_util4.promisify)(import_node_child_process5.execFile);
 var RELEASE_ACTIONS = ["acquire", "renew", "record", "supersede", "complete", "fail"];
 var RELEASE_REQUEST_FIELDS = [
   "integrationSha",
@@ -47618,7 +50461,7 @@ function requireLease(input) {
   }
   return { leaseId: input.leaseId, leaseRevision };
 }
-async function resolveIntegrationCandidate(store2, input, run = execFile5) {
+async function resolveIntegrationCandidate(store2, input, run = execFile6) {
   const policy = resolveDelivery(await store2.getBoard());
   const policyVersion = deliveryPolicyVersion(policy);
   if (input.integrationSha !== void 0) return { integrationSha: input.integrationSha, policyVersion };
@@ -47628,8 +50471,8 @@ async function resolveIntegrationCandidate(store2, input, run = execFile5) {
     const { stdout } = await run("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
       cwd: store2.paths.repoRoot,
       windowsHide: true,
-      timeout: GIT_TIMEOUT_MS,
-      maxBuffer: GIT_MAX_BUFFER
+      timeout: GIT_TIMEOUT_MS2,
+      maxBuffer: GIT_MAX_BUFFER2
     });
     const sha = stdout.trim();
     if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error(`git rev-parse returned "${sha}"`);
@@ -47641,7 +50484,7 @@ async function resolveIntegrationCandidate(store2, input, run = execFile5) {
     );
   }
 }
-async function releaseChannelAction(store2, input, run = execFile5) {
+async function releaseChannelAction(store2, input, run = execFile6) {
   validateReleaseChannelRequest(input);
   const channel = input.channel?.trim() || void 0;
   switch (input.action) {
@@ -47811,13 +50654,13 @@ function dispatchPolicyView(policy) {
 }
 
 // src/project-registry.ts
-var import_promises12 = require("fs/promises");
-var import_node_path7 = __toESM(require("path"), 1);
+var import_promises13 = require("fs/promises");
+var import_node_path8 = __toESM(require("path"), 1);
 var ENDPOINT_REGISTRY_ENV = "KANMER_ENDPOINT_REGISTRY";
 var ENDPOINT_REGISTRY_SCHEMA = 1;
 var ENDPOINT_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 function isAbsolute(value) {
-  return import_node_path7.default.isAbsolute(value) || import_node_path7.default.win32.isAbsolute(value);
+  return import_node_path8.default.isAbsolute(value) || import_node_path8.default.win32.isAbsolute(value);
 }
 function registryLocation(env, home) {
   const configured = env[ENDPOINT_REGISTRY_ENV]?.trim();
@@ -47827,7 +50670,7 @@ function registryLocation(env, home) {
     }
     return { path: configured, source: "env" };
   }
-  return { path: import_node_path7.default.join(home, ".kanmer", "endpoints.json"), source: "default" };
+  return { path: import_node_path8.default.join(home, ".kanmer", "endpoints.json"), source: "default" };
 }
 function validateEntry(name, entry) {
   const problems = [];
@@ -47836,17 +50679,17 @@ function validateEntry(name, entry) {
     problems.push("entry must be an object");
     return problems;
   }
-  const record2 = entry;
-  if (typeof record2.boardRoot !== "string" || !record2.boardRoot.trim()) problems.push("boardRoot is required");
-  else if (!isAbsolute(record2.boardRoot)) problems.push("boardRoot must be an absolute path");
-  if (record2.repoRoot !== void 0) {
-    if (typeof record2.repoRoot !== "string" || !record2.repoRoot.trim()) problems.push("repoRoot must be a non-empty string");
-    else if (!isAbsolute(record2.repoRoot)) problems.push("repoRoot must be an absolute path");
+  const record3 = entry;
+  if (typeof record3.boardRoot !== "string" || !record3.boardRoot.trim()) problems.push("boardRoot is required");
+  else if (!isAbsolute(record3.boardRoot)) problems.push("boardRoot must be an absolute path");
+  if (record3.repoRoot !== void 0) {
+    if (typeof record3.repoRoot !== "string" || !record3.repoRoot.trim()) problems.push("repoRoot must be a non-empty string");
+    else if (!isAbsolute(record3.repoRoot)) problems.push("repoRoot must be an absolute path");
   }
-  if (record2.boardBranch !== void 0 && (typeof record2.boardBranch !== "string" || !record2.boardBranch.trim())) {
+  if (record3.boardBranch !== void 0 && (typeof record3.boardBranch !== "string" || !record3.boardBranch.trim())) {
     problems.push("boardBranch must be a non-empty string");
   }
-  if (record2.policy !== void 0 && typeof record2.policy !== "string") problems.push("policy must be a string");
+  if (record3.policy !== void 0 && typeof record3.policy !== "string") problems.push("policy must be a string");
   return problems;
 }
 function parseRegistry(text) {
@@ -47857,17 +50700,17 @@ function parseRegistry(text) {
     return { ok: false, error: "registry is not valid JSON" };
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ok: false, error: "registry must be a JSON object" };
-  const record2 = parsed;
-  if (record2.schema !== ENDPOINT_REGISTRY_SCHEMA) return { ok: false, error: `registry schema must be ${ENDPOINT_REGISTRY_SCHEMA}` };
-  if (!record2.endpoints || typeof record2.endpoints !== "object" || Array.isArray(record2.endpoints)) {
+  const record3 = parsed;
+  if (record3.schema !== ENDPOINT_REGISTRY_SCHEMA) return { ok: false, error: `registry schema must be ${ENDPOINT_REGISTRY_SCHEMA}` };
+  if (!record3.endpoints || typeof record3.endpoints !== "object" || Array.isArray(record3.endpoints)) {
     return { ok: false, error: "registry.endpoints must be an object keyed by endpoint name" };
   }
-  return { ok: true, file: { schema: ENDPOINT_REGISTRY_SCHEMA, endpoints: record2.endpoints } };
+  return { ok: true, file: { schema: ENDPOINT_REGISTRY_SCHEMA, endpoints: record3.endpoints } };
 }
 async function readRegistry(file) {
   let text;
   try {
-    text = await (0, import_promises12.readFile)(file, "utf8");
+    text = await (0, import_promises13.readFile)(file, "utf8");
   } catch (error2) {
     if (error2.code === "ENOENT") return { exists: false, parsed: null };
     return { exists: true, parsed: { ok: false, error: `registry could not be read: ${error2.message}` } };
@@ -47875,13 +50718,13 @@ async function readRegistry(file) {
   return { exists: true, parsed: parseRegistry(text) };
 }
 function invalidObservation(name, entry, problems) {
-  const record2 = entry && typeof entry === "object" ? entry : {};
+  const record3 = entry && typeof entry === "object" ? entry : {};
   return {
     name,
-    boardRoot: typeof record2.boardRoot === "string" ? record2.boardRoot : "",
-    repoRoot: typeof record2.repoRoot === "string" ? record2.repoRoot : null,
-    boardBranch: typeof record2.boardBranch === "string" ? record2.boardBranch : null,
-    policy: typeof record2.policy === "string" ? record2.policy : null,
+    boardRoot: typeof record3.boardRoot === "string" ? record3.boardRoot : "",
+    repoRoot: typeof record3.repoRoot === "string" ? record3.repoRoot : null,
+    boardBranch: typeof record3.boardBranch === "string" ? record3.boardBranch : null,
+    policy: typeof record3.policy === "string" ? record3.policy : null,
     health: "invalid",
     bound: false,
     project: null,
@@ -47909,7 +50752,7 @@ async function observeEndpoint(name, entry, deps, bound) {
     const store2 = new KanmerStore(boardRoot, repoRoot ? { repoRoot } : {});
     const exists2 = await store2.exists();
     if (!exists2) return { ...base, repoRoot: store2.paths.repoRoot, health: "missing-board", problems: [`no .kanmer board at ${boardRoot}`] };
-    const [format, { source }, record2, listing, actualBranch] = await Promise.all([
+    const [format, { source }, record3, listing, actualBranch] = await Promise.all([
       store2.detectFormat(),
       store2.getBoardWithSource(),
       store2.getProject(),
@@ -47918,10 +50761,10 @@ async function observeEndpoint(name, entry, deps, bound) {
     ]);
     const legacy = projectIdentity({ boardRoot, format, repoRoot: store2.paths.repoRoot, boardSource: source });
     const project = {
-      project_id: record2?.project_id ?? null,
-      board_id: record2?.board_id ?? null,
-      identity: record2 ? "logical" : "unassigned",
-      origin: record2?.origin ?? null,
+      project_id: record3?.project_id ?? null,
+      board_id: record3?.board_id ?? null,
+      identity: record3 ? "logical" : "unassigned",
+      origin: record3?.origin ?? null,
       fingerprint: legacy.fingerprint
     };
     const branchForSync = actualBranch ?? boardBranch ?? null;
@@ -47994,13 +50837,13 @@ async function observeRegistry(env, home, deps, bound, filter) {
 }
 
 // src/sources.ts
-var import_node_crypto3 = require("crypto");
-var import_promises13 = require("dns/promises");
+var import_node_crypto4 = require("crypto");
+var import_promises14 = require("dns/promises");
 var import_node_https = require("https");
 var import_node_net = require("net");
 var import_node_stream = require("stream");
-var import_promises14 = require("fs/promises");
-var import_node_path8 = __toESM(require("path"), 1);
+var import_promises15 = require("fs/promises");
+var import_node_path9 = __toESM(require("path"), 1);
 var LLMS_TXT_POLICY = Object.freeze({
   maxLinkedPages: 32,
   maxBytes: 2 * 1024 * 1024,
@@ -48182,23 +51025,23 @@ function assertSafeFetchTarget(origin, target) {
   }
 }
 function cacheDigest(documents) {
-  return (0, import_node_crypto3.createHash)("sha256").update(documents.map((document) => `${document.url}
+  return (0, import_node_crypto4.createHash)("sha256").update(documents.map((document) => `${document.url}
 ${document.text}`).join("\n")).digest("hex");
 }
 function cachePath(cacheDir, url) {
-  const key = (0, import_node_crypto3.createHash)("sha256").update(url).digest("hex");
-  return import_node_path8.default.join(cacheDir, `${key}.json`);
+  const key = (0, import_node_crypto4.createHash)("sha256").update(url).digest("hex");
+  return import_node_path9.default.join(cacheDir, `${key}.json`);
 }
 var MAX_CACHE_FILE_BYTES = LLMS_TXT_POLICY.maxBytes * 2 + 64 * 1024;
 async function assertSafeCacheDirectory(cacheDir) {
-  const resolved = import_node_path8.default.resolve(cacheDir);
-  const root = import_node_path8.default.parse(resolved).root;
-  const relative = import_node_path8.default.relative(root, resolved);
+  const resolved = import_node_path9.default.resolve(cacheDir);
+  const root = import_node_path9.default.parse(resolved).root;
+  const relative = import_node_path9.default.relative(root, resolved);
   let current = root;
-  for (const segment of relative ? relative.split(import_node_path8.default.sep) : []) {
-    current = import_node_path8.default.join(current, segment);
+  for (const segment of relative ? relative.split(import_node_path9.default.sep) : []) {
+    current = import_node_path9.default.join(current, segment);
     try {
-      const entry = await (0, import_promises14.lstat)(current);
+      const entry = await (0, import_promises15.lstat)(current);
       if (entry.isSymbolicLink()) throw new Error(`Refusing symlinked source cache path: ${current}`);
       if (!entry.isDirectory()) throw new Error(`Source cache path is not a directory: ${current}`);
     } catch (error2) {
@@ -48209,9 +51052,9 @@ async function assertSafeCacheDirectory(cacheDir) {
 }
 async function readCache(file) {
   try {
-    const metadata = await (0, import_promises14.lstat)(file);
+    const metadata = await (0, import_promises15.lstat)(file);
     if (metadata.isSymbolicLink() || !metadata.isFile() || metadata.size > MAX_CACHE_FILE_BYTES) return null;
-    const parsed = JSON.parse(await (0, import_promises14.readFile)(file, "utf8"));
+    const parsed = JSON.parse(await (0, import_promises15.readFile)(file, "utf8"));
     if (!parsed || typeof parsed !== "object") return null;
     const cache = parsed;
     if (typeof cache.url !== "string" || typeof cache.fetchedAt !== "string" || typeof cache.expiresAt !== "string" || !Array.isArray(cache.documents) || !cache.documents.every(
@@ -48464,7 +51307,7 @@ async function fetchLlmsTxt(options2) {
   const fetchImpl = options2.fetchImpl ?? fetch;
   const timeoutMs = options2.timeoutMs ?? LLMS_TXT_POLICY.timeoutMs;
   const boundFetch = options2.requestImpl ?? (options2.fetchImpl ? void 0 : pinnedFetch);
-  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname3) => (await (0, import_promises13.lookup)(hostname3, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
+  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname3) => (await (0, import_promises14.lookup)(hostname3, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   await assertSafeCacheDirectory(options2.cacheDir);
   const cacheFile = cachePath(options2.cacheDir, root.toString());
@@ -48535,7 +51378,7 @@ async function fetchLlmsTxt(options2) {
         lastModified: rootResponse.lastModified ?? cached3.lastModified
       };
       await assertSafeCacheDirectory(options2.cacheDir);
-      await (0, import_promises14.mkdir)(options2.cacheDir, { recursive: true });
+      await (0, import_promises15.mkdir)(options2.cacheDir, { recursive: true });
       await writeCache(cacheFile, refreshed);
       return {
         sourceUrl: cached3.url,
@@ -48586,7 +51429,7 @@ async function fetchLlmsTxt(options2) {
       failures
     };
     await assertSafeCacheDirectory(options2.cacheDir);
-    await (0, import_promises14.mkdir)(options2.cacheDir, { recursive: true });
+    await (0, import_promises15.mkdir)(options2.cacheDir, { recursive: true });
     await writeCache(cacheFile, cache);
     return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
   });
@@ -48610,10 +51453,10 @@ function validateLlmsSource(source) {
 }
 
 // src/index.ts
-var execFile6 = (0, import_node_util5.promisify)(import_node_child_process5.execFile);
+var execFile7 = (0, import_node_util5.promisify)(import_node_child_process6.execFile);
 async function inspectBoardBranch(root) {
   try {
-    const { stdout } = await execFile6("git", ["symbolic-ref", "--short", "HEAD"], {
+    const { stdout } = await execFile7("git", ["symbolic-ref", "--short", "HEAD"], {
       cwd: root,
       windowsHide: true
     });
@@ -48625,7 +51468,7 @@ async function inspectBoardBranch(root) {
 async function inspectBoardSync(root, branch) {
   const run = async (args) => {
     try {
-      const { stdout } = await execFile6("git", args, { cwd: root, windowsHide: true, timeout: 15e3 });
+      const { stdout } = await execFile7("git", args, { cwd: root, windowsHide: true, timeout: 15e3 });
       return stdout.trim() || null;
     } catch {
       return null;
@@ -48646,15 +51489,15 @@ async function inspectBoardSync(root, branch) {
     behind: Number.isFinite(behind) ? behind : 0
   };
 }
-function boardWorktreeRepair(boardSource, actualBranch, expectedBranch, path22) {
+function boardWorktreeRepair(boardSource, actualBranch, expectedBranch, path23) {
   if (boardSource === "default") {
-    return `This path is serving a synthesized default board; check ${path22} when tickets are expected.`;
+    return `This path is serving a synthesized default board; check ${path23} when tickets are expected.`;
   }
   if (actualBranch === expectedBranch) return "No repair is required.";
   if (actualBranch) {
     return `Board worktree is on "${actualBranch}", expected "${expectedBranch}". Restore the board worktree through Kanmer setup or board Git repair.`;
   }
-  return `Board branch inspection failed or HEAD is detached. Restore ${path22} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
+  return `Board branch inspection failed or HEAD is detached. Restore ${path23} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
 }
 var projectRoot;
 var rootSource;
@@ -48701,12 +51544,12 @@ async function legacyIdentity() {
   return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
 }
 async function resolveProject() {
-  const [record2, legacy] = await Promise.all([store.getProject(), legacyIdentity()]);
+  const [record3, legacy] = await Promise.all([store.getProject(), legacyIdentity()]);
   const project = {
-    project_id: record2?.project_id ?? null,
-    board_id: record2?.board_id ?? null,
-    identity: record2 ? "logical" : "unassigned",
-    origin: record2?.origin ?? null,
+    project_id: record3?.project_id ?? null,
+    board_id: record3?.board_id ?? null,
+    identity: record3 ? "logical" : "unassigned",
+    origin: record3?.origin ?? null,
     fingerprint: legacy.fingerprint
   };
   lastProject = responseProject(project);
@@ -48719,7 +51562,7 @@ async function resolveLocation() {
 async function resolveLocationFor(input) {
   let remoteOrigin = null;
   try {
-    const { stdout } = await execFile6("git", ["config", "--get", "remote.origin.url"], {
+    const { stdout } = await execFile7("git", ["config", "--get", "remote.origin.url"], {
       cwd: input.boardPath,
       windowsHide: true,
       timeout: 15e3
@@ -48933,7 +51776,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
   if (!rootResolved) resolveRoot();
   const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
   const dispatchPolicy = parseDispatchPolicy(process.env);
-  const dispatchLogRoot = process.env.KANMER_DISPATCH_LOG_DIR?.trim() || import_node_path9.default.join((0, import_node_os.homedir)(), ".kanmer", "dispatch");
+  const dispatchLogRoot = process.env.KANMER_DISPATCH_LOG_DIR?.trim() || import_node_path10.default.join((0, import_node_os.homedir)(), ".kanmer", "dispatch");
   const dispatchSupervisor = new DispatchSupervisor({
     logDir: dispatchLogRoot,
     maxActive: dispatchPolicy.maxActive,
@@ -49230,11 +52073,21 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "reconcile_ticket",
     {
       title: "Inspect a ticket's reconciliation state (read-only)",
-      description: "Read one ticket's board, claim, proof, recorded-workspace, local release-sidecar, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. This inspector is read-only: it never mutates the board, Git, workspace, checks or release state. Apply one still-current recommendation only through apply_reconciliation, which re-collects external evidence and rechecks the release epoch plus ticket revision before delegating to the existing mutation verbs. Claim state is current | expired | unclaimed with review_round/remediation_budget. Unavailable GitHub/CI/workspace/release facts are reported as inconclusive, never invented. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
-      inputSchema: { id: external_exports.string().describe("Existing ticket id") },
+      description: "Read one ticket's board, claim, proof, recorded-workspace, local release-sidecar, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. An optional complete step_packet is strictly parsed and digest-checked before Git, reconstructed against the current plan/evidence/checklist/project/ticket/batch/workspace, and adds a typed pass | fail | inconclusive step result. packet_id alone is never authority. This inspector is read-only: it never mutates the board, Git, workspace, checks or release state. Apply one still-current recommendation only through apply_reconciliation. Unavailable facts are inconclusive, never invented. The request cannot supply a path, command, executable or project root.",
+      inputSchema: {
+        id: external_exports.string().describe("Existing ticket id"),
+        step_packet: external_exports.record(external_exports.unknown()).optional().describe("Optional complete immutable step-packet/2 object returned by get_execution_packet; a packet id or partial object is refused")
+      },
       annotations: { readOnlyHint: true, openWorldHint: true }
     },
-    guard(async ({ id }) => ok(await reconcileTicket(store, id)))
+    guard(async ({ id, step_packet }) => {
+      if (step_packet === void 0) return ok(await reconcileTicket(store, id));
+      const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
+      return ok(await reconcileTicket(store, id, void 0, {
+        stepPacket: step_packet,
+        stepProject: { project_id: logical.project_id, board_id: logical.board_id, fingerprint: project.fingerprint }
+      }));
+    })
   );
   server.registerTool(
     "apply_reconciliation",
@@ -49312,16 +52165,17 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "get_execution_packet",
     {
       title: "Get an execution packet",
-      description: 'Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, incomplete or unsafe ownership evidence, occupancy by another actor, then \u2014 only when `step` is supplied \u2014 a plan that cannot be compiled into a bounded step. An occupied isolated ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A batch additionally requires a complete consistent manifest plus both the actual MCP request actor and the exact durable controller_run that declared it; copied owner labels or an exact resume path never authorize another controller run. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or "next") additionally compiles one versioned step packet limiting the worker to that step\'s allowed files and symbols, with its exact tests, commands, expected output and stop condition \u2014 and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.',
+      description: "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false GATE_BLOCKED result. A ready whole-ticket packet remains the setup route. Supplying step additionally compiles one immutable step-packet/2 from stable plan/evidence/checklist facts and a proven recorded Git workspace. Step 1 needs no predecessor; every later numeric step and next resolving beyond step 1 require the complete exact prior_step_packet. That prior packet is reconciled against actual Git changes and current constituent evidence, and FAIL or INCONCLUSIVE refuses the next packet. packet_id alone is never accepted. It never takes, moves, writes, dispatches, or creates a worktree.",
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
         resume: external_exports.object({ branch: external_exports.string(), worktree: external_exports.string() }).optional().describe("Exact recorded branch/worktree required to resume an occupied isolated ticket; it cannot transfer batch authority"),
         controller_run: external_exports.string().optional().describe("Durable controller run identity; required and exact-matched for a batch packet"),
-        step: external_exports.union([external_exports.number().int().positive(), external_exports.literal("next")]).optional().describe('Compile one bounded step packet: a 1-based ordered-step index, or "next" for the first unfinished step')
+        step: external_exports.union([external_exports.number().int().positive(), external_exports.literal("next")]).optional().describe('Compile one bounded step packet: a 1-based ordered-step index, or "next" for the first unfinished step'),
+        prior_step_packet: external_exports.record(external_exports.unknown()).optional().describe("Complete exact step-packet/2 returned for the immediately preceding step; required before any later step")
       },
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
-    guard(async ({ id, resume, controller_run, step }, extra) => {
+    guard(async ({ id, resume, controller_run, step, prior_step_packet }, extra) => {
       const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
       const packet = await getExecutionPacket({
         store,
@@ -49331,7 +52185,8 @@ function createKanmerMcpServer(policy = "local-stdio") {
         project,
         resume,
         logical,
-        step
+        step,
+        priorStepPacket: prior_step_packet
       });
       return ok({
         ...packet,
@@ -49703,7 +52558,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       return ok(
         await fetchLlmsTxt({
           url: source.id,
-          cacheDir: import_node_path9.default.join(store.paths.data, "sources"),
+          cacheDir: import_node_path10.default.join(store.paths.data, "sources"),
           force
         })
       );
@@ -50172,7 +53027,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
   function ensureSubscriptionWatcher() {
     if (subscriptionWatch) return;
     subscriptionWatch = watchKanmer(projectRoot, (_event, file) => {
-      const base = import_node_path9.default.basename(file);
+      const base = import_node_path10.default.basename(file);
       if (base === "board.yml" && subscriptions.has("kanmer://board")) {
         void server.server.sendResourceUpdated({ uri: "kanmer://board" });
       }
@@ -50248,7 +53103,7 @@ async function main() {
 `
   );
 }
-var invokedName = import_node_path9.default.basename(process.argv[1] ?? "");
+var invokedName = import_node_path10.default.basename(process.argv[1] ?? "");
 if (invokedName === "index.js" || invokedName === "kanmer-mcp.cjs") main().catch((err) => {
   const message = err instanceof Error ? err.message : String(err);
   const detail = message.startsWith("no Kanmer board found") || !(err instanceof Error) ? message : err.stack;

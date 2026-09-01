@@ -8,15 +8,37 @@ import {
   leaseConfig,
   leaseState,
   reconcileEvidence,
+  reconcileStepPacket,
+  revisionCountsDocument,
+  extractAtxSection,
+  parsePlan,
+  stepChecklistSnapshot,
+  stepPacketAuthority,
+  stepTicketAuthority,
+  verifyStepPacket,
   type KanmerStore,
   type LeaseRecoveryEvidence,
   type ReconciliationApplyResult,
   type ReconciliationEvidence,
   type ReconciliationFailureClass,
   type ReconciliationResult,
+  type StepPacketProject,
+  type StepReconciliationResult,
 } from "@kanmer/core";
 import { KanmerError } from "./errors.js";
-import { gitCommonDirectory, sameWorktreePath, type ResolvedPath } from "./execution-packet.js";
+import { EXECUTION_STOP_FALLBACK, gitCommonDirectory, sameWorktreePath, type ResolvedPath } from "./execution-packet.js";
+import { collectStepDocumentSnapshot, collectWorkspaceSnapshot, stepDocumentSnapshotAuthority, type StepGitRun } from "./step-reconciliation.js";
+export {
+  collectStepDocumentSnapshot,
+  collectWorkspaceSnapshot,
+  parseIndexFlagCensus,
+  parseRawHistoryZ,
+  parseNameStatusZ,
+  parsePorcelainV1Z,
+  physicalExecutableModeAgreesWithIndex,
+  readBoundedWorkspaceFile,
+  stepDocumentSnapshotAuthority,
+} from "./step-reconciliation.js";
 // This helper also serves the direct check-pr CLI tests. tsup bundles the
 // fixed-argv implementation into this production collector.
 // @ts-expect-error The executable source helper is JavaScript by design.
@@ -370,18 +392,160 @@ export function leaseRecoverySummary(evidence: ReconciliationEvidence): LeaseRec
  * pipeline document, a proof rewritten between this call and an apply changes
  * it, which is the direct fix for CORE-113's F-015.
  */
+export type TicketReconciliationResult =
+  | (ReconciliationResult & { step?: StepReconciliationResult })
+  | { evidence: null; findings: []; recommendation: null; step: StepReconciliationResult };
+
+// Only failures proving that the packet never had authority for this live
+// request may stop before workspace inspection. Worker-result failures are
+// deliberately absent: they still need the actual changed-path evidence so a
+// controller cannot issue another packet on a partial or deviating result.
+function preGitAuthorityFailure(findings: readonly { code: string }[]): boolean {
+  const codes = new Set(findings.map((finding) => finding.code));
+  return codes.has("STEP_IDENTITY_MISMATCH") ||
+    codes.has("STEP_PLAN_AUTHORITY_MISMATCH");
+}
+
 export async function reconcileTicket(
   store: KanmerStore,
   id: string,
   run?: ReconciliationRun,
-  options?: { now?: Date; resolveCommonDir?: CommonDirResolver },
-): Promise<ReconciliationResult> {
+  options?: {
+    now?: Date;
+    resolveCommonDir?: CommonDirResolver;
+    stepPacket?: unknown;
+    stepProject?: StepPacketProject;
+    stepRun?: StepGitRun;
+  },
+): Promise<TicketReconciliationResult> {
+  const packetVerification = options?.stepPacket === undefined ? null : verifyStepPacket(options.stepPacket);
+  const invalidStep = packetVerification && !packetVerification.ok
+    ? { status: "inconclusive" as const, packetId: null, changedPaths: [], findings: [{ code: "STEP_PACKET_INVALID", message: packetVerification.reason }] }
+    : null;
+  const stable = packetVerification?.ok ? await collectStepDocumentSnapshot(store, id) : null;
+  const currentDocuments = stable?.ok
+    ? stable.snapshot.inventory
+      .filter((document) => revisionCountsDocument(document.doc))
+      .map((document) => ({ path: document.doc, version: document.version! }))
+      .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0)
+    : [];
+  let preflight: StepReconciliationResult | null = null;
+  let planDoc: Awaited<ReturnType<KanmerStore["getDocsWithVersions"]>>[number] | undefined;
+  let checklistDoc: Awaited<ReturnType<KanmerStore["getDocsWithVersions"]>>[number] | undefined;
+  let parsed = parsePlan("");
+  let stopCondition = EXECUTION_STOP_FALLBACK;
+  let provenanceBlocksStepObservation = false;
+  if (packetVerification?.ok && stable?.ok) {
+    planDoc = stable.snapshot.fixed.find((doc) => doc.doc === "plan");
+    checklistDoc = stable.snapshot.fixed.find((doc) => doc.doc === "checklist");
+    parsed = parsePlan(planDoc?.content ?? "");
+    stopCondition = (planDoc?.content && extractAtxSection(planDoc.content, "Stop condition")) || EXECUTION_STOP_FALLBACK;
+    preflight = reconcileStepPacket(packetVerification.packet, {
+      project: options?.stepProject ?? packetVerification.packet.project,
+      ticket: { id: stable.snapshot.item.id, revision: stable.snapshot.revision, itemAuthority: stepTicketAuthority(stable.snapshot.item), documents: currentDocuments },
+      batch: stable.snapshot.batchId,
+      plan: {
+        path: "plan/plan.md",
+        version: planDoc?.version ?? null,
+        authority: stepPacketAuthority(parsed, packetVerification.packet.step.index, stopCondition),
+      },
+      checklist: stepChecklistSnapshot(parsed, checklistDoc?.content ?? null, "checklist/checklist.md", checklistDoc?.version ?? null),
+      evidence: stable.snapshot.evidence,
+      workspace: null,
+    });
+    // Packet-provenance failures are conclusive without Git or GitHub. Worker
+    // result failures (including checklist deviations) deliberately continue
+    // so actual workspace changes are still classified before any successor.
+    if (preGitAuthorityFailure(preflight.findings)) {
+      provenanceBlocksStepObservation = true;
+    }
+  }
   const result = reconcileEvidence(await collectReconciliationEvidence(store, id, run, options));
-  if (!result.recommendation) return result;
-  const revision = await store.getRevision(id);
+  let withRevision: ReconciliationResult = result;
+  if (result.recommendation) {
+    const revision = await store.getRevision(id);
+    withRevision = {
+      ...result,
+      recommendation: { ...result.recommendation, ticketId: id, revision: revision?.revision ?? null },
+    };
+  }
+  if (packetVerification === null) return withRevision;
+  if (!packetVerification.ok) return { ...withRevision, step: invalidStep! };
+  if (provenanceBlocksStepObservation) return { ...withRevision, step: preflight! };
+
+  if (!stable?.ok) {
+    const reason = stable && !stable.ok ? stable.reason : "the bounded ticket/document authority snapshot is unavailable";
+    return {
+      ...withRevision,
+      step: {
+        status: "inconclusive",
+        packetId: packetVerification.packet.packetId,
+        changedPaths: [],
+        findings: [{
+          code: "STEP_AUTHORITY_UNAVAILABLE",
+          message: `The bounded ticket, document, group and batch authority snapshot is unavailable. ${reason}`,
+        }],
+      },
+    };
+  }
+  const workspace = stable.snapshot.item.worktree && stable.snapshot.item.branch
+    ? await collectWorkspaceSnapshot({
+        repoRoot: store.paths.repoRoot,
+        boardRoot: store.paths.projectRoot,
+        worktree: stable.snapshot.item.worktree,
+        branch: stable.snapshot.item.branch,
+        baseline: packetVerification.packet.workspace,
+        ...(options?.stepRun ? { run: options.stepRun } : {}),
+      })
+    : null;
+  const confirmedStable = await collectStepDocumentSnapshot(store, id);
+  const confirmedWorkspace = stable.snapshot.item.worktree && stable.snapshot.item.branch
+    ? await collectWorkspaceSnapshot({
+        repoRoot: store.paths.repoRoot,
+        boardRoot: store.paths.projectRoot,
+        worktree: stable.snapshot.item.worktree,
+        branch: stable.snapshot.item.branch,
+        baseline: packetVerification.packet.workspace,
+        ...(options?.stepRun ? { run: options.stepRun } : {}),
+      })
+    : null;
+  if (!confirmedStable.ok ||
+      JSON.stringify(stepDocumentSnapshotAuthority(confirmedStable.snapshot)) !== JSON.stringify(stepDocumentSnapshotAuthority(stable.snapshot)) ||
+      JSON.stringify(confirmedWorkspace) !== JSON.stringify(workspace)) {
+    return {
+      ...withRevision,
+      step: {
+        status: "inconclusive",
+        packetId: packetVerification.packet.packetId,
+        changedPaths: [],
+        findings: [{ code: "STEP_SNAPSHOT_UNSTABLE", message: "Ticket, document, group, batch or workspace facts changed during the bounded composite sample." }],
+      },
+    };
+  }
+  const reconciledStep = reconcileStepPacket(packetVerification.packet, {
+    project: options?.stepProject ?? packetVerification.packet.project,
+    ticket: { id: stable.snapshot.item.id, revision: stable.snapshot.revision, itemAuthority: stepTicketAuthority(stable.snapshot.item), documents: currentDocuments },
+    batch: stable.snapshot.batchId,
+    plan: {
+      path: "plan/plan.md",
+      version: planDoc?.version ?? null,
+      authority: stepPacketAuthority(parsed, packetVerification.packet.step.index, stopCondition),
+    },
+    checklist: stepChecklistSnapshot(parsed, checklistDoc?.content ?? null, "checklist/checklist.md", checklistDoc?.version ?? null),
+    evidence: stable.snapshot.evidence,
+    workspace: workspace?.ok ? { snapshot: workspace.snapshot, headChanges: workspace.headChanges } : null,
+  });
+  const step = workspace && !workspace.ok
+    ? {
+        ...reconciledStep,
+        findings: reconciledStep.findings.map((finding) => finding.code === "STEP_WORKSPACE_UNAVAILABLE"
+          ? { ...finding, message: `${finding.message} ${workspace.reason}` }
+          : finding),
+      }
+    : reconciledStep;
   return {
-    ...result,
-    recommendation: { ...result.recommendation, ticketId: id, revision: revision?.revision ?? null },
+    ...withRevision,
+    step,
   };
 }
 

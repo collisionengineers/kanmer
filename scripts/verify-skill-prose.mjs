@@ -1521,6 +1521,200 @@ check(
   "inventory + target/claim ordering + dynamic blockers + retry budget + prepared schema transition",
 );
 
+console.log("\n=== constrained-step authority and reconciliation contract ===");
+const constrainedDocs = [agentsGuide, planSkill, executeSkill, autoSkill, toolReference];
+check(
+  "constrained plans pin canonical repository-relative path syntax",
+  /canonical repository-relative POSIX path/.test(planSkill) &&
+    /Benign declaration backslashes are\s*normalized to `\/`/.test(planSkill) &&
+    /absolute paths, `\.\.`, colon forms/.test(planSkill) &&
+    /Packet wire paths and observed Git paths must already be canonical and refuse backslashes/.test(agentsGuide) &&
+    /Packet wire paths and observed Git\s*paths must already be canonical and refuse backslashes/.test(toolReference) &&
+    /Expected-files glob may authorize a narrower step literal or pattern, but a\s*narrower Expected-files literal never authorizes a broader step glob/.test(planSkill) &&
+    /intersecting Do-not-modify patterns always win/.test(planSkill) &&
+    /Git-observed filenames retain exact\s*bytes/.test(toolReference),
+  "literal/segment-star/doublestar declarations stay directional and Git paths stay exact",
+);
+check(
+  "the controller retains the exact packet and treats packetId as non-authenticating",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /packetId` is\s*tamper-evident identity, not authentication/.test(body) &&
+    /worker-returned or reconstructed packet/.test(body),
+  ) &&
+    /Do not persist full packets or prompts in the automation run ledger/.test(agentsGuide) &&
+    /record packet-loss as `INCONCLUSIVE`, issue no successor/.test(agentsGuide) &&
+    /record\s*packet-loss as `INCONCLUSIVE`, dispatch no successor/.test(autoSkill),
+  "packet loss stops; no worker result or run-ledger prompt becomes authority",
+);
+check(
+  "packet-aware reconciliation derives actual Git changes and fails closed",
+  /bounded, double-sampled `git --no-optional-locks` HEAD\/index\/worktree evidence/.test(agentsGuide) &&
+    /Packet\/document bytes, entries and checklist lines plus the aggregate Git collection time are capped/.test(agentsGuide) &&
+    /caller-supplied changed-path summaries are not proof/.test(executeSkill) &&
+    /Missing, unreadable,\s*unstable, escaped, unconfined or unprovable linked, or hard-linked workspace\s+evidence is `INCONCLUSIVE`/.test(executeSkill) &&
+    /forbidden or undeclared path is FAIL/.test(executeSkill) &&
+    /only permitted ticket-document\s+change\s+is\s+the\s+selected\s+checklist\s+marker\s+from\s+unchecked\s+to\s+checked/.test(executeSkill),
+  "actual workspace, document and exact checklist evidence govern PASS/FAIL/INCONCLUSIVE",
+);
+check(
+  "constrained issuance requires a mapped unchecked checklist marker",
+  [agentsGuide, planSkill, executeSkill, autoSkill, toolReference].every((body) =>
+    /at least one mapped\s+unchecked checklist\s+marker/.test(body) &&
+    /checkbox label\s+begins with `Step N`/.test(body) &&
+    /explanatory\s+prose\s+mention\s+of\s+`step N`\s+never\s+maps\s+that\s+checkbox\s+to\s+a\s+step/.test(body),
+  ),
+  "whole-ticket setup remains available while auxiliary prose cannot acquire named-step authority",
+);
+check(
+  "structured plan steps use exact level-three headings and contiguous declared numbers",
+  constrainedDocs.every((body) =>
+    /exact level-three\s+`### Step N — <title>` heading is a structured\s+boundary/.test(body) &&
+    /declared numbers\s+start at 1 and remain contiguous/.test(body) &&
+    /nested\s+or\s+explanatory\s+headings\s+never\s+become steps/.test(body),
+  ),
+  "nested headings and contradictory declared numbering cannot become packet authority",
+);
+check(
+  "exact checklist bytes enforce one contiguous packet frontier",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /Exact\s+checklist\s+bytes\s+retain a leading UTF-8 BOM/.test(body) &&
+    /derive every\s+marker state from those bytes/.test(body) &&
+    /require\s+a\s+completed\s+prefix\s+and\s+unfinished\s+selected\s+step/.test(body) &&
+    /refuse\s+any\s+checked\s+successor\s+marker/.test(body),
+  ),
+  "BOM bytes, content-derived marker states and the unchecked successor frontier stay authoritative",
+);
+check(
+  "path matching and checklist bytes fail closed at explicit bounds",
+  /Path matching is iterative and explicitly bounded\.[\s\S]{0,220}exhaustion is `INCONCLUSIVE`/.test(agentsGuide) &&
+    /path matcher is iterative and\s*explicitly bounded;[\s\S]{0,220}Exhaustion is `INCONCLUSIVE`/.test(executeSkill) &&
+    /path-match budget[\s\S]{0,220}exhaustion is `INCONCLUSIVE`/.test(autoSkill) &&
+    /Iterative path matching has its own aggregate work budget; exhaustion is\s*reported as `INCONCLUSIVE`/.test(toolReference) &&
+    [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+      /CRLF\/CR\/LF terminator/.test(body) && /final-newline/.test(body),
+    ),
+  "matcher exhaustion never authorizes and newline normalization is not a checklist-only transition",
+);
+check(
+  "packet issuance bounds one canonical group census before group I/O",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /lexical, de-duplicated group census/.test(body) &&
+    /counted\s+ticket\s+documents\s+plus\s+unique\s+group\s+ids\s+are\s+capped\s+at\s+256\s+before\s+any\s+group\s+or\s+context\s+read/i.test(body) &&
+    /missing or conflicting\s+resolved identity refuses/i.test(body),
+  ),
+  "whole-ticket and constrained paths share one pre-I/O unique-group authority bound",
+);
+check(
+  "packet issuance binds a metadata-first capped board snapshot",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /canonical\s+(?:document\/group\s+)?metadata\s+census/.test(body) &&
+    /per-file\s+and\s+aggregate\s+byte\s+bounds?/.test(body) &&
+    /identity-bound\s+capped\s+handles/i.test(body) &&
+    /replacement,\s+growth,\s+symlink,\s+special-file\s+or\s+hard-link\s+evidence\s+refuses/i.test(body) &&
+    /physical\s+confinement\s+is\s+anchored\s+at\s+the\s+configured\s+project\s+root[\s\S]*?symlink\s+or\s+junction[\s\S]*?refuses/i.test(body) &&
+    /scratch\s+and\s+reference\s+(?:documents\s+)?(?:remain|stay)\s+revision-exempt/i.test(body),
+  ),
+  "ticket, document, group and context bytes are bounded and identity-bound before packet authority",
+);
+check(
+  "free-form symbol authority fails closed on actual changes",
+  constrainedDocs.every((body) =>
+    /allowedSymbols/.test(body) && /non-empty/.test(body) &&
+    /STEP_SYMBOL_SCOPE_INCONCLUSIVE/.test(body) &&
+    /forbidden\s+(?:or|and)\s+undeclared\s+(?:file\s+|path\s+)?(?:FAIL|failures?)(?:\s+still)?\s+takes?\s+precedence/i.test(body),
+  ) &&
+    [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+      /[Nn]o-change\s+(?:invents|does not invent)\s+no\s+symbol\s+finding/.test(body) &&
+      /empty\s+symbols\s+preserve\s+file-scoped\s+PASS/.test(body),
+    ),
+  "symbols remain descriptive until a language-aware mechanism can prove their exact changed ranges",
+);
+check(
+  "plan glob proof work shares one aggregate bounded context",
+  [agentsGuide, planSkill, toolReference].every((body) =>
+    /Plan-time glob containment and intersection/.test(body) &&
+    /alphabet construction, NFA closure\/transitions, caches and\s+queues/.test(body) &&
+    /PLAN_GLOB_COMPLEXITY/.test(body),
+  ),
+  "containment and forbidden-overlap proof cannot grow unbounded or silently misclassify exhaustion",
+);
+check(
+  "path matching charges parsing and each comparison to one shared budget",
+  [agentsGuide, planSkill, executeSkill, autoSkill, toolReference].every((body) =>
+    /budget\s+is\s+charged\s+before\s+raw\s+path\s+parsing\s+and\s+before\s+every\s+literal\s+or\s+wildcard\s+comparison/i.test(body),
+  ),
+  "literal and wildcard Cartesian work becomes INCONCLUSIVE at the shared bound",
+);
+check(
+  "dirty file bytes stay bound to one capped verified handle",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /read once through one capped handle/.test(body) &&
+    /pre-open,\s+handle-before\/after\s+and\s+post-path\s+device,\s+inode,\s+type,\s+mode,\s+link-count\s+and\s+size/.test(body) &&
+    /handle closes on every result/.test(body),
+  ),
+  "replacement, growth, mode/link drift and close failures cannot become PASS evidence",
+);
+check(
+  "workspace samples bind complete index and tracked-link authority",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /bounded\s+NUL\s+`git ls-files -v -s -z`\s+index\s+census/.test(body) &&
+    /binding flag, mode, object id, stage and\s+path/.test(body) &&
+    /assume-unchanged\s+or\s+skip-worktree\s+entries\s+refuse/.test(body) &&
+    /nonzero\s+stages\s+and\s+gitlinks\s+refuse\s+without\s+index\s+mutation/.test(body) &&
+    /census\s+drift(?:\s+between\s+samples)?\s+is\s+`INCONCLUSIVE`/.test(body) &&
+    /tracked\s+mode-`120000`\s+path\s+is\s+retained\s+only\s+when\s+its\s+checkout\s+representation\s+and\s+capped\s+target\s+bytes\s+are\s+identity-bound/.test(body) &&
+    /physical\s+target\s+is\s+an\s+indexed\s+tracked\s+regular\s+file\s+inside\s+the\s+worktree/.test(body) &&
+    /Tracked-link\s+target\s+bytes\s+retain\s+a\s+leading\s+UTF-8\s+BOM/.test(body) &&
+    /Ignored\s+or\s+untracked\s+link\s+targets\s+refuse/.test(body) &&
+    /external,\s+chained-external,\s+dangling,\s+unreadable,\s+unstable\s+or\s+over-budget\s+links\s+refuse/.test(body),
+  ),
+  "hidden flags, index drift, gitlinks and unconfined tracked links fail closed without index mutation",
+);
+check(
+  "packet workspace HEAD supports full SHA-1 and SHA-256 object ids",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /packet\s+workspace\s+HEAD\s+is\s+a\s+full\s+40-\s*or\s+64-character\s+Git\s+object\s+ID/.test(body),
+  ),
+  "workspace authority accepts only complete SHA-1 or SHA-256 object identities",
+);
+check(
+  "constrained reconciliation binds complete history, executable mode and unique ticket authority",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /bounded\s+complete\s+union\s+of\s+every\s+path\s+touched\s+by\s+every\s+intervening\s+commit/.test(body) &&
+    /including\s+paths\s+later\s+reverted/.test(body) &&
+    /non-ancestor\s+baseline\s+or\s+exhausted\s+history\s+is\s+`INCONCLUSIVE`/.test(body) &&
+    /history census validates both old and new modes from every\s+intervening\s+tree edge/.test(body) &&
+    /intervening\s+`120000`\s+symbolic-link\s+or\s+`160000`\s+Git-link\s+mode\s+refuses\s+even\s+if\s+a\s+later\s+commit\s+restores\s+a\s+regular\s+endpoint/.test(body) &&
+    /owner-executable\s+bit,\s+every\s+clean\s+tracked\s+regular\s+path\s+must\s+agree\s+with\s+its\s+indexed\s+`100644`\/`100755`\s+executable\s+class/.test(body) &&
+    /exactly\s+one\s+selected\s+ticket\s+endpoint\s+across\s+v2\s+areas\s+and\s+legacy\s+v1\s+storage/.test(body) &&
+    /duplicates\s+refuse\s+before\s+either\s+record\s+is\s+opened/.test(body),
+  ),
+  "reverted paths or link modes, hidden executable drift and duplicate ticket endpoints cannot become PASS authority",
+);
+check(
+  "constrained workers stop at the ignored and Git-metadata observation boundary",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /tracked,\s*staged,\s*unstaged\s+and\s+untracked\s+paths\s+plus\s+both\s+rename\s+endpoints/.test(body) &&
+    /Ignored\s+paths\s+and\s+`\.git`\s*\/\s*common-directory\s+metadata\s+are\s+outside/.test(body) &&
+    /deviation stop/.test(body) &&
+    /`INCONCLUSIVE`/.test(body),
+  ),
+  "ignored paths and Git metadata are forbidden worker scope, not silently detected writes",
+);
+check(
+  "successor steps require the complete exact prior PASS packet",
+  /complete exact prior packet as `prior_step_packet`/.test(agentsGuide) &&
+    /Only PASS may authorize the next step/.test(executeSkill) &&
+    /supplied whole as\s*`prior_step_packet`/.test(autoSkill) &&
+    /short id, worker-returned packet, reconstruction or numeric skip is refused/.test(toolReference),
+  "no id-only, reconstructed or skipped successor authority",
+);
+check(
+  "canonical docs describe only step-packet/2",
+  constrainedDocs.every((body) => /step-packet\/2/.test(body) && !/step-packet\/1/.test(body)),
+  "AGENTS, plan, execute, auto and tool reference all name schema 2",
+);
+
 // Two claims that must stay absent. The first is the role boundary that
 // FRD-034's "the controller merges after the final independent pass" is easily
 // misread into — the live run's own invariant is that the reviewer merges. The

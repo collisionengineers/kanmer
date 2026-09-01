@@ -108,11 +108,92 @@ uncommitted work.
 A controller driving a constrained worker adds `step` to the same call —
 `get_execution_packet id: <ID>, step: <n>` for a 1-based ordered step, or
 `step: "next"` for the first step the checklist has not ticked. The response
-gains a `step` block: a versioned packet naming the only files and symbols that
-step may touch, the files it must not, its exact tests, commands, expected
+gains a `step` block: a versioned packet naming the only files that step may
+touch and any descriptive symbols, the files it must not, its exact tests, commands, expected
 output, done condition, deviation stop, and a stop condition that ends the work
-after that one step. Execute exactly that step, then stop and report so the
+after that one step. Issuance requires at least one mapped unchecked checklist
+marker for the selected ordered step; a plan-only or unrelated checklist
+refuses normally while the whole-ticket setup packet remains available. Only
+an exact level-three `### Step N — <title>` heading is a structured boundary:
+declared numbers start at 1 and remain contiguous, while nested or explanatory
+headings never become steps. Named checklist authority exists only when the
+checkbox label begins with `Step N`; an explanatory prose mention of `step N`
+never maps that checkbox to a step. Both
+routes use one lexical, de-duplicated group census: counted ticket documents
+plus unique group ids are capped at 256 before any group or context read, and a
+missing or conflicting resolved identity refuses. Core binds the requested
+ticket record, completes a canonical metadata census and preflights per-file
+and aggregate byte bounds before opening ticket-document, group-record or
+context content. It reads those bytes through identity-bound capped handles;
+replacement, growth, symlink, special-file or hard-link evidence refuses.
+Physical confinement is anchored at the configured project root: a junction at
+that root is allowed, but any symlink or junction below it, including `.kanmer`
+and ticket, document or group directories, refuses.
+Scratch and reference documents stay revision-exempt but still consume the
+inventory and aggregate bounds.
+Execute exactly that step, then stop and report so the
 controller can reconcile the actual changes before another packet is issued.
+The controller, not the worker, retains the exact full `step-packet/2` object
+inside the live dispatch/reconciliation chain before dispatch. `packetId` is
+tamper-evident identity, not authentication: reconcile only the controller's
+retained object, never a worker-returned or reconstructed packet. Do not
+copy the full packet into an automation ledger. If a crash or reconnect loses
+that retained object, record packet-loss as `INCONCLUSIVE`, issue no successor,
+and do not rebuild authority from live state.
+
+At the stop, call `reconcile_ticket` with that exact retained `step_packet`.
+Kanmer derives the actual HEAD, index, worktree and pre-dirty deltas itself;
+caller-supplied changed-path summaries are not proof. Missing, unreadable,
+unstable, escaped, unconfined or unprovable linked, or hard-linked workspace
+evidence is `INCONCLUSIVE`; a
+forbidden or undeclared path is FAIL. The path matcher is iterative and
+explicitly bounded; its shared budget is charged before raw path parsing and
+before every literal or wildcard comparison. Exhaustion is `INCONCLUSIVE`,
+never authorization or an undeclared-path claim. Dirty regular-file bytes are
+read once through one capped handle whose pre-open, handle-before/after and
+post-path device, inode, type, mode, link-count and size facts must agree; the
+handle closes on every result. The only permitted ticket-document change is the
+selected checklist marker from unchecked to checked: every other raw line body,
+CRLF/CR/LF terminator, final-newline state, ticket authority field and counted
+document remains bound. Exact checklist bytes retain a leading UTF-8 BOM.
+Compilation and strict verification derive every marker state from those bytes,
+require a completed prefix and unfinished selected step, and refuse any checked
+successor marker.
+Free-form symbol names are not mechanically provable from Git paths. Any
+actual change while `allowedSymbols` is non-empty adds
+`STEP_SYMBOL_SCOPE_INCONCLUSIVE`; forbidden or undeclared path FAIL takes
+precedence. No-change invents no symbol finding, and empty symbols preserve
+file-scoped PASS.
+This Git evidence covers tracked, staged, unstaged and untracked paths plus both
+rename endpoints. Changed-path evidence also includes one bounded complete union
+of every path touched by every intervening commit, including paths later
+reverted; a non-ancestor baseline or exhausted history is `INCONCLUSIVE`.
+That history census validates both old and new modes from every intervening
+tree edge; any intervening `120000` symbolic-link or `160000` Git-link mode
+refuses even if a later commit restores a regular endpoint.
+A packet workspace HEAD is a full 40- or 64-character Git
+object ID. Every sample also hashes one bounded NUL
+`git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
+path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
+gitlinks refuse without index mutation; census drift between samples is
+`INCONCLUSIVE`. On filesystems that expose the owner-executable bit, every clean
+tracked regular path must agree with its indexed `100644`/`100755` executable
+class; disagreement refuses. A tracked mode-`120000` path is retained only when its checkout
+representation and capped target bytes are identity-bound and its physical
+target is an indexed tracked regular file inside the worktree; external,
+chained-external, dangling, unreadable, unstable or over-budget links refuse.
+Tracked-link target bytes retain a leading UTF-8 BOM.
+Ignored or untracked link targets refuse.
+Execution authority requires exactly one selected ticket endpoint across v2
+areas and legacy v1 storage; duplicates refuse before either record is opened.
+Ignored paths and `.git` / common-directory metadata are outside it; a
+constrained worker must never mutate them. Any need or attempt is a deviation
+stop and the controller records `INCONCLUSIVE` — an absent path is not proof
+that an ignored or Git-metadata write was safe.
+Only PASS may authorize the next step, by sending the complete exact prior
+packet as `prior_step_packet`; a short packet id, reconstruction, numeric skip
+or worker summary cannot advance. Write `post-implementation-report` only
+after the final step has reconciled PASS.
 A plan that cannot be compiled into a bounded step is a normal
 `ready:false, code:"GATE_BLOCKED"` refusal carrying a `validation` report; hand
 it back to `kanmer-plan` rather than guessing the missing fields. Without
@@ -338,7 +419,8 @@ but never creates a second one.
 ## Work only the packet
 
 - Work only the packet's `files` scope — and, when a `step` block is present,
-  only that step's `allowedFiles` and `allowedSymbols`. Do not absorb another
+  only that step's `allowedFiles`; treat any `allowedSymbols` as a narrower
+  descriptive boundary that reconciliation will fail closed on. Do not absorb another
   ticket, repair unrelated failures, or redesign the workflow.
 - Tick checklist boxes with `set_ticket_doc` using the version returned by the
   packet/read. Use `append_scratch` for running notes only; preserve failed

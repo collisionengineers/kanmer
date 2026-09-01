@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { KanmerStore, removeTreeWithRetry } from "../../core/dist/index.js";
+import {
+  KanmerStore,
+  compileStepPacket,
+  parsePlan,
+  removeTreeWithRetry,
+  STEP_PACKET_LIMITS,
+  stepPacketDigest,
+  stepTicketAuthority,
+} from "../../core/dist/index.js";
 import {
   GH_MAX_BUFFER,
   GH_TIMEOUT_MS,
@@ -12,6 +21,7 @@ import {
   GIT_TIMEOUT_MS,
   applyReconciliation,
   collectReconciliationEvidence,
+  collectWorkspaceSnapshot,
   leaseRecoverySummary,
   proofEvidence,
   pullRequestEvidence,
@@ -107,6 +117,158 @@ async function fixtureStore(t, prefix) {
   const store = new KanmerStore(root);
   await store.init();
   return { root, store };
+}
+
+async function directoryDigest(root) {
+  const hash = createHash("sha256");
+  async function visit(directory) {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      const absolute = path.join(directory, entry.name);
+      const relative = path.relative(root, absolute).replaceAll("\\", "/");
+      hash.update(relative);
+      if (entry.isDirectory()) await visit(absolute);
+      else hash.update(await fs.readFile(absolute));
+    }
+  }
+  await visit(root);
+  return hash.digest("hex");
+}
+
+const STEP_PLAN = (filesVersion) => `# Plan — TICK-001
+
+## Objective
+Change one bounded file.
+
+## Starting state
+Evidence: \`files/files.md\`@\`${filesVersion}\`.
+
+## Governing docs
+Meets \`docs/functional/frd/FRD-033.md\`.
+
+## Required changes
+Change \`tracked.txt\`.
+
+## Expected files
+| Action | Repo-root-relative path | Responsibility |
+|---|---|---|
+| Modify | \`tracked.txt\` | bounded change |
+| Modify | \`docs/note.md\` | second step |
+
+## Do not modify
+- \`forbidden/**\`
+
+## Constraints
+Stay inside the packet.
+
+## Ordered steps
+
+### Step 1 — Change the file
+- Preconditions: baseline exists.
+- Files: \`tracked.txt\`
+- Change: change the bounded file.
+- Preserved behaviour: everything else.
+- Forbidden: no other path.
+- Negative cases: forbidden path.
+- Tests: \`tracked.txt\`
+- Commands: \`git diff --check\`
+- Expected output: clean.
+- Done when: the file changed.
+- Deviation stop: stop on another path.
+
+### Step 2 — Write the note
+- Preconditions: step 1 passed.
+- Files: \`docs/note.md\`
+- Change: write the note.
+- Preserved behaviour: runtime.
+- Forbidden: no runtime edits.
+- Negative cases: runtime change.
+- Tests: \`docs/note.md\`
+- Commands: \`git diff --check\`
+- Expected output: clean.
+- Done when: the note exists.
+- Deviation stop: stop on runtime change.
+
+## Acceptance checks
+- \`git diff --check\`
+
+## Commands
+- \`git diff --check\`
+
+## Failure and deviation rules
+Stop on an undeclared path.
+
+## Stop condition
+Stop after the selected step.
+`;
+
+async function stepFixture(t, { batch = false } = {}) {
+  const { root, store } = await fixtureStore(t, "kanmer-step-ticket-");
+  execFileSync("git", ["-C", root, "init", "-b", "main"], { stdio: "ignore" });
+  execFileSync("git", ["-C", root, "config", "user.email", "fixture@example.invalid"]);
+  execFileSync("git", ["-C", root, "config", "user.name", "Fixture"]);
+  await fs.writeFile(path.join(root, "tracked.txt"), "base\n");
+  execFileSync("git", ["-C", root, "add", "tracked.txt"]);
+  execFileSync("git", ["-C", root, "commit", "-m", "base"], { stdio: "ignore" });
+  const worktree = path.join(root, ".worktrees", "ticket");
+  execFileSync("git", ["-C", root, "worktree", "add", "-b", "ticket-step", worktree, "main"], { stdio: "ignore" });
+  const ticket = await store.createItem({ type: "ticket", title: "Constrained", profile: "custom", requires: {}, status: "implementing" });
+  const batchMember = batch
+    ? await store.createItem({ type: "ticket", title: "Batch sibling", profile: "custom", requires: {}, status: "implementing" })
+    : null;
+  await store.setDoc(ticket.id, "files", "# Files\n");
+  const files = await store.getDocWithVersion(ticket.id, "files");
+  const planText = STEP_PLAN(files.version);
+  const checklistText = "- [ ] Step 1 — change the file\n- [ ] Step 2 — write the note\n";
+  await store.setDoc(ticket.id, "plan", planText);
+  await store.setDoc(ticket.id, "checklist", checklistText);
+  await store.takeTicket(ticket.id, {
+    branch: "ticket-step",
+    worktree: ".worktrees/ticket",
+    assignee: "worker",
+    ...(batch
+      ? {
+          controllerRun: "batch-controller-run",
+          batch: "batch-step",
+          batchMembers: [ticket.id, batchMember.id],
+        }
+      : {}),
+  });
+  const [plan, checklist, revision, baseline, currentTicket, inventory] = await Promise.all([
+    store.getDocWithVersion(ticket.id, "plan"),
+    store.getDocWithVersion(ticket.id, "checklist"),
+    store.getRevision(ticket.id),
+    collectWorkspaceSnapshot({ repoRoot: root, boardRoot: root, worktree: ".worktrees/ticket", branch: "ticket-step" }),
+    store.getItem(ticket.id),
+    store.listTicketDocsWithVersions(ticket.id),
+  ]);
+  assert.equal(baseline.ok, true);
+  if (!baseline.ok) throw new Error(baseline.reason);
+  const project = { project_id: null, board_id: null, fingerprint: "fixture-project" };
+  const compiled = compileStepPacket({
+    plan: parsePlan(planText),
+    planPath: "plan/plan.md",
+    planVersion: plan.version,
+    project,
+    ticket: {
+      id: ticket.id,
+      revision: revision.revision,
+      itemAuthority: stepTicketAuthority(currentTicket),
+      documents: inventory.map((document) => ({ path: document.doc, version: document.version }))
+        .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0),
+    },
+    batch: batch ? "batch-step" : null,
+    workspace: baseline.snapshot,
+    evidence: [{ layer: "ticket", group: null, path: "files/files.md", version: files.version }],
+    checklist: checklistText,
+    checklistPath: "checklist/checklist.md",
+    checklistVersion: checklist.version,
+    select: 1,
+    stopCondition: "Stop after the selected step.",
+  });
+  assert.equal(compiled.ok, true);
+  if (!compiled.ok) throw new Error(compiled.reason);
+  return { root, store, ticket, worktree, packet: compiled.packet, project, checklistText };
 }
 
 test("proof and required-check decoders reject incomplete or unrelated evidence", () => {
@@ -796,4 +958,171 @@ test("the store dispatcher re-asserts every action's precondition before it reac
   );
   assert.equal((await store.getItem(ticket.id)).status, "review");
   assert.equal(await store.getDoc(ticket.id, "scratch/execution"), null);
+});
+
+test("packet-aware reconcile_ticket classifies actual allowed changes and writes no board byte", async (t) => {
+  const fixture = await stepFixture(t);
+  await fs.writeFile(path.join(fixture.worktree, "tracked.txt"), "worker change\n");
+  await fixture.store.setDoc(fixture.ticket.id, "checklist", fixture.checklistText.replace("[ ] Step 1", "[x] Step 1"));
+  await fixture.store.setDoc(fixture.ticket.id, "scratch/worker-log", "heartbeat note");
+  const referenceInput = path.join(fixture.root, "reference-input.txt");
+  await fs.writeFile(referenceInput, "operator reference\n");
+  await fixture.store.addReference(fixture.ticket.id, referenceInput, "operator.txt");
+  const before = await directoryDigest(path.join(fixture.root, ".kanmer"));
+  const run = async (command, args, options) => ({ stdout: execFileSync(command, args, { cwd: options.cwd, encoding: "utf8", windowsHide: true }) });
+  const result = await reconcileTicket(fixture.store, fixture.ticket.id, run, { stepPacket: fixture.packet, stepProject: fixture.project });
+  assert.equal(result.step.status, "pass");
+  assert.deepEqual(result.step.changedPaths, [{ path: "tracked.txt", classification: "allowed" }]);
+  assert.equal(await directoryDigest(path.join(fixture.root, ".kanmer")), before);
+});
+
+test("packet-aware reconcile_ticket fails a forbidden path committed and later reverted", async (t) => {
+  const fixture = await stepFixture(t);
+  await fs.mkdir(path.join(fixture.worktree, "forbidden"));
+  await fs.writeFile(path.join(fixture.worktree, "forbidden", "transient.txt"), "forbidden history\n");
+  execFileSync("git", ["-C", fixture.worktree, "add", "forbidden/transient.txt"]);
+  execFileSync("git", ["-C", fixture.worktree, "commit", "-m", "touch forbidden path"], { stdio: "ignore" });
+  await fs.rm(path.join(fixture.worktree, "forbidden", "transient.txt"));
+  execFileSync("git", ["-C", fixture.worktree, "add", "-u", "forbidden/transient.txt"]);
+  execFileSync("git", ["-C", fixture.worktree, "commit", "-m", "restore endpoint"], { stdio: "ignore" });
+  assert.equal(execFileSync("git", ["-C", fixture.worktree, "diff", "--name-only", fixture.packet.workspace.head, "HEAD"], { encoding: "utf8" }).trim(), "");
+  await fixture.store.setDoc(fixture.ticket.id, "checklist", fixture.checklistText.replace("[ ] Step 1", "[x] Step 1"));
+
+  const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, {
+    stepPacket: fixture.packet,
+    stepProject: fixture.project,
+  });
+  assert.equal(result.step.status, "fail");
+  assert.ok(result.step.findings.some((finding) => finding.code === "STEP_PATH_FORBIDDEN" && finding.path === "forbidden/transient.txt"));
+  assert.deepEqual(result.step.changedPaths, [{ path: "forbidden/transient.txt", classification: "forbidden" }]);
+});
+
+for (const [label, checklist, expectedCode] of [
+  ["an unticked selected step", (text) => text, "STEP_NOT_COMPLETED"],
+  ["a later step marker", (text) => text.replace("[ ] Step 2", "[x] Step 2"), "STEP_LATER_ADVANCED"],
+  ["a checklist text deviation", (text) => `${text}worker-added text\n`, "STEP_CHECKLIST_CONTENT_CHANGED"],
+]) {
+  test(`${label} does not suppress actual workspace classification`, async (t) => {
+    const fixture = await stepFixture(t);
+    await fs.writeFile(path.join(fixture.worktree, "undeclared.txt"), "worker deviation\n");
+    const changedChecklist = checklist(fixture.checklistText);
+    if (changedChecklist !== fixture.checklistText) {
+      await fixture.store.setDoc(fixture.ticket.id, "checklist", changedChecklist);
+    }
+    const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, { stepPacket: fixture.packet, stepProject: fixture.project });
+    assert.equal(result.step.status, "fail");
+    assert.ok(result.step.findings.some((finding) => finding.code === expectedCode));
+    assert.ok(result.step.findings.some((finding) => finding.code === "STEP_PATH_UNDECLARED" && finding.path === "undeclared.txt"));
+    assert.deepEqual(result.step.changedPaths, [{ path: "undeclared.txt", classification: "undeclared" }]);
+  });
+}
+
+for (const [label, mutate, expectedCode] of [
+  ["plan", async (fixture) => {
+    const current = await fixture.store.getDoc(fixture.ticket.id, "plan");
+    await fixture.store.setDoc(fixture.ticket.id, "plan", current.replace("Stay inside the packet.", "Stay inside the exact packet."));
+  }, "STEP_PLAN_STALE"],
+  ["evidence", async (fixture) => {
+    await fixture.store.setDoc(fixture.ticket.id, "files", "# Files\n\npost-issuance evidence drift\n");
+  }, "STEP_EVIDENCE_STALE"],
+  ["ticket", async (fixture) => {
+    await fixture.store.updateItem(fixture.ticket.id, { body: "post-issuance ticket authority drift" });
+  }, "STEP_TICKET_AUTHORITY_STALE"],
+]) {
+  test(`post-issuance ${label} drift retains undeclared workspace evidence`, async (t) => {
+    const fixture = await stepFixture(t);
+    await fs.writeFile(path.join(fixture.worktree, "undeclared.txt"), "worker deviation\n");
+    await mutate(fixture);
+    const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, {
+      stepPacket: fixture.packet,
+      stepProject: fixture.project,
+    });
+    assert.equal(result.step.status, "fail");
+    assert.ok(result.step.findings.some((finding) => finding.code === expectedCode));
+    assert.ok(result.step.findings.some((finding) => finding.code === "STEP_PATH_UNDECLARED" && finding.path === "undeclared.txt"));
+    assert.deepEqual(result.step.changedPaths, [{ path: "undeclared.txt", classification: "undeclared" }]);
+  });
+}
+
+test("unavailable batched authority remains explicitly inconclusive", async (t) => {
+  const fixture = await stepFixture(t, { batch: true });
+  await fixture.store.setDoc(fixture.ticket.id, "proof", "x".repeat(STEP_PACKET_LIMITS.maxStringBytes + 1));
+  const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, {
+    stepPacket: fixture.packet,
+    stepProject: fixture.project,
+  });
+  assert.equal(result.step.status, "inconclusive");
+  assert.equal(result.step.packetId, fixture.packet.packetId);
+  assert.deepEqual(result.step.changedPaths, []);
+  assert.ok(result.step.findings.some((finding) => finding.code === "STEP_AUTHORITY_UNAVAILABLE"));
+  assert.equal(result.step.findings.some((finding) => finding.code === "STEP_IDENTITY_MISMATCH"), false);
+});
+
+for (const countedDocument of ["proof", "open-questions", "post-implementation-report"]) {
+  test(`an exact checklist tick does not mask a concurrent ${countedDocument} rewrite`, async (t) => {
+    const fixture = await stepFixture(t);
+    await fs.writeFile(path.join(fixture.worktree, "tracked.txt"), "worker change\n");
+    await fixture.store.setDoc(fixture.ticket.id, "checklist", fixture.checklistText.replace("[ ] Step 1", "[x] Step 1"));
+    await fixture.store.setDoc(fixture.ticket.id, countedDocument, "unrelated counted document change");
+    const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, { stepPacket: fixture.packet, stepProject: fixture.project });
+    assert.equal(result.step.status, "fail");
+    assert.ok(result.step.findings.some((finding) => finding.code === "STEP_TICKET_DOCUMENTS_STALE"));
+  });
+}
+
+test("invalid and recomputed-broader packets skip step Git while ordinary evidence still collects", async (t) => {
+  const fixture = await stepFixture(t);
+  let stepCalls = 0;
+  const stepRun = async () => { stepCalls += 1; throw new Error("step Git must not run"); };
+  const ordinaryRun = async (command, args, options) => ({ stdout: execFileSync(command, args, { cwd: options.cwd, encoding: "utf8", windowsHide: true }) });
+  const invalid = await reconcileTicket(fixture.store, fixture.ticket.id, ordinaryRun, { stepPacket: { packetVersion: "step-packet/1" }, stepProject: fixture.project, stepRun });
+  assert.equal(invalid.step.status, "inconclusive");
+  assert.notEqual(invalid.evidence, null);
+  assert.equal(stepCalls, 0);
+
+  const { packetId: _ignored, ...body } = fixture.packet;
+  const broaderBody = { ...body, allowedFiles: [...body.allowedFiles, "README.md"] };
+  const broader = { ...broaderBody, packetId: stepPacketDigest(broaderBody) };
+  const forged = await reconcileTicket(fixture.store, fixture.ticket.id, ordinaryRun, { stepPacket: broader, stepProject: fixture.project, stepRun });
+  assert.equal(forged.step.status, "fail");
+  assert.ok(forged.step.findings.some((finding) => finding.code === "STEP_PLAN_AUTHORITY_MISMATCH"));
+  assert.notEqual(forged.evidence, null);
+  assert.equal(stepCalls, 0);
+});
+
+test("invalid and stale step packets append to a real ordinary recommendation", async (t) => {
+  const fixture = await stepFixture(t);
+  const ordinary = await fixture.store.createItem({ type: "ticket", title: "Ordinary review", profile: "custom", requires: {}, status: "review" });
+  let stepCalls = 0;
+  const stepRun = async () => { stepCalls += 1; throw new Error("step Git must not run"); };
+
+  const invalid = await reconcileTicket(fixture.store, ordinary.id, undefined, {
+    stepPacket: { packetVersion: "step-packet/1" },
+    stepProject: fixture.project,
+    stepRun,
+  });
+  assert.equal(invalid.recommendation.action, "MOVE_TO_IMPLEMENTING");
+  assert.notEqual(invalid.evidence, null);
+  assert.equal(invalid.step.status, "inconclusive");
+  assert.equal(stepCalls, 0);
+
+  const stale = await reconcileTicket(fixture.store, ordinary.id, undefined, {
+    stepPacket: fixture.packet,
+    stepProject: fixture.project,
+    stepRun,
+  });
+  assert.equal(stale.recommendation.action, "MOVE_TO_IMPLEMENTING");
+  assert.notEqual(stale.evidence, null);
+  assert.equal(stale.step.status, "fail");
+  assert.ok(stale.step.findings.some((finding) => finding.code === "STEP_IDENTITY_MISMATCH"));
+  assert.equal(stepCalls, 0);
+});
+
+test("missing workspace evidence is inconclusive rather than PASS", async (t) => {
+  const fixture = await stepFixture(t);
+  await fixture.store.setDoc(fixture.ticket.id, "checklist", fixture.checklistText.replace("[ ] Step 1", "[x] Step 1"));
+  await fs.rename(fixture.worktree, `${fixture.worktree}.missing`);
+  const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, { stepPacket: fixture.packet, stepProject: fixture.project });
+  assert.equal(result.step.status, "inconclusive");
+  assert.ok(result.step.findings.some((finding) => finding.code === "STEP_WORKSPACE_UNAVAILABLE"));
 });

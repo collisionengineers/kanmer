@@ -465,6 +465,39 @@ reads that command's log itself before returning — it is not notified while
 stopped, and a worker that ends its turn "waiting for a notification" is a
 failed worker, reconciled from live state like any other.
 
+For a constrained step, the trusted controller retains the exact full
+`step-packet/2` object inside the live dispatch/reconciliation chain before
+dispatch and later supplies that same object to `reconcile_ticket
+step_packet:`. Its `packetId` is tamper-evident identity, not authentication;
+a worker-returned or reconstructed packet is never authority. The run
+ledger records the packet id and compact outcome, not the full packet or
+prompt. If a crash or reconnect loses the controller-retained object, record
+packet-loss as `INCONCLUSIVE`, dispatch no successor, and never rebuild it from
+worker text or current board/Git state. A successor step is issued only after
+the exact retained predecessor reconciles PASS and is supplied whole as
+`prior_step_packet`. Initial issuance likewise requires at least one mapped
+unchecked checklist marker for the selected ordered step; a plan-only or
+unrelated checklist cannot become worker authority. Only an exact level-three
+`### Step N — <title>` heading is a structured boundary: declared numbers
+start at 1 and remain contiguous, while nested or explanatory headings never
+become steps. Named checklist authority exists only when the checkbox label
+begins with `Step N`; an explanatory prose mention of `step N` never maps that
+checkbox to a step. Exact checklist bytes
+retain a leading UTF-8 BOM. Compilation and strict verification derive every
+marker state from those bytes, require a completed prefix and unfinished
+selected step, and refuse any checked successor marker. Whole-ticket and
+constrained issuance share one lexical, de-duplicated group census: counted
+ticket documents plus unique group ids are capped at 256 before any group or
+context read, and missing or conflicting resolved identity refuses. Core binds
+the requested ticket record, completes the canonical metadata census and
+preflights per-file and aggregate byte bounds before opening ticket-document,
+group-record or context content. Replacement, growth, symlink, special-file or
+hard-link evidence refuses through identity-bound capped handles; scratch and
+reference stay revision-exempt but consume inventory and aggregate bounds.
+Physical confinement is anchored at the configured project root: a junction at
+that root is allowed, but any symlink or junction below it, including `.kanmer`
+and ticket, document or group directories, refuses.
+
 On every result or timeout, the controller:
 
 1. stops conflicting dispatch while the result is uncertain;
@@ -472,11 +505,51 @@ On every result or timeout, the controller:
    Git/PR state where applicable, and `get_doc_gates`;
 3. compares the live dependency state with the frozen snapshot and applies the
    post-result revalidation and downstream-failure propagation above;
-4. compares actual mutations, stage, gate, checklist, branch/worktree, commit,
-   PR and error evidence with the approved scope;
+4. calls packet-aware `reconcile_ticket` when constrained, then compares its
+   bounded actual HEAD/index/worktree deltas, stage, gate, exact checklist,
+   counted ticket documents, branch/worktree, commit, PR and error evidence
+   with the approved scope; missing or unreadable evidence is `INCONCLUSIVE`,
+   while undeclared or forbidden changes are FAIL. The shared iterative
+   path-match budget is charged before raw path parsing and before every literal
+   or wildcard comparison; exhaustion is `INCONCLUSIVE`. Dirty regular-file
+   bytes are read once through one capped handle whose pre-open,
+   handle-before/after and post-path device, inode, type, mode, link-count and
+   size facts must agree, and the handle closes on every result. Checklist
+   reconciliation preserves every raw CRLF/CR/LF terminator and final-newline
+   state outside the selected marker;
+   any actual change with non-empty free-form `allowedSymbols` adds
+   `STEP_SYMBOL_SCOPE_INCONCLUSIVE`; forbidden or undeclared path FAIL takes
+   precedence, no-change invents no symbol finding, and empty symbols preserve
+   file-scoped PASS;
 5. records the worker result, reconciliation, discrepancy, and one next action
    in the ledger/event log; and
 6. writes and reads back the run record before selecting another action.
+
+The constrained Git census covers tracked, staged, unstaged and untracked
+paths plus both rename endpoints. Changed-path evidence also includes one bounded
+complete union of every path touched by every intervening commit, including
+paths later reverted; a non-ancestor baseline or exhausted history is
+`INCONCLUSIVE`. That history census validates both old and new modes from every
+intervening tree edge; any intervening `120000` symbolic-link or `160000`
+Git-link mode refuses even if a later commit restores a regular endpoint. A packet workspace HEAD is a full 40- or
+64-character Git object ID. Every sample also hashes one bounded NUL
+`git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
+path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
+gitlinks refuse without index mutation; census drift is `INCONCLUSIVE`. On
+filesystems that expose the owner-executable bit, every clean tracked regular
+path must agree with its indexed `100644`/`100755` executable class;
+disagreement refuses. A tracked
+mode-`120000` path is retained only when its checkout representation and capped
+target bytes are identity-bound and its physical target is an indexed tracked
+regular file inside the worktree; external, chained-external, dangling,
+unreadable, unstable or over-budget links refuse.
+Tracked-link target bytes retain a leading UTF-8 BOM.
+Ignored or untracked link targets refuse.
+Execution authority requires exactly one selected ticket endpoint across v2
+areas and legacy v1 storage; duplicates refuse before either record is opened.
+Ignored paths and `.git` / common-directory metadata are outside it and
+constrained workers must never mutate them. Any need or attempt is a deviation stop
+recorded as `INCONCLUSIVE`; absence from the census never authorizes such a write.
 
 After anything merges to the run's recorded `delivery_target`, lanes still in
 flight rebase onto that same target before opening a PR, with absolute paths and

@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { removeTreeWithRetry } from "./io.js";
-import { KanmerStore } from "./store.js";
+import { contentVersion, removeTreeWithRetry } from "./io.js";
+import { EXECUTION_AUTHORITY_LIMITS, KanmerStore } from "./store.js";
 import { STAGE_IDS } from "./stages.js";
 import { lastStageId } from "./board.js";
 import { getLinkGraph, linkItems } from "./links.js";
@@ -12,6 +13,23 @@ import { assertNotBoardWorktree } from "./worktree-guard.js";
 
 let root: string;
 let store: KanmerStore;
+
+async function executionBatch(label: string) {
+  const a = await store.createItem({ type: "ticket", title: `${label} A`, profile: "custom", requires: {}, status: "implementing" });
+  const b = await store.createItem({ type: "ticket", title: `${label} B`, profile: "custom", requires: {}, status: "implementing" });
+  await store.takeTicket(a.id, {
+    branch: label,
+    worktree: `.worktrees/${label}`,
+    assignee: "controller",
+    controllerRun: `${label}-run`,
+    batch: label,
+    batchMembers: [a.id, b.id],
+  });
+  const transactions = path.join(root, ".kanmer", "batches", "transactions");
+  const manifest = path.join(transactions, (await fs.readdir(transactions)).find((name) => name.endsWith(".json"))!);
+  const ticketFile = (id: string) => path.join(root, ".kanmer", "areas", "_none", id, `${id}.md`);
+  return { a, b, manifest, transactions, ticketFile };
+}
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-test-"));
@@ -627,6 +645,615 @@ describe("format v2", () => {
     expect(activityAfter).toBe(activityBefore);
   });
 
+  it("collects one identity-bound execution authority snapshot and keeps exempt documents out of revision", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Authority" });
+    await store.setDoc(ticket.id, "research", "bounded research");
+    const group = await store.createGroup("epic", "Shared authority", "Group body");
+    await store.setGroupDoc(group.id, "context.md", "Shared context");
+    await store.updateItem(ticket.id, { groups: [group.id, group.id] });
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const scratchDir = path.join(ticketDir, "scratch");
+    const referenceDir = path.join(ticketDir, "reference");
+    await fs.mkdir(scratchDir, { recursive: true });
+    await fs.mkdir(referenceDir, { recursive: true });
+    await Promise.all(Array.from({ length: 300 }, (_, index) =>
+      fs.writeFile(
+        path.join(index % 2 === 0 ? scratchDir : referenceDir, `exempt-${String(index).padStart(3, "0")}.md`),
+        `exempt ${index}\n`,
+        "utf8",
+      )
+    ));
+
+    const first = await store.getExecutionAuthoritySnapshot(ticket.id);
+    expect(first?.inventory).toHaveLength(301);
+    expect(first?.groups).toMatchObject([{
+      group: { id: group.id, title: "Shared authority" },
+      context: "Shared context\n",
+    }]);
+    expect(first?.revision?.documents).toBe(1);
+
+    await fs.writeFile(path.join(scratchDir, "exempt-000.md"), "changed scratch\n", "utf8");
+    const second = await store.getExecutionAuthoritySnapshot(ticket.id);
+    expect(second?.revision).toEqual(first?.revision);
+    expect(second?.inventory.find((doc) => doc.doc === "scratch/exempt-000.md")?.content).toBe("changed scratch\n");
+  });
+
+  it("refuses duplicate selected ticket endpoints before opening either authority record", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Unique authority", status: "implementing" });
+    const canonical = path.join(root, ".kanmer", "areas", "_none", ticket.id, `${ticket.id}.md`);
+    const duplicateDirectory = path.join(root, ".kanmer", "areas", "duplicate", ticket.id);
+    const duplicate = path.join(duplicateDirectory, `${ticket.id}.md`);
+    await fs.mkdir(duplicateDirectory, { recursive: true });
+    await fs.copyFile(canonical, duplicate);
+
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/duplicate|ambiguous.*endpoint/i);
+      expect(opened.filter((file) => file === path.resolve(canonical) || file === path.resolve(duplicate))).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("refuses a mixed v2 and legacy selected-ticket endpoint before opening either record", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Mixed authority", status: "implementing" });
+    const canonical = path.join(root, ".kanmer", "areas", "_none", ticket.id, `${ticket.id}.md`);
+    const legacyDirectory = path.join(root, ".kanmer", "tickets");
+    const legacy = path.join(legacyDirectory, `${ticket.id}.md`);
+    await fs.mkdir(legacyDirectory, { recursive: true });
+    await fs.copyFile(canonical, legacy);
+
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/duplicate|ambiguous.*endpoint/i);
+      expect(opened.filter((file) => file === path.resolve(canonical) || file === path.resolve(legacy))).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("collects batch state inside the bounded authority snapshot without rereading retained endpoints", async () => {
+    const fixture = await executionBatch("authority-batch");
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    let snapshot;
+    try {
+      snapshot = await store.getExecutionAuthoritySnapshot(fixture.a.id);
+    } finally {
+      openSpy.mockRestore();
+    }
+    expect(snapshot?.batch).toMatchObject({
+      id: "authority-batch",
+      declaration: "consistent",
+      state: "active",
+      members: [{ id: fixture.a.id, exists: true }, { id: fixture.b.id, exists: true }],
+    });
+    for (const file of [fixture.ticketFile(fixture.a.id), fixture.ticketFile(fixture.b.id), fixture.manifest]) {
+      expect(opened.filter((openedFile) => openedFile === path.resolve(file)), file).toHaveLength(1);
+    }
+  });
+
+  it("bounds every transaction entry, manifest byte and manifest member before batch authority", async () => {
+    const isolated = await store.createItem({ type: "ticket", title: "Manifest bounds", status: "implementing" });
+    const transactions = path.join(root, ".kanmer", "batches", "transactions");
+    await fs.mkdir(transactions, { recursive: true });
+    for (let index = 0; index <= EXECUTION_AUTHORITY_LIMITS.maxBatchDirectoryEntries; index += 1) {
+      await fs.writeFile(
+        path.join(transactions, `.${String(index).padStart(64, "0")}.json.tmp-${index + 1}-${index + 2}`),
+        "temp",
+        "utf8",
+      );
+    }
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/transaction directory exceeds 256 entries/i);
+
+    await fs.rm(transactions, { recursive: true });
+    await fs.mkdir(transactions, { recursive: true });
+    const batchId = "member-overflow";
+    const members = Array.from({ length: EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers + 1 }, (_, index) => `SYN-${String(index).padStart(4, "0")}`);
+    const manifest = {
+      schema: 1,
+      state: "active",
+      request_sha256: "0".repeat(64),
+      declaring_ticket: members[0],
+      batch_id: batchId,
+      controller: "controller",
+      controller_run: "run",
+      frozen_at: "2026-09-01T00:00:00.000Z",
+      members,
+      workspace: "branch:member-overflow",
+      branch: "member-overflow",
+    };
+    const name = `${createHash("sha256").update(batchId, "utf8").digest("hex")}.json`;
+    await fs.writeFile(path.join(transactions, name), `${JSON.stringify(manifest)}\n`, "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/exceeds 256 manifest members/i);
+
+    await fs.rm(transactions, { recursive: true });
+    await fs.mkdir(transactions, { recursive: true });
+    for (let batchIndex = 0; batchIndex < 9; batchIndex += 1) {
+      const refsBatch = `refs-${batchIndex}`;
+      const refs = Array.from({ length: EXECUTION_AUTHORITY_LIMITS.maxBatchManifestMembers }, (_, index) =>
+        `REF-${batchIndex}-${String(index).padStart(4, "0")}`
+      );
+      const refsManifest = {
+        ...manifest,
+        batch_id: refsBatch,
+        declaring_ticket: refs[0],
+        members: refs,
+        workspace: `branch:${refsBatch}`,
+        branch: refsBatch,
+      };
+      const refsName = `${createHash("sha256").update(refsBatch, "utf8").digest("hex")}.json`;
+      await fs.writeFile(path.join(transactions, refsName), `${JSON.stringify(refsManifest)}\n`, "utf8");
+    }
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/exceed 2048 aggregate member references/i);
+
+    await fs.rm(transactions, { recursive: true });
+    await fs.mkdir(transactions, { recursive: true });
+    await fs.writeFile(path.join(transactions, name), "x".repeat(EXECUTION_AUTHORITY_LIMITS.maxBatchManifestBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/manifest.*exceeds 65536 pre-read bytes/i);
+  });
+
+  it("preflights aggregate manifest bytes before opening any manifest", async () => {
+    const isolated = await store.createItem({ type: "ticket", title: "Manifest aggregate", status: "implementing" });
+    const transactions = path.join(root, ".kanmer", "batches", "transactions");
+    await fs.mkdir(transactions, { recursive: true });
+    for (let index = 0; index < 9; index += 1) {
+      await fs.writeFile(path.join(transactions, `${String(index).padStart(64, "0")}.json`), "x".repeat(60 * 1024), "utf8");
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(isolated.id)).rejects.toThrow(/manifests exceed 524288 aggregate pre-read bytes/i);
+      expect(opened.filter((file) => file.startsWith(path.resolve(transactions) + path.sep))).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("preflights complete ticket endpoint and aggregate-byte bounds before sibling reads", async () => {
+    const endpointFixture = await executionBatch("endpoint-bound");
+    const legacy = path.join(root, ".kanmer", "tickets");
+    await fs.mkdir(legacy, { recursive: true });
+    const tiny = (id: string) => `---\nid: ${id}\ntype: ticket\ntitle: ${id}\nstatus: backlog\ncreated: 2026-09-01T00:00:00.000Z\nupdated: 2026-09-01T00:00:00.000Z\n---\nfixture\n`;
+    for (let index = 0; index < EXECUTION_AUTHORITY_LIMITS.maxTicketEndpoints - 1; index += 1) {
+      const id = `LEG-${String(index).padStart(4, "0")}`;
+      await fs.writeFile(path.join(legacy, `${id}.md`), tiny(id), "utf8");
+    }
+    await expect(store.getExecutionAuthoritySnapshot(endpointFixture.a.id)).rejects.toThrow(/ticket census exceeds 2048 (?:enumerated entries|endpoints)/i);
+
+    await fs.rm(legacy, { recursive: true });
+    await fs.mkdir(legacy, { recursive: true });
+    for (let index = 0; index < 129; index += 1) {
+      await fs.writeFile(path.join(legacy, `BIG-${String(index).padStart(4, "0")}.md`), "x".repeat(65_500), "utf8");
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(endpointFixture.a.id)).rejects.toThrow(/ticket census exceeds 8388608 aggregate pre-read bytes/i);
+      const endpointOpens = opened.filter((file) => file.startsWith(path.resolve(legacy) + path.sep));
+      expect(endpointOpens).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  }, 30_000);
+
+  it("charges junk and empty ticket-census entries before they can grow an unbounded name list", async () => {
+    const fixture = await executionBatch("junk-census");
+    const legacy = path.join(root, ".kanmer", "tickets");
+    await fs.mkdir(legacy, { recursive: true });
+    for (let index = 0; index <= EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries; index += 1) {
+      await fs.writeFile(path.join(legacy, `junk-${String(index).padStart(4, "0")}.tmp`), "", "utf8");
+    }
+    await expect(store.getExecutionAuthoritySnapshot(fixture.a.id)).rejects.toThrow(/ticket census exceeds 2048 enumerated entries/i);
+  }, 30_000);
+
+  it("bounds the authority ticket lookup before opening selected or sibling content", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Lookup bound", status: "implementing" });
+    const areas = path.join(root, ".kanmer", "areas");
+    for (let index = 0; index < EXECUTION_AUTHORITY_LIMITS.maxTicketCensusEntries; index += 1) {
+      await fs.mkdir(path.join(areas, `junk-${String(index).padStart(4, "0")}`));
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(path.resolve(String(args[0])));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/ticket lookup exceeds 2048 area entries/i);
+      expect(opened).toEqual([]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  }, 30_000);
+
+  it("refuses malformed and hard-linked ticket endpoints in a complete batch census", async () => {
+    const malformed = await executionBatch("malformed-census");
+    const legacy = path.join(root, ".kanmer", "tickets");
+    await fs.mkdir(legacy, { recursive: true });
+    await fs.writeFile(path.join(legacy, "BROKEN-001.md"), "not frontmatter", "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(malformed.a.id)).rejects.toThrow(/complete ticket census could not read/i);
+
+    await fs.rm(legacy, { recursive: true });
+    const linked = await executionBatch("hardlink-census");
+    const alias = path.join(root, "ticket-alias.md");
+    try {
+      await fs.link(linked.ticketFile(linked.b.id), alias);
+    } catch (error) {
+      if (["EPERM", "EACCES", "ENOTSUP"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
+      throw error;
+    }
+    await expect(store.getExecutionAuthoritySnapshot(linked.a.id)).rejects.toThrow(/ticket census endpoint.*more than one filesystem link/i);
+  });
+
+  it("rejects ticket replacement and manifest growth during bounded batch reads and closes their handles", async () => {
+    const replaced = await executionBatch("census-replacement");
+    const sibling = replaced.ticketFile(replaced.b.id);
+    const displaced = `${sibling}.displaced`;
+    const originalSibling = await fs.readFile(sibling);
+    const originalOpen = fs.open.bind(fs);
+    let swapped = false;
+    const replacementSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      if (!swapped && path.resolve(String(args[0])) === path.resolve(sibling)) {
+        swapped = true;
+        await fs.rename(sibling, displaced);
+        await fs.writeFile(sibling, originalSibling);
+      }
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(replaced.a.id)).rejects.toThrow(/changed identity before its bounded read/i);
+    } finally {
+      replacementSpy.mockRestore();
+    }
+    await fs.unlink(sibling);
+    await fs.rename(displaced, sibling);
+
+    const grown = await executionBatch("manifest-growth");
+    let wrapped = false;
+    const growthSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      const handle = await originalOpen(...args);
+      if (!wrapped && path.resolve(String(args[0])) === path.resolve(grown.manifest)) {
+        wrapped = true;
+        const originalRead = handle.read.bind(handle);
+        let appended = false;
+        handle.read = async (...readArgs: Parameters<typeof handle.read>) => {
+          if (!appended) {
+            appended = true;
+            await fs.appendFile(grown.manifest, "growth", "utf8");
+          }
+          return originalRead(...readArgs);
+        };
+      }
+      return handle;
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(grown.a.id)).rejects.toThrow(/changed size during its bounded read/i);
+    } finally {
+      growthSpy.mockRestore();
+    }
+    await fs.rename(grown.manifest, `${grown.manifest}.closed`);
+    await fs.rename(`${grown.manifest}.closed`, grown.manifest);
+  });
+
+  it("preserves leading UTF-8 BOM bytes across bounded authority, normal revisions and CAS tokens", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "BOM authority" });
+    await store.setDoc(ticket.id, "research", "bounded research");
+    await store.setDoc(ticket.id, "checklist", "- [ ] Step 1 — bounded bytes");
+    const group = await store.createGroup("epic", "BOM group", "Group body");
+    await store.setGroupDoc(group.id, "context.md", "Shared context");
+    await store.updateItem(ticket.id, { groups: [group.id] });
+
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const ticketFile = path.join(ticketDir, `${ticket.id}.md`);
+    const researchFile = path.join(ticketDir, "research", "research.md");
+    const checklistFile = path.join(ticketDir, "checklist", "checklist.md");
+    const contextFile = path.join(root, ".kanmer", "groups", group.id, "context.md");
+    const addBom = async (file: string) => fs.writeFile(file, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), await fs.readFile(file)]));
+    await Promise.all([ticketFile, researchFile, checklistFile, contextFile].map(addBom));
+
+    const snapshot = await store.getExecutionAuthoritySnapshot(ticket.id);
+    const normalRevision = await store.getRevision(ticket.id);
+    const normalResearch = await store.getDocWithVersion(ticket.id, "research");
+    const normalChecklist = await store.getDocWithVersion(ticket.id, "checklist");
+    const normalContext = await store.getGroupDoc(group.id, "context.md");
+    expect(snapshot?.revision).toEqual(normalRevision);
+    expect(snapshot?.inventory.find((doc) => doc.doc === "research/research.md")).toMatchObject(normalResearch);
+    expect(snapshot?.inventory.find((doc) => doc.doc === "checklist/checklist.md")).toMatchObject(normalChecklist);
+    expect(snapshot?.groups[0]).toMatchObject({
+      context: normalContext,
+      contextVersion: contentVersion(normalContext!),
+    });
+    expect(snapshot?.item.title).toBe("BOM authority");
+    expect(normalResearch.content.startsWith("\uFEFF")).toBe(true);
+    expect(normalChecklist.content.startsWith("\uFEFF")).toBe(true);
+    expect(normalContext?.startsWith("\uFEFF")).toBe(true);
+
+    await expect(store.updateItem(ticket.id, {
+      title: "BOM authority updated",
+      expectedRevision: snapshot!.revision!.revision,
+    })).resolves.toMatchObject({ title: "BOM authority updated" });
+    await expect(store.setDoc(ticket.id, "research", "updated research", {
+      expectedVersion: snapshot!.inventory.find((doc) => doc.doc === "research/research.md")!.version,
+    })).resolves.toMatchObject({ version: expect.stringMatching(/^[0-9a-f]{16}$/) });
+  });
+
+  it("keeps bounded authority UTF-8 decoding fatal", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Invalid UTF-8" });
+    await store.setDoc(ticket.id, "research", "valid first");
+    const researchFile = path.join(root, ".kanmer", "areas", "_none", ticket.id, "research", "research.md");
+    await fs.writeFile(researchFile, Buffer.from([0xff, 0xfe, 0xfd]));
+    await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/not valid UTF-8/i);
+  });
+
+  it("refuses a counted-document census over the limit before opening any document", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Count bound" });
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const researchDir = path.join(ticketDir, "research");
+    await fs.mkdir(researchDir, { recursive: true });
+    await Promise.all(Array.from({ length: EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments + 1 }, (_, index) =>
+      fs.writeFile(path.join(researchDir, `evidence-${String(index).padStart(3, "0")}.md`), "x\n", "utf8")
+    ));
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(String(args[0]));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/counted-document.*exceeds 256/i);
+      expect(opened).toEqual([path.join(ticketDir, `${ticket.id}.md`)]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("accepts the exact unique-group limit and refuses limit plus one before group I/O", async () => {
+    const limit = EXECUTION_AUTHORITY_LIMITS.maxCountedDocuments;
+    const ticket = await store.createItem({ type: "ticket", title: "Group bound" });
+    const groupIds = Array.from({ length: limit + 1 }, (_, index) => `HZN-${String(index).padStart(3, "0")}`);
+    const groupsRoot = path.join(root, ".kanmer", "groups");
+    await Promise.all(groupIds.map(async (id) => {
+      const dir = path.join(groupsRoot, id);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, `${id}.md`), [
+        "---", `id: ${id}`, "kind: horizon", `title: ${id}`, "archived: false",
+        'created: "2026-08-31T00:00:00.000Z"', 'updated: "2026-08-31T00:00:00.000Z"', "---", "context", "",
+      ].join("\n"), "utf8");
+    }));
+    await store.updateItem(ticket.id, { groups: groupIds.slice(0, limit) });
+    expect((await store.getExecutionAuthoritySnapshot(ticket.id))?.groups).toHaveLength(limit);
+
+    const overflow = await store.createItem({ type: "ticket", title: "Group overflow" });
+    await store.updateItem(overflow.id, { groups: groupIds });
+    const originalLstat = fs.lstat.bind(fs);
+    let groupStats = 0;
+    const lstatSpy = vi.spyOn(fs, "lstat").mockImplementation(async (...args) => {
+      if (path.resolve(String(args[0])).startsWith(path.resolve(groupsRoot) + path.sep)) groupStats += 1;
+      return originalLstat(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(overflow.id)).rejects.toThrow(/unique-group census exceeds 256/i);
+      expect(groupStats).toBe(0);
+    } finally {
+      lstatSpy.mockRestore();
+    }
+  });
+
+  it("preflights per-file and aggregate execution authority bounds before document reads", async () => {
+    const oversized = await store.createItem({ type: "ticket", title: "Oversized" });
+    const oversizedDir = path.join(root, ".kanmer", "areas", "_none", oversized.id);
+    await fs.mkdir(path.join(oversizedDir, "research"), { recursive: true });
+    const oversizedDoc = path.join(oversizedDir, "research", "oversized.md");
+    await fs.writeFile(oversizedDoc, "x".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(oversized.id)).rejects.toThrow(/pre-read bytes/);
+
+    const aggregate = await store.createItem({ type: "ticket", title: "Aggregate" });
+    const aggregateDir = path.join(root, ".kanmer", "areas", "_none", aggregate.id);
+    const aggregateResearch = path.join(aggregateDir, "research");
+    await fs.mkdir(aggregateResearch, { recursive: true });
+    const chunk = "y".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes - 512);
+    for (let index = 0; index < 9; index += 1) {
+      await fs.writeFile(path.join(aggregateResearch, `part-${index}.md`), chunk, "utf8");
+    }
+    const opened: string[] = [];
+    const originalOpen = fs.open.bind(fs);
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      opened.push(String(args[0]));
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(aggregate.id)).rejects.toThrow(/aggregate pre-read bytes/);
+      expect(opened).toEqual([path.join(aggregateDir, `${aggregate.id}.md`)]);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
+  it("preflights oversized ticket, group-record and group-context authority", async () => {
+    const oversizedTicket = await store.createItem({ type: "ticket", title: "Large ticket" });
+    const ticketFile = path.join(root, ".kanmer", "areas", "_none", oversizedTicket.id, `${oversizedTicket.id}.md`);
+    await fs.appendFile(ticketFile, "t".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(oversizedTicket.id)).rejects.toThrow(/ticket record.*pre-read bytes/i);
+
+    const groupRecordTicket = await store.createItem({ type: "ticket", title: "Large group record" });
+    const recordGroup = await store.createGroup("epic", "Large record");
+    await store.updateItem(groupRecordTicket.id, { groups: [recordGroup.id] });
+    const recordFile = path.join(root, ".kanmer", "groups", recordGroup.id, `${recordGroup.id}.md`);
+    await fs.appendFile(recordFile, "g".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(groupRecordTicket.id)).rejects.toThrow(/group record.*pre-read bytes/i);
+
+    const groupContextTicket = await store.createItem({ type: "ticket", title: "Large group context" });
+    const contextGroup = await store.createGroup("epic", "Large context");
+    await store.setGroupDoc(contextGroup.id, "context.md", "small");
+    await store.updateItem(groupContextTicket.id, { groups: [contextGroup.id] });
+    const contextFile = path.join(root, ".kanmer", "groups", contextGroup.id, "context.md");
+    await fs.writeFile(contextFile, "c".repeat(EXECUTION_AUTHORITY_LIMITS.maxFileBytes + 1), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(groupContextTicket.id)).rejects.toThrow(/group context.*pre-read bytes/i);
+  });
+
+  it("rejects a document identity replacement between metadata and handle read and closes the handle", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Race" });
+    await store.setDoc(ticket.id, "research", "original");
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const target = path.join(ticketDir, "research", "research.md");
+    const displaced = `${target}.old`;
+    const originalOpen = fs.open.bind(fs);
+    let replaced = false;
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      if (!replaced && path.resolve(String(args[0])) === path.resolve(target)) {
+        replaced = true;
+        await fs.rename(target, displaced);
+        await fs.writeFile(target, "replacement\n", "utf8");
+      }
+      return originalOpen(...args);
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/changed identity before its bounded read/);
+    } finally {
+      openSpy.mockRestore();
+    }
+    await expect(fs.unlink(target)).resolves.toBeUndefined();
+    await fs.rename(displaced, target);
+  });
+
+  it("rejects in-place document growth during the bounded handle read and closes the handle", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Growth race" });
+    await store.setDoc(ticket.id, "research", "original");
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const target = path.join(ticketDir, "research", "research.md");
+    const originalOpen = fs.open.bind(fs);
+    let wrapped = false;
+    const openSpy = vi.spyOn(fs, "open").mockImplementation(async (...args) => {
+      const handle = await originalOpen(...args);
+      if (!wrapped && path.resolve(String(args[0])) === path.resolve(target)) {
+        wrapped = true;
+        const originalRead = handle.read.bind(handle);
+        let grown = false;
+        handle.read = async (...readArgs: Parameters<typeof handle.read>) => {
+          if (!grown) {
+            grown = true;
+            await fs.appendFile(target, "growth", "utf8");
+          }
+          return originalRead(...readArgs);
+        };
+      }
+      return handle;
+    });
+    try {
+      await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/changed size during its bounded read/);
+    } finally {
+      openSpy.mockRestore();
+    }
+    await expect(fs.rename(target, `${target}.closed`)).resolves.toBeUndefined();
+    await fs.rename(`${target}.closed`, target);
+  });
+
+  it("rejects conflicting ticket identity and unsafe non-Markdown gate evidence", async () => {
+    const identity = await store.createItem({ type: "ticket", title: "Identity" });
+    const identityFile = path.join(root, ".kanmer", "areas", "_none", identity.id, `${identity.id}.md`);
+    const original = await fs.readFile(identityFile, "utf8");
+    await fs.writeFile(identityFile, original.replace(`id: ${identity.id}`, "id: TICK-999"), "utf8");
+    await expect(store.getExecutionAuthoritySnapshot(identity.id)).rejects.toThrow(/conflicting identity|resolved as ticket identity/i);
+
+    const evidence = await store.createItem({ type: "ticket", title: "Evidence" });
+    const evidenceDir = path.join(root, ".kanmer", "areas", "_none", evidence.id, "proof");
+    await fs.mkdir(evidenceDir, { recursive: true });
+    const outside = path.join(root, "outside.png");
+    await fs.writeFile(outside, "image", "utf8");
+    try {
+      await fs.symlink(outside, path.join(evidenceDir, "proof.png"), "file");
+    } catch (error) {
+      if (["EPERM", "EACCES", "ENOTSUP"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
+      throw error;
+    }
+    await expect(store.getExecutionAuthoritySnapshot(evidence.id)).rejects.toThrow(/not a regular file|symbolic link/i);
+  });
+
+  it("anchors authority at the physical project root and refuses internal directory junctions", async () => {
+    const junctionType = process.platform === "win32" ? "junction" : "dir";
+    const linkDirectory = async (target: string, link: string): Promise<boolean> => {
+      try {
+        await fs.symlink(target, link, junctionType);
+        return true;
+      } catch (error) {
+        if (["EPERM", "EACCES", "ENOTSUP"].includes((error as NodeJS.ErrnoException).code ?? "")) return false;
+        throw error;
+      }
+    };
+
+    const documentTicket = await store.createItem({ type: "ticket", title: "Document junction" });
+    const documentTicketDir = path.join(root, ".kanmer", "areas", "_none", documentTicket.id);
+    const outsideResearch = path.join(root, "outside-research");
+    await fs.mkdir(outsideResearch, { recursive: true });
+    await fs.writeFile(path.join(outsideResearch, "research.md"), "external authority\n", "utf8");
+    if (!await linkDirectory(outsideResearch, path.join(documentTicketDir, "research"))) return;
+    await expect(store.getExecutionAuthoritySnapshot(documentTicket.id)).rejects.toThrow(/canonical board storage|regular directory/i);
+
+    const ticket = await store.createItem({ type: "ticket", title: "Ticket junction" });
+    const ticketDir = path.join(root, ".kanmer", "areas", "_none", ticket.id);
+    const outsideTicket = path.join(root, "outside-ticket");
+    await fs.rename(ticketDir, outsideTicket);
+    await fs.symlink(outsideTicket, ticketDir, junctionType);
+    await expect(store.getExecutionAuthoritySnapshot(ticket.id)).rejects.toThrow(/canonical board storage|regular directory/i);
+
+    const groupTicket = await store.createItem({ type: "ticket", title: "Group junction" });
+    const group = await store.createGroup("epic", "Junction group");
+    await store.updateItem(groupTicket.id, { groups: [group.id] });
+    const groupDirectory = path.join(root, ".kanmer", "groups", group.id);
+    const outsideGroup = path.join(root, "outside-group");
+    await fs.rename(groupDirectory, outsideGroup);
+    await fs.symlink(outsideGroup, groupDirectory, junctionType);
+    await expect(store.getExecutionAuthoritySnapshot(groupTicket.id)).rejects.toThrow(/canonical board storage|regular directory/i);
+
+    const externalBoardRoot = path.join(root, "external-board");
+    const externalStore = new KanmerStore(externalBoardRoot);
+    await externalStore.init();
+    const externalTicket = await externalStore.createItem({ type: "ticket", title: "External board" });
+    const linkedBoardRoot = path.join(root, "linked-board");
+    await fs.mkdir(linkedBoardRoot, { recursive: true });
+    await fs.symlink(
+      path.join(externalBoardRoot, ".kanmer"),
+      path.join(linkedBoardRoot, ".kanmer"),
+      junctionType,
+    );
+    await expect(new KanmerStore(linkedBoardRoot).getExecutionAuthoritySnapshot(externalTicket.id)).rejects.toThrow(
+      /canonical board storage|regular directory/i,
+    );
+
+    const physicalProjectRoot = path.join(root, "physical-project");
+    const physicalStore = new KanmerStore(physicalProjectRoot);
+    await physicalStore.init();
+    const physicalTicket = await physicalStore.createItem({ type: "ticket", title: "Physical project" });
+    const projectAlias = path.join(root, "project-alias");
+    await fs.symlink(physicalProjectRoot, projectAlias, junctionType);
+    await expect(new KanmerStore(projectAlias).getExecutionAuthoritySnapshot(physicalTicket.id)).resolves.toMatchObject({
+      item: { id: physicalTicket.id },
+    });
+  });
+
   it("setDoc rejects a stale expectedVersion and leaves the file alone", async () => {
     const t = await store.createItem({ type: "ticket", title: "A" });
     const { version: stale } = await store.setDoc(t.id, "research", "A");
@@ -1114,6 +1741,24 @@ describe("format v1 compatibility", () => {
         () => false,
       ),
     ).toBe(false);
+  });
+
+  it("returns bounded execution authority for a selected legacy ticket", async () => {
+    const snapshot = await v1store.getExecutionAuthoritySnapshot("TICK-001");
+    expect(snapshot).toMatchObject({
+      item: {
+        id: "TICK-001",
+        type: "ticket",
+        title: "Legacy ticket",
+        status: "in-progress",
+      },
+      revision: null,
+      gates: null,
+      fixed: [],
+      inventory: [],
+      groups: [],
+      batch: null,
+    });
   });
 
   it("validates document paths before the legacy missing-document response", async () => {

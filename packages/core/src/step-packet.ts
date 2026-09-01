@@ -551,6 +551,10 @@ function nonEmptyStringOrNull(value: unknown): value is string | null {
   return value === null || (typeof value === "string" && value.trim().length > 0);
 }
 
+function isFullGitObjectId(value: unknown): value is string {
+  return typeof value === "string" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value);
+}
+
 /** Validate a complete caller-retained packet and recompute its identity. */
 export function verifyStepPacket(value: unknown): StepPacketVerification {
   const packet = record(value);
@@ -593,7 +597,7 @@ export function verifyStepPacket(value: unknown): StepPacketVerification {
   if (new Set(documentKeys).size !== documentKeys.length || documentKeys.some((key, index) => index > 0 && lexicalCompare(documentKeys[index - 1]!, key) >= 0)) {
     return { ok: false, reason: "step_packet ticket documents must be unique and canonically ordered" };
   }
-  if (!exactKeys(workspace, ["branch", "worktree", "head", "entries"]) || typeof workspace.branch !== "string" || !workspace.branch.trim() || !canonicalPacketPath(workspace.worktree) || typeof workspace.head !== "string" || !/^[0-9a-f]{40}$/i.test(workspace.head) || !Array.isArray(workspace.entries)) {
+  if (!exactKeys(workspace, ["branch", "worktree", "head", "entries"]) || typeof workspace.branch !== "string" || !workspace.branch.trim() || !canonicalPacketPath(workspace.worktree) || !isFullGitObjectId(workspace.head) || !Array.isArray(workspace.entries)) {
     return { ok: false, reason: "step_packet.workspace is malformed" };
   }
   for (const entryValue of workspace.entries) {
@@ -1001,11 +1005,11 @@ export function compileStepPacket(input: StepPacketInput): StepPacketResult {
     return { ok: false, reason: "A numeric step selection must be a finite positive integer.", validation };
   }
 
-  if (!input.workspace?.branch || !input.workspace.worktree || !input.workspace.head || !/^[0-9a-f]{40}$/i.test(input.workspace.head)) {
+  if (!input.workspace?.branch || !input.workspace.worktree || !isFullGitObjectId(input.workspace.head)) {
     const validation = validatePlan(plan, { liveEvidence, requireEvidencePin });
     return {
       ok: false,
-      reason: "A constrained step packet requires a proven recorded branch, worktree and exact 40-character HEAD.",
+      reason: "A constrained step packet requires a proven recorded branch, worktree and full 40- or 64-character Git object ID for HEAD.",
       validation,
     };
   }

@@ -25,7 +25,8 @@ const MAX_TRACKED_LINK_TEXT_BYTES = 64 * 1024;
 const MAX_TRACKED_LINK_TARGET_BYTES = 2 * 1024 * 1024;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
-const decoder = new TextDecoder("utf-8", { fatal: true });
+const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+const FULL_GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
 
 function lexicalCompare(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -579,6 +580,7 @@ async function trackedLinkIdentity(
   root: string,
   entry: IndexCensusEntry,
   budget: { total: number },
+  trackedRegularTargets: ReadonlySet<string>,
   deadline?: CollectionDeadline,
 ): Promise<string> {
   const absolute = path.resolve(root, ...entry.path.split("/"));
@@ -593,6 +595,13 @@ async function trackedLinkIdentity(
     } catch (error) {
       throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error instanceof Error ? error.message : String(error)}`);
     }
+  };
+  const requireTrackedRegularTarget = (target: TrackedLinkTargetProof): void => {
+    if (trackedRegularTargets.has(canonicalPath(target.absolute))) return;
+    const relative = path.relative(root, target.absolute).split(path.sep).join("/");
+    throw new Error(
+      `tracked symbolic link ${entry.path} target ${JSON.stringify(relative)} is not an indexed tracked regular path`,
+    );
   };
   let initialProof: ConfinedPathProof;
   try {
@@ -610,6 +619,7 @@ async function trackedLinkIdentity(
     if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
     const targetText = decodeTarget(placeholder.bytes);
     const targetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+    requireTrackedRegularTarget(targetState);
     const resolved = await deadlineObservation(deadline, () => realpath(targetState.absolute));
     if (canonicalPath(resolved) !== canonicalPath(targetState.absolute)) {
       throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
@@ -617,6 +627,7 @@ async function trackedLinkIdentity(
     const target = await readBoundedWorkspaceFile(root, targetState.absolute, budget, {}, limits, deadline);
     if (!target) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
     const afterTargetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+    requireTrackedRegularTarget(afterTargetState);
     const afterResolved = await deadlineObservation(deadline, () => realpath(afterTargetState.absolute));
     const afterProof = await confinedPathProof(root, absolute, "regular", deadline);
     if (placeholderProof.digest !== afterProof.digest || targetState.proof.digest !== afterTargetState.proof.digest ||
@@ -642,6 +653,7 @@ async function trackedLinkIdentity(
   budget.total += targetBytes.length;
   const targetText = decodeTarget(targetBytes);
   const targetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+  requireTrackedRegularTarget(targetState);
   const resolved = await deadlineObservation(deadline, () => realpath(targetState.absolute));
   if (canonicalPath(resolved) !== canonicalPath(targetState.absolute)) {
     throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
@@ -654,6 +666,7 @@ async function trackedLinkIdentity(
     await readlink(absolute, { encoding: "buffer" }) as unknown as Buffer);
   const afterTargetText = decodeTarget(afterTargetBytes);
   const afterTargetState = await trackedLinkTargetProof(root, absolute, afterTargetText, deadline);
+  requireTrackedRegularTarget(afterTargetState);
   const afterResolved = await deadlineObservation(deadline, () => realpath(afterTargetState.absolute));
   if (initialProof.digest !== afterProof.digest || !targetBytes.equals(afterTargetBytes) ||
       canonicalPath(targetState.absolute) !== canonicalPath(afterTargetState.absolute) ||
@@ -759,7 +772,7 @@ async function captureOnce(
   const branch = decode(branchRaw).trim();
   const head = decode(headRaw).trim();
   if (!branch) throw new Error("workspace HEAD is detached");
-  if (!/^[0-9a-f]{40}$/i.test(head)) throw new Error("workspace HEAD is not a full commit SHA");
+  if (!FULL_GIT_OBJECT_ID.test(head)) throw new Error("workspace HEAD is not a full supported Git object ID");
   const indexFlags = parseIndexFlagCensus(indexFlagsRaw);
   const unsupportedMode = indexFlags.entries.find((entry) => !["100644", "100755", "120000", "160000"].includes(entry.mode));
   if (unsupportedMode) throw new Error(`tracked path ${JSON.stringify(unsupportedMode.path)} has unsupported Git mode ${unsupportedMode.mode}`);
@@ -768,6 +781,9 @@ async function captureOnce(
   const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
   if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
   const status = parsePorcelainV1Z(statusRaw);
+  const trackedRegularTargets = new Set(indexFlags.entries
+    .filter((entry) => entry.mode === "100644" || entry.mode === "100755")
+    .map((entry) => canonicalPath(path.resolve(root, ...entry.path.split("/")))));
   const regularFiles = await trackedRegularMetadataCensus(root, indexFlags.entries, status, deadline, beforeRegularCensusEntry);
   const budget = { total: 0 };
   const entries: StepWorkspaceEntry[] = [];
@@ -789,7 +805,7 @@ async function captureOnce(
       path: link.path,
       index: ".",
       worktree: ".",
-      content: await trackedLinkIdentity(root, link, linkBudget, deadline),
+      content: await trackedLinkIdentity(root, link, linkBudget, trackedRegularTargets, deadline),
     });
   }
   if (entries.length > MAX_ENTRIES) throw new Error(`workspace has more than ${MAX_ENTRIES} retained dirty/link paths`);

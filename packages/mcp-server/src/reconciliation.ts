@@ -398,14 +398,11 @@ export type TicketReconciliationResult =
 // request may stop before workspace inspection. Worker-result failures are
 // deliberately absent: they still need the actual changed-path evidence so a
 // controller cannot issue another packet on a partial or deviating result.
-const PRE_GIT_AUTHORITY_FAILURES = new Set([
-  "STEP_IDENTITY_MISMATCH",
-  "STEP_PLAN_STALE",
-  "STEP_PLAN_AUTHORITY_MISMATCH",
-  "STEP_EVIDENCE_STALE",
-  "STEP_EVIDENCE_SET_CHANGED",
-  "STEP_TICKET_AUTHORITY_STALE",
-]);
+function preGitAuthorityFailure(findings: readonly { code: string }[]): boolean {
+  const codes = new Set(findings.map((finding) => finding.code));
+  return codes.has("STEP_IDENTITY_MISMATCH") ||
+    codes.has("STEP_PLAN_AUTHORITY_MISMATCH");
+}
 
 export async function reconcileTicket(
   store: KanmerStore,
@@ -457,7 +454,7 @@ export async function reconcileTicket(
     // Packet-provenance failures are conclusive without Git or GitHub. Worker
     // result failures (including checklist deviations) deliberately continue
     // so actual workspace changes are still classified before any successor.
-    if (preflight.findings.some((finding) => PRE_GIT_AUTHORITY_FAILURES.has(finding.code))) {
+    if (preGitAuthorityFailure(preflight.findings)) {
       provenanceBlocksStepObservation = true;
     }
   }
@@ -475,17 +472,18 @@ export async function reconcileTicket(
   if (provenanceBlocksStepObservation) return { ...withRevision, step: preflight! };
 
   if (!stable?.ok) {
+    const reason = stable && !stable.ok ? stable.reason : "the bounded ticket/document authority snapshot is unavailable";
     return {
       ...withRevision,
-      step: reconcileStepPacket(packetVerification.packet, {
-        project: options?.stepProject ?? packetVerification.packet.project,
-        ticket: { id, revision: null, itemAuthority: packetVerification.packet.ticket.itemAuthority, documents: packetVerification.packet.ticket.documents },
-        batch: null,
-        plan: null,
-        checklist: null,
-        evidence: null,
-        workspace: null,
-      }),
+      step: {
+        status: "inconclusive",
+        packetId: packetVerification.packet.packetId,
+        changedPaths: [],
+        findings: [{
+          code: "STEP_AUTHORITY_UNAVAILABLE",
+          message: `The bounded ticket, document, group and batch authority snapshot is unavailable. ${reason}`,
+        }],
+      },
     };
   }
   const workspace = stable.snapshot.item.worktree && stable.snapshot.item.branch

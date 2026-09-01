@@ -40680,6 +40680,9 @@ function checklistStatesFromLineMap(content, stepLines) {
 function nonEmptyStringOrNull(value) {
   return value === null || typeof value === "string" && value.trim().length > 0;
 }
+function isFullGitObjectId(value) {
+  return typeof value === "string" && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(value);
+}
 function verifyStepPacket(value) {
   const packet = record2(value);
   if (!packet) return { ok: false, reason: "step_packet must be a complete object" };
@@ -40721,7 +40724,7 @@ function verifyStepPacket(value) {
   if (new Set(documentKeys).size !== documentKeys.length || documentKeys.some((key, index) => index > 0 && lexicalCompare(documentKeys[index - 1], key) >= 0)) {
     return { ok: false, reason: "step_packet ticket documents must be unique and canonically ordered" };
   }
-  if (!exactKeys(workspace, ["branch", "worktree", "head", "entries"]) || typeof workspace.branch !== "string" || !workspace.branch.trim() || !canonicalPacketPath(workspace.worktree) || typeof workspace.head !== "string" || !/^[0-9a-f]{40}$/i.test(workspace.head) || !Array.isArray(workspace.entries)) {
+  if (!exactKeys(workspace, ["branch", "worktree", "head", "entries"]) || typeof workspace.branch !== "string" || !workspace.branch.trim() || !canonicalPacketPath(workspace.worktree) || !isFullGitObjectId(workspace.head) || !Array.isArray(workspace.entries)) {
     return { ok: false, reason: "step_packet.workspace is malformed" };
   }
   for (const entryValue of workspace.entries) {
@@ -41046,11 +41049,11 @@ function compileStepPacket(input) {
     const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
     return { ok: false, reason: "A numeric step selection must be a finite positive integer.", validation: validation2 };
   }
-  if (!input.workspace?.branch || !input.workspace.worktree || !input.workspace.head || !/^[0-9a-f]{40}$/i.test(input.workspace.head)) {
+  if (!input.workspace?.branch || !input.workspace.worktree || !isFullGitObjectId(input.workspace.head)) {
     const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
     return {
       ok: false,
-      reason: "A constrained step packet requires a proven recorded branch, worktree and exact 40-character HEAD.",
+      reason: "A constrained step packet requires a proven recorded branch, worktree and full 40- or 64-character Git object ID for HEAD.",
       validation: validation2
     };
   }
@@ -48414,7 +48417,8 @@ var MAX_TRACKED_LINK_TEXT_BYTES = 64 * 1024;
 var MAX_TRACKED_LINK_TARGET_BYTES = 2 * 1024 * 1024;
 var MAX_FILE_BYTES = 2 * 1024 * 1024;
 var MAX_TOTAL_FILE_BYTES = 8 * 1024 * 1024;
-var decoder = new TextDecoder("utf-8", { fatal: true });
+var decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+var FULL_GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
 function lexicalCompare2(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -48819,7 +48823,7 @@ async function trackedLinkTargetProof(root, linkAbsolute, targetText, deadline) 
     proof: { digest: digest2(identities), final: finalFacts, missing: false }
   };
 }
-async function trackedLinkIdentity(root, entry, budget, deadline) {
+async function trackedLinkIdentity(root, entry, budget, trackedRegularTargets, deadline) {
   const absolute = import_node_path5.default.resolve(root, ...entry.path.split("/"));
   if (!inside(root, absolute)) throw new Error(`tracked symbolic link ${entry.path} escapes the worktree`);
   const limits = { maxFileBytes: MAX_FILE_BYTES, maxTotalBytes: MAX_TRACKED_LINK_TARGET_BYTES };
@@ -48832,6 +48836,13 @@ async function trackedLinkIdentity(root, entry, budget, deadline) {
     } catch (error2) {
       throw new Error(`tracked symbolic link ${entry.path} target is not valid UTF-8: ${error2 instanceof Error ? error2.message : String(error2)}`);
     }
+  };
+  const requireTrackedRegularTarget = (target2) => {
+    if (trackedRegularTargets.has(canonicalPath(target2.absolute))) return;
+    const relative = import_node_path5.default.relative(root, target2.absolute).split(import_node_path5.default.sep).join("/");
+    throw new Error(
+      `tracked symbolic link ${entry.path} target ${JSON.stringify(relative)} is not an indexed tracked regular path`
+    );
   };
   let initialProof;
   try {
@@ -48849,6 +48860,7 @@ async function trackedLinkIdentity(root, entry, budget, deadline) {
     if (!placeholder) throw new Error(`tracked symbolic link ${entry.path} disappeared during placeholder inspection`);
     const targetText2 = decodeTarget(placeholder.bytes);
     const targetState2 = await trackedLinkTargetProof(root, absolute, targetText2, deadline);
+    requireTrackedRegularTarget(targetState2);
     const resolved2 = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(targetState2.absolute));
     if (canonicalPath(resolved2) !== canonicalPath(targetState2.absolute)) {
       throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
@@ -48856,6 +48868,7 @@ async function trackedLinkIdentity(root, entry, budget, deadline) {
     const target2 = await readBoundedWorkspaceFile(root, targetState2.absolute, budget, {}, limits, deadline);
     if (!target2) throw new Error(`tracked symbolic link ${entry.path} target disappeared during bounded inspection`);
     const afterTargetState2 = await trackedLinkTargetProof(root, absolute, targetText2, deadline);
+    requireTrackedRegularTarget(afterTargetState2);
     const afterResolved2 = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(afterTargetState2.absolute));
     const afterProof2 = await confinedPathProof(root, absolute, "regular", deadline);
     if (placeholderProof.digest !== afterProof2.digest || targetState2.proof.digest !== afterTargetState2.proof.digest || canonicalPath(targetState2.absolute) !== canonicalPath(afterTargetState2.absolute) || canonicalPath(resolved2) !== canonicalPath(afterResolved2)) {
@@ -48887,6 +48900,7 @@ async function trackedLinkIdentity(root, entry, budget, deadline) {
   budget.total += targetBytes.length;
   const targetText = decodeTarget(targetBytes);
   const targetState = await trackedLinkTargetProof(root, absolute, targetText, deadline);
+  requireTrackedRegularTarget(targetState);
   const resolved = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(targetState.absolute));
   if (canonicalPath(resolved) !== canonicalPath(targetState.absolute)) {
     throw new Error(`tracked symbolic link ${entry.path} target is not direct`);
@@ -48897,6 +48911,7 @@ async function trackedLinkIdentity(root, entry, budget, deadline) {
   const afterTargetBytes = await deadlineObservation(deadline, async () => await (0, import_promises10.readlink)(absolute, { encoding: "buffer" }));
   const afterTargetText = decodeTarget(afterTargetBytes);
   const afterTargetState = await trackedLinkTargetProof(root, absolute, afterTargetText, deadline);
+  requireTrackedRegularTarget(afterTargetState);
   const afterResolved = await deadlineObservation(deadline, () => (0, import_promises10.realpath)(afterTargetState.absolute));
   if (initialProof.digest !== afterProof.digest || !targetBytes.equals(afterTargetBytes) || canonicalPath(targetState.absolute) !== canonicalPath(afterTargetState.absolute) || targetState.proof.digest !== afterTargetState.proof.digest || canonicalPath(resolved) !== canonicalPath(afterResolved)) {
     throw new Error(`tracked symbolic link ${entry.path} changed identity or target during bounded inspection`);
@@ -48981,7 +48996,7 @@ async function captureOnce(root, worktree, run, deadline, beforeRegularCensusEnt
   const branch = decode(branchRaw).trim();
   const head = decode(headRaw).trim();
   if (!branch) throw new Error("workspace HEAD is detached");
-  if (!/^[0-9a-f]{40}$/i.test(head)) throw new Error("workspace HEAD is not a full commit SHA");
+  if (!FULL_GIT_OBJECT_ID.test(head)) throw new Error("workspace HEAD is not a full supported Git object ID");
   const indexFlags = parseIndexFlagCensus(indexFlagsRaw);
   const unsupportedMode = indexFlags.entries.find((entry) => !["100644", "100755", "120000", "160000"].includes(entry.mode));
   if (unsupportedMode) throw new Error(`tracked path ${JSON.stringify(unsupportedMode.path)} has unsupported Git mode ${unsupportedMode.mode}`);
@@ -48990,6 +49005,7 @@ async function captureOnce(root, worktree, run, deadline, beforeRegularCensusEnt
   const gitlink = indexFlags.entries.find((entry) => entry.mode === "160000");
   if (gitlink) throw new Error(`tracked path ${JSON.stringify(gitlink.path)} is an unsupported Git link (gitlink)`);
   const status = parsePorcelainV1Z(statusRaw);
+  const trackedRegularTargets = new Set(indexFlags.entries.filter((entry) => entry.mode === "100644" || entry.mode === "100755").map((entry) => canonicalPath(import_node_path5.default.resolve(root, ...entry.path.split("/")))));
   const regularFiles = await trackedRegularMetadataCensus(root, indexFlags.entries, status, deadline, beforeRegularCensusEntry);
   const budget = { total: 0 };
   const entries = [];
@@ -49011,7 +49027,7 @@ async function captureOnce(root, worktree, run, deadline, beforeRegularCensusEnt
       path: link.path,
       index: ".",
       worktree: ".",
-      content: await trackedLinkIdentity(root, link, linkBudget, deadline)
+      content: await trackedLinkIdentity(root, link, linkBudget, trackedRegularTargets, deadline)
     });
   }
   if (entries.length > MAX_ENTRIES) throw new Error(`workspace has more than ${MAX_ENTRIES} retained dirty/link paths`);
@@ -50045,14 +50061,10 @@ function leaseRecoverySummary(evidence) {
     proof: evidence.proof.state
   };
 }
-var PRE_GIT_AUTHORITY_FAILURES = /* @__PURE__ */ new Set([
-  "STEP_IDENTITY_MISMATCH",
-  "STEP_PLAN_STALE",
-  "STEP_PLAN_AUTHORITY_MISMATCH",
-  "STEP_EVIDENCE_STALE",
-  "STEP_EVIDENCE_SET_CHANGED",
-  "STEP_TICKET_AUTHORITY_STALE"
-]);
+function preGitAuthorityFailure(findings) {
+  const codes = new Set(findings.map((finding2) => finding2.code));
+  return codes.has("STEP_IDENTITY_MISMATCH") || codes.has("STEP_PLAN_AUTHORITY_MISMATCH");
+}
 async function reconcileTicket(store2, id, run, options2) {
   const packetVerification = options2?.stepPacket === void 0 ? null : verifyStepPacket(options2.stepPacket);
   const invalidStep = packetVerification && !packetVerification.ok ? { status: "inconclusive", packetId: null, changedPaths: [], findings: [{ code: "STEP_PACKET_INVALID", message: packetVerification.reason }] } : null;
@@ -50082,7 +50094,7 @@ async function reconcileTicket(store2, id, run, options2) {
       evidence: stable.snapshot.evidence,
       workspace: null
     });
-    if (preflight.findings.some((finding2) => PRE_GIT_AUTHORITY_FAILURES.has(finding2.code))) {
+    if (preGitAuthorityFailure(preflight.findings)) {
       provenanceBlocksStepObservation = true;
     }
   }
@@ -50099,17 +50111,18 @@ async function reconcileTicket(store2, id, run, options2) {
   if (!packetVerification.ok) return { ...withRevision, step: invalidStep };
   if (provenanceBlocksStepObservation) return { ...withRevision, step: preflight };
   if (!stable?.ok) {
+    const reason = stable && !stable.ok ? stable.reason : "the bounded ticket/document authority snapshot is unavailable";
     return {
       ...withRevision,
-      step: reconcileStepPacket(packetVerification.packet, {
-        project: options2?.stepProject ?? packetVerification.packet.project,
-        ticket: { id, revision: null, itemAuthority: packetVerification.packet.ticket.itemAuthority, documents: packetVerification.packet.ticket.documents },
-        batch: null,
-        plan: null,
-        checklist: null,
-        evidence: null,
-        workspace: null
-      })
+      step: {
+        status: "inconclusive",
+        packetId: packetVerification.packet.packetId,
+        changedPaths: [],
+        findings: [{
+          code: "STEP_AUTHORITY_UNAVAILABLE",
+          message: `The bounded ticket, document, group and batch authority snapshot is unavailable. ${reason}`
+        }]
+      }
     };
   }
   const workspace = stable.snapshot.item.worktree && stable.snapshot.item.branch ? await collectWorkspaceSnapshot({

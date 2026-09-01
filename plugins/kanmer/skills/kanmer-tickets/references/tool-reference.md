@@ -50,14 +50,17 @@ every intersecting forbidden pattern wins. Git-observed filenames retain exact
 bytes (including whitespace, Unicode and newlines) and are never declaration-
 normalized before classification.
 The bounded Git census covers tracked, staged, unstaged and untracked paths plus
-both rename endpoints. Every sample hashes one bounded NUL
+both rename endpoints. A packet workspace HEAD is a full 40- or 64-character
+Git object ID. Every sample hashes one bounded NUL
 `git ls-files -v -s -z` index census, binding flag, mode, object id, stage and
 path: assume-unchanged or skip-worktree entries refuse; nonzero stages and
 gitlinks refuse without index mutation; census drift is `INCONCLUSIVE`. A tracked
 mode-`120000` path is retained only when its checkout representation and capped
-target bytes are identity-bound and its physical target is a regular file
-inside the worktree; external, chained-external, dangling, unreadable, unstable
-or over-budget links refuse. Ignored paths and `.git` / common-directory metadata are
+target bytes are identity-bound and its physical target is an indexed tracked
+regular file inside the worktree; external, chained-external, dangling,
+unreadable, unstable or over-budget links refuse.
+Tracked-link target bytes retain a leading UTF-8 BOM.
+Ignored or untracked link targets refuse. Ignored paths and `.git` / common-directory metadata are
 outside it and constrained workers must never mutate them; any need or attempt
 is a deviation stop recorded as `INCONCLUSIVE`, never an inferred PASS from an
 absent path. Symlink, hard-link, containment, encoded-byte, entry-count,

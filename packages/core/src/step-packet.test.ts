@@ -159,6 +159,23 @@ describe("compileStepPacket", () => {
     expect(result.packet.stopCondition).toContain(STEP_RETURN_STOP);
   });
 
+  it("accepts only full SHA-1 or SHA-256 workspace object ids", () => {
+    for (const length of [40, 64]) {
+      const workspace = { ...input().workspace, head: "b".repeat(length) };
+      const result = compileStepPacket(input({ workspace }));
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.packet.workspace.head).toBe("b".repeat(length));
+      expect(verifyStepPacket(result.packet)).toMatchObject({ ok: true });
+    }
+
+    for (const head of ["b".repeat(39), "b".repeat(41), "b".repeat(63), "b".repeat(65), `${"b".repeat(39)}g`]) {
+      const result = compileStepPacket(input({ workspace: { ...input().workspace, head } }));
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toMatch(/full.*40.*64.*Git object ID/i);
+    }
+  });
+
   it("keeps the two evidence layers apart", () => {
     const result = compileStepPacket(input());
     if (!result.ok) throw new Error(result.reason);

@@ -1652,9 +1652,19 @@ check(
     /nonzero\s+stages\s+and\s+gitlinks\s+refuse\s+without\s+index\s+mutation/.test(body) &&
     /census\s+drift(?:\s+between\s+samples)?\s+is\s+`INCONCLUSIVE`/.test(body) &&
     /tracked\s+mode-`120000`\s+path\s+is\s+retained\s+only\s+when\s+its\s+checkout\s+representation\s+and\s+capped\s+target\s+bytes\s+are\s+identity-bound/.test(body) &&
+    /physical\s+target\s+is\s+an\s+indexed\s+tracked\s+regular\s+file\s+inside\s+the\s+worktree/.test(body) &&
+    /Tracked-link\s+target\s+bytes\s+retain\s+a\s+leading\s+UTF-8\s+BOM/.test(body) &&
+    /Ignored\s+or\s+untracked\s+link\s+targets\s+refuse/.test(body) &&
     /external,\s+chained-external,\s+dangling,\s+unreadable,\s+unstable\s+or\s+over-budget\s+links\s+refuse/.test(body),
   ),
   "hidden flags, index drift, gitlinks and unconfined tracked links fail closed without index mutation",
+);
+check(
+  "packet workspace HEAD supports full SHA-1 and SHA-256 object ids",
+  [agentsGuide, executeSkill, autoSkill, toolReference].every((body) =>
+    /packet\s+workspace\s+HEAD\s+is\s+a\s+full\s+40-\s*or\s+64-character\s+Git\s+object\s+ID/.test(body),
+  ),
+  "workspace authority accepts only complete SHA-1 or SHA-256 object identities",
 );
 check(
   "constrained workers stop at the ignored and Git-metadata observation boundary",

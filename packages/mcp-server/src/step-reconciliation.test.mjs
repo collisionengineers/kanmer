@@ -27,21 +27,29 @@ function indexEntry(cwd, mode, name, content) {
   });
 }
 
-async function materializeTrackedLink(cwd, name, target) {
+async function materializeTrackedLink(
+  cwd,
+  name,
+  target,
+  representation = process.platform === "win32" ? "placeholder" : "real-link",
+) {
   const absolute = path.join(cwd, ...name.split("/"));
   await fs.mkdir(path.dirname(absolute), { recursive: true });
-  if (process.platform === "win32") {
+  if (representation === "placeholder") {
     git(cwd, "config", "core.symlinks", "false");
     await fs.writeFile(absolute, target);
   }
-  else await fs.symlink(target, absolute, "file");
+  else {
+    git(cwd, "config", "core.symlinks", "true");
+    await fs.symlink(target, absolute, "file");
+  }
   indexEntry(cwd, "120000", name, target);
 }
 
-async function fixture(t) {
+async function fixture(t, { objectFormat } = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-step-reconcile-"));
   t.after(() => removeTreeWithRetry(root));
-  git(root, "init", "-b", "main");
+  git(root, "init", ...(objectFormat ? [`--object-format=${objectFormat}`] : []), "-b", "main");
   git(root, "config", "user.email", "fixture@example.invalid");
   git(root, "config", "user.name", "Fixture");
   await fs.writeFile(path.join(root, "tracked.txt"), "base\n");
@@ -196,6 +204,18 @@ test("workspace snapshot is stable, bounded and does not refresh the Git index",
   assert.match(result.snapshot.head, /^[0-9a-f]{40}$/);
   assert.deepEqual(await fs.readFile(absoluteIndex), beforeBytes);
   assert.equal((await fs.stat(absoluteIndex)).mtimeMs, before.mtimeMs);
+});
+
+test("a SHA-256 repository retains its full 64-character workspace HEAD", async (t) => {
+  const { root, worktree, board } = await fixture(t, { objectFormat: "sha256" });
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+  });
+  assert.equal(result.ok, true, result.ok ? undefined : result.reason);
+  if (result.ok) assert.match(result.snapshot.head, /^[0-9a-f]{64}$/);
 });
 
 test("assume-unchanged and skip-worktree flags refuse hidden tracked evidence without mutating the index", async (t) => {
@@ -398,6 +418,62 @@ test("raw tracked-link components refuse an erased external hop and retain confi
     });
     assert.equal(result.ok, true, result.ok ? undefined : result.reason);
   }
+});
+
+test("tracked-link target decoding retains a leading UTF-8 BOM for real links and Windows placeholders", async (t) => {
+  for (const representation of ["real-link", "placeholder"]) {
+    await t.test(representation, async (t) => {
+      const { root, worktree, board } = await fixture(t);
+      const outside = await fs.mkdtemp(path.join(os.tmpdir(), `kanmer-step-bom-hop-${representation}-`));
+      t.after(() => removeTreeWithRetry(outside));
+      const bom = "\uFEFF";
+      await fs.mkdir(path.join(worktree, "ignored-hop"));
+      await fs.writeFile(path.join(worktree, ".gitignore"), "*ignored-hop\n");
+      await fs.writeFile(path.join(worktree, "victim.txt"), "in-worktree decoy\n");
+      git(worktree, "add", ".gitignore", "victim.txt");
+      git(worktree, "commit", "-m", "add BOM path controls");
+      try {
+        await fs.symlink(outside, path.join(worktree, `${bom}ignored-hop`), process.platform === "win32" ? "junction" : "dir");
+        await materializeTrackedLink(
+          worktree,
+          `tracked-bom-${representation}.txt`,
+          `${bom}ignored-hop/../victim.txt`,
+          representation,
+        );
+      } catch (error) {
+        t.skip(`filesystem cannot create the ${representation} BOM fixture: ${error instanceof Error ? error.message : String(error)}`);
+        return;
+      }
+      git(worktree, "commit", "-m", `add ${representation} BOM target`);
+      const result = await collectWorkspaceSnapshot({
+        repoRoot: root,
+        boardRoot: board,
+        worktree: ".worktrees/ticket",
+        branch: "ticket-step",
+      });
+      assert.equal(result.ok, false);
+      assert.match(result.reason, /raw target.*symbolic-link or junction|symbolic-link or junction component before normalization/i);
+    });
+  }
+});
+
+test("a tracked link to an ignored or untracked target is not observable authority", async (t) => {
+  const { root, worktree, board } = await fixture(t);
+  await fs.writeFile(path.join(worktree, ".gitignore"), "ignored-target.txt\n");
+  await fs.writeFile(path.join(worktree, "ignored-target.txt"), "ignored target\n");
+  git(worktree, "add", ".gitignore");
+  git(worktree, "commit", "-m", "add ignored target rule");
+  await materializeTrackedLink(worktree, "tracked-ignored-link.txt", "ignored-target.txt");
+  git(worktree, "commit", "-m", "add link to ignored target");
+  assert.equal(git(worktree, "status", "--porcelain=v1", "--untracked-files=all"), "");
+  const result = await collectWorkspaceSnapshot({
+    repoRoot: root,
+    boardRoot: board,
+    worktree: ".worktrees/ticket",
+    branch: "ticket-step",
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /not an indexed tracked regular path/i);
 });
 
 test("tracked-link target bytes are bounded before authority is accepted", async (t) => {

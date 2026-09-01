@@ -10,6 +10,7 @@ import {
   compileStepPacket,
   parsePlan,
   removeTreeWithRetry,
+  STEP_PACKET_LIMITS,
   stepPacketDigest,
   stepTicketAuthority,
 } from "../../core/dist/index.js";
@@ -201,7 +202,7 @@ Stop on an undeclared path.
 Stop after the selected step.
 `;
 
-async function stepFixture(t) {
+async function stepFixture(t, { batch = false } = {}) {
   const { root, store } = await fixtureStore(t, "kanmer-step-ticket-");
   execFileSync("git", ["-C", root, "init", "-b", "main"], { stdio: "ignore" });
   execFileSync("git", ["-C", root, "config", "user.email", "fixture@example.invalid"]);
@@ -212,13 +213,27 @@ async function stepFixture(t) {
   const worktree = path.join(root, ".worktrees", "ticket");
   execFileSync("git", ["-C", root, "worktree", "add", "-b", "ticket-step", worktree, "main"], { stdio: "ignore" });
   const ticket = await store.createItem({ type: "ticket", title: "Constrained", profile: "custom", requires: {}, status: "implementing" });
+  const batchMember = batch
+    ? await store.createItem({ type: "ticket", title: "Batch sibling", profile: "custom", requires: {}, status: "implementing" })
+    : null;
   await store.setDoc(ticket.id, "files", "# Files\n");
   const files = await store.getDocWithVersion(ticket.id, "files");
   const planText = STEP_PLAN(files.version);
   const checklistText = "- [ ] Step 1 — change the file\n- [ ] Step 2 — write the note\n";
   await store.setDoc(ticket.id, "plan", planText);
   await store.setDoc(ticket.id, "checklist", checklistText);
-  await store.takeTicket(ticket.id, { branch: "ticket-step", worktree: ".worktrees/ticket", assignee: "worker" });
+  await store.takeTicket(ticket.id, {
+    branch: "ticket-step",
+    worktree: ".worktrees/ticket",
+    assignee: "worker",
+    ...(batch
+      ? {
+          controllerRun: "batch-controller-run",
+          batch: "batch-step",
+          batchMembers: [ticket.id, batchMember.id],
+        }
+      : {}),
+  });
   const [plan, checklist, revision, baseline, currentTicket, inventory] = await Promise.all([
     store.getDocWithVersion(ticket.id, "plan"),
     store.getDocWithVersion(ticket.id, "checklist"),
@@ -242,7 +257,7 @@ async function stepFixture(t) {
       documents: inventory.map((document) => ({ path: document.doc, version: document.version }))
         .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0),
     },
-    batch: null,
+    batch: batch ? "batch-step" : null,
     workspace: baseline.snapshot,
     evidence: [{ layer: "ticket", group: null, path: "files/files.md", version: files.version }],
     checklist: checklistText,
@@ -980,6 +995,47 @@ for (const [label, checklist, expectedCode] of [
     assert.deepEqual(result.step.changedPaths, [{ path: "undeclared.txt", classification: "undeclared" }]);
   });
 }
+
+for (const [label, mutate, expectedCode] of [
+  ["plan", async (fixture) => {
+    const current = await fixture.store.getDoc(fixture.ticket.id, "plan");
+    await fixture.store.setDoc(fixture.ticket.id, "plan", current.replace("Stay inside the packet.", "Stay inside the exact packet."));
+  }, "STEP_PLAN_STALE"],
+  ["evidence", async (fixture) => {
+    await fixture.store.setDoc(fixture.ticket.id, "files", "# Files\n\npost-issuance evidence drift\n");
+  }, "STEP_EVIDENCE_STALE"],
+  ["ticket", async (fixture) => {
+    await fixture.store.updateItem(fixture.ticket.id, { body: "post-issuance ticket authority drift" });
+  }, "STEP_TICKET_AUTHORITY_STALE"],
+]) {
+  test(`post-issuance ${label} drift retains undeclared workspace evidence`, async (t) => {
+    const fixture = await stepFixture(t);
+    await fs.writeFile(path.join(fixture.worktree, "undeclared.txt"), "worker deviation\n");
+    await mutate(fixture);
+    const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, {
+      stepPacket: fixture.packet,
+      stepProject: fixture.project,
+    });
+    assert.equal(result.step.status, "fail");
+    assert.ok(result.step.findings.some((finding) => finding.code === expectedCode));
+    assert.ok(result.step.findings.some((finding) => finding.code === "STEP_PATH_UNDECLARED" && finding.path === "undeclared.txt"));
+    assert.deepEqual(result.step.changedPaths, [{ path: "undeclared.txt", classification: "undeclared" }]);
+  });
+}
+
+test("unavailable batched authority remains explicitly inconclusive", async (t) => {
+  const fixture = await stepFixture(t, { batch: true });
+  await fixture.store.setDoc(fixture.ticket.id, "proof", "x".repeat(STEP_PACKET_LIMITS.maxStringBytes + 1));
+  const result = await reconcileTicket(fixture.store, fixture.ticket.id, undefined, {
+    stepPacket: fixture.packet,
+    stepProject: fixture.project,
+  });
+  assert.equal(result.step.status, "inconclusive");
+  assert.equal(result.step.packetId, fixture.packet.packetId);
+  assert.deepEqual(result.step.changedPaths, []);
+  assert.ok(result.step.findings.some((finding) => finding.code === "STEP_AUTHORITY_UNAVAILABLE"));
+  assert.equal(result.step.findings.some((finding) => finding.code === "STEP_IDENTITY_MISMATCH"), false);
+});
 
 for (const countedDocument of ["proof", "open-questions", "post-implementation-report"]) {
   test(`an exact checklist tick does not mask a concurrent ${countedDocument} rewrite`, async (t) => {

@@ -34,10 +34,10 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 commits:
-  - c5f9d99dcde0d020ac448d32b47c7138da723bad
+  - 444f96052803be32012b26f42e2462e6d82b7ca7
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-02T08:47:20.111Z'
+updated: '2026-09-02T08:50:05.603Z'
 ---
 
 ## Why

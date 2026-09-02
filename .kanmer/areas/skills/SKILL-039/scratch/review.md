@@ -7,7 +7,7 @@ reviewer: "skill039-delta-reviewer"
 independent: true
 plan_hash: "7458539227dcc22e"
 ticket_updated: "2026-09-02T12:37:30.156Z"
-board_sha: "0d0ca8a12ec7ee7c3238636dfe1a4f8003b25ad6"
+board_sha: "4bd6447e097cea6e0a2b4f7d981b44b972c6e4ec"
 expected_reviewers:
   - "skill039-delta-reviewer"
 threads_snapshot:
@@ -61,13 +61,13 @@ findings:
 ---
 # Independent delta review — SKILL-039
 
-Reviewed PR #312 at exact head `f96ea1b62a4614ab1fed94e1cc583125672d92f3` against prior reviewed head `444f96052803be32012b26f42e2462e6d82b7ca7`, plan version `7458539227dcc22e`, ticket update `2026-09-02T12:37:30.156Z`, and pushed board `0d0ca8a12ec7ee7c3238636dfe1a4f8003b25ad6`.
+Reviewed PR #312 at exact head `f96ea1b62a4614ab1fed94e1cc583125672d92f3` against prior reviewed head `444f96052803be32012b26f42e2462e6d82b7ca7`, plan version `7458539227dcc22e`, ticket update `2026-09-02T12:37:30.156Z`, and pushed board `4bd6447e097cea6e0a2b4f7d981b44b972c6e4ec`.
 
 ## Delta scope and acceptance
 
 This round was limited to F-001 through F-005, the remediation lines, their direct parser, merge-gate and controller contracts, and relevant tests. The ticket packet, HZN-008 context, FRD-028, FRD-034, current PR diff, checks, reviews, comments and all five threads were gathered.
 
-Hosted `verify` passed at the exact head in 9m03s. Focused review-attestation and merge-gate suites passed 44/44, the complete skill-prose validator passed, and the three targeted negative prose tests passed. The prior `kanmer-gate` run failed only on the pre-remediation board snapshot: it observed the old Implementing stage and old-head needs-changes attestation. This exact-head pass record supplies the evidence required for the board-triggered regate.
+Hosted `verify` passed at the exact head in 9m03s. Focused review-attestation and merge-gate suites passed 44/44, the complete skill-prose validator passed, and the three targeted negative prose tests passed. The prior `kanmer-gate` run failed only on the pre-remediation board snapshot: it observed the old Implementing stage and old-head needs-changes attestation. After this exact-head pass record was pushed, the board-triggered `kanmer-gate` regate passed in 53s. Both required checks are green.
 
 ## Findings and dispositions
 
@@ -81,4 +81,4 @@ Each disposition was posted publicly before its thread was resolved. All five th
 
 ## Residual risk
 
-No material residual defect was found. The generated MCP bundle is covered by the exact-head hosted rail and the implementation report's explicit shipped-bundle smokes. Merge remains intentionally unperformed; the next controller action is to confirm the board-triggered `kanmer-gate` regate passes before any authorized merge.
+No material residual defect was found. The generated MCP bundle is covered by the exact-head hosted rail and the implementation report's explicit shipped-bundle smokes. Merge remains intentionally unperformed. Both required checks are green; the PR is ready for an independently authorized merge.

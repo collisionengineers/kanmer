@@ -392,13 +392,15 @@ Each finding is an ordered mapping with these keys and enums:
 - id: F-001
   severity: blocker # blocker | major | minor | note
   summary: "Non-empty finding summary"
-  disposition: open # open | fixed | rejected-with-reason | accepted-risk | deferred-to-ticket
-  reason: "Required for rejected-with-reason or accepted-risk"
+  disposition: open # open | fixed | rejected-with-reason | accepted-risk | deferred-to-ticket | obsolete-after-change
+  reason: "Required for rejected-with-reason, accepted-risk or obsolete-after-change"
   ticket: "MCP-025" # required for deferred-to-ticket
 ```
 
 `id` is a stable `F-###`-style string and `summary` is non-empty. `reason` is
-required for `rejected-with-reason` and `accepted-risk`, and optional otherwise.
+required for `rejected-with-reason`, `accepted-risk` and
+`obsolete-after-change`, and optional otherwise; for `obsolete-after-change`
+that reason names the superseding commit (`superseded by <sha>`).
 `ticket` is required for `deferred-to-ticket`, and optional otherwise. The body
 holds the human-readable change coverage, acceptance checks, finding details,
 dispositions, and residual risk; frontmatter is the machine-facing authority.

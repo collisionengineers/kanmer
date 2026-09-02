@@ -722,6 +722,7 @@ describe("phase-2 merge-gate evidence", () => {
       finding("major", "rejected-with-reason", { reason: "not reproducible" }),
       finding("blocker", "accepted-risk", { reason: "bounded residual risk" }),
       finding("major", "deferred-to-ticket", { ticket: "CORE-999" }),
+      finding("blocker", "obsolete-after-change", { reason: `superseded by ${"c".repeat(40)}` }),
       finding("minor", "open"),
       finding("note", "open"),
     ];

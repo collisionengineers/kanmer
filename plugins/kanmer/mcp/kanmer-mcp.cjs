@@ -43216,7 +43216,7 @@ async function linkItems(store2, sourceId, targetId, action, rel = "relates", op
 }
 var FULL_SHA = /^[0-9a-f]{40}$/iu;
 var SEVERITIES = /* @__PURE__ */ new Set(["blocker", "major", "minor", "note"]);
-var DISPOSITIONS = /* @__PURE__ */ new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket"]);
+var DISPOSITIONS = /* @__PURE__ */ new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket", "obsolete-after-change"]);
 function nonEmpty(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -43254,7 +43254,7 @@ function parseReviewAttestation(raw) {
       if (!SEVERITIES.has(f.severity)) return { state: "invalid", reason: `findings[${index}].severity is invalid` };
       if (!nonEmpty(f.summary)) return { state: "invalid", reason: `findings[${index}].summary must be non-empty` };
       if (!DISPOSITIONS.has(f.disposition)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
-      if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk") && !nonEmpty(f.reason)) {
+      if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk" || f.disposition === "obsolete-after-change") && !nonEmpty(f.reason)) {
         return { state: "invalid", reason: `findings[${index}].reason is required for ${f.disposition}` };
       }
       if (f.disposition === "deferred-to-ticket" && !nonEmpty(f.ticket)) {

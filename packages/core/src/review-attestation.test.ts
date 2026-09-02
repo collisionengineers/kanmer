@@ -45,3 +45,45 @@ describe("parseReviewAttestation optional CORE-123 fields", () => {
     expect(parseReviewAttestation(withExtra("threads_snapshot: none\n"))).toMatchObject({ state: "invalid", reason: expect.stringContaining("threads_snapshot") });
   });
 });
+
+const withFinding = (lines: string): string => `---
+kind: review-attestation
+pr: "159"
+head_sha: ${"a".repeat(40)}
+verdict: pass
+reviewer: independent-reviewer
+independent: true
+plan_hash: plan-version
+ticket_updated: "2026-08-22T07:00:00.000Z"
+findings:
+  - id: F-001
+    severity: minor
+    summary: outdated thread on a line the fix changed
+${lines}---
+Review body
+`;
+
+describe("parseReviewAttestation obsolete-after-change (SKILL-039)", () => {
+  it("accepts obsolete-after-change with a reason naming the superseding commit", () => {
+    const parsed = parseReviewAttestation(withFinding(
+      `    disposition: obsolete-after-change\n    reason: superseded by ${"c".repeat(40)}\n`,
+    ));
+    expect(parsed.state).toBe("valid");
+    if (parsed.state !== "valid") return;
+    expect(parsed.findings).toHaveLength(1);
+    expect(parsed.findings[0]).toMatchObject({ id: "F-001", disposition: "obsolete-after-change" });
+  });
+
+  it("still rejects an unknown disposition", () => {
+    expect(parseReviewAttestation(withFinding(
+      `    disposition: superseded\n    reason: superseded by ${"c".repeat(40)}\n`,
+    ))).toMatchObject({ state: "invalid", reason: expect.stringMatching(/disposition is invalid/u) });
+  });
+
+  it("requires a non-empty reason for obsolete-after-change", () => {
+    expect(parseReviewAttestation(withFinding("    disposition: obsolete-after-change\n"))).toMatchObject({
+      state: "invalid",
+      reason: expect.stringMatching(/reason is required for obsolete-after-change/u),
+    });
+  });
+});

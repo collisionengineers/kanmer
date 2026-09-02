@@ -141,6 +141,33 @@ threads moved), unmet acceptance checks, or an unresolved security,
 data-loss or destructive risk. Dispositioned minor and note findings are
 residual risk, recorded in the body, and do not block.
 
+### Root-cause classification
+
+Two or more findings arising from one underlying mechanism are **one root-cause
+class**. Record the class once and choose exactly one remedy for it: replace the
+implementation approach, revise the plan, narrow the approved contract with a
+stated threat model, or defer the whole class to one follow-up ticket. Never one
+patch, and never one ticket, per example. Repeated grammar variants against a
+hand-written parser, repeated path-normalization aliases, and repeated missing
+registrations from one duplicated composition rule are each a single class,
+however many examples the diff exposes.
+
+A GitHub thread that GitHub marks **outdated** — a thread on a line the fix has
+since changed — is dispositioned `obsolete-after-change` with a reason naming
+the superseding commit, `superseded by <sha>`. It is never a current open
+finding. The thread and its history are preserved, and a reviewer that reasserts
+the same defect against the current head raises it as a new finding with current
+evidence.
+
+**What consumes no remediation budget:** re-auditing an unchanged head, a
+restated finding, an outdated thread, an automated bot thread (see "Expected
+reviewers and the settle rule" above rather than restating it), a disposition
+edit, PR metadata that changes no code, and a new minor or note finding. That is
+the deliberate property of `backwardMoveEffects` in `store.ts`: `review_round`
+advances only when a `move_item` actually returns the ticket to Implementing.
+Three audits of one head and one finding are one observed condition, not three
+remediation failures.
+
 ### Batch PRs
 
 A frozen batch receives one fresh independent review of the shared PR at its
@@ -209,8 +236,11 @@ value when the controller named no reviewer or the head has no threads), and
 a present but malformed value invalidates the record. `independent` is true
 only for an actual independent reviewer. Every finding has a stable id, severity
 (`blocker | major | minor | note`), non-empty summary, and a disposition:
-`open | fixed | rejected-with-reason | accepted-risk | deferred-to-ticket`.
-`rejected-with-reason` and `accepted-risk` require a reason; a
+`open | fixed | rejected-with-reason | accepted-risk | deferred-to-ticket |
+obsolete-after-change`.
+`rejected-with-reason`, `accepted-risk` and `obsolete-after-change` require a
+reason, and for `obsolete-after-change` that reason names the superseding
+commit (`superseded by <sha>`); a
 `deferred-to-ticket` finding requires the linked ticket id. The Markdown body
 must explain changes, acceptance checks, findings, dispositions, and residual
 risk, while frontmatter remains the machine-facing authority.
@@ -283,7 +313,28 @@ judge the PR on its own scope.
 
 Re-run the PR view, diff/head, check, and thread gather immediately before the
 merge command. If anything moved, replace the attestation with the new head
-and plan/ticket values. With authorization, merge through GitHub only after
+and plan/ticket values.
+
+Immediately before `gh pr merge`, re-check that the board branch is pushed —
+the gate reads the remote board tip and does not re-run on a board push, so a
+gate result from before the push is evidence about a board the remote never
+saw:
+
+```sh
+git -C <absolute-path-to-board-worktree> rev-parse <board-branch>
+git -C <absolute-repository-root> rev-parse origin/<board-branch>
+```
+
+The two must be equal, and `<board-branch>` is read from
+`get_status.boardWorktree.expectedBranch` and never hardcoded — this mirrors
+`kanmer-auto`'s "Push the board before trusting a gate" and fails for the same
+reason a hardcoded `main` does. Thread resolution is enforced by GitHub branch
+protection (`required_conversation_resolution`) and is **load-bearing**: a PR
+whose findings are all dispositioned but whose threads are left unresolved sits
+at a blocked merge state however green its checks, and `enforce_admins` leaves
+no bypass to merge it anyway.
+
+With authorization, merge through GitHub only after
 that final pass:
 
 ```sh

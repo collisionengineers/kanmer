@@ -29,7 +29,8 @@ export type ReviewAttestation =
 
 const FULL_SHA = /^[0-9a-f]{40}$/iu;
 const SEVERITIES = new Set(["blocker", "major", "minor", "note"]);
-const DISPOSITIONS = new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket"]);
+// `obsolete-after-change` requires a reason naming the superseding commit (`superseded by <sha>`).
+const DISPOSITIONS = new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket", "obsolete-after-change"]);
 
 function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -71,7 +72,7 @@ export function parseReviewAttestation(raw: string | null): ReviewAttestation {
       if (!SEVERITIES.has(f.severity as string)) return { state: "invalid", reason: `findings[${index}].severity is invalid` };
       if (!nonEmpty(f.summary)) return { state: "invalid", reason: `findings[${index}].summary must be non-empty` };
       if (!DISPOSITIONS.has(f.disposition as string)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
-      if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk") && !nonEmpty(f.reason)) {
+      if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk" || f.disposition === "obsolete-after-change") && !nonEmpty(f.reason)) {
         return { state: "invalid", reason: `findings[${index}].reason is required for ${f.disposition}` };
       }
       if (f.disposition === "deferred-to-ticket" && !nonEmpty(f.ticket)) {

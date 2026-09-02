@@ -97,6 +97,6 @@ local removal must confirm the alias is stopped before deleting its metadata.
 
 **Conduct**
 
-22. **Review findings get dispositions.** Fix, reject with reason, accept risk, or defer to a ticket; never silence them.
+22. **Review findings get dispositions.** Fix, reject with reason, accept risk, defer to a ticket, or mark obsolete after change, naming the superseding commit; never silence them. Findings from one root cause are one class with one remedy, never one patch per example, and a convention change lands in the same PR as the work that needs it.
 23. **Secrets never appear in code, tickets, or proofs.**
 24. **A PR that changes commands or conventions updates AGENTS.md in the same PR.**`;

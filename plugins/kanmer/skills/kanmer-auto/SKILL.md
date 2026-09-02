@@ -721,8 +721,13 @@ ticket in **Verifying** must have a confirmed merged PR, an exact merge SHA, an
 active or immediately queued verification attempt, and a known proof state.
 
 Anything else is an unexplained state, and it is reconciled before the run
-reports anything: a merged PR still sitting in Review is moved on through its
-own gates, and a PASS proof still sitting in Verifying is moved and closed out.
+reports anything. The controller's first act is the reconciliation pair, not a
+manual audit: on any resumed or suspicious Review/Verifying ticket, call
+`reconcile_ticket id: <ID>` as a dry run first and apply its recommendation
+with `apply_reconciliation id: <ID>, expected_revision: <the recommendation's
+revision>` before re-reading anything by hand. A merged PR still sitting in
+Review is then moved on through its own gates, and a PASS proof still sitting in
+Verifying is moved and closed out.
 For a merged batch PR, re-read the active manifest and resume
 `kanmer-review`'s immutable-roster handoff instead of reconciling only the
 current member: Review advances exactly to Verifying, already-Verifying is the

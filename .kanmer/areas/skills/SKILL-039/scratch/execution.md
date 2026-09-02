@@ -32,3 +32,5 @@ remedy` (exit 1) — the inserted prose wraps after `remedy for it:`, not before
 - Explicit shipped-bundle `smoke.mjs` exited 0 (383/383); `smoke-protocol.mjs` exited 0 (54/54).
 - Worktree remained clean; diff is exactly the 17 planned paths.
 - PR: https://github.com/collisionengineers/kanmer/pull/312 (base `main`, required `Kanmer: SKILL-039` footer).
+
+- 2026-09-02T10:05:32.227Z stage review → implementing by codex-mcp-client; reason: needs-changes on 444f96052803be32012b26f42e2462e6d82b7ca7: F-001, F-002, F-003, F-004, F-005; review_round 1

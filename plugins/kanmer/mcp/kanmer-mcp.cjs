@@ -51522,7 +51522,7 @@ function responseProject(project) {
 function ok(data) {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-    ...lastProject ? { structuredContent: { project: lastProject } } : {}
+    structuredContent: { result: data, ...lastProject ? { project: lastProject } : {} }
   };
 }
 function fail(message) {

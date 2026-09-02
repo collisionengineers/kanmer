@@ -193,6 +193,8 @@ test("official HTTP and stdio clients expose the canonical policy with remote di
     assert.deepEqual(remoteTools.map(({ name, inputSchema }) => ({ name, inputSchema })).sort((a, b) => a.name.localeCompare(b.name)), localPolicyTools.map(({ name, inputSchema }) => ({ name, inputSchema })).sort((a, b) => a.name.localeCompare(b.name)));
     const status = await remote.callTool({ name: "get_status", arguments: {} });
     const statusPayload = JSON.parse(status.content[0].text);
+    // MCP-055: structuredContent carries the whole result, not just the project stamp.
+    assert.deepEqual(status.structuredContent.result, statusPayload);
     assert.equal(statusPayload.project.fingerprint, ready.projectFingerprint);
     assert.equal(statusPayload.project.boardRoot, root.replaceAll("\\", "/").replace(/^([A-Z]):/, (_, drive) => `${drive.toLowerCase()}:`));
   } finally {

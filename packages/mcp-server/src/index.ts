@@ -213,11 +213,18 @@ type ToolResult = {
   structuredContent?: Record<string, unknown>;
 };
 
-/** JSON tool result; the text payload is unchanged, the project rides in structuredContent. */
+/**
+ * JSON tool result. The text payload is unchanged, and `structuredContent`
+ * mirrors the whole result: the payload under `result` (MCP-055 — clients that
+ * prefer structured content rendered only the project stamp otherwise) plus
+ * the FRD-029 project stamp beside it. The payload is nested rather than
+ * spread so a payload's own richer `project` field (get_status,
+ * get_execution_packet) survives and arrays/scalars use the same one branch.
+ */
 function ok(data: unknown): ToolResult {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
-    ...(lastProject ? { structuredContent: { project: lastProject } } : {}),
+    structuredContent: { result: data, ...(lastProject ? { project: lastProject } : {}) },
   };
 }
 

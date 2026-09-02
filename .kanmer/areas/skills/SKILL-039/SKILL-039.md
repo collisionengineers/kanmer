@@ -5,7 +5,7 @@ title: >-
   Encode the anti-churn amendment: obsolete-after-change disposition, root-cause
   classes, reconcile tools in verify/closeout/auto, board-push recheck before
   merge
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: fix
@@ -44,7 +44,7 @@ prs:
   - '312'
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-02T12:36:49.203Z'
+updated: '2026-09-02T12:37:30.156Z'
 ---
 
 ## Why

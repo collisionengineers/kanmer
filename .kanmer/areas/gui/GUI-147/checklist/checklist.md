@@ -35,8 +35,10 @@ Deviations from the plan, all recorded in the post-implementation report:
 - [x] PR merge verified (`gh pr view 311 --json state,mergedAt` → MERGED 2026-09-02T03:18:05Z, mergeCommit 7a2062026ca4be5a052f4ad120e9009cfc6bb713)
 - [x] proof.md finalised (PR URL + merge date recorded in the proof's first attempt; result PASS, version 1993d0ecfe8e7aa0)
 - [x] Moved to final stage (Done at 2026-09-02T08:49:54Z by the independent verifier)
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-147`
-- [ ] `git branch -D GUI-147-claude-marketplace-stable` (squash-merged) + `git push origin --delete`
-- [ ] `git fetch --prune` + `git worktree prune` (also remove the stale detached `.worktrees/verify-gui-147-7a206202`)
-- [ ] `take_ticket action: "release"`
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-147`
+- [x] `git branch -D GUI-147-claude-marketplace-stable` (squash-merged) + `git push origin --delete`
+- [x] `git fetch --prune` + `git worktree prune` (also remove the stale detached `.worktrees/verify-gui-147-7a206202`)
+- [x] `take_ticket action: "release"`
+
+Closeout completed 2026-09-02T09:37Z by the controller `claude-code` adopting the closeout role (operator instruction: no further subagents). Outcome section written; `.worktrees/gui-147`, the two detached verify worktrees and the unregistered `review-gui-147` leftover removed; local and origin branch deleted; lease released.

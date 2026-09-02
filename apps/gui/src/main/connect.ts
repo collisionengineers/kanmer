@@ -32,6 +32,10 @@ import {
   type LegacyCodexFinding,
   type LegacyCodexProbe,
   type NativePluginCommand,
+  CLAUDE_MARKETPLACE,
+  CLAUDE_PLUGIN_REF,
+  type MarketplaceHostState,
+  type MarketplaceVersionCheck,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
@@ -187,10 +191,50 @@ export function marketplaceRoot(): string {
   return resolve(pluginRoot(), "..", "..");
 }
 
+/** The marketplace-owned roots Connect stages, and the only ones it refreshes. */
+const STAGED_MARKETPLACE_ROOTS = [".claude-plugin", ".agents", "plugins/kanmer"] as const;
+
 /**
- * Stage Claude's marketplace from a temporary copy with the selected board
+ * Where Claude's marketplace is staged: an installer-owned directory that
+ * outlives the Connect that wrote it.
+ *
+ * Staging used to be a `mkdtemp` directory that Connect deleted on the way out
+ * (GUI-147). Claude Code records a *directory* marketplace by path, so the
+ * deletion turned every later session into
+ * `Marketplace kanmer failed to load: cache-miss` — the plugin's skills and its
+ * `plugin:kanmer:kanmer` MCP server simply did not load, while Connect had
+ * reported success. A staged marketplace has to be as durable as the
+ * registration that points at it.
+ *
+ * `%LOCALAPPDATA%\Kanmer\claude-marketplace` is the sibling of the two
+ * installer-owned roots the NSIS installer already writes
+ * (`%LOCALAPPDATA%\Kanmer\mcp`, `%LOCALAPPDATA%\Kanmer\bin`; AGENTS.md §8).
+ * There is no Node-side resolver for those to reuse — they are `%LOCALAPPDATA%`
+ * tokens expanded by `cmd.exe`/NSIS — and Electron's `app.getPath` has no
+ * `localAppData` key, so `process.env.LOCALAPPDATA` is the only equivalent. The
+ * `homedir()` fallback exists so a non-Windows test run resolves rather than
+ * throwing; the app itself ships Windows-only.
+ *
+ * Exported so a test can assert the location follows the injected environment
+ * rather than a literal path.
+ */
+export function claudeMarketplaceStableRoot(): string {
+  const localAppData = process.env.LOCALAPPDATA?.trim();
+  const base = localAppData && localAppData !== ""
+    ? localAppData
+    : join(homedir(), "AppData", "Local");
+  return join(base, "Kanmer", "claude-marketplace");
+}
+
+/**
+ * Stage Claude's marketplace into that stable root with the selected board
  * branch bound into its MCP descriptor. The shipped bundle and the user's
  * global marketplace remain untouched; the host still owns the install.
+ *
+ * Refreshing is per owned subdirectory, not a delete-and-recreate of the root:
+ * the root is the path Claude Code has recorded, and each subdirectory is
+ * replaced so a file the bundle has since retired does not linger inside a
+ * marketplace the host still trusts.
  */
 async function stageClaudeMarketplaceRoot(boardBranch: string): Promise<string> {
   const bundledRoot = marketplaceRoot();
@@ -206,26 +250,87 @@ async function stageClaudeMarketplaceRoot(boardBranch: string): Promise<string> 
   if (!entry || typeof entry !== "object") {
     throw new Error(`Claude marketplace MCP descriptor has no mcpServers.kanmer entry: ${descriptorPath}`);
   }
-  const stagedRoot = await mkdtemp(join(tmpdir(), "kanmer-claude-marketplace-"));
-  try {
-    // Copy only marketplace-owned roots. Copying the repository wholesale can
-    // traverse a developer's node_modules and make Connect wait on unrelated
-    // files; Claude needs the marketplace manifest and the plugin it names.
-    for (const relativeRoot of [".claude-plugin", ".agents", "plugins/kanmer"]) {
-      const source = join(bundledRoot, relativeRoot);
-      if (existsSync(source)) await cp(source, join(stagedRoot, relativeRoot), { recursive: true });
-    }
-    const stagedDescriptor = join(stagedRoot, "plugins", "kanmer", "mcp", "claude.mcp.json");
-    const env = entry.env && typeof entry.env === "object" && !Array.isArray(entry.env)
-      ? entry.env as Record<string, unknown>
-      : {};
-    entry.env = { ...env, KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) };
-    await writeFile(stagedDescriptor, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
-    return stagedRoot;
-  } catch (error) {
-    await rm(stagedRoot, { recursive: true, force: true });
-    throw error;
+  const stagedRoot = claudeMarketplaceStableRoot();
+  await mkdir(stagedRoot, { recursive: true });
+  // Copy only marketplace-owned roots. Copying the repository wholesale can
+  // traverse a developer's node_modules and make Connect wait on unrelated
+  // files; Claude needs the marketplace manifest and the plugin it names.
+  for (const relativeRoot of STAGED_MARKETPLACE_ROOTS) {
+    const source = join(bundledRoot, relativeRoot);
+    const target = join(stagedRoot, relativeRoot);
+    await rm(target, { recursive: true, force: true });
+    if (existsSync(source)) await cp(source, target, { recursive: true });
   }
+  const stagedDescriptor = join(stagedRoot, "plugins", "kanmer", "mcp", "claude.mcp.json");
+  const env = entry.env && typeof entry.env === "object" && !Array.isArray(entry.env)
+    ? entry.env as Record<string, unknown>
+    : {};
+  entry.env = { ...env, KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) };
+  await writeFile(stagedDescriptor, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  // A failure above propagates with the directory left as it is. The old
+  // rollback deleted the staged root, which is exactly what must not happen now
+  // that the root is the one Claude Code has recorded: a half-refreshed
+  // marketplace still loads, a deleted one is a `cache-miss` for every session.
+  return stagedRoot;
+}
+
+/**
+ * What Claude Code already records about the Kanmer marketplace and plugin.
+ *
+ * Read from the host's own two state files under `~/.claude/plugins/`, never
+ * from CLI output: MCP-013's lesson is that CLI text is for showing a user
+ * verbatim, not for control flow. Both files are optional — a machine that has
+ * never installed a plugin has neither — and a missing or malformed file means
+ * "not registered"/"not installed", which is the safe reading: the worst it
+ * costs is an `add` where an `update` would have done, and the version
+ * read-back afterwards is what actually decides whether Connect succeeded.
+ */
+async function claudeMarketplaceHostState(
+  stagedRoot: string,
+  options: ConnectOptions,
+): Promise<MarketplaceHostState> {
+  const stateDir = options.claudePluginStateDir ?? join(homedir(), ".claude", "plugins");
+  const known = await readJsonOrNull(join(stateDir, "known_marketplaces.json"));
+  const recorded = (known as Record<string, { source?: { source?: unknown; path?: unknown } }> | null)
+    ?.[CLAUDE_MARKETPLACE];
+  const recordedPath = recorded?.source?.source === "directory" && typeof recorded.source.path === "string"
+    ? recorded.source.path
+    : null;
+  const marketplace = recorded === undefined || recorded === null
+    ? "absent"
+    : recordedPath !== null && samePath(recordedPath, stagedRoot)
+      ? "staged"
+      : "elsewhere";
+  // `{ version: 2, plugins: { "<plugin>@<marketplace>": [ { scope, version } ] } }`
+  // as of claude 2.1.233. The flat fallback keeps an older layout readable
+  // rather than reporting a plugin absent because the wrapper moved.
+  const installed = await readJsonOrNull(join(stateDir, "installed_plugins.json"));
+  const wrapper = installed as { plugins?: unknown } | null;
+  const plugins = (wrapper?.plugins && typeof wrapper.plugins === "object"
+    ? wrapper.plugins
+    : installed) as Record<string, unknown> | null;
+  const entries = plugins?.[CLAUDE_PLUGIN_REF];
+  const pluginInstalled = Array.isArray(entries)
+    && entries.some((entry) => (entry as { scope?: unknown } | null)?.scope === "user");
+  return { marketplace, pluginInstalled };
+}
+
+/** Parse a host state file, treating absent and malformed alike as "nothing recorded". */
+async function readJsonOrNull(file: string): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(file, "utf8")) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether two paths name the same directory (Windows compares case-insensitively). */
+function samePath(a: string, b: string): boolean {
+  const normalize = (value: string) => {
+    const resolved = resolve(value);
+    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+  };
+  return normalize(a) === normalize(b);
 }
 
 /** The version of the bundled skill set, read from the plugin manifest. */
@@ -577,31 +682,112 @@ interface SkillsInstallOutcome {
   failure: { command: string; output: string } | null;
 }
 
+/**
+ * Confirm the host installed the version this app ships.
+ *
+ * The exit code of `claude plugin install` is not the evidence: it is 0 for an
+ * already-installed plugin it did not touch, which is how v0.4.0's Connect
+ * reported success over a 0.3.12 plugin (GUI-147). Returns the failure to
+ * report, or null when the host agrees.
+ */
+async function verifyInstalledMarketplaceVersion(
+  check: MarketplaceVersionCheck,
+  expected: string,
+  root: string,
+  options: ConnectOptions,
+): Promise<{ command: string; output: string } | null> {
+  const run = options.hostVersionRunner ?? defaultCommandRunner;
+  let output: string;
+  try {
+    const result = await run(check.command, root);
+    output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+  } catch (err) {
+    // Unverifiable is reported as failed, not as success. An install nobody can
+    // confirm is the state this ticket exists to end.
+    return {
+      command: check.repairCommand,
+      output:
+        `The install ran, but \`${check.command}\` could not be read, so which ` +
+        `version this host now has is unknown:\n${commandFailureText(err)}\n\n` +
+        `Run this by hand to force version ${expected}:\n${check.repairCommand}`,
+    };
+  }
+  const installed = check.parse(output);
+  if (installed === expected) return null;
+  return {
+    command: check.repairCommand,
+    output: installed === null
+      ? `The install ran, but \`${check.command}\` reports no Kanmer plugin at all, ` +
+        `so this host has no skills and no board server. Expected version ${expected}.\n\n` +
+        `Run this by hand:\n${check.repairCommand}`
+      : `The install ran, but this host still reports Kanmer plugin version ` +
+        `${installed}, not the bundled ${expected} — so its skills and MCP server ` +
+        `are the previous release's.\n\nRun this by hand:\n${check.repairCommand}`,
+  };
+}
+
+/**
+ * The version a marketplace host reports having installed, or null when it
+ * cannot be read.
+ *
+ * The soft failure is deliberate and matches the rest of the staleness family
+ * (`staleness.ts`: nothing here throws) — a host without its CLI on PATH must
+ * render as "unknown", not break the Settings panel. Connect's own
+ * verification, which must be loud, is `verifyInstalledMarketplaceVersion`.
+ */
+async function readMarketplaceInstalledVersion(
+  check: MarketplaceVersionCheck,
+  root: string,
+  options: ConnectOptions,
+): Promise<string | null> {
+  const run = options.hostVersionRunner ?? defaultCommandRunner;
+  try {
+    const result = await run(check.command, root);
+    return check.parse(`${result.stdout ?? ""}\n${result.stderr ?? ""}`);
+  } catch {
+    return null;
+  }
+}
+
 /** Install skills for a provider; reports what ran and what, if anything, failed. */
-async function installSkills(provider: AgentProvider, root: string, boardBranch = DEFAULT_BOARD_BRANCH): Promise<SkillsInstallOutcome> {
+async function installSkills(
+  provider: AgentProvider,
+  root: string,
+  boardBranch = DEFAULT_BOARD_BRANCH,
+  options: ConnectOptions = {},
+): Promise<SkillsInstallOutcome> {
   // FRD-012 R3: this universal orientation layer is independent of how a host
   // receives skills, so marketplace hosts must not bypass it on their early return.
   await ensureAgentsBlock(root);
   if (provider.install.kind === "marketplace") {
     const notes = ["AGENTS.md block ensured"];
     const stagedRoot = provider.id === "claude" ? await stageClaudeMarketplaceRoot(boardBranch) : undefined;
-    try {
-      for (const cmd of provider.install.marketplaceCommands(stagedRoot ?? marketplaceRoot())) {
-        try {
-          await execAsync(cmd, { cwd: root });
-          notes.push("plugin installed");
-        } catch (e) {
-          // Stop at the first failure rather than running the rest. These
-          // commands are ordered — `plugin install <name>@<marketplace>` cannot
-          // succeed when the `marketplace add` before it did not — so continuing
-          // only buys a second error that misdescribes the first one's cause.
-          return { note: notes.join("; "), failure: { command: cmd, output: commandFailureText(e) } };
-        }
+    // The staged root is installer-owned and deliberately outlives this call:
+    // it is the path the host records, so deleting it is what broke every
+    // session after Connect (GUI-147). Step 2's refresh is its only cleanup.
+    const hostState = stagedRoot === undefined
+      ? undefined
+      : await claudeMarketplaceHostState(stagedRoot, options);
+    for (const cmd of provider.install.marketplaceCommands(stagedRoot ?? marketplaceRoot(), hostState)) {
+      try {
+        await execAsync(cmd, { cwd: root });
+        notes.push("plugin installed");
+      } catch (e) {
+        // Stop at the first failure rather than running the rest. These
+        // commands are ordered — `plugin install <name>@<marketplace>` cannot
+        // succeed when the `marketplace add` before it did not — so continuing
+        // only buys a second error that misdescribes the first one's cause.
+        return { note: notes.join("; "), failure: { command: cmd, output: commandFailureText(e) } };
       }
-      return { note: notes.join("; "), failure: null };
-    } finally {
-      if (stagedRoot) await rm(stagedRoot, { recursive: true, force: true });
     }
+    const check = provider.install.installedVersion;
+    if (check) {
+      const expected = await bundledSkillsVersion();
+      const failure = await verifyInstalledMarketplaceVersion(check, expected, root, options);
+      if (failure) return { note: notes.join("; "), failure };
+      notes.push(`host reports plugin v${expected}`);
+    }
+    return { note: notes.join("; "), failure: null };
   }
   // copySkills: copy skills for a project dir after the universal block is ensured.
   if (provider.install.kind === "copySkills" && provider.install.skillsScope === "project" && provider.install.skillsDir) {
@@ -639,7 +825,11 @@ export interface SkillsStatus {
  * meaningful for project-scope copies (grok): marketplace hosts manage their own
  * plugin, and agentsOnly hosts read the always-refreshed AGENTS.md block.
  */
-export async function skillsStatus(id: ProviderId, projectRoot: string): Promise<SkillsStatus> {
+export async function skillsStatus(
+  id: ProviderId,
+  projectRoot: string,
+  options: ConnectOptions = {},
+): Promise<SkillsStatus> {
   const provider = providerById(id);
   const bundledVersion = await bundledSkillsVersion();
   const base: SkillsStatus = {
@@ -648,7 +838,24 @@ export async function skillsStatus(id: ProviderId, projectRoot: string): Promise
     bundledVersion,
     updateAvailable: false,
   };
-  if (!provider || provider.install.kind === "marketplace") return base;
+  if (!provider || provider.install.kind === "marketplace") {
+    // A marketplace host that can be asked what it installed is asked. Claude
+    // Code's plugin is the control plane the whole board runs through, and a
+    // silent `installedVersion: null` is what let it sit a release behind
+    // unnoticed (GUI-147). Nothing here throws: a staleness read that fails is
+    // reported as "unknown", the same as every other read in this family.
+    const check = provider?.install.kind === "marketplace" ? provider.install.installedVersion : undefined;
+    if (!check) return base;
+    const installedVersion = await readMarketplaceInstalledVersion(check, projectRoot, options);
+    return {
+      ...base,
+      installedVersion,
+      // Any disagreement, not only an older version: a host left on a *newer*
+      // plugin than the app that talks to it is the same stale-control-plane
+      // fault from the other side, and "Update skills" is still the answer.
+      updateAvailable: installedVersion !== null && installedVersion !== bundledVersion,
+    };
+  }
   if (provider.install.kind === "plugin") return { ...base, scope: "plugin" };
   if (provider.install.skillsScope !== "project" || !provider.install.skillsDir) {
     return { ...base, scope: "agentsOnly" };
@@ -676,7 +883,12 @@ export async function skillsStatus(id: ProviderId, projectRoot: string): Promise
  * Making `installSkills` reconcile is what fixes it here too — there is nothing
  * for this function to do differently.
  */
-export async function updateSkills(id: ProviderId, projectRoot: string, boardBranch = DEFAULT_BOARD_BRANCH): Promise<ConnectResult> {
+export async function updateSkills(
+  id: ProviderId,
+  projectRoot: string,
+  boardBranch = DEFAULT_BOARD_BRANCH,
+  options: ConnectOptions = {},
+): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   if (provider.install.kind === "plugin") {
@@ -688,7 +900,7 @@ export async function updateSkills(id: ProviderId, projectRoot: string, boardBra
     };
   }
   try {
-    const { note, failure } = await installSkills(provider, projectRoot, boardBranch);
+    const { note, failure } = await installSkills(provider, projectRoot, boardBranch, options);
     // Same rule as connectAgent: a failed install command is reported as a
     // failure carrying the command, not as a note on a successful result.
     if (failure) return { ok: false, command: failure.command, output: failure.output };
@@ -718,6 +930,17 @@ export interface ConnectOptions {
   nativeCommandRunner?: NativeCommandRunner;
   /** Test-only plugin root seam; production resolves the packaged/dev bundle. */
   pluginRootPath?: string;
+  /**
+   * Test-only seam for the host's plugin state directory (`~/.claude/plugins`).
+   * Production reads the real one — read-only, and only to decide add-vs-update
+   * and install-vs-reinstall.
+   */
+  claudePluginStateDir?: string;
+  /**
+   * Test-only seam for the read-only installed-version read-back
+   * (`claude plugin list`). Production uses the host shell.
+   */
+  hostVersionRunner?: ConnectCommandRunner;
 }
 
 export type ConnectCommandRunner = (
@@ -1162,7 +1385,7 @@ export async function connectAgent(
     } else {
       throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);
     }
-    const skills = await installSkills(provider, projectRoot, boardBranch).catch(
+    const skills = await installSkills(provider, projectRoot, boardBranch, options).catch(
       (e): SkillsInstallOutcome => ({
         note: "",
         failure: {
@@ -1322,6 +1545,22 @@ export async function disconnectAgent(
   if (provider.install.kind === "plugin") return disconnectNativePlugin(provider, projectRoot, options);
   try {
     const cleanupNotes: string[] = ["provider registration removed"];
+    // FRD-012 R4: disconnect reverses what connect wrote. Connect now leaves a
+    // durable marketplace registration and a user-scoped plugin on the host —
+    // before GUI-147 there was nothing marketplace-shaped to reverse, because
+    // the staged directory was already deleted by the time connect returned.
+    //
+    // Best-effort, like every other removal here: disconnecting a host that was
+    // never connected must not fail. The installer-owned staged directory is
+    // deliberately left in place — once the registration is gone it is inert,
+    // and the next Connect refreshes it.
+    if (provider.install.kind === "marketplace" && provider.install.hostRemoveCommands) {
+      const run = options.commandRunner ?? defaultCommandRunner;
+      for (const cmd of provider.install.hostRemoveCommands()) {
+        await run(cmd, projectRoot).catch(() => undefined);
+      }
+      cleanupNotes.push("host marketplace registration and plugin removed");
+    }
     if (provider.register.kind === "cli") {
       for (const cmd of provider.register.removeCommands(projectRoot)) {
         await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);

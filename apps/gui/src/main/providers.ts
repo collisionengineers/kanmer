@@ -137,6 +137,104 @@ export type RegisterSpec =
       removeCommands?: (root: string) => string[];
     };
 
+/** Claude Code's marketplace name, as declared by `.claude-plugin/marketplace.json`. */
+export const CLAUDE_MARKETPLACE = "kanmer";
+
+/** The `<plugin>@<marketplace>` reference Claude Code installs Kanmer under. */
+export const CLAUDE_PLUGIN_REF = `kanmer@${CLAUDE_MARKETPLACE}`;
+
+/**
+ * What a host already records about this marketplace and plugin, read from the
+ * host's own state files rather than parsed out of CLI text.
+ *
+ * A marketplace command list is a function of that state because these verbs
+ * are not idempotent in the same way: `claude plugin install` is a no-op on an
+ * already-installed plugin, and `claude plugin marketplace add` is not the verb
+ * for a name the host already tracks. Deciding from recorded state is what makes
+ * Connect an upgrade rather than only a first install (GUI-147).
+ */
+export interface MarketplaceHostState {
+  /**
+   * Whether the host records this marketplace, and whether the source it
+   * records is the directory Connect is staging into now. `"elsewhere"` is the
+   * state every install up to v0.4.0 left behind: a directory marketplace whose
+   * recorded source was a temp directory Connect then deleted.
+   */
+  marketplace: "absent" | "staged" | "elsewhere";
+  /** True when the host records the plugin installed in the target scope. */
+  pluginInstalled: boolean;
+}
+
+/**
+ * A read-only read-back of the version a host actually has installed.
+ *
+ * Present only for a host whose install verb cannot be trusted to have changed
+ * anything: `claude plugin install kanmer@kanmer` exits 0 on an already
+ * installed plugin without upgrading it, so v0.4.0's Connect reported success
+ * while Claude Code kept loading 0.3.12 (GUI-147). The exit code is not the
+ * evidence; the version the host reports back is.
+ */
+export interface MarketplaceVersionCheck {
+  /** The read-only command that reports installed plugins. */
+  command: string;
+  /** The version this host reports for the plugin, or null when it is absent. */
+  parse: (output: string) => string | null;
+  /** A pasteable repair for the user when the read-back disagrees. */
+  repairCommand: string;
+}
+
+/**
+ * The version a host reports for one `<plugin>@<marketplace>` in a
+ * `claude plugin list` transcript, or null when it lists no such block.
+ *
+ * The transcript is a sequence of blocks, measured against claude 2.1.233:
+ *
+ *     Installed plugins:
+ *
+ *       ❯ kanmer@kanmer
+ *         Version: 0.4.0
+ *         Scope: user
+ *         Status: ✔ enabled
+ *
+ * Scope is part of the identity, not decoration: the same plugin legitimately
+ * appears more than once at different scopes, with different versions (this
+ * machine lists `azure@claude-plugins-official` at both `user` 1.2.32 and
+ * `local` 1.1.75). Kanmer installs at user scope, so that is the block whose
+ * version answers "did the install take".
+ */
+export function parseMarketplacePluginVersion(
+  output: string,
+  plugin: string,
+  scope = "user",
+): string | null {
+  // A block header is a bare `name@marketplace`, optionally behind the CLI's
+  // bullet glyph. `Version: 0.4.0` cannot match it — no `@`, and a space — which
+  // is what keeps the two line kinds apart without counting lines.
+  const header = /^(?:[^\w\s]+\s*)?([\w.@/-]+@[\w.-]+)$/;
+  const blocks: { name: string; version?: string; scope?: string }[] = [];
+  let block: { name: string; version?: string; scope?: string } | undefined;
+  for (const raw of output.split(/\r?\n/)) {
+    const line = raw.trim();
+    const named = header.exec(line);
+    if (named) {
+      block = { name: named[1]! };
+      blocks.push(block);
+      continue;
+    }
+    if (!block) continue;
+    const version = /^Version:\s*(\S+)/i.exec(line);
+    if (version) {
+      block.version = version[1]!;
+      continue;
+    }
+    const reported = /^Scope:\s*(\S+)/i.exec(line);
+    if (reported) block.scope = reported[1]!;
+  }
+  const named = blocks.filter((candidate) => candidate.name === plugin);
+  const scoped = named.find((candidate) => candidate.scope === scope);
+  return (scoped ?? named[0])?.version ?? null;
+}
+
 export type InstallSpec =
   /**
    * `marketplaceRoot` is the directory holding this host's **marketplace
@@ -154,7 +252,26 @@ export type InstallSpec =
    * below are pinned to their manifests by a test in providers.test.ts rather
    * than reconciled into one name.
    */
-   | { kind: "marketplace"; marketplaceCommands: (marketplaceRoot: string) => string[] }
+   | {
+       kind: "marketplace";
+       /**
+        * The ordered commands that install this host's plugin. `state` is what
+        * the host already records; a spec that ignores it — codex's does — keeps
+        * its previous unconditional behaviour.
+        */
+       marketplaceCommands: (marketplaceRoot: string, state?: MarketplaceHostState) => string[];
+       /**
+        * How to read back the version the host actually installed. Omitted for
+        * a host whose install verb is trustworthy on its own.
+        */
+       installedVersion?: MarketplaceVersionCheck;
+       /**
+        * Best-effort host-side removals disconnect owes for what Connect
+        * registered — this provider's own marketplace and plugin only
+        * (FRD-012 R1a/R4). Absent for a host Connect leaves nothing durable on.
+        */
+       hostRemoveCommands?: () => string[];
+     }
    | { kind: "copySkills"; skillsScope: "project" | "global" | "agentsOnly"; skillsDir?: string }
    | {
        /** A host-native plugin, installed in the host's user scope. */
@@ -871,9 +988,43 @@ export const PROVIDERS: AgentProvider[] = [
       kind: "marketplace",
       // `kanmer@kanmer` reads oddly but is right: plugin `kanmer` from the
       // marketplace `.claude-plugin/marketplace.json` names `kanmer`.
-      marketplaceCommands: (marketplaceRoot) => [
-        `claude plugin marketplace add ${q(marketplaceRoot)}`,
-        "claude plugin install kanmer@kanmer",
+      marketplaceCommands: (marketplaceRoot, state) => [
+        // Three states, three verbs. A marketplace already tracked at the
+        // directory being staged is refreshed in place. One recorded somewhere
+        // else is dropped first, because `marketplace update` re-reads the
+        // *recorded* source and every install up to v0.4.0 recorded a temp
+        // directory Connect had already deleted — updating that refreshes from
+        // nothing and leaves Claude Code reporting `cache-miss`.
+        ...(state?.marketplace === "staged"
+          ? [`claude plugin marketplace update ${CLAUDE_MARKETPLACE}`]
+          : state?.marketplace === "elsewhere"
+            ? [
+                `claude plugin marketplace remove ${CLAUDE_MARKETPLACE}`,
+                `claude plugin marketplace add ${q(marketplaceRoot)}`,
+              ]
+            : [`claude plugin marketplace add ${q(marketplaceRoot)}`]),
+        // `claude plugin install` exits 0 without upgrading an already
+        // installed plugin, so an upgrade has to uninstall first. That is
+        // GUI-147's second defect whole: v0.4.0's Connect ran the install, read
+        // the exit code, and reported success over a 0.3.12 plugin.
+        ...(state?.pluginInstalled ? [`claude plugin uninstall ${CLAUDE_PLUGIN_REF} -s user -y`] : []),
+        `claude plugin install ${CLAUDE_PLUGIN_REF} -s user -y`,
+      ],
+      installedVersion: {
+        command: "claude plugin list",
+        parse: (output) => parseMarketplacePluginVersion(output, CLAUDE_PLUGIN_REF),
+        repairCommand:
+          `claude plugin uninstall ${CLAUDE_PLUGIN_REF} -s user -y && ` +
+          `claude plugin install ${CLAUDE_PLUGIN_REF} -s user -y`,
+      },
+      // Connect now leaves a durable marketplace registration and a user-scoped
+      // plugin behind, so disconnect finally has something of its own to reverse
+      // (FRD-012 R4). The plugin goes first: an uninstall resolves against the
+      // marketplace that supplied it, and removing that registration first would
+      // orphan it. Neither command touches the staged directory.
+      hostRemoveCommands: () => [
+        `claude plugin uninstall ${CLAUDE_PLUGIN_REF} -s user -y`,
+        `claude plugin marketplace remove ${CLAUDE_MARKETPLACE}`,
       ],
     },
     dispatch: true,

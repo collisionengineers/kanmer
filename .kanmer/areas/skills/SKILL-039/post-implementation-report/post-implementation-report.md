@@ -48,3 +48,22 @@ At the implementation commit:
 - `npm run plugin:build`: PASS; regenerated artifacts were already byte-identical.
 
 After merge, verify the exact merged SHA on `main` with `npm run verify` and both shipped-bundle smoke commands.
+
+## Remediation round 1
+
+Independent review returned five major findings against `444f96052803be32012b26f42e2462e6d82b7ca7`. Commit `f96ea1b62a4614ab1fed94e1cc583125672d92f3` resolves them:
+
+- F-001: `obsolete-after-change` now requires the exact reason `superseded by <full-sha>`, with negative unit coverage.
+- F-002: verify, closeout, and auto apply reconciliation only when the dry run returns a recommendation.
+- F-003: auto permits one independently classified approach-level replan after the remediation budget is exhausted, without creating another remediation allowance.
+- F-004: review normalizes external P1/P2 severities into Kanmer's blocker/major/minor/note vocabulary.
+- F-005: every open finding, including minor and note, blocks PASS and merge eligibility until terminally dispositioned.
+
+Validation at the remediation commit:
+
+- `npm run verify`: PASS — core 830/830, GUI 538/538, MCP/HTTP green with one Windows platform skip, scripts 168/168, smoke and protocol suites green.
+- Shipped plugin-bundle `smoke.mjs`: PASS, 383/383.
+- Shipped plugin-bundle `smoke-protocol.mjs`: PASS, 54/54.
+- `git diff --check`: PASS.
+
+PR #312 was updated in place; no replacement PR was opened. The ticket is ready for independent delta review of the new head.

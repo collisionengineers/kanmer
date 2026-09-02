@@ -36,3 +36,5 @@ remedy` (exit 1) — the inserted prose wraps after `remedy for it:`, not before
 - 2026-09-02T10:05:32.227Z stage review → implementing by codex-mcp-client; reason: needs-changes on 444f96052803be32012b26f42e2462e6d82b7ca7: F-001, F-002, F-003, F-004, F-005; review_round 1
 
 - 2026-09-02T11:51:39.660Z lease-phase implementing → running-command (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 10; expires 2026-09-02T13:51:39.639Z)
+
+- 2026-09-02T12:36:39.281Z lease-phase running-command → implementing (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 11; expires 2026-09-02T13:06:39.266Z)

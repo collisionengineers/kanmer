@@ -38,3 +38,13 @@ remedy` (exit 1) — the inserted prose wraps after `remedy for it:`, not before
 - 2026-09-02T11:51:39.660Z lease-phase implementing → running-command (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 10; expires 2026-09-02T13:51:39.639Z)
 
 - 2026-09-02T12:36:39.281Z lease-phase running-command → implementing (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 11; expires 2026-09-02T13:06:39.266Z)
+
+## Remediation round 1 — 2026-09-02
+
+- Remediated independent-review findings F-001 through F-005 on the existing branch and PR.
+- Focused prose validation initially exposed three stale pins: reserved `impact` wording, two pre-budget assertions, and an overly rigid reconciliation regex. Each failure was retained as evidence and corrected; the final focused prose validator and four targeted negative mutations passed.
+- Focused core review-attestation and merge-gate suites passed: 44/44.
+- `npm run verify` passed with exit 0: core 830/830, GUI 538/538, MCP/HTTP green with one Windows platform skip, scripts 168/168, and all build/typecheck/docs/plugin checks green.
+- Explicit shipped plugin-bundle smoke checks passed: `smoke.mjs` 383/383 and `smoke-protocol.mjs` 54/54.
+- `git diff --check` passed; worktree was clean after commit.
+- Remediation commit `f96ea1b62a4614ab1fed94e1cc583125672d92f3` pushed to `SKILL-039-anti-churn-amendment`; PR #312 reused and updated in place.

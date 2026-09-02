@@ -5,12 +5,13 @@ title: >-
   Encode the anti-churn amendment: obsolete-after-change disposition, root-cause
   classes, reconcile tools in verify/closeout/auto, board-push recheck before
   merge
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-09-02T00:47:16.599Z'
+  review: '2026-09-02T08:51:24.394Z'
 taken_at: '2026-09-02T01:42:01.023Z'
 branch: SKILL-039-anti-churn-amendment
 worktree: .worktrees/skill-039
@@ -39,7 +40,7 @@ prs:
   - '312'
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-02T08:50:39.509Z'
+updated: '2026-09-02T08:51:24.394Z'
 ---
 
 ## Why

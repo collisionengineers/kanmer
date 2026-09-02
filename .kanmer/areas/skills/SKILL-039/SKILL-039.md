@@ -35,9 +35,11 @@ refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 commits:
   - 444f96052803be32012b26f42e2462e6d82b7ca7
+prs:
+  - '312'
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-02T08:50:05.603Z'
+updated: '2026-09-02T08:50:39.509Z'
 ---
 
 ## Why

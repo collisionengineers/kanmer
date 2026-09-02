@@ -19,8 +19,8 @@ notes rather than rewriting.*
 - [x] [pre-review] Both bundle smokes exit 0 with `KANMER_SERVER=plugins/kanmer/mcp/kanmer-mcp.cjs`: `packages/mcp-server/src/smoke.mjs` and `packages/mcp-server/src/smoke-protocol.mjs`.
 - [x] [pre-review] Production caller named: `parseReviewAttestation` is consumed by `packages/mcp-server/src/check-pr.mjs:13` (the `kanmer-gate` check) and by the store's Review → Implementing rule — no new registration, and `check-pr.mjs` is unchanged.
 - [x] [pre-review] No new field, tool, stage, profile or gate was added, and `merge-gate.ts`, `store.ts`, `check-pr.mjs` and `scripts/verify.mjs` are untouched.
-- [ ] [pre-review] PR opened with a `Kanmer: SKILL-039` footer and the post-implementation report written, recording exact commands and exit codes.
-- [ ] [pre-review] Stop at the approved boundary — do not review, do not merge, do not start CORE-133 or CORE-119.
+- [x] [pre-review] PR opened with a `Kanmer: SKILL-039` footer and the post-implementation report written, recording exact commands and exit codes.
+- [x] [pre-review] Stop at the approved boundary — do not review, do not merge, do not start CORE-133 or CORE-119.
 - [ ] [post-merge] This PR's independent reviewer dispositioned at least one genuinely outdated Codex thread as `obsolete-after-change` with `superseded by <sha>`, resolved it, and took **no** extra remediation round for it — recorded in `scratch/review.md`. This satisfies the ticket's "fixture PR with an outdated thread" verification; no separate fixture PR is created.
 
 ## Progress notes
@@ -48,3 +48,5 @@ Append with `set_ticket_doc(doc: "checklist", append: true)`.
   agents block 31/31, plugin sync green). Separate plugin-bundle `smoke.mjs`
   and `smoke-protocol.mjs` runs both exited 0. Worktree remained clean and the
   diff stayed at exactly the 17 planned paths.
+
+- 2026-09-02 handoff — pushed `444f96052803be32012b26f42e2462e6d82b7ca7`, opened PR #312 with the required standalone `Kanmer: SKILL-039` footer, recorded the PR and commit on the ticket, and wrote the post-implementation report. The independent post-merge reviewer exercise remains intentionally unchecked.

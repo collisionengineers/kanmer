@@ -61,3 +61,12 @@ opencode.json
 .grok/skills/
 .agents/mcp_config.json
 .agents/skills/
+
+# Machine-local operator inputs, never source: the operator's goal brief, the
+# Infisical CLI's project pointer, and the local skills lockfile. Like the
+# Connect-written paths above they are untracked deliberately, and
+# `scripts/release.mjs` counts untracked files as a dirty tree, so leaving them
+# unignored blocks every release (SKILL-039).
+goal.md
+.infisical.json
+skills-lock.json

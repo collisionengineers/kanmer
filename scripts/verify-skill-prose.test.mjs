@@ -491,12 +491,12 @@ test("goal contract validator rejects an unfrozen roster and a missing preflight
   }
 });
 
-test("goal contract validator rejects trusting a stale gate and routing around a spent budget", () => {
+test("goal contract validator rejects trusting a stale gate and buying another remediation round", () => {
   const fixture = goalFixture("kanmer-goal-gate-budget-");
   try {
     const auto = skillFile(fixture, "kanmer-auto");
     edit(auto, "### Push the board before trusting a gate", "### Board synchronisation");
-    edit(auto, "to get around that refusal", "whenever the lane would otherwise stall");
+    edit(auto, "creates no new remediation allowance", "creates one new remediation allowance");
 
     const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
     assert.notEqual(result.status, 0);
@@ -507,20 +507,18 @@ test("goal contract validator rejects trusting a stale gate and routing around a
   }
 });
 
-test("goal contract validator rejects a controller that merges or self-replans past its budget", () => {
+test("goal contract validator rejects a controller that performs the merge", () => {
   const fixture = goalFixture("kanmer-goal-merge-claim-");
   try {
     const auto = skillFile(fixture, "kanmer-auto");
     writeFileSync(
       auto,
-      `${readFileSync(auto, "utf8")}\nThe controller merges the PR once every required check is green.\n` +
-        "Once the budget is spent the controller takes another replan on its own authority.\n",
+      `${readFileSync(auto, "utf8")}\nThe controller merges the PR once every required check is green.\n`,
     );
 
     const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}no controller performing the merge itself/);
-    assert.match(result.stdout, /FAIL {2}no self-authorised replan after an exhausted budget/);
   } finally {
     removeTreeWithRetrySync(fixture);
   }
@@ -714,18 +712,18 @@ test("goal contract validator rejects a controller that rebases onto a hardcoded
   }
 });
 
-test("goal contract validator rejects a replan with no remediation-budget precondition", () => {
+test("goal contract validator rejects a replan that buys another remediation round", () => {
   const fixture = goalFixture("kanmer-goal-replan-budget-");
   try {
     edit(
       skillFile(fixture, "kanmer-auto"),
-      ", and only while\n  the remediation budget is **still available before it is spent**",
-      "",
+      "creates no new remediation allowance",
+      "creates one new remediation allowance",
     );
 
     const result = runOn(fixture);
     assert.notEqual(result.status, 0);
-    expectFail(result.stdout, "kanmer-auto allows its one replan only before the remediation budget is spent");
+    expectFail(result.stdout, "kanmer-auto bounds churn and adds no second route around the budget");
   } finally {
     removeTreeWithRetrySync(fixture);
   }
@@ -1056,13 +1054,6 @@ const forbiddenParaphrases = [
   ["kanmer-auto merges the pull request after the final independent pass.", "no controller performing the merge itself"],
   ["The controller runs gh pr merge when the reviewer is unavailable.", "no controller performing the merge itself"],
   ["The controller merges the PR once the delta review clears.", "no controller performing the merge itself"],
-  ["A budget-exhausted lane may self-replan.", "no self-authorised replan after an exhausted budget"],
-  [
-    "After REMEDIATION_BUDGET_EXHAUSTED the controller replans automatically.",
-    "no self-authorised replan after an exhausted budget",
-  ],
-  ["Once the budget is spent the controller takes another replan on its own authority.", "no self-authorised replan after an exhausted budget"],
-  ["The controller replans once the remediation budget is exhausted.", "no self-authorised replan after an exhausted budget"],
 ];
 
 test("goal contract validator catches every phrasing of the two forbidden controller claims", () => {
@@ -2643,6 +2634,96 @@ test("constrained-step prose validator rejects weakened authority, path and reco
       const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
       assert.notEqual(result.status, 0, `${mutation.label} mutation should fail the validator`);
       expectFail(result.stdout, mutation.failure);
+    } finally {
+      removeTreeWithRetrySync(fixture);
+    }
+  }
+});
+
+/**
+ * SKILL-039. The anti-churn amendment's whole value is that the sentences are
+ * there to be followed, so each new pin gets the mutation that deletes exactly
+ * the clause it claims to protect. A check whose clause can be removed without a
+ * FAIL is advertising a guarantee it does not provide.
+ */
+test("review-budget validator rejects removing any one anti-churn sentence", () => {
+  const mutations = [
+    {
+      label: "one-class-one-remedy",
+      file: (fixture) => skillFile(fixture, "kanmer-review"),
+      from: "Record the class once and choose exactly one remedy for it",
+      to: "Record one finding per example and remedy each of them separately",
+      failure: "kanmer-review records one root-cause class with exactly one remedy",
+    },
+    {
+      label: "outdated-thread-disposition",
+      file: (fixture) => skillFile(fixture, "kanmer-review"),
+      from: "is dispositioned `obsolete-after-change` with a reason naming\nthe superseding commit",
+      to: "is dispositioned `accepted-risk` with a reason naming\nthe superseding commit",
+      failure: "kanmer-review dispositions an outdated thread obsolete-after-change with the superseding commit",
+    },
+    {
+      label: "no-budget-store-property",
+      file: (fixture) => skillFile(fixture, "kanmer-review"),
+      from: "deliberate property of `backwardMoveEffects` in `store.ts`",
+      to: "new counting rule this skill introduces",
+      failure: "kanmer-review names what consumes no remediation budget as a backwardMoveEffects property",
+    },
+    {
+      label: "tool-reference-enum",
+      file: (fixture) => join(fixture, "plugins", "kanmer", "skills", "kanmer-tickets", "references", "tool-reference.md"),
+      from: "accepted-risk | deferred-to-ticket | obsolete-after-change",
+      to: "accepted-risk | deferred-to-ticket",
+      failure: "the obsolete-after-change disposition and its reason rule are stated wherever findings are",
+    },
+    {
+      label: "pre-merge-board-recheck",
+      file: (fixture) => skillFile(fixture, "kanmer-review"),
+      from: "Immediately before `gh pr merge`, re-check that the board branch is pushed",
+      to: "Before merging, glance at the board worktree",
+      failure: "kanmer-review re-checks the pushed board branch immediately before merge and states conversation resolution is load-bearing",
+    },
+    {
+      label: "closeout-reconcile-first",
+      file: (fixture) => skillFile(fixture, "kanmer-closeout"),
+      from: "On any resumed or suspicious Review/Verifying ticket, call",
+      to: "Re-read the ticket and its documents by hand, then call",
+      failure: "verify, closeout and auto reconcile a resumed Review or Verifying ticket before re-reading it",
+    },
+    {
+      label: "conditional-reconciliation",
+      file: (fixture) => skillFile(fixture, "kanmer-verify"),
+      from: "only when it returns a recommendation",
+      to: "whether or not it returns a recommendation",
+      failure: "verify, closeout and auto reconcile a resumed Review or Verifying ticket before re-reading it",
+    },
+    {
+      label: "severity-normalization",
+      file: (fixture) => skillFile(fixture, "kanmer-review"),
+      from: "Map P2 to minor unless live evidence",
+      to: "Map P2 to major by default unless live evidence",
+      failure: "kanmer-review normalizes external priorities and requires terminal dispositions",
+    },
+    {
+      label: "controlled-replan",
+      file: (fixture) => skillFile(fixture, "kanmer-auto"),
+      from: "even when the remediation budget is\n  exhausted",
+      to: "only while the remediation budget remains\n  available",
+      failure: "kanmer-auto permits exactly one approach-level replan without buying a remediation round",
+    },
+  ];
+  for (const mutation of mutations) {
+    const fixture = goalFixture(`kanmer-review-budget-${mutation.label}-`);
+    try {
+      edit(mutation.file(fixture), mutation.from, mutation.to);
+      const result = runOn(fixture);
+      assert.notEqual(result.status, 0, `${mutation.label} mutation should fail the validator`);
+      expectFail(result.stdout, mutation.failure);
+      assert.deepEqual(
+        [...result.stdout.matchAll(/^FAIL {2}(.+?)(?: — |$)/gm)].map((m) => m[1]),
+        [mutation.failure],
+        `${mutation.label} must redden exactly one named check`,
+      );
     } finally {
       removeTreeWithRetrySync(fixture);
     }

@@ -786,7 +786,7 @@ const goalContract = [
     "kanmer-auto bounds churn and adds no second route around the budget",
     /one automatic replan/i.test(autoSkill) &&
       /REMEDIATION_BUDGET_EXHAUSTED/.test(autoSkill) &&
-      /to get around that refusal/i.test(autoSkill) &&
+      /creates no new remediation allowance/.test(autoSkill) &&
       /reason beginning `operator:`/.test(autoSkill) &&
       /still fails materially after its one\s+replan/i.test(autoSkill),
   ],
@@ -796,12 +796,6 @@ const goalContract = [
       /rebase origin\/<delivery_target>/.test(autoSkill) &&
       /integration branch is policy resolved in the preflight/i.test(autoSkill) &&
       !/rebase origin\/main/.test(autoSkill),
-  ],
-  [
-    "kanmer-auto allows its one replan only before the remediation budget is spent",
-    /still available before it is spent/i.test(autoSkill) &&
-      /already reached\s+its `remediation_budget` gets \*\*no\*\* automatic replan/i.test(autoSkill) &&
-      /neither resets nor increments\s+`review_round`/i.test(autoSkill),
   ],
   [
     "kanmer-auto's identity preflight covers a new run as well as a resumed one",
@@ -1715,6 +1709,84 @@ check(
   "AGENTS, plan, execute, auto and tool reference all name schema 2",
 );
 
+console.log("\n=== review budget, root-cause classes and reconcile-first recovery (SKILL-039) ===");
+// The anti-churn amendment (HZN-008, FRD-034 amendment 2026-09-01). Every
+// sentence below is the difference between a bounded review and CORE-127's nine
+// rounds of one mechanism, so each is pinned by the clause that would have to
+// disappear for the rule to stop being executable — not by a heading. Prose here
+// is hard-wrapped, so every regex tolerates the wrap with `\s+`.
+check(
+  "kanmer-review records one root-cause class with exactly one remedy",
+  /two or more findings arising from one underlying mechanism are \*\*one\s+root-cause\s+class\*\*/i.test(reviewSkill) &&
+    /Record the class once and choose exactly one\s+remedy/.test(reviewSkill) &&
+    /replace the\s+implementation approach, revise the plan, narrow the approved contract with a\s+stated threat model, or defer the whole class to one follow-up ticket/.test(reviewSkill) &&
+    /Never one\s+patch, and never one ticket, per example/.test(reviewSkill),
+  "one mechanism is one class with exactly one of the four remedies",
+);
+check(
+  "kanmer-review dispositions an outdated thread obsolete-after-change with the superseding commit",
+  /GitHub marks \*\*outdated\*\*/.test(reviewSkill) &&
+    /is dispositioned `obsolete-after-change` with a reason naming\s+the superseding commit, `superseded by <full-sha>`/.test(reviewSkill) &&
+    /never a current open\s+finding/.test(reviewSkill) &&
+    /reasserts\s+the same defect against the current head raises it as a new finding/.test(reviewSkill),
+  "an outdated thread is closed by disposition, and only a reassertion against the current head is new",
+);
+check(
+  "kanmer-review names what consumes no remediation budget as a backwardMoveEffects property",
+  /\*\*What consumes no remediation budget:\*\*/.test(reviewSkill) &&
+    /re-auditing an unchanged head/.test(reviewSkill) &&
+    /restated finding, an outdated thread/.test(reviewSkill) &&
+    /a disposition\s+edit, PR metadata that changes no code, and a new minor or note finding/.test(reviewSkill) &&
+    /deliberate property of `backwardMoveEffects` in `store\.ts`/.test(reviewSkill) &&
+    /`review_round`\s+advances only when a `move_item` actually returns the ticket to Implementing/.test(reviewSkill) &&
+    /Three audits of one head and one finding are one observed condition/.test(reviewSkill),
+  "the no-budget list is stated as an existing store property, not a new mechanism",
+);
+check(
+  "the obsolete-after-change disposition and its reason rule are stated wherever findings are",
+  [reviewSkill, toolReference].every((body) =>
+    /deferred-to-ticket\s*\|\s*obsolete-after-change/.test(body) &&
+    /`accepted-risk`\s+and\s+`obsolete-after-change`/.test(body) &&
+    /reason names the superseding\s+commit \(`superseded by <full-sha>`\)/.test(body),
+  ),
+  "kanmer-review and the tool reference both match review-attestation.ts's DISPOSITIONS and reason rule",
+);
+check(
+  "kanmer-review re-checks the pushed board branch immediately before merge and states conversation resolution is load-bearing",
+  /Immediately before `gh pr merge`, re-check that the board branch is pushed/.test(reviewSkill) &&
+    /git -C <absolute-path-to-board-worktree> rev-parse <board-branch>/.test(reviewSkill) &&
+    /git -C <absolute-repository-root> rev-parse origin\/<board-branch>/.test(reviewSkill) &&
+    /`get_status\.boardWorktree\.expectedBranch` and never hardcoded/.test(reviewSkill) &&
+    /Thread resolution is enforced by GitHub branch\s+protection \(`required_conversation_resolution`\) and is \*\*load-bearing\*\*/.test(reviewSkill) &&
+    /`enforce_admins` leaves\s+no bypass/.test(reviewSkill),
+  "the gate reads the remote board tip, and unresolved threads block the merge with no admin bypass",
+);
+check(
+  "verify, closeout and auto reconcile a resumed Review or Verifying ticket before re-reading it",
+  [verifySkill, closeoutSkill, autoSkill].every((body) =>
+    /[Oo]n any resumed or suspicious\s+Review\/Verifying ticket/.test(body) &&
+    /`reconcile_ticket id: <ID>`\s+as a dry run first/.test(body) &&
+    /only when it returns a\s+recommendation/.test(body) &&
+    /apply_reconciliation id: <ID>[\s\S]{0,100}expected_revision: <the recommendation's\s+revision>/.test(body) &&
+    /before re-reading\s+anything\s+by hand/.test(body),
+  ),
+  "FRD-028's dry-run inspector then explicit apply is the first act, not a manual re-read",
+);
+check(
+  "kanmer-review normalizes external priorities and requires terminal dispositions",
+  /map P1 to blocker or major/i.test(reviewSkill) &&
+    /Map P2 to minor unless live evidence/i.test(reviewSkill) &&
+    /no finding of any\s+severity remains `open`/.test(reviewSkill),
+  "external labels follow live impact and every finding reaches a terminal disposition",
+);
+check(
+  "kanmer-auto permits exactly one approach-level replan without buying a remediation round",
+  /one automatic replan.*even when the remediation budget is\s+exhausted/is.test(autoSkill) &&
+    /creates no new remediation allowance/.test(autoSkill) &&
+    /after that replan is spent, the lane goes\s+`blocked`/.test(autoSkill),
+  "an independently classified approach defect gets one replan, then stops",
+);
+
 // Two claims that must stay absent. The first is the role boundary that
 // FRD-034's "the controller merges after the final independent pass" is easily
 // misread into — the live run's own invariant is that the reviewer merges. The
@@ -1736,15 +1808,6 @@ const forbiddenGoalClaims = [
       /(?:controller|kanmer-auto) (?:performs|executes|carries out|completes) the merge/i,
       /(?:controller|kanmer-auto) (?:runs|invokes|calls) `?gh pr merge/i,
       /merge is performed by the (?:controller|orchestrator)/i,
-    ],
-  ],
-  [
-    "self-authorised replan after an exhausted budget",
-    [
-      /budget is[^.]*\b(?:spent|exhausted)\b[^.]*\breplans?\b/i,
-      /budget[- ]exhausted[^.]*\b(?:self-)?replans?\b/i,
-      /REMEDIATION_BUDGET_EXHAUSTED[^.]*\breplans?\b/i,
-      /\breplans?\b[^.]*\b(?:once|after|when|because)\s+the\s+(?:remediation\s+)?budget is (?:spent|exhausted)/i,
     ],
   ],
   // SKILL-038. The positive checks above pin the in-roster/out-of-roster

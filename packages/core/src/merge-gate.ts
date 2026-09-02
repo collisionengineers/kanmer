@@ -275,13 +275,13 @@ function fail(code: MergeGateFindingCode, level: MergeGateFindingLevel, message:
   return { code, level, outcome: level === "warning" ? "warn" : "fail", message, ...(details ? { details } : {}) };
 }
 
-function openBlockingReviewFindings(details: Record<string, unknown> | undefined): Array<Record<string, unknown>> {
+function openReviewFindings(details: Record<string, unknown> | undefined): Array<Record<string, unknown>> {
   const entries = details?.findings;
   if (!Array.isArray(entries)) return [];
   return entries.flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
     const finding = entry as Record<string, unknown>;
-    if ((finding.severity !== "blocker" && finding.severity !== "major") || finding.disposition !== "open") return [];
+    if (finding.disposition !== "open") return [];
     return [{
       ...(typeof finding.id === "string" ? { id: finding.id } : {}),
       severity: finding.severity,
@@ -331,7 +331,7 @@ function reviewChecks(
     const attestedPlanHash = review.planHash ??
       (typeof review.details?.planHash === "string" ? review.details.planHash : "");
     const openBlockingFindings = requireRosterIdentity
-      ? openBlockingReviewFindings(review.details)
+      ? openReviewFindings(review.details)
       : [];
     checks.push(pass("NO_REVIEW_RECORD", reviewLevel, "review attestation is present"));
     if (!FULL_SHA_RE.test(actual) || !FULL_SHA_RE.test(expected) || actual !== expected) {

@@ -209,6 +209,12 @@ for (const proto of PROTOCOLS) {
         statusPayload?.compat?.expectedProject === "optional",
       JSON.stringify(statusPayload?.project),
     );
+    check(
+      `get_status structuredContent.result mirrors its text payload on ${proto} (MCP-055)`,
+      statusPayload !== null &&
+        JSON.stringify(status.result?.structuredContent?.result) === JSON.stringify(statusPayload),
+      JSON.stringify(Object.keys(status.result?.structuredContent ?? {})),
+    );
     const wrongProject = await server.send("tools/call", {
       name: "update_item",
       arguments: { id: createdItem?.id, title: "must not write", expected_project: "kanmer-proj-v1:wrong" },

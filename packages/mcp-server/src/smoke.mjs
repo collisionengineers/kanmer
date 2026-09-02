@@ -23,6 +23,15 @@ function textOf(res) {
   return res.content.map((c) => c.text).join("\n");
 }
 
+/**
+ * MCP-055: a successful result's `structuredContent.result` must mirror the
+ * text block exactly, so a client that renders structured content shows the
+ * whole payload instead of only the project stamp.
+ */
+function mirrorsText(res) {
+  return JSON.stringify(JSON.parse(textOf(res))) === JSON.stringify(res.structuredContent?.result);
+}
+
 /** A byte-sensitive snapshot for proving a refused fresh-root write is inert. */
 function treeSnapshot(root, rel = "") {
   return fs.readdirSync(path.join(root, rel), { withFileTypes: true })
@@ -259,6 +268,12 @@ try {
       !fs.existsSync(path.join(sandbox, ".kanmer")) &&
       JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeWrongProject),
     JSON.stringify(wrongProject.structuredContent),
+  );
+  check(
+    "an error result's structuredContent carries no result key (MCP-055)",
+    wrongProject.structuredContent?.result === undefined &&
+      wrongProject.structuredContent?.error !== undefined,
+    JSON.stringify(Object.keys(wrongProject.structuredContent ?? {})),
   );
   check(
     "reads alone do not create .kanmer/ (lazy init)",
@@ -620,6 +635,16 @@ try {
     "expected_project accepts the logical project_id and every write result names the project",
     acceptedById.isError !== true && acceptedById.structuredContent?.project?.project_id === projectId,
     JSON.stringify(acceptedById.structuredContent),
+  );
+  const mirroredStatus = await client.callTool({ name: "get_status", arguments: {} });
+  check(
+    "structuredContent.result mirrors the text payload for a read, a write and get_status (MCP-055)",
+    mirrorsText(readWithProject) && mirrorsText(acceptedById) && mirrorsText(mirroredStatus),
+    JSON.stringify([
+      mirrorsText(readWithProject),
+      mirrorsText(acceptedById),
+      mirrorsText(mirroredStatus),
+    ]),
   );
   const wrongId = await client.callTool({
     name: "update_item",

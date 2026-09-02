@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Build golden-board evaluations and stable-to-candidate promotion rollback
   proof
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-09-02T00:47:16.030Z'
 labels:
   - reliable-autonomy
 groups:
@@ -18,7 +20,7 @@ refs:
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-08-26T21:02:42.079Z'
-updated: '2026-08-26T21:41:04.943Z'
+updated: '2026-09-02T00:47:16.030Z'
 ---
 
 ## What

@@ -118,7 +118,7 @@ is the loop this section forbids.
 
 Order from 2026-09-01: land [[CORE-127]] in one bounded round, hand-reconcile stale board state, release 0.4.0 as the new stable control plane with minimal promotion acceptance, then SKILL-039 (anti-churn amendment in skills/core), [[CORE-133]], [[CORE-119]], and 0.4.1.
 
-Order from 2026-09-02 (v0.4.0 promoted; setup run under the new plane): [[MCP-055]] first — it is a blocker for driving the stable server from Claude Code — then [[SKILL-039]], [[CORE-133]], [[CORE-119]], then release 0.4.1 through the [[CORE-136]] path. [[GUI-147]] (Claude Connect marketplace/version drift) is ordinary backlog scheduled alongside 0.4.1 but is not a horizon member.
+Order from 2026-09-02 (v0.4.0 promoted; setup run under the new plane): [[MCP-055]] first — it is a blocker for driving the stable server from Claude Code — then [[SKILL-039]], [[CORE-133]], [[CORE-119]], then release 0.4.1 as [[CORE-137]] through the [[CORE-136]] path. [[GUI-147]] (Claude Connect marketplace/version drift) is ordinary backlog scheduled alongside 0.4.1 but is not a horizon member.
 
 ## Breakdown
 
@@ -145,6 +145,7 @@ Order from 2026-09-02 (v0.4.0 promoted; setup run under the new plane): [[MCP-05
 | [[CORE-136]] | v0.4.0 release and promotion to live control plane | 6 |
 | [[MCP-055]] | 0.4.1 blocker: structuredContent must carry the whole tool result (Claude Code renders only the project stamp) | 7 |
 | [[SKILL-039]] | Anti-churn amendment in skills/core | 7 |
+| [[CORE-137]] | v0.4.1 release and promotion (horizon closer) | 8 |
 | [[CORE-119]] | Golden-board and promotion/rollback proof | 7 |
 
 ## Rollout & rollback

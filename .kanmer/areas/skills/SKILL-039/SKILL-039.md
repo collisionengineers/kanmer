@@ -5,10 +5,12 @@ title: >-
   Encode the anti-churn amendment: obsolete-after-change disposition, root-cause
   classes, reconcile tools in verify/closeout/auto, board-push recheck before
   merge
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-09-02T00:47:16.599Z'
 labels:
   - reliable-autonomy
   - review-budget
@@ -20,7 +22,7 @@ refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-01T18:50:34.754Z'
+updated: '2026-09-02T00:47:16.599Z'
 ---
 
 ## Why

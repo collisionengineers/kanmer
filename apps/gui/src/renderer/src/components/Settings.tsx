@@ -566,7 +566,14 @@ function ConnectSection(): JSX.Element {
                 className="ghost sm"
                 disabled={busy !== null}
                 onClick={() => void update(p.id)}
-                title={`Bundled skills (v${skills[p.id]!.bundledVersion}) are newer than the copy in this project (v${skills[p.id]!.installedVersion})`}
+                // A marketplace host's plugin is installed for the whole user,
+                // not copied into this project, so "in this project" named the
+                // wrong thing for the one host whose version actually drifts.
+                title={
+                  skills[p.id]!.scope === "marketplace"
+                    ? `This host has Kanmer's plugin v${skills[p.id]!.installedVersion} installed for this host; the bundled version is v${skills[p.id]!.bundledVersion}`
+                    : `Bundled skills (v${skills[p.id]!.bundledVersion}) are newer than the copy in this project (v${skills[p.id]!.installedVersion})`
+                }
               >
                 {busy === `update:${p.id}` ? "Updating…" : "Update skills"}
               </button>

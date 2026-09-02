@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
-import { codexPortableInvocation, q } from "./providers.js";
+import { codexPortableInvocation, providerById, q } from "./providers.js";
 import { removeTreeWithRetry } from "@kanmer/core";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => process.cwd() } }));
@@ -29,6 +29,7 @@ vi.mock("./providers.js", async (importActual) => {
 const testProviders = new Map<string, AgentProvider>();
 
 const {
+  claudeMarketplaceStableRoot,
   connectAgent,
   disconnectAgent,
   marketplaceRoot,
@@ -38,12 +39,19 @@ const {
   reconcileSkills,
   removeBundledSkillsOnly,
   serverInvocation,
+  skillsStatus,
   updateSkills,
 } = await import("./connect.js");
 type AgentProvider = import("./providers.js").AgentProvider;
 type ProviderId = import("./providers.js").ProviderId;
+type MarketplaceHostState = import("./providers.js").MarketplaceHostState;
+type MarketplaceVersionCheck = import("./providers.js").MarketplaceVersionCheck;
 const roots: string[] = [];
 afterEach(async () => {
+  // Every test that stages Claude's marketplace points LOCALAPPDATA at a temp
+  // directory first, so no test can write into the operator's real
+  // `%LOCALAPPDATA%\Kanmer\claude-marketplace`.
+  vi.unstubAllEnvs();
   await Promise.all(roots.splice(0).map((root) => removeTreeWithRetry(root)));
 });
 
@@ -1046,6 +1054,10 @@ describe("the marketplace command is given the marketplace root (MCP-013)", () =
 
   it("binds a literal custom branch in the staged Claude marketplace descriptor", async () => {
     const root = await tempRoot();
+    // Staging is installer-owned now (GUI-147), so this test points
+    // LOCALAPPDATA at a temp directory rather than refreshing the real
+    // `%LOCALAPPDATA%\Kanmer\claude-marketplace` on the developer's machine.
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
     const script = join(root, "inspect-marketplace.cjs");
     const observed = join(root, "observed-branch.txt");
     await writeFile(script, [
@@ -1084,4 +1096,457 @@ describe("the marketplace command is given the marketplace root (MCP-013)", () =
       testProviders.clear();
     }
   }, 30_000);
+});
+
+describe("Claude's marketplace is staged where the host can keep reading it (GUI-147)", () => {
+  // The defect, observed on the 2026-09-01 v0.4.0 install:
+  //  1. Staging was `mkdtemp(kanmer-claude-marketplace-*)` and `installSkills`
+  //     deleted it in a `finally`. Claude Code records a *directory* marketplace
+  //     by path, so once that path was gone every session reported
+  //     `Marketplace kanmer failed to load: cache-miss` — no skills, no
+  //     `plugin:kanmer:kanmer` server — while Connect had reported success.
+  //  2. `claude plugin install` exits 0 without upgrading an already-installed
+  //     plugin, so the cached plugin stayed at 0.3.12 against a 0.4.0 board.
+  //
+  // No test here runs a real `claude` command: the two state files are fixtures
+  // and the read-only version read-back is injected. Staging is pointed at a
+  // temp LOCALAPPDATA so the operator's real marketplace is never touched.
+
+  afterEach(() => testProviders.clear());
+
+  /** The real Claude provider's specs, captured before a synthetic one shadows it. */
+  function claudeInstall(): {
+    marketplaceCommands: (root: string, state?: MarketplaceHostState) => string[];
+    installedVersion: MarketplaceVersionCheck;
+    hostRemoveCommands: () => string[];
+  } {
+    const install = providerById("claude")!.install;
+    expect(install.kind).toBe("marketplace");
+    return install as ReturnType<typeof claudeInstall>;
+  }
+
+  /** `known_marketplaces.json` as Claude Code writes it. */
+  const knownMarketplaces = (path: string | null) =>
+    JSON.stringify(
+      path === null
+        ? { "claude-plugins-official": { source: { source: "github", repo: "x/y" } } }
+        : {
+            "claude-plugins-official": { source: { source: "github", repo: "x/y" } },
+            kanmer: { source: { source: "directory", path }, installLocation: path, lastUpdated: "2026-09-01T23:44:47.849Z" },
+          },
+    );
+
+  /** `installed_plugins.json` as Claude Code writes it (`version: 2`). */
+  const installedPlugins = (version: string | null) =>
+    JSON.stringify({
+      version: 2,
+      plugins: version === null
+        ? { "azure@claude-plugins-official": [{ scope: "user", version: "1.2.32" }] }
+        : {
+            "azure@claude-plugins-official": [{ scope: "user", version: "1.2.32" }],
+            "kanmer@kanmer": [{ scope: "user", installPath: "…", version, installedAt: "2026-09-01T23:44:50.387Z" }],
+          },
+    });
+
+  /** A `claude plugin list` transcript, in the shape claude 2.1.233 prints. */
+  const pluginList = (version: string | null, scope = "user") =>
+    [
+      "Installed plugins:",
+      "",
+      "  ❯ azure@claude-plugins-official",
+      "    Version: 1.2.32",
+      "    Scope: user",
+      "    Status: ✔ enabled",
+      "",
+      ...(version === null
+        ? []
+        : ["  ❯ kanmer@kanmer", `    Version: ${version}`, `    Scope: ${scope}`, "    Status: ✔ enabled", ""]),
+    ].join("\n");
+
+  /** Write the two host state files and return the directory holding them. */
+  async function hostStateDir(marketplacePath: string | null, pluginVersion: string | null): Promise<string> {
+    const dir = await tempRoot();
+    await writeFile(join(dir, "known_marketplaces.json"), knownMarketplaces(marketplacePath));
+    await writeFile(join(dir, "installed_plugins.json"), installedPlugins(pluginVersion));
+    return dir;
+  }
+
+  /** The version this app ships, which the host is required to report back. */
+  async function bundledVersion(): Promise<string> {
+    const manifest = JSON.parse(
+      await readFile(join(pluginRoot(), ".claude-plugin", "plugin.json"), "utf8"),
+    ) as { version: string };
+    return manifest.version;
+  }
+
+  /**
+   * Register a synthetic provider under the id `claude`, so the claude-specific
+   * staging and state read run, with commands and specs this test owns. The real
+   * `claude` binary is never invoked.
+   */
+  function useSyntheticClaude(spec: {
+    commands: (root: string, state?: MarketplaceHostState) => string[];
+    installedVersion?: MarketplaceVersionCheck;
+    hostRemoveCommands?: () => string[];
+  }): ProviderId {
+    testProviders.set("claude", {
+      id: "claude" as ProviderId,
+      label: "claude",
+      register: {
+        kind: "configFile",
+        configPath: "test-host.json",
+        merge: () => JSON.stringify({ mcpServers: { kanmer: {} } }),
+        unmerge: () => "{}",
+        registrationState: () => "registered",
+      },
+      install: {
+        kind: "marketplace",
+        marketplaceCommands: spec.commands,
+        installedVersion: spec.installedVersion,
+        hostRemoveCommands: spec.hostRemoveCommands,
+      },
+      dispatch: false,
+    } as unknown as AgentProvider);
+    return "claude" as ProviderId;
+  }
+
+  /** A real command that succeeds, as the file's other marketplace tests use. */
+  async function noopCommand(root: string): Promise<string> {
+    const script = join(root, "noop.cjs");
+    await writeFile(script, "process.stdout.write('added\\n');\n");
+    return `node ${q(script)}`;
+  }
+
+  it("resolves one installer-owned staging root from LOCALAPPDATA, the same one every time", async () => {
+    const local = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", local);
+
+    // Stability is the property, not the literal: a `mkdtemp` root is a new path
+    // on every call, and that is exactly what Claude Code cannot follow.
+    expect(claudeMarketplaceStableRoot()).toBe(join(local, "Kanmer", "claude-marketplace"));
+    expect(claudeMarketplaceStableRoot()).toBe(claudeMarketplaceStableRoot());
+
+    // A sibling of the installer's other two roots (%LOCALAPPDATA%\Kanmer\mcp
+    // and \bin), so it follows the environment rather than a hard-coded path.
+    const moved = join(local, "moved");
+    vi.stubEnv("LOCALAPPDATA", moved);
+    expect(claudeMarketplaceStableRoot()).toBe(join(moved, "Kanmer", "claude-marketplace"));
+
+    // Windows-only feature, but the resolver must not throw where the variable
+    // is absent — the test runner is one such place.
+    vi.stubEnv("LOCALAPPDATA", "");
+    expect(() => claudeMarketplaceStableRoot()).not.toThrow();
+    expect(claudeMarketplaceStableRoot()).toContain(join("Kanmer", "claude-marketplace"));
+  });
+
+  it("stages into that root, leaves it in place after Connect, and refreshes it on the next one", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const stable = claudeMarketplaceStableRoot();
+    const seen: string[] = [];
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: (dir) => { seen.push(dir); return [cmd]; } });
+
+    const first = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+
+    expect(first.ok).toBe(true);
+    // The host is handed the stable root, not a temp directory.
+    expect(seen).toEqual([stable]);
+    // And the marketplace manifest it will read is still there after Connect
+    // returned — the whole of defect 1 is that this file was deleted.
+    await expect(
+      readFile(join(stable, ".claude-plugin", "marketplace.json"), "utf8"),
+    ).resolves.toContain("kanmer");
+    await expect(
+      readFile(join(stable, "plugins", "kanmer", "mcp", "claude.mcp.json"), "utf8"),
+    ).resolves.toContain("KANMER_BOARD_BRANCH");
+
+    // A file the bundle no longer ships must not survive inside a marketplace
+    // the host still trusts: refresh replaces each owned subdirectory.
+    const retired = join(stable, "plugins", "kanmer", "skills", "kanmer-retired", "SKILL.md");
+    await mkdir(dirname(retired), { recursive: true });
+    await writeFile(retired, "retired\n");
+
+    const second = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(stable, null) });
+
+    expect(second.ok).toBe(true);
+    // Same path, refreshed — not a second directory.
+    expect(seen).toEqual([stable, stable]);
+    await missing(retired);
+    await expect(
+      readFile(join(stable, ".claude-plugin", "marketplace.json"), "utf8"),
+    ).resolves.toContain("kanmer");
+  }, 60_000);
+
+  it("keeps the staged root when a marketplace command fails", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const stable = claudeMarketplaceStableRoot();
+    const failing = join(root, "fail.cjs");
+    await writeFile(failing, "process.stderr.write('Failed to add marketplace\\n');\nprocess.exit(1);\n");
+    const id = useSyntheticClaude({ commands: () => [`node ${q(failing)}`] });
+
+    const result = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+
+    expect(result.ok).toBe(false);
+    // A failed Connect must not take the marketplace with it: the previous
+    // registration still points here, and the next Connect refreshes it.
+    await expect(
+      readFile(join(stable, ".claude-plugin", "marketplace.json"), "utf8"),
+    ).resolves.toContain("kanmer");
+  }, 60_000);
+
+  it("reads add-vs-update and install-vs-reinstall from the host's own state files", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const stable = claudeMarketplaceStableRoot();
+    const cmd = await noopCommand(root);
+
+    const observe = async (marketplacePath: string | null, pluginVersion: string | null) => {
+      const states: (MarketplaceHostState | undefined)[] = [];
+      const id = useSyntheticClaude({ commands: (_dir, state) => { states.push(state); return [cmd]; } });
+      const result = await connectAgent(id, root, root, {
+        claudePluginStateDir: await hostStateDir(marketplacePath, pluginVersion),
+      });
+      expect(result.ok).toBe(true);
+      testProviders.clear();
+      return states[0];
+    };
+
+    // Fresh machine: neither file mentions Kanmer.
+    expect(await observe(null, null)).toEqual({ marketplace: "absent", pluginInstalled: false });
+    // Already registered at the directory being staged: refresh in place.
+    expect(await observe(stable, null)).toEqual({ marketplace: "staged", pluginInstalled: false });
+    // Registered at the temp directory v0.4.0 recorded and then deleted. This is
+    // the upgrade case, and it must not be mistaken for "already correct":
+    // `marketplace update` would re-read that dead path.
+    expect(await observe(join(root, "gone", "kanmer-claude-marketplace-abc"), "0.3.12")).toEqual({
+      marketplace: "elsewhere",
+      pluginInstalled: true,
+    });
+    // Plugin present at the staged root: an upgrade, not a first install.
+    expect(await observe(stable, "0.3.12")).toEqual({ marketplace: "staged", pluginInstalled: true });
+  }, 120_000);
+
+  it("treats missing host state files as nothing recorded rather than an error", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const cmd = await noopCommand(root);
+    const states: (MarketplaceHostState | undefined)[] = [];
+    const id = useSyntheticClaude({ commands: (_dir, state) => { states.push(state); return [cmd]; } });
+
+    // A machine that has never installed a Claude plugin has neither file.
+    const result = await connectAgent(id, root, root, { claudePluginStateDir: join(root, "no-such-dir") });
+
+    expect(result.ok).toBe(true);
+    expect(states[0]).toEqual({ marketplace: "absent", pluginInstalled: false });
+  }, 60_000);
+
+  it("turns each recorded state into the Claude verbs that actually change it", () => {
+    const commands = (state?: MarketplaceHostState) =>
+      claudeInstall().marketplaceCommands("C:/STAGED", state);
+
+    expect(commands({ marketplace: "absent", pluginInstalled: false })).toEqual([
+      `claude plugin marketplace add ${q("C:/STAGED")}`,
+      "claude plugin install kanmer@kanmer -s user -y",
+    ]);
+    expect(commands({ marketplace: "staged", pluginInstalled: false })).toEqual([
+      "claude plugin marketplace update kanmer",
+      "claude plugin install kanmer@kanmer -s user -y",
+    ]);
+    // `marketplace update` re-reads the recorded source, so a registration left
+    // pointing at a deleted temp directory has to be dropped and re-added.
+    expect(commands({ marketplace: "elsewhere", pluginInstalled: false })).toEqual([
+      "claude plugin marketplace remove kanmer",
+      `claude plugin marketplace add ${q("C:/STAGED")}`,
+      "claude plugin install kanmer@kanmer -s user -y",
+    ]);
+    // Defect 2: install alone is a no-op over an existing plugin, so the
+    // upgrade path must uninstall first — and in that order.
+    expect(commands({ marketplace: "staged", pluginInstalled: true })).toEqual([
+      "claude plugin marketplace update kanmer",
+      "claude plugin uninstall kanmer@kanmer -s user -y",
+      "claude plugin install kanmer@kanmer -s user -y",
+    ]);
+    // With no state at all the list is the first-install one, which is what
+    // keeps every existing caller of this pure function behaving as before.
+    expect(commands()).toEqual(commands({ marketplace: "absent", pluginInstalled: false }));
+  });
+
+  it("reads the installed version back out of the host's own report", () => {
+    const { parse } = claudeInstall().installedVersion;
+
+    expect(parse(pluginList("0.4.0"))).toBe("0.4.0");
+    // Absent is null, not a crash and not a false match on another plugin.
+    expect(parse(pluginList(null))).toBeNull();
+    expect(parse("Installed plugins:\n")).toBeNull();
+    // Scope is part of the identity: the same plugin legitimately appears at
+    // more than one scope with different versions, and Kanmer installs at user.
+    const twoScopes = [
+      "  ❯ kanmer@kanmer",
+      "    Version: 0.3.12",
+      "    Scope: local",
+      "    Status: ✔ enabled",
+      "",
+      "  ❯ kanmer@kanmer",
+      "    Version: 0.4.0",
+      "    Scope: user",
+      "    Status: ✔ enabled",
+    ].join("\n");
+    expect(parse(twoScopes)).toBe("0.4.0");
+  });
+
+  it("fails Connect with a pasteable repair when the host reports a version that is not the bundled one", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const bundled = await bundledVersion();
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
+
+    const result = await connectAgent(id, root, root, {
+      claudePluginStateDir: await hostStateDir(null, "0.3.12"),
+      // The exact state of the reported defect: every command exited 0 and the
+      // host was still on the previous release.
+      hostVersionRunner: async () => ({ stdout: pluginList("0.3.12"), stderr: "" }),
+    });
+
+    expect(result.ok).toBe(false);
+    // Settings.tsx renders `command` under "Run this yourself:" with a copy
+    // button, so it must be the repair, verbatim.
+    expect(result.command).toBe(
+      "claude plugin uninstall kanmer@kanmer -s user -y && claude plugin install kanmer@kanmer -s user -y",
+    );
+    expect(result.output).toContain("0.3.12");
+    expect(result.output).toContain(bundled);
+  }, 60_000);
+
+  it("fails Connect when the host reports no Kanmer plugin at all after the install", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
+
+    const result = await connectAgent(id, root, root, {
+      claudePluginStateDir: await hostStateDir(null, null),
+      hostVersionRunner: async () => ({ stdout: pluginList(null), stderr: "" }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("no Kanmer plugin at all");
+  }, 60_000);
+
+  it("fails Connect when the version cannot be read at all, rather than reporting success", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
+
+    const result = await connectAgent(id, root, root, {
+      claudePluginStateDir: await hostStateDir(null, null),
+      hostVersionRunner: async () => { throw new Error("'claude' is not recognized"); },
+    });
+
+    // An install nobody can confirm is the state this ticket exists to end.
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("not recognized");
+  }, 60_000);
+
+  it("reports success when the host confirms the bundled version", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const bundled = await bundledVersion();
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
+
+    const result = await connectAgent(id, root, root, {
+      claudePluginStateDir: await hostStateDir(null, null),
+      hostVersionRunner: async () => ({ stdout: pluginList(bundled), stderr: "" }),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain(`host reports plugin v${bundled}`);
+  }, 60_000);
+
+  it("surfaces the host's installed plugin version in the skills staleness read", async () => {
+    const root = await tempRoot();
+    const bundled = await bundledVersion();
+
+    const stale = await skillsStatus("claude", root, {
+      hostVersionRunner: async () => ({ stdout: pluginList("0.3.12"), stderr: "" }),
+    });
+    expect(stale).toMatchObject({
+      scope: "marketplace",
+      installedVersion: "0.3.12",
+      bundledVersion: bundled,
+      updateAvailable: true,
+    });
+
+    const current = await skillsStatus("claude", root, {
+      hostVersionRunner: async () => ({ stdout: pluginList(bundled), stderr: "" }),
+    });
+    expect(current).toMatchObject({ installedVersion: bundled, updateAvailable: false });
+
+    // Nothing in the staleness family throws: a host whose CLI is not on PATH
+    // renders as unknown, not as a broken Settings panel.
+    const unreadable = await skillsStatus("claude", root, {
+      hostVersionRunner: async () => { throw new Error("'claude' is not recognized"); },
+    });
+    expect(unreadable).toMatchObject({ installedVersion: null, updateAvailable: false });
+
+    // Scope containment: codex declares no read-back, so its status is unchanged.
+    const codex = await skillsStatus("codex", root, {
+      hostVersionRunner: async () => { throw new Error("codex must not be asked"); },
+    });
+    expect(codex).toMatchObject({ scope: "marketplace", installedVersion: null, updateAvailable: false });
+  });
+
+  it("removes the host's own marketplace and plugin on disconnect, and keeps the staged directory", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const stable = claudeMarketplaceStableRoot();
+    const cmd = await noopCommand(root);
+    const removeCommands = claudeInstall().hostRemoveCommands;
+    const id = useSyntheticClaude({ commands: () => [cmd], hostRemoveCommands: removeCommands });
+
+    const connected = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+    expect(connected.ok).toBe(true);
+
+    const ran: string[] = [];
+    const disconnected = await disconnectAgent(id, root, {
+      commandRunner: async (command) => { ran.push(command); return { stdout: "", stderr: "" }; },
+    });
+
+    expect(disconnected.ok).toBe(true);
+    // FRD-012 R4: Connect now leaves a durable registration, so disconnect owes
+    // its removal — and only this provider's own two objects (R1a). The plugin
+    // goes first: an uninstall resolves against the marketplace that supplied
+    // it, so removing the registration first would orphan it.
+    expect(ran).toEqual([
+      "claude plugin uninstall kanmer@kanmer -s user -y",
+      "claude plugin marketplace remove kanmer",
+    ]);
+    // The installer-owned directory is not disconnect's to delete: once the
+    // registration is gone it is inert, and the next Connect refreshes it.
+    await expect(
+      readFile(join(stable, ".claude-plugin", "marketplace.json"), "utf8"),
+    ).resolves.toContain("kanmer");
+  }, 60_000);
+
+  it("leaves a marketplace host that declares no host removals untouched on disconnect", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const cmd = await noopCommand(root);
+    // codex is such a host: Connect stages nothing durable for it, so there is
+    // nothing of its own for disconnect to remove.
+    const id = useSyntheticClaude({ commands: () => [cmd] });
+    await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+
+    const ran: string[] = [];
+    const disconnected = await disconnectAgent(id, root, {
+      commandRunner: async (command) => { ran.push(command); return { stdout: "", stderr: "" }; },
+    });
+
+    expect(disconnected.ok).toBe(true);
+    expect(ran).toEqual([]);
+  }, 60_000);
 });

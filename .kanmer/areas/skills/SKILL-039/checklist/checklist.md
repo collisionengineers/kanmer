@@ -15,7 +15,7 @@ notes rather than rewriting.*
 - [x] Step 9 — Rule 22 rewritten in `scripts/agents-block-body.mjs`, mirrored byte-for-byte into `kanmer-setup/SKILL.md`, `AGENTS.md` regenerated with `node scripts/agents-block.mjs .`; `node scripts/verify-agents-block.mjs` green and `git diff AGENTS.md` shows only rule 22.
 - [x] Step 10 — `## Amendment — review budget and root-cause classes (2026-09-01)` appended to FRD-034 with §1–§10 and tests A–G (attributed to CORE-119); `goal.md`, `.infisical.json`, `skills-lock.json` added to `.gitignore` and absent from `git status --porcelain`.
 - [x] Step 11 — `npm run plugin:build` run and the new `plugins/kanmer/mcp/kanmer-mcp.cjs` and `plugins/kanmer/scripts/agents-block-body.mjs` bytes committed; `npm run plugin:check` green.
-- [ ] [pre-review] `npm run verify` green end to end (it runs `verify:docs`, `verify:skills`, `verify:agents-block`, `plugin:check` and four smokes); every Windows-flake attempt retained with its re-run evidence.
+- [x] [pre-review] `npm run verify` green end to end (it runs `verify:docs`, `verify:skills`, `verify:agents-block`, `plugin:check` and four smokes); every Windows-flake attempt retained with its re-run evidence.
 - [x] [pre-review] Both bundle smokes exit 0 with `KANMER_SERVER=plugins/kanmer/mcp/kanmer-mcp.cjs`: `packages/mcp-server/src/smoke.mjs` and `packages/mcp-server/src/smoke-protocol.mjs`.
 - [x] [pre-review] Production caller named: `parseReviewAttestation` is consumed by `packages/mcp-server/src/check-pr.mjs:13` (the `kanmer-gate` check) and by the store's Review → Implementing rule — no new registration, and `check-pr.mjs` is unchanged.
 - [x] [pre-review] No new field, tool, stage, profile or gate was added, and `merge-gate.ts`, `store.ts`, `check-pr.mjs` and `scripts/verify.mjs` are untouched.
@@ -37,3 +37,14 @@ Append with `set_ticket_doc(doc: "checklist", append: true)`.
   `plugin:check` 0, `smoke.mjs` 0 (381/381), `smoke-protocol.mjs` 0 (50/50).
   Exactly the 17 planned files are modified; `package-lock.json` is unchanged.
   `npm run verify` is the remaining pre-review item.
+
+- 2026-09-02 resume — exact recorded worktree validated; branch rebased cleanly
+  from `51f56d7a` onto `origin/main` `7a206202`, producing `444f9605`.
+  `npm run plugin:build` exited 0 and changed no tracked bytes. The first
+  rebased `npm run verify` attempt was interrupted after core passed while the
+  long GUI suite was still running; the identical retry at unchanged SHA
+  `444f9605` exited 0 (core 829/829, GUI 538/538, MCP/HTTP 236 pass + one
+  Windows platform skip, scripts 168/168, smoke 383/383, protocol 54/54,
+  agents block 31/31, plugin sync green). Separate plugin-bundle `smoke.mjs`
+  and `smoke-protocol.mjs` runs both exited 0. Worktree remained clean and the
+  diff stayed at exactly the 17 planned paths.

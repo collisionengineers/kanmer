@@ -20,3 +20,5 @@ remedy` (exit 1) — the inserted prose wraps after `remedy for it:`, not before
 - 2026-09-02T08:05:50.501Z lease-phase running-command → implementing (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 6; expires 2026-09-02T08:35:50.474Z)
 
 - 2026-09-02T08:06:38.190Z lease-phase implementing → running-command (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 7; expires 2026-09-02T10:06:38.181Z)
+
+- 2026-09-02T08:47:20.125Z lease-phase running-command → implementing (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 8; expires 2026-09-02T09:17:20.111Z)

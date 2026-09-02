@@ -139,7 +139,14 @@ Only these block a merge: an open blocker or major finding, a failed or
 missing required check, a stale review (head, plan, ticket timestamp or
 threads moved), unmet acceptance checks, or an unresolved security,
 data-loss or destructive risk. Dispositioned minor and note findings are
-residual risk, recorded in the body, and do not block.
+residual risk, recorded in the body, and do not block; an `open` minor or note
+is not dispositioned and cannot pass.
+
+Normalize external labels by their actual consequence: map P1 to blocker or major.
+Map P2 to minor unless live evidence shows that it invalidates approved
+acceptance, causes security or data loss, breaks a supported production path,
+or prevents required verification. An external label never overrides the live
+evidence.
 
 ### Root-cause classification
 
@@ -154,7 +161,7 @@ however many examples the diff exposes.
 
 A GitHub thread that GitHub marks **outdated** — a thread on a line the fix has
 since changed — is dispositioned `obsolete-after-change` with a reason naming
-the superseding commit, `superseded by <sha>`. It is never a current open
+the superseding commit, `superseded by <full-sha>`. It is never a current open
 finding. The thread and its history are preserved, and a reviewer that reasserts
 the same defect against the current head raises it as a new finding with current
 evidence.
@@ -240,7 +247,7 @@ only for an actual independent reviewer. Every finding has a stable id, severity
 obsolete-after-change`.
 `rejected-with-reason`, `accepted-risk` and `obsolete-after-change` require a
 reason, and for `obsolete-after-change` that reason names the superseding
-commit (`superseded by <sha>`); a
+commit (`superseded by <full-sha>`); a
 `deferred-to-ticket` finding requires the linked ticket id. The Markdown body
 must explain changes, acceptance checks, findings, dispositions, and residual
 risk, while frontmatter remains the machine-facing authority.
@@ -309,7 +316,8 @@ judge the PR on its own scope.
 - the diff matches the bounded packet and post-implementation report;
 - governing-doc obligations and the plan's acceptance checks are met;
 - all required checks exist and are green; and
-- every review finding/thread has a disposition with no open blocker or major.
+- every review finding/thread has a terminal disposition; no finding of any
+  severity remains `open`.
 
 Re-run the PR view, diff/head, check, and thread gather immediately before the
 merge command. If anything moved, replace the attestation with the new head

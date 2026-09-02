@@ -671,7 +671,7 @@ describe("phase-2 merge-gate evidence", () => {
     }
   });
 
-  it("blocks open blocker and major findings while allowing dispositioned or advisory findings", async () => {
+  it("blocks every open finding while allowing terminally dispositioned findings", async () => {
     const first = await batchPacket();
     const selectedId = first.tickets[1]!.id;
     const finding = (severity: string, disposition: string, extra: Record<string, string> = {}) => ({
@@ -700,7 +700,7 @@ describe("phase-2 merge-gate evidence", () => {
       },
     }));
 
-    for (const severity of ["blocker", "major"]) {
+    for (const severity of ["blocker", "major", "minor", "note"]) {
       for (const strict of [false, true]) {
         const packet = withFinding(setBatchStrict(first.packet, strict), finding(severity, "open"));
         const result = await evaluateMergeGate({} as KanmerStore, first.pr, packet);
@@ -723,8 +723,8 @@ describe("phase-2 merge-gate evidence", () => {
       finding("blocker", "accepted-risk", { reason: "bounded residual risk" }),
       finding("major", "deferred-to-ticket", { ticket: "CORE-999" }),
       finding("blocker", "obsolete-after-change", { reason: `superseded by ${"c".repeat(40)}` }),
-      finding("minor", "open"),
-      finding("note", "open"),
+      finding("minor", "accepted-risk", { reason: "bounded residual risk" }),
+      finding("note", "fixed"),
     ];
     for (const reviewFinding of eligible) {
       for (const strict of [false, true]) {

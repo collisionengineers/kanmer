@@ -16,8 +16,9 @@ worktree remain untouched.
 1. Read `get_item` and `get_doc_gates`; confirm the ticket is Verifying and
    retain the PR identity and packet commands. On any resumed or suspicious
    Review/Verifying ticket, call `reconcile_ticket id: <ID>` as a dry run first
-   and apply its recommendation with `apply_reconciliation id: <ID>,
-   expected_revision: <the recommendation's revision>` before re-reading
+   and, only when it returns a recommendation, apply that recommendation with
+   `apply_reconciliation id: <ID>, expected_revision: <the recommendation's
+   revision>` before re-reading
    anything by hand — the inspector never mutates, and its typed evidence names
    the unexplained state faster and more truthfully than a manual re-read.
 2. Ask GitHub for `state`, `mergeCommit`, and `url`. If the PR is not `MERGED`

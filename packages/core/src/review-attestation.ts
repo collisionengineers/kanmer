@@ -28,6 +28,7 @@ export type ReviewAttestation =
     };
 
 const FULL_SHA = /^[0-9a-f]{40}$/iu;
+const SUPERSEDED_REASON = /^superseded by [0-9a-f]{40}$/iu;
 const SEVERITIES = new Set(["blocker", "major", "minor", "note"]);
 // `obsolete-after-change` requires a reason naming the superseding commit (`superseded by <sha>`).
 const DISPOSITIONS = new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket", "obsolete-after-change"]);
@@ -74,6 +75,9 @@ export function parseReviewAttestation(raw: string | null): ReviewAttestation {
       if (!DISPOSITIONS.has(f.disposition as string)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
       if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk" || f.disposition === "obsolete-after-change") && !nonEmpty(f.reason)) {
         return { state: "invalid", reason: `findings[${index}].reason is required for ${f.disposition}` };
+      }
+      if (f.disposition === "obsolete-after-change" && !SUPERSEDED_REASON.test(f.reason as string)) {
+        return { state: "invalid", reason: `findings[${index}].reason must be superseded by <full-sha> for obsolete-after-change` };
       }
       if (f.disposition === "deferred-to-ticket" && !nonEmpty(f.ticket)) {
         return { state: "invalid", reason: `findings[${index}].ticket is required for deferred-to-ticket` };

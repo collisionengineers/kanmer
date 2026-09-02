@@ -86,4 +86,13 @@ describe("parseReviewAttestation obsolete-after-change (SKILL-039)", () => {
       reason: expect.stringMatching(/reason is required for obsolete-after-change/u),
     });
   });
+
+  it("rejects an obsolete-after-change reason that does not name a full SHA", () => {
+    expect(parseReviewAttestation(withFinding(
+      "    disposition: obsolete-after-change\n    reason: n/a\n",
+    ))).toMatchObject({
+      state: "invalid",
+      reason: expect.stringMatching(/must be superseded by <full-sha>/u),
+    });
+  });
 });

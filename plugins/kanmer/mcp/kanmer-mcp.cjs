@@ -43215,6 +43215,7 @@ async function linkItems(store2, sourceId, targetId, action, rel = "relates", op
   return store2.updateItem(sourceId, { [field]: [...set], expectedRevision: opts.expectedRevision });
 }
 var FULL_SHA = /^[0-9a-f]{40}$/iu;
+var SUPERSEDED_REASON = /^superseded by [0-9a-f]{40}$/iu;
 var SEVERITIES = /* @__PURE__ */ new Set(["blocker", "major", "minor", "note"]);
 var DISPOSITIONS = /* @__PURE__ */ new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket", "obsolete-after-change"]);
 function nonEmpty(value) {
@@ -43256,6 +43257,9 @@ function parseReviewAttestation(raw) {
       if (!DISPOSITIONS.has(f.disposition)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
       if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk" || f.disposition === "obsolete-after-change") && !nonEmpty(f.reason)) {
         return { state: "invalid", reason: `findings[${index}].reason is required for ${f.disposition}` };
+      }
+      if (f.disposition === "obsolete-after-change" && !SUPERSEDED_REASON.test(f.reason)) {
+        return { state: "invalid", reason: `findings[${index}].reason must be superseded by <full-sha> for obsolete-after-change` };
       }
       if (f.disposition === "deferred-to-ticket" && !nonEmpty(f.ticket)) {
         return { state: "invalid", reason: `findings[${index}].ticket is required for deferred-to-ticket` };

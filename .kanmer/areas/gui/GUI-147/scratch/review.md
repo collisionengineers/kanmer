@@ -149,7 +149,10 @@ Detached worktree `.worktrees/review-gui-147` at the reviewed content after
 `npm run build -w @kanmer/gui` exit 0;
 `npx vitest run src/main/connect.test.ts --no-file-parallelism` exit 0 with
 **53/53 passing**, covering all fourteen new GUI-147 tests and the untouched
-MCP-013 block above them; `node scripts/renderer-core-imports.test.mjs` 6/6.
+MCP-013 block above them; `npm run test -w @kanmer/gui` exit 0 with
+**54 files / 538 tests passing**, which is exactly the count the
+post-implementation report claims; `node scripts/renderer-core-imports.test.mjs`
+6/6.
 CI's `verify` job is the authoritative rail and runs
 `npm run build -w @kanmer/gui` then the whole-repo `npm test`; it passed in
 8m2s on `ff6a87c8` and is required green on `1b8f0eca` before merge.

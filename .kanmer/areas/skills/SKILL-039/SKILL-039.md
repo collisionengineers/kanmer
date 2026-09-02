@@ -33,9 +33,11 @@ blocks:
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
+commits:
+  - c5f9d99dcde0d020ac448d32b47c7138da723bad
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-02T01:57:40.435Z'
+updated: '2026-09-02T02:00:32.743Z'
 ---
 
 ## Why

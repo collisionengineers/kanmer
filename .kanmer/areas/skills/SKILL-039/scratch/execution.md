@@ -22,3 +22,13 @@ remedy` (exit 1) — the inserted prose wraps after `remedy for it:`, not before
 - 2026-09-02T08:06:38.190Z lease-phase implementing → running-command (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 7; expires 2026-09-02T10:06:38.181Z)
 
 - 2026-09-02T08:47:20.125Z lease-phase running-command → implementing (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 8; expires 2026-09-02T09:17:20.111Z)
+
+## 2026-09-02 resume and implementation handoff
+
+- Resumed the exact recorded worktree `.worktrees/skill-039` and branch `SKILL-039-anti-churn-amendment`; rebased cleanly from `51f56d7a` onto `origin/main` `7a2062026ca4be5a052f4ad120e9009cfc6bb713`.
+- Final implementation commit: `444f96052803be32012b26f42e2462e6d82b7ca7`.
+- `npm run plugin:build` exited 0 with no tracked-byte drift.
+- First `npm run verify` attempt was interrupted during the long GUI suite after core passed. The identical retry at the unchanged commit exited 0: core 829/829, GUI 538/538, MCP/HTTP 236 pass plus one Windows platform skip, scripts 168/168, smoke 383/383, protocol 54/54.
+- Explicit shipped-bundle `smoke.mjs` exited 0 (383/383); `smoke-protocol.mjs` exited 0 (54/54).
+- Worktree remained clean; diff is exactly the 17 planned paths.
+- PR: https://github.com/collisionengineers/kanmer/pull/312 (base `main`, required `Kanmer: SKILL-039` footer).

@@ -29,3 +29,14 @@ Deviations from the plan, all recorded in the post-implementation report:
 2. Disconnect runs `plugin uninstall` before `marketplace remove` (the plan named the marketplace removal first). An uninstall resolves against the marketplace that supplied it, so removing the registration first would orphan it. Both are best-effort and neither touches the staged directory.
 3. Sequencing stays inside `providers.ts`'s `marketplaceCommands`, now `(marketplaceRoot, state?)`, rather than being special-cased in `connect.ts`. This keeps the existing "connect hands the provider the marketplace root" and staged-descriptor tests exercising the real seam, and keeps codex's spec untouched.
 4. The existing test "binds a literal custom branch in the staged Claude marketplace descriptor" gained a `vi.stubEnv("LOCALAPPDATA", <temp>)` line. Staging is durable now, so without it that test would refresh the operator's real `%LOCALAPPDATA%\Kanmer\claude-marketplace`. No assertion was changed, weakened or removed.
+
+## Closeout — GUI-147
+
+- [x] PR merge verified (`gh pr view 311 --json state,mergedAt` → MERGED 2026-09-02T03:18:05Z, mergeCommit 7a2062026ca4be5a052f4ad120e9009cfc6bb713)
+- [x] proof.md finalised (PR URL + merge date recorded in the proof's first attempt; result PASS, version 1993d0ecfe8e7aa0)
+- [x] Moved to final stage (Done at 2026-09-02T08:49:54Z by the independent verifier)
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-147`
+- [ ] `git branch -D GUI-147-claude-marketplace-stable` (squash-merged) + `git push origin --delete`
+- [ ] `git fetch --prune` + `git worktree prune` (also remove the stale detached `.worktrees/verify-gui-147-7a206202`)
+- [ ] `take_ticket action: "release"`

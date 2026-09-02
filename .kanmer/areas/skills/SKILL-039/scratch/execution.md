@@ -12,3 +12,5 @@
 - First attempt at the new negative fixture failed with `fixture anchor missing: Record the class once and choose exactly one
 remedy` (exit 1) — the inserted prose wraps after `remedy for it:`, not before `remedy`. Anchor corrected to `Record the class once and choose exactly one remedy for it`; retained here rather than hidden by the later pass.
 - `npm run verify` running in the background to `%TEMP%/skill039-verify.log`.
+
+- 2026-09-02T02:55:01.531Z lease-phase running-command → implementing (lease e7ed4a73-ed26-47b6-872f-9b3246726829 rev 4; expires 2026-09-02T03:25:01.516Z)

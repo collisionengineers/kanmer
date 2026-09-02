@@ -16,11 +16,13 @@ groups:
   - HZN-008
 links:
   - CORE-131
+blocks:
+  - CORE-119
 refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-08-28T06:03:50.873Z'
-updated: '2026-08-31T17:55:01.571Z'
+updated: '2026-09-02T01:09:29.116Z'
 ---
 
 Filed by the independent review of [[CORE-131]] (PR #301, head `abeb16978a4b3f8fece6e98d6bdf54e541544a1b`). Two classifier gaps found in `packages/core/src/reconciliation.ts`; neither is unsafe, both leave FRD-028 behaviour unserved. Both were **independently re-confirmed by the post-merge verification** of CORE-131 (proof `b8dc5101d0c90fba` at merge SHA `45215955`).

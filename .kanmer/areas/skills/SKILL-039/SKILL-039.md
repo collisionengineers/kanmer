@@ -17,12 +17,14 @@ labels:
 groups:
   - HZN-008
 links: []
+blocks:
+  - CORE-119
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-02T00:47:16.599Z'
+updated: '2026-09-02T01:09:29.195Z'
 ---
 
 ## Why

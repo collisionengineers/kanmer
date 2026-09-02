@@ -21,7 +21,7 @@ notes rather than rewriting.*
 - [x] [pre-review] No new field, tool, stage, profile or gate was added, and `merge-gate.ts`, `store.ts`, `check-pr.mjs` and `scripts/verify.mjs` are untouched.
 - [x] [pre-review] PR opened with a `Kanmer: SKILL-039` footer and the post-implementation report written, recording exact commands and exit codes.
 - [x] [pre-review] Stop at the approved boundary — do not review, do not merge, do not start CORE-133 or CORE-119.
-- [ ] [post-merge] This PR's independent reviewer dispositioned at least one genuinely outdated Codex thread as `obsolete-after-change` with `superseded by <sha>`, resolved it, and took **no** extra remediation round for it — recorded in `scratch/review.md`. This satisfies the ticket's "fixture PR with an outdated thread" verification; no separate fixture PR is created.
+- [x] [post-merge] This PR's independent reviewer dispositioned at least one genuinely outdated Codex thread as `obsolete-after-change` with `superseded by <sha>`, resolved it, and took **no** extra remediation round for it — recorded in `scratch/review.md`. This satisfies the ticket's "fixture PR with an outdated thread" verification; no separate fixture PR is created.
 
 ## Progress notes
 

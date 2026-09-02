@@ -24,7 +24,7 @@ Append with `set_ticket_doc(doc: "checklist", append: true)`.
 - [x] `git branch -D MCP-055-structured-content-result` (squash-merged, so -d refuses)
 - [x] `git push origin --delete MCP-055-structured-content-result`
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"` — issued last, immediately after this write
+- [x] `take_ticket action: "release"` — released 2026-09-02T03:01:05Z; ticket shows Done with no taken/branch/worktree/lease metadata
 
 Not claimed by this closeout: the in-host Claude Code rendering observation
 (review finding F-004) is deferred to CORE-137 promotion acceptance.

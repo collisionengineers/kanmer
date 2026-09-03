@@ -6,7 +6,7 @@
 - [x] Step 2 — Admit only real clean/dirty/missing/unrecorded expired-workspace shapes and bind PASS/FAIL routing to current merge SHA.
 - [x] Step 3 — Prove missing/unrecorded recovery end to end through apply while preserving branch/worktree/taken/dirty evidence and unsafe refusals.
 - [x] Step 4 — Pin the already-correct reconcile/apply description, preserve CORE-127 response wiring and regenerate the bundle.
-- [ ] Step 5 — Run focused/full verification, push one bounded PR and hand off in Review.
+- [x] Step 5 — Run focused/full verification, push one bounded PR and hand off in Review.
 
 ## Acceptance census
 
@@ -19,4 +19,4 @@
 - [x] Tool description names `apply_reconciliation` and the obsolete claim stays absent.
 - [x] CORE-127 packet-aware/packetless reconciliation tests remain green.
 - [x] Tool roster remains 41; bundle matches source.
-- [ ] Focused tests, one clean Windows rail, hosted verify, kanmer-gate and exact-head review pass.
+- [x] Focused tests and one clean Windows rail pass (hosted verify, kanmer-gate and the exact-head review are owed by review).

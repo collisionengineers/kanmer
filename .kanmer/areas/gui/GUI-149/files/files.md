@@ -12,6 +12,8 @@ Verified against `origin/main` `cd5b6b6b` (2026-09-03).
 | Modify | `apps/gui/src/main/kanmerGit.ts` | Import the moved helper; no behaviour change |
 | Modify | `apps/gui/src/main/providers.test.ts` | Portable assertions for claude argv / `mcpServersMerge` / `opencodeMerge`; retire the Electron-shape codex case |
 | Modify | `apps/gui/src/main/connect.test.ts` | `serverInvocation` parity for the three ids; probe gates all three; gitignore append once / not without `.git`; grok assertion on `process.execPath` revisited |
+| Modify | `apps/gui/src/main/index.sync.test.ts` | Added during execution: the branch-change reconcile caller test asserted the Electron env shape for `.mcp.json`; now asserts the portable one |
+| Modify | `apps/gui/src/renderer/src/manual/chapters.generated.ts` | Regenerated from `docs/manual/connect.md` (`npm run build:manual`) |
 | Modify | `docs/functional/frd/FRD-012-connect.md` | R1, R1c, R1e, R7 amendments |
 | Modify | `AGENTS.md` | §8 "registered MCP command path can go stale" gotcha rewritten; Connect gitignore behaviour noted |
 | Modify | `.gitignore` | Comment block: paths are per-machine opt-in, no longer "hardcode absolute paths" |

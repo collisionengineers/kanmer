@@ -1,6 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
-import { KANMER_DIR, WORKTREES_DIR } from "./paths.js";
+import { KANMER_DIR, WORKTREES_DIR, resolvePaths } from "./paths.js";
 
 /**
  * How a board root was arrived at. `flag`/`env`/`init` are set by the caller
@@ -85,7 +85,10 @@ export function discoverBoardRoot(startDir: string, io: DiscoverIO = REAL_IO): D
     const colocated = path.join(level, KANMER_DIR);
     tried.push(colocated);
     if (io.existsSync(colocated)) {
-      return { found: true, root: level, how: first ? "cwd" : "ancestor", tried };
+      if (isBoardDir(io, level)) {
+        return { found: true, root: level, how: first ? "cwd" : "ancestor", tried };
+      }
+      tried[tried.length - 1] = `${colocated}${NOT_A_BOARD}`;
     }
 
     // 2. A board parked in a worktree beneath this level.
@@ -99,12 +102,15 @@ export function discoverBoardRoot(startDir: string, io: DiscoverIO = REAL_IO): D
         const board = path.join(candidate, KANMER_DIR);
         tried.push(board);
         if (io.existsSync(board)) {
-          return {
-            found: true,
-            root: candidate,
-            how: first ? "cwd-worktree" : "ancestor-worktree",
-            tried,
-          };
+          if (isBoardDir(io, candidate)) {
+            return {
+              found: true,
+              root: candidate,
+              how: first ? "cwd-worktree" : "ancestor-worktree",
+              tried,
+            };
+          }
+          tried[tried.length - 1] = `${board}${NOT_A_BOARD}`;
         }
       }
     } else {
@@ -123,6 +129,28 @@ export function discoverBoardRoot(startDir: string, io: DiscoverIO = REAL_IO): D
     level = parent;
     first = false;
   }
+}
+
+/** Suffix `tried` carries for a `.kanmer` that exists but is not a board. */
+const NOT_A_BOARD = " (no board marker)";
+
+/**
+ * What makes a `.kanmer` a board (MCP-056). The FRD-029 endpoint registry
+ * lives at `~/.kanmer/endpoints.json`, so any machine that has used remote
+ * access carries a `.kanmer` under the home folder that is not a board. A walk
+ * that accepted every `.kanmer` entry bound to `~` from any cwd beneath it that
+ * had no board of its own — `os.tmpdir()` included — and the HTTP host then
+ * started against a board that was never there. The markers are exactly the
+ * states `store.detectFormat` recognises (`version.json` is authoritative; a
+ * legacy `tickets/` folder is format 1; `areas/` without a version file is
+ * format 2) plus the board file and the FRD-029 identity file, so every state a
+ * real board can be in still counts and a registry-only directory does not.
+ * The names come from `resolvePaths`, never a second list.
+ */
+function isBoardDir(io: DiscoverIO, boardRoot: string): boolean {
+  const p = resolvePaths(boardRoot);
+  if (!io.isDirectory(p.kanmer)) return false;
+  return [p.versionFile, p.boardFile, p.projectFile, p.areasRoot, p.tickets].some((m) => io.existsSync(m));
 }
 
 /** A `.worktrees` that cannot be listed is treated as empty, not as an error. */

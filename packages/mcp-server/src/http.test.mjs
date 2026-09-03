@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { connect as connectSocket } from "node:net";
 import os from "node:os";
@@ -59,8 +60,19 @@ function authorizerFor(tokens, calls = { count: 0 }) {
   return authorizer;
 }
 
+// MCP-056: the child runs from a directory whose parent holds a `.kanmer` that
+// is only the FRD-029 endpoint registry — the shape `~/.kanmer` has on any
+// machine that has used remote access. Discovery used to accept it as a board
+// and this test then hung to its timeout; now the test proves the rule instead
+// of assuming nothing above `os.tmpdir()` looks like a board.
+const decoy = mkdtempSync(path.join(os.tmpdir(), "kanmer-http-decoy-"));
+mkdirSync(path.join(decoy, ".kanmer"));
+writeFileSync(path.join(decoy, ".kanmer", "endpoints.json"), "{}\n", "utf8");
+mkdirSync(path.join(decoy, "work"));
+
 test.after(async () => {
   await removeTreeWithRetry(root);
+  await removeTreeWithRetry(decoy);
 });
 
 test("project resolution fails before binding and leaves no listener", () => {
@@ -82,7 +94,7 @@ test("project resolution fails before binding and leaves no listener", () => {
   delete cleanEnv.KANMER_ROOT;
   delete cleanEnv.KANMER_INIT;
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", source], {
-    cwd: os.tmpdir(),
+    cwd: path.join(decoy, "work"),
     env: cleanEnv,
     encoding: "utf8",
     // This is a whole cold Node process that then imports dist/http.js and the

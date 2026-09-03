@@ -49,6 +49,9 @@ function makeFixture() {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "kanmer-discover-")));
   fs.mkdirSync(path.join(root, ".git"));
   fs.mkdirSync(path.join(root, ".worktrees", "board", ".kanmer"), { recursive: true });
+  // A real board carries a marker (MCP-056): version.json is what every
+  // format-2+ board has, and discovery no longer accepts a bare directory.
+  fs.writeFileSync(path.join(root, ".worktrees", "board", ".kanmer", "version.json"), '{"format":3}\n', "utf8");
   fs.mkdirSync(path.join(root, ".worktrees", "tkt-001", "src"), { recursive: true });
   fs.writeFileSync(
     path.join(root, ".worktrees", "tkt-001", ".git"),
@@ -136,6 +139,21 @@ try {
   check("--init boots at cwd instead of dying", d.projectRoot === empty, `projectRoot=${d.projectRoot}`);
   check("...and says so", d.rootSource === "init", `rootSource=${d.rootSource}`);
   check("...without creating .kanmer merely by booting", d.exists === false, `exists=${d.exists}`);
+
+  // (e) MCP-056: a `.kanmer` that is only the FRD-029 endpoint registry
+  //     (`~/.kanmer/endpoints.json` on any machine that has used remote access)
+  //     is not a board. A cwd beneath it with no board of its own used to bind
+  //     to that directory and the HTTP host then started against nothing.
+  const decoy = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "kanmer-decoy-")));
+  fs.mkdirSync(path.join(decoy, ".git"));
+  fs.mkdirSync(path.join(decoy, ".kanmer"));
+  fs.writeFileSync(path.join(decoy, ".kanmer", "endpoints.json"), "{}\n", "utf8");
+  fs.mkdirSync(path.join(decoy, "work"));
+  const decoyFail = await bootFailure(path.join(decoy, "work"));
+  check("a registry-only .kanmer above the cwd is not a board", decoyFail.code !== 0, `exit=${decoyFail.code}`);
+  check("...and the diagnostic names it as skipped",
+    decoyFail.stderr.includes(`${path.join(decoy, ".kanmer")} (no board marker)`),
+    decoyFail.stderr.trim().split("\n").slice(0, 4).join(" | "));
 } finally {
   const failed = results.filter((r) => !r.pass);
   console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

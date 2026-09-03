@@ -65,6 +65,17 @@ Discovery walks from `process.cwd()` upwards. At **each** level `L`, in order:
 1. `<L>/.kanmer` — a colocated board.
 2. `<L>/.worktrees/*/.kanmer` — the layout `ensureBoardWorktree` creates.
 
+**1a. A `.kanmer` is a board only when it is a directory carrying a board
+marker** (amended 2026-09-03, MCP-056): `version.json`, `data/board.yml`,
+`project.json`, `areas/` or the legacy `tickets/` — the states
+`store.detectFormat` recognises, named through `resolvePaths`. The FRD-029
+endpoint registry lives at `~/.kanmer/endpoints.json`, so every machine that
+has used remote access carries a `.kanmer` under the home folder that is not a
+board; before the amendment any cwd beneath it with no board of its own
+(`os.tmpdir()` included) bound to `~`. A `.kanmer` that exists but fails the
+predicate is still named in `tried`, suffixed `(no board marker)`, so the
+not-found error shows what was skipped and why.
+
 **2. Probe each level before applying the boundary, never the reverse.** The
 repo root is simultaneously the level that holds `.git` and the level that holds
 `.worktrees/`. Boundary-first would skip precisely the level that has the board.

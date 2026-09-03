@@ -38173,7 +38173,10 @@ function discoverBoardRoot(startDir, io = REAL_IO) {
     const colocated = import_path2.default.join(level, KANMER_DIR);
     tried.push(colocated);
     if (io.existsSync(colocated)) {
-      return { found: true, root: level, how: first ? "cwd" : "ancestor", tried };
+      if (isBoardDir(io, level)) {
+        return { found: true, root: level, how: first ? "cwd" : "ancestor", tried };
+      }
+      tried[tried.length - 1] = `${colocated}${NOT_A_BOARD}`;
     }
     const worktrees = import_path2.default.join(level, WORKTREES_DIR);
     if (io.existsSync(worktrees)) {
@@ -38182,12 +38185,15 @@ function discoverBoardRoot(startDir, io = REAL_IO) {
         const board = import_path2.default.join(candidate, KANMER_DIR);
         tried.push(board);
         if (io.existsSync(board)) {
-          return {
-            found: true,
-            root: candidate,
-            how: first ? "cwd-worktree" : "ancestor-worktree",
-            tried
-          };
+          if (isBoardDir(io, candidate)) {
+            return {
+              found: true,
+              root: candidate,
+              how: first ? "cwd-worktree" : "ancestor-worktree",
+              tried
+            };
+          }
+          tried[tried.length - 1] = `${board}${NOT_A_BOARD}`;
         }
       }
     } else {
@@ -38200,6 +38206,12 @@ function discoverBoardRoot(startDir, io = REAL_IO) {
     level = parent;
     first = false;
   }
+}
+var NOT_A_BOARD = " (no board marker)";
+function isBoardDir(io, boardRoot) {
+  const p = resolvePaths(boardRoot);
+  if (!io.isDirectory(p.kanmer)) return false;
+  return [p.versionFile, p.boardFile, p.projectFile, p.areasRoot, p.tickets].some((m) => io.existsSync(m));
 }
 function readdirSafe(io, dir) {
   try {

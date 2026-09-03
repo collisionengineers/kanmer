@@ -47607,6 +47607,19 @@ function recommend(evidence, action, targetStatus) {
     revision: null
   };
 }
+function recoverableWorkspace(workspace) {
+  switch (workspace.state) {
+    case "clean":
+    case "dirty":
+      return workspace.claimIdentity === "matches-claim";
+    case "missing":
+      return workspace.claimIdentity === "unavailable";
+    case "not-recorded":
+      return workspace.claimIdentity === "not-applicable";
+    default:
+      return false;
+  }
+}
 function reconcileEvidence(input) {
   const evidence = stableEvidence(input);
   const findings = [];
@@ -47665,7 +47678,7 @@ function reconcileEvidence(input) {
       return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_IMPLEMENTING", "implementing") };
     }
   }
-  if (evidence.claim.state === "expired" && evidence.ticket.status !== "done" && (evidence.workspace.state === "clean" || evidence.workspace.state === "dirty" || evidence.workspace.state === "missing") && (evidence.workspace.claimIdentity === "matches-claim" || evidence.workspace.claimIdentity === "not-applicable")) {
+  if (evidence.claim.state === "expired" && evidence.ticket.status !== "done" && hasClaim && recoverableWorkspace(evidence.workspace)) {
     return { evidence, findings, recommendation: recommend(evidence, "RECOVER_EXPIRED_CLAIM") };
   }
   if (dirtyWorkspace || missingWorkspace || unrecordedWorkspace || checksNotGreen) return none();
@@ -47678,8 +47691,9 @@ function reconcileEvidence(input) {
     return none();
   }
   if (evidence.ticket.status === "verifying") {
+    const proofNamesCurrentMerge = evidence.proof.mergedSha === evidence.pullRequest.mergeSha;
     if (evidence.proof.state === "pass" && evidence.pullRequest.state === "merged" && evidence.pullRequest.mergeSha) {
-      if (evidence.proof.mergedSha !== evidence.pullRequest.mergeSha) {
+      if (!proofNamesCurrentMerge) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the PASS proof does not name the current merged pull-request SHA; reconciliation does not recommend Done"));
         return none();
       }
@@ -47687,7 +47701,12 @@ function reconcileEvidence(input) {
       return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_DONE", "done") };
     }
     if (evidence.proof.state === "fail") {
-      switch (evidence.proof.failureClass ?? "inconclusive") {
+      const failureClass = evidence.proof.failureClass ?? "inconclusive";
+      if ((failureClass === "implementation" || failureClass === "plan") && !proofNamesCurrentMerge) {
+        findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the FAIL proof does not name the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
+        return none();
+      }
+      switch (failureClass) {
         case "implementation":
           findings.push(finding("VERIFICATION_FAILED_IMPLEMENTATION", "warning", "verification failed against the plan and governing docs; the proof is preserved and the ticket returns to Implementing"));
           return { evidence, findings, recommendation: recommend(evidence, "ROUTE_VERIFICATION_FAILURE", "implementing") };

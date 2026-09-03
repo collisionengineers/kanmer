@@ -48,6 +48,45 @@ function recommend(
 }
 
 /**
+ * The exact workspace shapes an expired claim can be recovered over (CORE-133).
+ *
+ * The host collector (`workspaceEvidence`) proves repository and branch
+ * identity only for a workspace it can actually observe, so each state admits
+ * exactly the identity that collector emits with it:
+ *
+ * | state          | identity         | why it is recoverable                  |
+ * |----------------|------------------|----------------------------------------|
+ * | `clean`        | `matches-claim`  | the workspace proves the recorded pair  |
+ * | `dirty`        | `matches-claim`  | as above; FRD-028 AC4 preserves the work|
+ * | `missing`      | `unavailable`    | the recorded worktree is gone (ENOENT)  |
+ * | `not-recorded` | `not-applicable` | the claim never recorded a workspace    |
+ *
+ * `transferTicket` refuses only the board worktree, `foreign-repository` and
+ * `branch-mismatch`, and it never deletes, cleans or moves a workspace — so a
+ * missing or unrecorded one has nothing to reclaim, prove or destroy, which is
+ * precisely the abandoned-claim case FRD-028 names ("a missing worktree or no
+ * surviving work").
+ *
+ * Every other pair is refused, including the synthetic `missing`/`not-recorded`
+ * plus `matches-claim` combinations no collector can produce: before CORE-133
+ * the `missing` arm was reachable only by those, so the two real shapes above
+ * received no recommendation at all.
+ */
+function recoverableWorkspace(workspace: ReconciliationEvidence["workspace"]): boolean {
+  switch (workspace.state) {
+    case "clean":
+    case "dirty":
+      return workspace.claimIdentity === "matches-claim";
+    case "missing":
+      return workspace.claimIdentity === "unavailable";
+    case "not-recorded":
+      return workspace.claimIdentity === "not-applicable";
+    default:
+      return false;
+  }
+}
+
+/**
  * Evaluate bounded host-collected facts. This function is deliberately pure:
  * core never executes Git/GitHub commands and never mutates a board here.
  *
@@ -138,13 +177,15 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
   // terminal ticket, whose only claim action is the clean-terminal release.
   //
   // An identity the transfer would itself refuse (`foreign-repository`,
-  // `branch-mismatch`) or cannot prove (`detached`, `unavailable`) gets no
-  // recommendation: the classifier does not propose a refusal.
+  // `branch-mismatch`) or cannot prove (`detached`, or `unavailable` over a
+  // workspace that survives) gets no recommendation: the classifier does not
+  // propose a refusal. `recoverableWorkspace` is the exact set of shapes the
+  // host collector can actually emit for a recoverable abandoned claim.
   if (
     evidence.claim.state === "expired" &&
     evidence.ticket.status !== "done" &&
-    (evidence.workspace.state === "clean" || evidence.workspace.state === "dirty" || evidence.workspace.state === "missing") &&
-    (evidence.workspace.claimIdentity === "matches-claim" || evidence.workspace.claimIdentity === "not-applicable")
+    hasClaim &&
+    recoverableWorkspace(evidence.workspace)
   ) {
     return { evidence, findings, recommendation: recommend(evidence, "RECOVER_EXPIRED_CLAIM") };
   }
@@ -162,8 +203,15 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
   }
 
   if (evidence.ticket.status === "verifying") {
+    // One merge-SHA binding for BOTH decided Verifying routes (CORE-133). A
+    // proof is evidence about one exact merged target; a record naming an
+    // earlier verification round is stale for the current one whichever way it
+    // would move the ticket. `transient` and `inconclusive` deliberately stay
+    // outside it: they express "rerun the check", route nothing and are not a
+    // decision this binding can be about.
+    const proofNamesCurrentMerge = evidence.proof.mergedSha === evidence.pullRequest.mergeSha;
     if (evidence.proof.state === "pass" && evidence.pullRequest.state === "merged" && evidence.pullRequest.mergeSha) {
-      if (evidence.proof.mergedSha !== evidence.pullRequest.mergeSha) {
+      if (!proofNamesCurrentMerge) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the PASS proof does not name the current merged pull-request SHA; reconciliation does not recommend Done"));
         return none();
       }
@@ -176,7 +224,16 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
       // reaches the default and is inconclusive, never retryable. `transient`
       // and `inconclusive` both yield NO recommendation: the ticket stays in
       // Verifying because no board mutation expresses "rerun the check".
-      switch (evidence.proof.failureClass ?? "inconclusive") {
+      const failureClass = evidence.proof.failureClass ?? "inconclusive";
+      // Bind the two BACKWARD routes to the current merge, exactly as the PASS
+      // route above binds the forward one (CORE-133). Without this a FAIL proof
+      // from an earlier verification round routed a current ticket back to
+      // Implementing or Preparing on stale evidence.
+      if ((failureClass === "implementation" || failureClass === "plan") && !proofNamesCurrentMerge) {
+        findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the FAIL proof does not name the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
+        return none();
+      }
+      switch (failureClass) {
         case "implementation":
           findings.push(finding("VERIFICATION_FAILED_IMPLEMENTATION", "warning", "verification failed against the plan and governing docs; the proof is preserved and the ticket returns to Implementing"));
           return { evidence, findings, recommendation: recommend(evidence, "ROUTE_VERIFICATION_FAILURE", "implementing") };

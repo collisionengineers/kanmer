@@ -158,6 +158,102 @@ describe("reconcileEvidence", () => {
     expect(codes(result)).toEqual(["CLAIM_EXPIRED"]);
   });
 
+  // CORE-133. Before it, the predicate admitted `clean | dirty | missing` with
+  // `matches-claim | not-applicable`, which the host collector can satisfy only
+  // for a workspace that still exists: a deleted worktree (`missing` +
+  // `unavailable`) and a claim with no recorded worktree (`not-recorded` +
+  // `not-applicable`) — the two shapes FRD-028 names as "a missing worktree or
+  // no surviving work" — got no recommendation at all, while the reachable-only
+  // -by-hand `missing` + `matches-claim` did.
+  const workspaceStates = ["clean", "dirty", "missing", "not-recorded"] as const;
+  const workspaceIdentities = ["matches-claim", "not-applicable", "foreign-repository", "branch-mismatch", "detached", "unavailable"] as const;
+  const recoverablePairs = new Set(["clean/matches-claim", "dirty/matches-claim", "missing/unavailable", "not-recorded/not-applicable"]);
+  const expiredOver = (
+    state: (typeof workspaceStates)[number],
+    claimIdentity: (typeof workspaceIdentities)[number],
+    claim: ReconciliationEvidence["claim"] = expiredClaim,
+  ) => evidence({
+    ticket: ticket("implementing", true),
+    claim,
+    workspace: { state, recordedWorktree: state === "not-recorded" ? null : "wt", claimIdentity },
+  });
+
+  it.each(workspaceStates.flatMap((state) => workspaceIdentities.map((identity) => [state, identity] as const)))(
+    "admits an expired %s workspace with identity %s only when the collector can emit that pair",
+    (state, claimIdentity) => {
+      const result = reconcileEvidence(expiredOver(state, claimIdentity));
+      const expected = recoverablePairs.has(`${state}/${claimIdentity}`);
+      expect(result.recommendation?.action ?? null).toBe(expected ? "RECOVER_EXPIRED_CLAIM" : null);
+      // Refusal is never a proposal, and recovery never proposes a stage move.
+      expect(result.recommendation?.targetStatus).toBeUndefined();
+      // The expiry is always recorded, whichever way the pair is judged.
+      expect(codes(result)).toContain("CLAIM_EXPIRED");
+    },
+  );
+
+  it("recovers an expired claim whose recorded worktree has been deleted, and still reports the loss", () => {
+    const result = reconcileEvidence(expiredOver("missing", "unavailable"));
+    expect(result.recommendation).toEqual({
+      action: "RECOVER_EXPIRED_CLAIM", advisory: true, ticketId: "TICK-001", revision: null,
+    });
+    expect(codes(result)).toEqual(["WORKSPACE_MISSING", "CLAIM_EXPIRED"]);
+  });
+
+  it("recovers an expired claim that never recorded a workspace, and still reports the gap", () => {
+    const result = reconcileEvidence(expiredOver("not-recorded", "not-applicable"));
+    expect(result.recommendation).toEqual({
+      action: "RECOVER_EXPIRED_CLAIM", advisory: true, ticketId: "TICK-001", revision: null,
+    });
+    expect(codes(result)).toEqual(["CLAIM_WITHOUT_RECORDED_WORKSPACE", "CLAIM_EXPIRED"]);
+  });
+
+  it.each([["missing"], ["not-recorded"]] as const)(
+    "never recovers a LIVE claim over a %s workspace",
+    (state) => {
+      const live: ReconciliationEvidence["claim"] = { ...expiredClaim, state: "current" };
+      const result = reconcileEvidence(expiredOver(state, state === "missing" ? "unavailable" : "not-applicable", live));
+      expect(result.recommendation).toBeNull();
+      expect(codes(result)).not.toContain("CLAIM_EXPIRED");
+    },
+  );
+
+  it.each([["implementation" as const, "implementing"], ["plan" as const, "preparing"]])(
+    "refuses a %s FAIL proof that names a stale merge SHA, mirroring the PASS route",
+    (failureClass) => {
+      const result = reconcileEvidence(evidence({
+        ticket: ticket("verifying"),
+        pullRequest: merged,
+        proof: { state: "fail", mergedSha: sha("b"), failureClass },
+      }));
+      expect(result.recommendation).toBeNull();
+      expect(codes(result)).toEqual(["PROOF_MERGE_SHA_MISMATCH"]);
+    },
+  );
+
+  it.each([["implementation" as const], ["plan" as const]])(
+    "refuses a %s FAIL proof that names no merge SHA at all",
+    (failureClass) => {
+      const result = reconcileEvidence(evidence({
+        ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", failureClass },
+      }));
+      expect(result.recommendation).toBeNull();
+      expect(codes(result)).toEqual(["PROOF_MERGE_SHA_MISMATCH"]);
+    },
+  );
+
+  it.each([
+    ["transient" as const, "VERIFICATION_TRANSIENT_RETRY"],
+    ["inconclusive" as const, "VERIFICATION_INCONCLUSIVE"],
+  ])("leaves the non-routing %s class outside the merge-SHA binding", (failureClass, code) => {
+    // These express "rerun the check": they move nothing, so a stale SHA has
+    // no route to pre-empt and the existing outcome is preserved exactly.
+    const result = reconcileEvidence(evidence({
+      ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", mergedSha: sha("b"), failureClass },
+    }));
+    expect(result.recommendation).toBeNull();
+    expect(codes(result)).toEqual([code]);
+  });
+
   it("prefers advancing a merged Review over reducing it to a claim transfer", () => {
     const result = reconcileEvidence(evidence({
       ticket: ticket("review", true),
@@ -220,8 +316,10 @@ describe("reconcileEvidence", () => {
       evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "pass", mergedSha: sha("b") } }),
       evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "pass", mergedSha: sha("a") } }),
       evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail" } }),
-      evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", failureClass: "implementation" } }),
-      evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", failureClass: "plan" } }),
+      // Both routing classes name the CURRENT merge: since CORE-133 a FAIL
+      // proof that does not is refused before it can route (asserted below).
+      evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", mergedSha: sha("a"), failureClass: "implementation" } }),
+      evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", mergedSha: sha("a"), failureClass: "plan" } }),
       evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", failureClass: "transient" } }),
       evidence({ ticket: ticket("done", true), workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "matches-claim" } }),
       evidence({ ticket: ticket("done", true), workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "detached" } }),

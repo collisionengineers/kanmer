@@ -7,3 +7,5 @@
 - 2026-09-03T19:08:58.292Z lease-phase running-command → implementing (lease 1280edc3-5df9-49ad-979e-3ecfc52ffd60 rev 18; expires 2026-09-03T19:38:58.267Z)
 
 - 2026-09-03T19:26:45.399Z lease-phase implementing → review (lease 1280edc3-5df9-49ad-979e-3ecfc52ffd60 rev 19; expires 2026-09-03T19:56:45.385Z)
+
+- 2026-09-03T19:49:49.486Z lease-phase review → verifying (lease 1280edc3-5df9-49ad-979e-3ecfc52ffd60 rev 21; expires 2026-09-03T20:19:49.471Z)

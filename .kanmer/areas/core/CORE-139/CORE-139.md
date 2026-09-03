@@ -4,23 +4,24 @@ type: ticket
 title: >-
   Stop workflow_dispatch from running the full verify rail and fix the shipped
   skill link and AGENTS block sentence
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-09-03T19:02:35.149Z'
   review: '2026-09-03T19:20:27.331Z'
+  verifying: '2026-09-03T19:49:39.206Z'
 taken_at: '2026-09-03T19:03:47.705Z'
 branch: CORE-139-ci-storm-shipped-artefacts
 worktree: .worktrees/core-139
-claim_expires_at: '2026-09-03T20:04:13.198Z'
+claim_expires_at: '2026-09-03T20:19:49.542Z'
 claim_controller: claude-code
 lease_id: ed6b3b3a-2d1c-4f26-be8a-6d5a7a26d69e
-lease_revision: 7
+lease_revision: 8
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-139'
 lease_phase: review
-lease_heartbeat_at: '2026-09-03T19:34:13.198Z'
+lease_heartbeat_at: '2026-09-03T19:49:49.542Z'
 labels:
   - ci
   - skills
@@ -38,7 +39,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/314'
 archived: false
 created: '2026-09-03T18:59:42.801Z'
-updated: '2026-09-03T19:35:55.614Z'
+updated: '2026-09-03T19:49:49.542Z'
 ---
 
 ## What

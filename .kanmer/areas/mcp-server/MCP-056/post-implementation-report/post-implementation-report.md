@@ -26,4 +26,4 @@
 None. The plan named `board.yml` at the .kanmer root as a marker; `resolvePaths` has no such legacy path, so the markers are exactly `versionFile`, `boardFile` (`data/board.yml`), `projectFile`, `areasRoot`, `tickets`.
 
 ## PR
-https://github.com/collisionengineers/kanmer/pull/315 — head `f8a43d6745090f3f70d39b004f0ce0569fa622aa`
+https://github.com/collisionengineers/kanmer/pull/315 — head `acd0ae5200f1f3790b076a35474cf6963f5cdb00` (rebased onto 4d00fbfc; bundle rebuilt)

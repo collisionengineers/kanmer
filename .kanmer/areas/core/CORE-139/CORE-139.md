@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Stop workflow_dispatch from running the full verify rail and fix the shipped
   skill link and AGENTS block sentence
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-09-03T19:02:35.149Z'
 labels:
   - ci
   - skills
@@ -21,7 +23,7 @@ refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
 archived: false
 created: '2026-09-03T18:59:42.801Z'
-updated: '2026-09-03T18:59:42.801Z'
+updated: '2026-09-03T19:02:35.149Z'
 ---
 
 ## What

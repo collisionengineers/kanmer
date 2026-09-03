@@ -13,14 +13,14 @@ stageEntered:
 taken_at: '2026-09-02T02:57:10.443Z'
 branch: CORE-133-reconciliation-missing-workspace
 worktree: .worktrees/core-133
-claim_expires_at: '2026-09-03T23:46:43.036Z'
+claim_expires_at: '2026-09-04T00:02:58.461Z'
 claim_controller: claude-code
 lease_id: b02f666a-82e9-45d6-a86c-af6d2bac0173
-lease_revision: 6
+lease_revision: 7
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-133'
 lease_provider: claude-code
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-03T23:16:43.036Z'
+lease_phase: running-command
+lease_heartbeat_at: '2026-09-03T23:17:58.461Z'
 labels:
   - reliable-autonomy
 groups:
@@ -33,7 +33,7 @@ refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-08-28T06:03:50.873Z'
-updated: '2026-09-03T23:16:43.036Z'
+updated: '2026-09-03T23:17:58.461Z'
 ---
 
 Filed by the independent review of [[CORE-131]] (PR #301, head `abeb16978a4b3f8fece6e98d6bdf54e541544a1b`). Two classifier gaps found in `packages/core/src/reconciliation.ts`; neither is unsafe, both leave FRD-028 behaviour unserved. Both were **independently re-confirmed by the post-merge verification** of CORE-131 (proof `b8dc5101d0c90fba` at merge SHA `45215955`).

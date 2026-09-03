@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "314"
-head_sha: "35f5f2f246259302069787e1986a03fa835fa0bc"
+head_sha: "bb773f142e263890ad6ed78981f8024d092bfab5"
 verdict: pass
 reviewer: "core139-consolidated-reviewer"
 independent: true
 plan_hash: "6e24f54eaf07575a"
-ticket_updated: "2026-09-03T19:20:27.331Z"
-board_sha: "3b3bc0d388e89006b534c1dca17030edc7ebd1bd"
+ticket_updated: "2026-09-03T19:35:55.614Z"
+board_sha: "e9f9b0b561b19321210022fe6f91e9b541862a23"
 expected_reviewers:
   - "core139-consolidated-reviewer"
 threads_snapshot: []
@@ -35,15 +35,29 @@ findings:
 ---
 # Independent consolidated review — CORE-139
 
-Reviewed PR #314 at exact head `35f5f2f246259302069787e1986a03fa835fa0bc` (base `main` at
-`cd5b6b6b874a5ce9d3274f9660347b6e54253be4`) against plan version `6e24f54eaf07575a`, ticket update
-`2026-09-03T19:20:27.331Z` and pushed board `3b3bc0d388e89006b534c1dca17030edc7ebd1bd`. Round 0:
-the consolidated review of the whole PR — diff, packet (files, plan, checklist, post-implementation
+Reviewed PR #314 at exact head `bb773f142e263890ad6ed78981f8024d092bfab5` (base `main` at
+`c25e459002096cdca2b2ea7c993898755df0b95c`) against plan version `6e24f54eaf07575a`, ticket update
+`2026-09-03T19:35:55.614Z` and pushed board `e9f9b0b561b19321210022fe6f91e9b541862a23`. Round 0: the
+consolidated review of the whole PR — diff, packet (files, plan, checklist, post-implementation
 report), governing refs FRD-023 and FRD-013, required checks and threads.
 
 I am not the author. The author's worktree `.worktrees/core-139` was never opened; the diff was read
 from `origin/CORE-139-ci-storm-shipped-artefacts` and the focused checks ran in a throwaway detached
 worktree at the exact head, removed afterwards.
+
+## Rebase during review
+
+The first gather was on head `35f5f2f246259302069787e1986a03fa835fa0bc` over base `cd5b6b6b`. While
+the rail was running, GUI-149 merged as `c25e459002096cdca2b2ea7c993898755df0b95c` and the author
+rebased the single commit onto it, producing `bb773f14`. This record replaces the earlier one and is
+bound to the new head. The rebase carries no content change: `git show` of the two commits differs
+only in the `index` line of the `AGENTS.md` hunk header, every other file's pre- and post-image blob
+ids are identical, and the three-dot diff against the new base is the same nine files at +184/-39.
+GUI-149's own `AGENTS.md` edits are in section 8 (gotchas 4 and the registration bullet), untouched
+by this PR's section 0 managed block and section 6 paragraph, so the two changes do not interact.
+`plugins/kanmer/mcp/kanmer-mcp.cjs` is byte-identical between `c25e4590` and `bb773f14` even though
+GUI-149 moved it, so this PR still ships no bundle change. Every focused check below was re-run at
+`bb773f14`.
 
 ## What the diff does
 
@@ -93,22 +107,23 @@ sentences. `plugins/kanmer/skills/kanmer-setup/SKILL.md` drops the monorepo-rela
   tolerates, and no test expects a crash with empty output. Its failure message carries `status`,
   `signal` and `stderr` — exactly the GUI-149 misread it exists to prevent.
 
-## Acceptance checks (detached checkout at 35f5f2f2, exit codes)
+## Acceptance checks (detached checkout at bb773f14, exit codes)
 
 | Check | Exit | Result |
 |---|---|---|
 | `node --test scripts/pr-workflow.test.mjs` | 0 | 1/1 pass, negative assertion present |
 | `node scripts/verify-skill-prose.mjs` | 0 | ALL CHECKS PASSED; `PASS  no shipped skill link escapes its skill folder — 0 hits` |
 | `node scripts/verify-agents-block.mjs` | 0 | 31/31, including check 7's byte-pin of the SKILL.md fenced block |
-| `git diff --stat cd5b6b6b <head> -- plugins/kanmer/mcp/kanmer-mcp.cjs` | 0 | empty — the MCP bundle is byte-identical to main |
-| `git grep -n "launcher. Native"` at head | — | no hits in any of the four copies |
+| `git diff --stat c25e4590 bb773f14 -- plugins/kanmer/mcp/kanmer-mcp.cjs` | 0 | empty — the MCP bundle is byte-identical to the new base |
+| `grep -c "launcher. Native"` over the three canonical copies | — | 0, 0, 0 |
 | `grep` for reference-style definitions and `<a href>` under the skills tree | — | no hits (bounds F-002) |
 
-Every sentence `verify-skill-prose.mjs` pins still exists in the edited SKILL.md — the validator's
-own exit 0 across all 21 checks is that proof — and the `greenfield playbook stays linked from
-setup` test still matches, because the new prose keeps the literal `docs/manual/greenfield.md` as a
-code span. `npm run verify` and the skill-prose test file were deliberately not run locally; the
-hosted rail is the authority for both.
+All four checks were also green at the pre-rebase head `35f5f2f2`. Every sentence
+`verify-skill-prose.mjs` pins still exists in the edited SKILL.md — the validator's own exit 0 across
+all 21 checks is that proof — and the `greenfield playbook stays linked from setup` test still
+matches, because the new prose keeps the literal `docs/manual/greenfield.md` as a code span.
+`npm run verify` and the skill-prose test file were deliberately not run locally; the hosted rail is
+the authority for both.
 
 ## Governing docs
 
@@ -148,24 +163,28 @@ hosted rail is the authority for both.
   paragraph.
 
 F-002 and F-003 are separate mechanisms, not one class; F-001 is the only finding arising from the
-new concurrency block and it has one remedy. No finding is `open`, and none is blocker or major.
+new concurrency block and it has one remedy. No finding is `open`, and none is blocker or major. The
+rebase introduced no new finding: it changed no reviewed line.
 
 ## Threads and reviewers
 
-`threads_snapshot` is empty and truthful: the GraphQL `reviewThreads` query returns an empty list and
-`gh pr view` reports no reviews and no comments on this head. The `chatgpt-codex-connector` bot has
-posted nothing here; it is never an expected reviewer or a gate and no wait was taken on it. The
-expected-reviewer set is this single dispatched reviewer, settled on this exact head by this record.
+`threads_snapshot` is empty and truthful: the GraphQL `reviewThreads` query returns an empty list on
+both the pre-rebase and the current head, and `gh pr view` reports no reviews and no comments. The
+`chatgpt-codex-connector` bot has posted nothing here; it is never an expected reviewer or a gate and
+no wait was taken on it. The expected-reviewer set is this single dispatched reviewer, settled on
+this exact head by this record.
 
 ## CI evidence
 
-Run `33795809753` (event `pull_request`, head `35f5f2f2`): `verify` **pass** in 9m01s (job
-`100786443706`); `regate` **skipping**, correct because this is neither a dispatch nor a push to
-`main`; `kanmer-gate` **fail** in 58s (job `100786441981`) with the single finding
-`NO_REVIEW_RECORD - no scratch/review.md review attestation was recorded` against board
-`3b3bc0d388e89006b534c1dca17030edc7ebd1bd`, while every other gate check passed (ticket resolved, no
-open questions, stage `review`, no blockers, base `main`, commit `35f5f2f2...` reachable). That
-failure is this record's absence and is re-judged after this attestation is pushed.
+- Head `bb773f14`, run `33797370892` (event `pull_request`): `verify` and `kanmer-gate` are the
+  required checks; `regate` correctly reports `skipping` because this is neither a dispatch nor a
+  push to `main`. Their conclusions at this exact head are the merge condition.
+- Head `35f5f2f2` (pre-rebase), run `33795809753`: `verify` **pass** in 9m01s (job `100786443706`),
+  `regate` skipping, `kanmer-gate` fail in 58s (job `100786441981`) with the single finding
+  `NO_REVIEW_RECORD - no scratch/review.md review attestation was recorded`, every other gate check
+  passing (ticket resolved, no open questions, stage `review`, no blockers, base `main`, recorded
+  commit reachable). That failure was this record's absence, and the identical patch passed the full
+  hosted rail there.
 
 ## Residual risk
 

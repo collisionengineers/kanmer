@@ -122,6 +122,16 @@ try {
     "reconcile_ticket accepts a complete immutable step packet",
     reconcileInspector?.inputSchema?.properties?.step_packet?.type === "object",
   );
+  // CORE-131 shipped `apply_reconciliation` and left `reconcile_ticket` telling
+  // clients there was no apply surface; CORE-132 corrected the text. Nothing
+  // else guards it — `check-plugin-sync.mjs` compares tool NAMES only — so the
+  // shipped description is pinned here, on the live tool the bundle serves.
+  check(
+    "reconcile_ticket points clients at apply_reconciliation and no longer denies the apply surface",
+    typeof reconcileInspector?.description === "string" &&
+      reconcileInspector.description.includes("apply_reconciliation") &&
+      !/no apply surface/iu.test(reconcileInspector.description),
+  );
   const dispatchStart = tools.tools.find((t) => t.name === "dispatch_task");
   const dispatchList = tools.tools.find((t) => t.name === "list_dispatches");
   const dispatchCancel = tools.tools.find((t) => t.name === "cancel_dispatch");

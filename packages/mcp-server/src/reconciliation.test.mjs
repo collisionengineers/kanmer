@@ -47,10 +47,10 @@ const closedJson = JSON.stringify({ state: "CLOSED", headRefOid: headSha, mergeC
 const passChecks = JSON.stringify([{ state: "SUCCESS", bucket: "pass" }]);
 const commonDir = (root) => async () => ({ ok: true, path: root });
 
-function proof(result = "PASS", failureClass) {
+function proof(result = "PASS", failureClass, merged = mergeSha) {
   return "---\n" +
     "kind: proof-record\n" +
-    "merged_sha: " + mergeSha + "\n" +
+    "merged_sha: " + merged + "\n" +
     "environment: detached fixture\n" +
     "verified_at: \"2026-08-26T00:00:00.000Z\"\n" +
     "result: " + result + "\n" +
@@ -109,6 +109,17 @@ function ghRun({ view = new Map([["12", mergedJson]]), checks = passChecks } = {
     }
     assert.fail("unexpected command: " + command + " " + args.join(" "));
   };
+}
+
+/**
+ * Age a claim on disk rather than injecting a clock: the store's own
+ * precondition and `transferTicket` both read real time, so an apply that only
+ * looked expired to the collector must not be reachable through this fixture.
+ */
+async function expireClaim(store, id) {
+  const file = path.join(store.paths.kanmer, "areas", "_none", id, `${id}.md`);
+  const aged = new Date(Date.now() - 60 * 60_000).toISOString();
+  await fs.writeFile(file, (await fs.readFile(file, "utf8")).replace(/^claim_expires_at: .*$/mu, `claim_expires_at: '${aged}'`), "utf8");
 }
 
 async function fixtureStore(t, prefix) {
@@ -477,8 +488,17 @@ test("reconcile_ticket is a dry run: the store is unchanged and the claim block 
   assert.equal(expired.evidence.claim.state, "expired");
   assert.ok(expired.findings.some((finding) => finding.code === "CLAIM_EXPIRED"));
   assert.ok(expired.findings.some((finding) => finding.code === "WORKSPACE_MISSING"));
-  assert.equal(expired.recommendation, null);
+  // CORE-133: this is the exact shape the collector emits for an abandoned
+  // claim whose worktree is gone, and it now reaches the already-authorised
+  // transfer instead of no recommendation at all. Still a dry run: the
+  // recommendation is advisory and the claim is untouched below.
+  assert.deepEqual(expired.recommendation, {
+    action: "RECOVER_EXPIRED_CLAIM", advisory: true,
+    ticketId: claimed.id, revision: (await store.getRevision(claimed.id)).revision,
+  });
+  assert.equal(expired.evidence.workspace.claimIdentity, "unavailable");
   assert.equal((await store.getItem(claimed.id)).taken_at, taken.taken_at);
+  assert.equal((await store.getItem(claimed.id)).claim_controller, "ctl-durable");
 });
 
 test("leaseRecoverySummary reduces evidence to what a reclaim records, and a legacy claim reports legacy", async (t) => {
@@ -858,12 +878,7 @@ test("apply recovers an expired claim over a DIRTY workspace without touching a 
   const statusBefore = porcelain();
   assert.ok(statusBefore.trim(), "the fixture workspace really is dirty");
 
-  // Age the claim on disk rather than injecting a clock: the store's own
-  // precondition and transferTicket both read real time, and an apply that only
-  // looked expired to the collector must not be reachable.
-  const file = path.join(store.paths.kanmer, "areas", "_none", ticket.id, `${ticket.id}.md`);
-  const aged = new Date(Date.now() - 60 * 60_000).toISOString();
-  await fs.writeFile(file, (await fs.readFile(file, "utf8")).replace(/^claim_expires_at: .*$/mu, `claim_expires_at: '${aged}'`), "utf8");
+  await expireClaim(store, ticket.id);
   const dry = await reconcileTicket(store, ticket.id);
   assert.equal(dry.evidence.claim.state, "expired");
   assert.equal(dry.evidence.workspace.state, "dirty");
@@ -891,6 +906,133 @@ test("apply recovers an expired claim over a DIRTY workspace without touching a 
   // The transfer records its own re-read evidence; both lines are kept.
   assert.match(execution, /claim-transfer ctl-a → ctl-b \(expired;[^\n]*evidence: workspace dirty \(matches-claim\)/u);
 });
+
+// CORE-133. The two shapes FRD-028 names as "a missing worktree or no
+// surviving work" are what the real collector emits for an abandoned claim, and
+// before CORE-133 neither could reach `RECOVER_EXPIRED_CLAIM`. Both are proved
+// end to end here, through the real collector and `applyReconciliation`, not
+// only through the pure classifier.
+test("apply recovers an expired claim whose recorded worktree has been deleted, and creates nothing in its place", async (t) => {
+  const { root, store } = await fixtureStore(t, "kanmer-apply-missing-");
+  store.setActor("ctl-b");
+  const ticket = await store.createItem({ type: "ticket", title: "Deleted workspace", profile: "custom", requires: {}, status: "implementing" });
+  const taken = await store.takeTicket(ticket.id, { branch: "tick-001-work", worktree: ".worktrees/GONE", assignee: "ctl-a", controller: "ctl-a" });
+  await expireClaim(store, ticket.id);
+
+  const dry = await reconcileTicket(store, ticket.id);
+  assert.equal(dry.evidence.claim.state, "expired");
+  // The exact shape the collector emits for an ENOENT worktree.
+  assert.deepEqual(dry.evidence.workspace, { state: "missing", recordedWorktree: ".worktrees/GONE", claimIdentity: "unavailable" });
+  assert.equal(dry.recommendation.action, "RECOVER_EXPIRED_CLAIM");
+  assert.equal(dry.recommendation.targetStatus, undefined);
+  assert.ok(dry.findings.some((finding) => finding.code === "WORKSPACE_MISSING"));
+
+  const applied = await applyReconciliation(
+    store,
+    { id: ticket.id, expectedRevision: dry.recommendation.revision, controller: "ctl-b" },
+  );
+  assert.equal(applied.action, "RECOVER_EXPIRED_CLAIM");
+  assert.deepEqual(applied.from, { status: "implementing", controller: "ctl-a" });
+  assert.deepEqual(applied.to, { status: "implementing", controller: "ctl-b" });
+  // Responsibility moved; the recorded location and claim time did not, so an
+  // operator can still find whatever the abandoned worker left behind.
+  assert.equal(applied.item.branch, "tick-001-work");
+  assert.equal(applied.item.worktree, ".worktrees/GONE");
+  assert.equal(applied.item.taken_at, taken.taken_at);
+  assert.equal(applied.item.lease_reclaimed_from, "ctl-a");
+  assert.notEqual(applied.item.lease_id, taken.lease_id);
+  // Recovery is not re-creation: nothing was written at the recorded path.
+  await assert.rejects(fs.stat(path.join(root, ".worktrees", "GONE")), /ENOENT/u);
+  const execution = await store.getDoc(ticket.id, "scratch/execution");
+  assert.match(execution, /reconcile RECOVER_EXPIRED_CLAIM by ctl-b; controller ctl-a → ctl-b; revision /u);
+  assert.match(execution, /claim-transfer ctl-a → ctl-b \(expired;[^\n]*evidence: workspace missing \(unavailable\)/u);
+});
+
+test("apply recovers an expired claim that never recorded a workspace", async (t) => {
+  const { store } = await fixtureStore(t, "kanmer-apply-unrecorded-");
+  store.setActor("ctl-b");
+  const ticket = await store.createItem({ type: "ticket", title: "No workspace", profile: "custom", requires: {}, status: "implementing" });
+  // An isolated branch-only take: legal, and exactly the incomplete claim a
+  // crashed worker leaves when it never reached `git worktree add`.
+  const taken = await store.takeTicket(ticket.id, { branch: "tick-001-work", assignee: "ctl-a", controller: "ctl-a" });
+  assert.equal(taken.worktree, undefined);
+  await expireClaim(store, ticket.id);
+
+  const dry = await reconcileTicket(store, ticket.id);
+  assert.equal(dry.evidence.claim.state, "expired");
+  assert.deepEqual(dry.evidence.workspace, { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" });
+  assert.equal(dry.recommendation.action, "RECOVER_EXPIRED_CLAIM");
+  assert.ok(dry.findings.some((finding) => finding.code === "CLAIM_WITHOUT_RECORDED_WORKSPACE"));
+
+  const applied = await applyReconciliation(
+    store,
+    { id: ticket.id, expectedRevision: dry.recommendation.revision, controller: "ctl-b" },
+  );
+  assert.equal(applied.action, "RECOVER_EXPIRED_CLAIM");
+  assert.deepEqual(applied.to, { status: "implementing", controller: "ctl-b" });
+  assert.equal(applied.item.branch, "tick-001-work");
+  assert.equal(applied.item.worktree, undefined);
+  assert.equal(applied.item.taken_at, taken.taken_at);
+  assert.equal(applied.item.lease_reclaimed_from, "ctl-a");
+  const execution = await store.getDoc(ticket.id, "scratch/execution");
+  assert.match(execution, /claim-transfer ctl-a → ctl-b \(expired;[^\n]*evidence: workspace not-recorded \(not-applicable\)/u);
+});
+
+for (const identity of ["foreign-repository", "branch-mismatch"]) {
+  test(`an expired claim over a ${identity} workspace stays refused by the classifier and the store`, async (t) => {
+    const { root, store } = await fixtureStore(t, `kanmer-apply-${identity}-`);
+    await fs.mkdir(path.join(root, "wt"), { recursive: true });
+    const ticket = await store.createItem({ type: "ticket", title: "Unsafe workspace", profile: "custom", requires: {}, status: "implementing" });
+    await store.takeTicket(ticket.id, { branch: "b", worktree: "wt", assignee: "ctl-a", controller: "ctl-a" });
+    await expireClaim(store, ticket.id);
+    const run = workspaceRun(identity === "branch-mismatch" ? "someone-elses-branch" : "b");
+    const options = identity === "foreign-repository"
+      ? { resolveCommonDir: async (directory) => ({ ok: true, path: path.join(directory, ".git") }) }
+      : { resolveCommonDir: commonDir(path.join(root, ".git")) };
+    const before = JSON.stringify(await store.getItem(ticket.id));
+
+    const dry = await reconcileTicket(store, ticket.id, run, options);
+    assert.equal(dry.evidence.claim.state, "expired");
+    assert.equal(dry.evidence.workspace.claimIdentity, identity);
+    assert.equal(dry.recommendation, null);
+    await rejects(() => applyReconciliation(store, { id: ticket.id, expectedRevision: "rev1:whatever" }, run, options), "RECONCILIATION_INCONCLUSIVE");
+    // transferTicket refuses it independently, so no second path can reach it.
+    const revision = (await store.getRevision(ticket.id)).revision;
+    await assert.rejects(
+      () => store.applyReconciliation(ticket.id, {
+        action: "RECOVER_EXPIRED_CLAIM", expectedRevision: revision, actor: "ctl-b",
+        recovery: leaseRecoverySummary(dry.evidence),
+      }),
+      /RECOVERY_REFUSED/u,
+    );
+    assert.equal(JSON.stringify(await store.getItem(ticket.id)), before);
+  });
+}
+
+for (const failureClass of ["implementation", "plan"]) {
+  test(`a ${failureClass} FAIL proof naming a stale merge SHA routes nothing and the apply refuses without touching it`, async (t) => {
+    const { store } = await fixtureStore(t, `kanmer-apply-stale-fail-${failureClass}-`);
+    const ticket = await store.createItem({ type: "ticket", title: "Stale FAIL", profile: "custom", requires: {}, status: "verifying", prs: ["12"] });
+    // A proof from an earlier verification round: FAIL, correctly classed, and
+    // about a merge this ticket no longer sits on.
+    await store.setDoc(ticket.id, "proof", proof("FAIL", failureClass, "c".repeat(40)));
+    const proofBefore = await store.getDoc(ticket.id, "proof");
+    const before = JSON.stringify(await store.getItem(ticket.id));
+
+    const dry = await reconcileTicket(store, ticket.id, ghRun());
+    assert.equal(dry.evidence.proof.state, "fail");
+    assert.equal(dry.evidence.proof.failureClass, failureClass);
+    assert.equal(dry.recommendation, null);
+    assert.ok(dry.findings.some((finding) => finding.code === "PROOF_MERGE_SHA_MISMATCH"));
+
+    await rejects(() => applyReconciliation(store, { id: ticket.id, expectedRevision: "rev1:whatever" }, ghRun()), "RECONCILIATION_INCONCLUSIVE");
+    // The stale record is evidence, not garbage: it is preserved byte for byte.
+    assert.equal(await store.getDoc(ticket.id, "proof"), proofBefore);
+    assert.equal(JSON.stringify(await store.getItem(ticket.id)), before);
+    assert.equal((await store.getItem(ticket.id)).status, "verifying");
+    assert.equal(await store.getDoc(ticket.id, "scratch/execution"), null);
+  });
+}
 
 test("a live claim is never reconciled into a transfer, at either layer", async (t) => {
   const { root, store } = await fixtureStore(t, "kanmer-apply-live-");

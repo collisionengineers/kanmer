@@ -390,6 +390,8 @@ export interface SkillsStatus {
   installedVersion: string | null;
   bundledVersion: string;
   updateAvailable: boolean;
+  /** The host's own reason its plugin is not usable (marketplace hosts), else null (GUI-150). */
+  hostError: string | null;
 }
 
 /** A background agent dispatch's live status. */

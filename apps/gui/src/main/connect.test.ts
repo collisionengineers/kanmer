@@ -1188,6 +1188,21 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
         : ["  ❯ kanmer@kanmer", `    Version: ${version}`, `    Scope: ${scope}`, "    Status: ✔ enabled", ""]),
     ].join("\n");
 
+  /**
+   * A `claude plugin list --json` document, in the shape claude 2.1.259 prints:
+   * an array of entries; `errors` is present only when the host failed to load
+   * the plugin (GUI-150). Other fields the real output carries (installPath,
+   * installedAt, mcpServers) are omitted because the parser never reads them.
+   */
+  const pluginListJson = (
+    entries: { id: string; version: string; scope: string; enabled?: boolean; errors?: string[] }[],
+  ) =>
+    JSON.stringify(
+      [{ id: "azure@claude-plugins-official", version: "1.2.34", scope: "user", enabled: false }, ...entries],
+      null,
+      2,
+    );
+
   /** Write the two host state files and return the directory holding them. */
   async function hostStateDir(marketplacePath: string | null, pluginVersion: string | null): Promise<string> {
     const dir = await tempRoot();
@@ -1400,9 +1415,11 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
   });
 
   it("reads the installed version back out of the host's own report", () => {
-    const { parse } = claudeInstall().installedVersion;
+    const { parse, command } = claudeInstall().installedVersion;
+    // The JSON form is what carries `enabled` and the host's `errors` (GUI-150).
+    expect(command).toBe("claude plugin list --json");
 
-    expect(parse(pluginList("0.4.0"))).toBe("0.4.0");
+    expect(parse(pluginList("0.4.0"))?.version).toBe("0.4.0");
     // Absent is null, not a crash and not a false match on another plugin.
     expect(parse(pluginList(null))).toBeNull();
     expect(parse("Installed plugins:\n")).toBeNull();
@@ -1419,7 +1436,53 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
       "    Scope: user",
       "    Status: ✔ enabled",
     ].join("\n");
-    expect(parse(twoScopes)).toBe("0.4.0");
+    expect(parse(twoScopes)).toEqual({ version: "0.4.0", scope: "user", enabled: true, errors: [] });
+    // The text transcript's own signals are read too, for a host without --json.
+    // The kanmer block's status, not the first block's (azure precedes it).
+    expect(parse(pluginList("0.4.0").replace(/(kanmer@kanmer[\s\S]*?)✔ enabled/, "$1✘ disabled"))).toMatchObject({
+      enabled: false,
+      errors: [],
+    });
+    expect(
+      parse(`${pluginList("0.4.0")}\n    Error: Marketplace kanmer failed to load: cache-miss\n`),
+    ).toMatchObject({ enabled: true, errors: ["Marketplace kanmer failed to load: cache-miss"] });
+  });
+
+  it("reads the host's --json report, including its load errors and enabled flag (GUI-150)", () => {
+    const { parse } = claudeInstall().installedVersion;
+
+    // Healthy: the shape claude 2.1.259 prints; `errors` is absent when it loaded.
+    expect(parse(pluginListJson([{ id: "kanmer@kanmer", version: "0.4.0", scope: "user", enabled: true }]))).toEqual({
+      version: "0.4.0",
+      scope: "user",
+      enabled: true,
+      errors: [],
+    });
+    // The reported defect: right version, host could not load it.
+    expect(
+      parse(
+        pluginListJson([
+          { id: "kanmer@kanmer", version: "0.4.0", scope: "user", enabled: true, errors: ["Marketplace kanmer failed to load: cache-miss"] },
+        ]),
+      ),
+    ).toMatchObject({ version: "0.4.0", enabled: true, errors: ["Marketplace kanmer failed to load: cache-miss"] });
+    expect(parse(pluginListJson([{ id: "kanmer@kanmer", version: "0.4.0", scope: "user", enabled: false }]))).toMatchObject({
+      enabled: false,
+    });
+    // Absent from the array is null; another plugin never matches.
+    expect(parse(pluginListJson([]))).toBeNull();
+    expect(parse(pluginListJson([{ id: "azure@claude-plugins-official", version: "1.2.34", scope: "user", enabled: true }]))).toBeNull();
+    // User scope wins over the same plugin at another scope, whatever the order.
+    expect(
+      parse(
+        pluginListJson([
+          { id: "kanmer@kanmer", version: "0.3.12", scope: "local", enabled: true },
+          { id: "kanmer@kanmer", version: "0.4.0", scope: "user", enabled: true },
+        ]),
+      ),
+    ).toMatchObject({ version: "0.4.0", scope: "user" });
+    // A missing `enabled` reads as enabled: an absent flag is not a disabled plugin.
+    expect(parse(pluginListJson([{ id: "kanmer@kanmer", version: "0.4.0", scope: "user" }]))).toMatchObject({ enabled: true });
   });
 
   it("fails Connect with a pasteable repair when the host reports a version that is not the bundled one", async () => {
@@ -1527,7 +1590,109 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const codex = await skillsStatus("codex", root, {
       hostVersionRunner: async () => { throw new Error("codex must not be asked"); },
     });
-    expect(codex).toMatchObject({ scope: "marketplace", installedVersion: null, updateAvailable: false });
+    expect(codex).toMatchObject({ scope: "marketplace", installedVersion: null, updateAvailable: false, hostError: null });
+  });
+
+  // GUI-150. The state the ticket exists to end: `claude plugin list --json`
+  // reported the bundled version, `enabled: true`, and
+  // `errors: ["Marketplace kanmer failed to load: cache-miss"]`, and a
+  // version-only check passed it.
+  const cacheMiss = "Marketplace kanmer failed to load: cache-miss";
+
+  it("fails Connect with the repair when the host reports the plugin failed to load, even at the bundled version", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const bundled = await bundledVersion();
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
+
+    const result = await connectAgent(id, root, root, {
+      probeRunner: probeOk,
+      claudePluginStateDir: await hostStateDir(null, bundled),
+      hostVersionRunner: async () => ({
+        stdout: pluginListJson([{ id: "kanmer@kanmer", version: bundled, scope: "user", enabled: true, errors: [cacheMiss] }]),
+        stderr: "",
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.command).toBe(
+      "claude plugin uninstall kanmer@kanmer -s user -y && claude plugin install kanmer@kanmer -s user -y",
+    );
+    // The host's own words, so the user can search for them, and the version
+    // that was right so nobody chases a version mismatch.
+    expect(result.output).toContain(cacheMiss);
+    expect(result.output).toContain(`v${bundled}`);
+  }, 60_000);
+
+  it("fails Connect when the host reports the plugin disabled at the bundled version", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const bundled = await bundledVersion();
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
+
+    const result = await connectAgent(id, root, root, {
+      probeRunner: probeOk,
+      claudePluginStateDir: await hostStateDir(null, bundled),
+      hostVersionRunner: async () => ({
+        stdout: pluginListJson([{ id: "kanmer@kanmer", version: bundled, scope: "user", enabled: false }]),
+        stderr: "",
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("disabled");
+  }, 60_000);
+
+  it("reports success when the host's --json report is healthy at the bundled version", async () => {
+    const root = await tempRoot();
+    vi.stubEnv("LOCALAPPDATA", await tempRoot());
+    const bundled = await bundledVersion();
+    const cmd = await noopCommand(root);
+    const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
+
+    const result = await connectAgent(id, root, root, {
+      probeRunner: probeOk,
+      claudePluginStateDir: await hostStateDir(null, null),
+      hostVersionRunner: async () => ({
+        stdout: pluginListJson([{ id: "kanmer@kanmer", version: bundled, scope: "user", enabled: true }]),
+        stderr: "",
+      }),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain(`host reports plugin v${bundled}`);
+  }, 60_000);
+
+  it("surfaces the host's load error in the skills staleness read and offers the re-install", async () => {
+    const root = await tempRoot();
+    const bundled = await bundledVersion();
+
+    const failed = await skillsStatus("claude", root, {
+      hostVersionRunner: async () => ({
+        stdout: pluginListJson([{ id: "kanmer@kanmer", version: bundled, scope: "user", enabled: true, errors: [cacheMiss] }]),
+        stderr: "",
+      }),
+    });
+    // Right version, still not usable: the panel must not look healthy.
+    expect(failed).toMatchObject({ installedVersion: bundled, updateAvailable: true, hostError: cacheMiss });
+
+    const disabled = await skillsStatus("claude", root, {
+      hostVersionRunner: async () => ({
+        stdout: pluginListJson([{ id: "kanmer@kanmer", version: bundled, scope: "user", enabled: false }]),
+        stderr: "",
+      }),
+    });
+    expect(disabled).toMatchObject({ updateAvailable: true, hostError: "plugin disabled" });
+
+    const healthy = await skillsStatus("claude", root, {
+      hostVersionRunner: async () => ({
+        stdout: pluginListJson([{ id: "kanmer@kanmer", version: bundled, scope: "user", enabled: true }]),
+        stderr: "",
+      }),
+    });
+    expect(healthy).toMatchObject({ installedVersion: bundled, updateAvailable: false, hostError: null });
   });
 
   it("removes the host's own marketplace and plugin on disconnect, and keeps the staged directory", async () => {

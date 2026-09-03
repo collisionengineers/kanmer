@@ -36,6 +36,7 @@ import {
   CLAUDE_MARKETPLACE,
   CLAUDE_PLUGIN_REF,
   type MarketplaceHostState,
+  type MarketplacePluginState,
   type MarketplaceVersionCheck,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
@@ -783,33 +784,59 @@ async function verifyInstalledMarketplaceVersion(
     };
   }
   const installed = check.parse(output);
-  if (installed === expected) return null;
+  if (installed === null) {
+    return {
+      command: check.repairCommand,
+      output:
+        `The install ran, but \`${check.command}\` reports no Kanmer plugin at all, ` +
+        `so this host has no skills and no board server. Expected version ${expected}.\n\n` +
+        `Run this by hand:\n${check.repairCommand}`,
+    };
+  }
+  if (installed.version !== expected) {
+    return {
+      command: check.repairCommand,
+      output:
+        `The install ran, but this host still reports Kanmer plugin version ` +
+        `${installed.version}, not the bundled ${expected} — so its skills and MCP server ` +
+        `are the previous release's.\n\nRun this by hand:\n${check.repairCommand}`,
+    };
+  }
+  // The right version is not the whole answer (GUI-150): a plugin the host
+  // reports as failed to load — `Marketplace kanmer failed to load: cache-miss`
+  // was the exact state at the bundled version — or disabled has no skills and
+  // no board server, and Connect must say so rather than show a green tick.
+  const problem = pluginLoadProblem(installed);
+  if (problem === null) return null;
   return {
     command: check.repairCommand,
-    output: installed === null
-      ? `The install ran, but \`${check.command}\` reports no Kanmer plugin at all, ` +
-        `so this host has no skills and no board server. Expected version ${expected}.\n\n` +
-        `Run this by hand:\n${check.repairCommand}`
-      : `The install ran, but this host still reports Kanmer plugin version ` +
-        `${installed}, not the bundled ${expected} — so its skills and MCP server ` +
-        `are the previous release's.\n\nRun this by hand:\n${check.repairCommand}`,
+    output:
+      `The install ran and this host reports Kanmer plugin v${expected}, but ${problem}, ` +
+      `so its skills and MCP server are not loading.\n\nRun this by hand:\n${check.repairCommand}`,
   };
 }
 
+/** The host's own reason the plugin is not usable, or null when it loaded and is enabled. */
+function pluginLoadProblem(state: MarketplacePluginState): string | null {
+  if (state.errors.length > 0) return `it failed to load: ${state.errors.join("; ")}`;
+  if (!state.enabled) return "the host reports it disabled";
+  return null;
+}
+
 /**
- * The version a marketplace host reports having installed, or null when it
- * cannot be read.
+ * What a marketplace host reports having installed, or null when it cannot be
+ * read.
  *
  * The soft failure is deliberate and matches the rest of the staleness family
  * (`staleness.ts`: nothing here throws) — a host without its CLI on PATH must
  * render as "unknown", not break the Settings panel. Connect's own
  * verification, which must be loud, is `verifyInstalledMarketplaceVersion`.
  */
-async function readMarketplaceInstalledVersion(
+async function readMarketplacePluginState(
   check: MarketplaceVersionCheck,
   root: string,
   options: ConnectOptions,
-): Promise<string | null> {
+): Promise<MarketplacePluginState | null> {
   const run = options.hostVersionRunner ?? defaultCommandRunner;
   try {
     const result = await run(check.command, root);
@@ -886,8 +913,19 @@ export interface SkillsStatus {
   installedVersion: string | null;
   /** The version bundled with this app. */
   bundledVersion: string;
-  /** True when a copied skill set is present but older than the bundled one. */
+  /**
+   * True when a copied skill set is present but older than the bundled one —
+   * or, for a marketplace host, when the plugin needs re-installing for any
+   * reason `hostError` names (GUI-150).
+   */
   updateAvailable: boolean;
+  /**
+   * The host's own reason its installed plugin is not usable (a load error
+   * such as `Marketplace kanmer failed to load: cache-miss`, or "plugin
+   * disabled"), else null. Marketplace hosts only; the repair is the same
+   * re-install "Update skills" runs (GUI-150).
+   */
+  hostError: string | null;
 }
 
 /**
@@ -907,6 +945,7 @@ export async function skillsStatus(
     installedVersion: null,
     bundledVersion,
     updateAvailable: false,
+    hostError: null,
   };
   if (!provider || provider.install.kind === "marketplace") {
     // A marketplace host that can be asked what it installed is asked. Claude
@@ -916,14 +955,21 @@ export async function skillsStatus(
     // reported as "unknown", the same as every other read in this family.
     const check = provider?.install.kind === "marketplace" ? provider.install.installedVersion : undefined;
     if (!check) return base;
-    const installedVersion = await readMarketplaceInstalledVersion(check, projectRoot, options);
+    const state = await readMarketplacePluginState(check, projectRoot, options);
+    const installedVersion = state?.version ?? null;
+    // A plugin that failed to load is not "installed and current" whatever
+    // version it names (GUI-150): the panel must not look healthy over
+    // `cache-miss`, and the re-install offer is the repair.
+    const problem = state ? pluginLoadProblem(state) : null;
+    const hostError = problem === null ? null : state!.errors[0] ?? "plugin disabled";
     return {
       ...base,
       installedVersion,
       // Any disagreement, not only an older version: a host left on a *newer*
       // plugin than the app that talks to it is the same stale-control-plane
       // fault from the other side, and "Update skills" is still the answer.
-      updateAvailable: installedVersion !== null && installedVersion !== bundledVersion,
+      updateAvailable: (installedVersion !== null && installedVersion !== bundledVersion) || hostError !== null,
+      hostError,
     };
   }
   if (provider.install.kind === "plugin") return { ...base, scope: "plugin" };
@@ -942,6 +988,7 @@ export async function skillsStatus(
     installedVersion,
     bundledVersion,
     updateAvailable: installedVersion !== null && isNewerVersion(bundledVersion, installedVersion),
+    hostError: null,
   };
 }
 

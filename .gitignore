@@ -36,11 +36,14 @@ ds-bundle/
 
 # Machine-local agent config, written by Connect (apps/gui/src/main/providers.ts).
 # `.mcp.json` (Claude Code's own project-scope file, written by `claude mcp add
-# -s project`), `.codex/config.toml` (codex), `.grok/config.toml` (grok) and
-# `opencode.json` (opencode) each hardcode absolute paths to this machine's
-# Kanmer install and board worktree via the shared Invocation shape —
-# committing one would be as inert to anyone else as a checked-in `.mcp.json`
-# pointing at someone else's machine. `.claude/skills/`, `.opencode/skills/`,
+# -s project`), `.codex/config.toml` (codex) and `opencode.json` (opencode) all
+# carry the same portable installer-owned launcher since GUI-149 — no absolute
+# paths — but they are still a per-machine opt-in ("this user has Kanmer
+# installed and Connected this host"), not project source, and Connect writes
+# the same rules into every target project's .gitignore (`connectIgnoreEntries`).
+# `.grok/config.toml` is legacy grok residue retired on reconnect. Files written
+# before GUI-149 hardcode this machine's Kanmer install and board worktree, which
+# is one more reason they stay untracked. `.claude/skills/`, `.opencode/skills/`,
 # `.grok/skills/` is a legacy local copy of the plugin skills (the canonical
 # ones are plugins/kanmer/skills/). Antigravity now owns skills/MCP in its user
 # plugin; its old `.agents` paths are migration inputs, not active writers.
@@ -50,8 +53,9 @@ ds-bundle/
 # not a Connect-written artifact, so `.agents/` itself is never blanket-ignored.
 # All of the below are untracked deliberately — and `scripts/release.mjs`
 # counts untracked files as a dirty tree, so leaving them here blocks every
-# release. Every `copySkills` destination in providers.ts is checked against
-# this file by a test in apps/gui/src/main/providers.test.ts.
+# release. Every `copySkills` destination and every `connectIgnoreEntries()`
+# path in providers.ts is checked against this file by tests in
+# apps/gui/src/main/providers.test.ts.
 .mcp.json
 .codex/config.toml
 .grok/config.toml

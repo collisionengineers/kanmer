@@ -30,9 +30,21 @@ import type { BoardConfig, BoardSource } from "./types.js";
 import type { KanmerPaths } from "./paths.js";
 import { CURRENT_FORMAT } from "./version.js";
 
-/** The single portable Codex registration contract shared with GUI Connect. */
-export const CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
-export const CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND] as const;
+/**
+ * The single portable project-registration contract shared with GUI Connect.
+ *
+ * Codex has used it since GUI-100; Claude Code and OpenCode since GUI-149. The
+ * destination host expands `$env:LOCALAPPDATA`, so nothing machine-specific is
+ * ever serialised into a project file: no install directory, no board or repo
+ * root, no Electron flag — the installer-owned launcher supplies all of those,
+ * and ADR-0012 discovery finds the board from the host's working directory.
+ */
+export const PORTABLE_LAUNCHER_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
+export const PORTABLE_LAUNCHER_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", PORTABLE_LAUNCHER_COMMAND] as const;
+/** @deprecated Pre-GUI-149 names; the contract was never Codex-specific. */
+export const CODEX_PORTABLE_COMMAND = PORTABLE_LAUNCHER_COMMAND;
+/** @deprecated Pre-GUI-149 names; the contract was never Codex-specific. */
+export const CODEX_PORTABLE_ARGS = PORTABLE_LAUNCHER_ARGS;
 
 /**
  * How out-of-date an artefact is — and, just as importantly, whether the user
@@ -725,6 +737,57 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
 }
 
 /**
+ * Whether a JSON host's Kanmer entry (`.mcp.json` → `mcpServers.kanmer`,
+ * `opencode.json` → `mcp.kanmer`) still carries the pre-GUI-149 shape: the
+ * absolute Electron binary, the bundled script path, `--root` / `--repo-root`
+ * or `ELECTRON_RUN_AS_NODE`. Those are exactly the values that go stale when
+ * the app is reinstalled elsewhere or the project moves, and that make the
+ * file unshareable — the portable launcher carries none of them.
+ *
+ * Tri-state like its TOML sibling: `null` when the file has no Kanmer entry
+ * to judge, so a missing registration is never reported as a legacy one.
+ */
+export function isLegacyLauncherDescriptor(text: string, format: "json" | "toml"): boolean | null {
+  if (format === "toml") {
+    const current = isCurrentCodexRegistration(text);
+    return current === null ? null : !current;
+  }
+  let doc: unknown;
+  try {
+    doc = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (typeof doc !== "object" || doc === null) return null;
+  const rec = doc as Record<string, unknown>;
+  for (const key of ["mcpServers", "mcp"]) {
+    const servers = rec[key];
+    if (typeof servers !== "object" || servers === null) continue;
+    const entry = (servers as Record<string, unknown>)["kanmer"];
+    if (typeof entry !== "object" || entry === null) continue;
+    const e = entry as Record<string, unknown>;
+    const strings: string[] = [];
+    for (const field of ["command", "args"]) {
+      const value = e[field];
+      if (typeof value === "string") strings.push(value);
+      else if (Array.isArray(value)) for (const v of value) if (typeof v === "string") strings.push(v);
+    }
+    // Absolute (drive-rooted or root-slashed) paths to the Electron binary or
+    // the bundled script, and the two root flags. A relative script path or a
+    // bare command name is not machine-specific and is not judged here.
+    const absoluteKanmer = /^(?:[a-z]:[\\/]|[\\/]).*(?:kanmer\.exe|kanmer-mcp\.cjs)$/i;
+    if (strings.some((s) => absoluteKanmer.test(s) || /^--(?:root|repo-root)(?:=|$)/i.test(s))) return true;
+    if (typeof e["cwd"] === "string") return true;
+    for (const envKey of ["env", "environment"]) {
+      const env = e[envKey];
+      if (typeof env === "object" && env !== null && "ELECTRON_RUN_AS_NODE" in (env as Record<string, unknown>)) return true;
+    }
+    return false;
+  }
+  return null;
+}
+
+/**
  * Whether Codex's project entry uses the portable invocation Connect currently
  * writes. This deliberately inspects only Kanmer's TOML table: other MCP
  * entries and formatting are user-owned and irrelevant to this verdict.
@@ -849,16 +912,29 @@ function registrationRows(repoRoot: string, projectRoot: string): StaleEntry[] {
       });
       continue;
     }
-    const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
-    if (process.platform === "win32" && rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+    const format = rel.endsWith(".toml") ? "toml" : "json";
+    const root = kanmerRootIn(text, format);
+    // The three files Connect writes with the portable launcher (GUI-100 for
+    // Codex, GUI-149 for Claude Code and OpenCode). Native-plugin residue
+    // (`.grok/config.toml`, `.agents/mcp_config.json`) is retired by its own
+    // reconnect path and is judged only by the `--root` rule below.
+    const portableHosts: string[] = [
+      STALENESS_PROVIDER_PATHS.codex.registrationFile,
+      STALENESS_PROVIDER_PATHS.claude.registrationFile,
+      STALENESS_PROVIDER_PATHS.opencode.registrationFile,
+    ];
+    if (process.platform === "win32" && portableHosts.includes(rel) && isLegacyLauncherDescriptor(text, format) === true) {
       rows.push({
         artefact: "mcp-registration",
         state: "behind",
         detail:
-          `${rel} registers Kanmer with a legacy Codex launcher descriptor. ` +
-          "Codex must use the portable PowerShell invocation so normal Windows argv serialization can start it.",
+          `${rel} registers Kanmer with a legacy launcher descriptor (an absolute install, board or repo path). ` +
+          "Connect now writes the portable installer-owned launcher, which survives reinstalls and carries no machine paths.",
         fix: "reconnect this project in the Kanmer app",
       });
+      // The old absolute `--root` is the same defect seen from another angle;
+      // one row, not two, for one reconnect.
+      continue;
     }
     if (root === null || sameRoot(root, projectRoot)) continue;
     rows.push({

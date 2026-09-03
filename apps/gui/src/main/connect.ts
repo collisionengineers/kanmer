@@ -18,8 +18,9 @@ import {
   type ProviderId,
   antigravityBindingNote,
   antigravityPortableInvocation,
-  codexPortableInvocation,
-  codexPortableProbeInvocation,
+  connectIgnoreEntries,
+  portableLauncherInvocation,
+  portableLauncherProbeInvocation,
   DEFAULT_BOARD_BRANCH,
   codexTrustFromConfig,
   codexTrustNote,
@@ -38,6 +39,7 @@ import {
   type MarketplaceVersionCheck,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
+import { ensureIgnore } from "./gitIgnore.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 
 const execAsync = promisify(exec);
@@ -66,15 +68,16 @@ export interface ConnectResult {
 }
 
 /**
- * Preflight the installer-owned launcher before Codex Connect touches any
- * project config or legacy registration. The runner is injectable for unit
- * tests; production uses explicit execFile argv with no shell concatenation.
+ * Preflight the installer-owned launcher before any project registration
+ * (Codex, Claude Code, OpenCode) touches a project config or legacy
+ * registration. The runner is injectable for unit tests; production uses
+ * explicit execFile argv with no shell concatenation.
  */
-export async function probeCodexLauncher(
+export async function probeLauncher(
   projectRoot: string,
   run: CodexProbeRunner = execFileAsync,
 ): Promise<ConnectResult> {
-  const invocation = codexPortableProbeInvocation();
+  const invocation = portableLauncherProbeInvocation();
   // Keep the fallback directly pasteable in PowerShell. The command is sent as
   // ordinary argv, the same way Codex starts the registered server.
   // A double-quoted PowerShell argument expands `$env:*`, `$LASTEXITCODE`, and
@@ -100,53 +103,62 @@ export async function probeCodexLauncher(
       ok: false,
       command,
       output:
-        `Kanmer launcher probe failed before changing Codex configuration: ${detail} ` +
+        `Kanmer launcher probe failed before changing any host configuration: ${detail} ` +
         "Repair or reinstall Kanmer, then retry Connect. No absolute-path fallback was used.",
     };
   }
 }
 
-/**
- * How the installed Electron binary launches the MCP server for non-Codex
- * providers: Electron-as-Node, with the selected board and optional source
- * root pinned exactly as before GUI-100.
- */
-function installedElectronInvocation(
-  boardRoot: string,
-  sourceRoot: string,
-  boardBranch = DEFAULT_BOARD_BRANCH,
-): Invocation {
-  const env = {
-    ELECTRON_RUN_AS_NODE: "1",
-    KANMER_BOARD_BRANCH: boardBranch.trim() || DEFAULT_BOARD_BRANCH,
-  };
-  let script: string;
-  if (app.isPackaged) {
-    script = join(process.resourcesPath, "mcp", "kanmer-mcp.cjs");
-  } else {
-    const installRoot = resolve(app.getAppPath(), "..", "..");
-    const standalone = join(installRoot, "packages", "mcp-server", "dist", "standalone", "kanmer-mcp.cjs");
-    const esm = join(installRoot, "packages", "mcp-server", "dist", "index.js");
-    script = existsSync(standalone) ? standalone : esm;
-  }
-  const args = [script, "--root", boardRoot];
-  // Only when the board is elsewhere: `refs` resolve against the source
-  // checkout, and the server cannot see it from --root alone.
-  if (resolve(sourceRoot) !== resolve(boardRoot)) args.push("--repo-root", sourceRoot);
-  return { command: process.execPath, args, env };
-}
+/** @deprecated Pre-GUI-149 name; the probe gates every project registration. */
+export const probeCodexLauncher = probeLauncher;
 
-/** Select the portable Codex contract without changing any other provider. */
+/**
+ * The server invocation every project registration writes.
+ *
+ * One contract for Codex, Claude Code and OpenCode: the installer-owned
+ * launcher resolved from `LOCALAPPDATA` on the destination machine, with the
+ * project's board branch as the only variable. Until GUI-149 the two JSON
+ * hosts still received `process.execPath`, the bundled script path, `--root`
+ * and `--repo-root` — four absolute paths that went stale on a reinstall,
+ * bypassed the versioned runtime the launcher prefers, and made `.mcp.json`
+ * and `opencode.json` unshareable. The board and repo roots are discovered by
+ * the server from the host's working directory instead (ADR-0012), which is
+ * what the Codex registration has relied on since GUI-100.
+ *
+ * `boardRoot` and `sourceRoot` are kept in the signature so callers and the
+ * branch-change reconcile path are unchanged; nothing about them is serialised.
+ */
 export function serverInvocation(
   id: ProviderId,
-  boardRoot: string,
-  sourceRoot: string,
+  _boardRoot: string,
+  _sourceRoot: string,
   boardBranch = DEFAULT_BOARD_BRANCH,
 ): Invocation {
-  const normalizedBranch = boardBranch.trim() || DEFAULT_BOARD_BRANCH;
-  return id === "codex"
-    ? codexPortableInvocation(normalizedBranch)
-    : installedElectronInvocation(boardRoot, sourceRoot, normalizedBranch);
+  void id;
+  return portableLauncherInvocation(boardBranch.trim() || DEFAULT_BOARD_BRANCH);
+}
+
+/**
+ * Keep the files Connect writes out of the project's history (FRD-012 R1c).
+ *
+ * Appends the provider's registration file and copied-skills directory to the
+ * project's own `.gitignore`, the same way the board machinery already adds
+ * `.kanmer/` and `.worktrees/`. Only for a project that is a git checkout, and
+ * best-effort: the registration has already succeeded, so a `.gitignore` that
+ * cannot be written is reported in the Connect output, never as a failure.
+ * Disconnect leaves the lines in place — they are harmless, and removing lines
+ * from a user's `.gitignore` is outside "what connect wrote" (R4).
+ */
+async function ensureConnectIgnore(provider: AgentProvider, projectRoot: string): Promise<string | null> {
+  const entries = connectIgnoreEntries(provider);
+  if (entries.length === 0 || !existsSync(join(projectRoot, ".git"))) return null;
+  try {
+    const appended = await ensureIgnore(join(projectRoot, ".gitignore"), entries);
+    return appended.length > 0 ? `added ${appended.join(", ")} to .gitignore` : null;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return `could not update .gitignore (${detail}); add ${entries.join(", ")} to it yourself`;
+  }
 }
 
 /**
@@ -596,7 +608,12 @@ export async function reconcileProviderRegistration(
     const invocation = serverInvocation(id, boardRoot, projectRoot, normalizeBoardBranch(boardBranch));
     const next = merge(existing, invocation);
     if (next !== existing) await writeAtomic(path, next);
-    return { ok: true, command, output: `${id} registration refreshed for board branch ${normalizeBoardBranch(boardBranch)}.` };
+    const ignoreNote = await ensureConnectIgnore(provider, projectRoot);
+    return {
+      ok: true,
+      command,
+      output: `${id} registration refreshed for board branch ${normalizeBoardBranch(boardBranch)}.${ignoreNote ? ` ${ignoreNote}.` : ""}`,
+    };
   } catch (error) {
     return { ok: false, command, output: error instanceof Error ? error.message : String(error) };
   }
@@ -1337,10 +1354,11 @@ export async function connectAgent(
   if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options, boardBranch);
   const inv = serverInvocation(id, boardRoot, projectRoot, boardBranch);
   try {
-    if (id === "codex") {
-      const probe = await probeCodexLauncher(projectRoot, options.probeRunner);
-      if (!probe.ok) return probe;
-    }
+    // Every project registration names the installer-owned launcher, so a
+    // missing or broken launcher must fail here — before any file is written
+    // — for all three hosts, not only Codex (GUI-149).
+    const probe = await probeLauncher(projectRoot, options.probeRunner);
+    if (!probe.ok) return probe;
     let command: string;
     let output: string;
     if (provider.register.kind === "cli") {
@@ -1353,6 +1371,12 @@ export async function connectAgent(
         ? await (options.argvCommandRunner ?? defaultNativeCommandRunner)(argv.file, argv.args, projectRoot)
         : await execAsync(command, { cwd: projectRoot });
       output = (stdout || stderr || "Registered.").trim();
+      // Claude Code approves project-scoped servers per project, and a changed
+      // command may be treated as a new server. Say so rather than letting
+      // "Pending approval" in `claude mcp list` read as a failed Connect.
+      if (id === "claude") {
+        output += " Claude Code may ask you to approve this project's kanmer server on its next start.";
+      }
     } else if (provider.register.kind === "configFile") {
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       const existing = existsSync(path) ? await readFile(path, "utf8") : null;
@@ -1385,6 +1409,8 @@ export async function connectAgent(
     } else {
       throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);
     }
+    const ignoreNote = await ensureConnectIgnore(provider, projectRoot);
+    if (ignoreNote) output += ` ${ignoreNote}.`;
     const skills = await installSkills(provider, projectRoot, boardBranch, options).catch(
       (e): SkillsInstallOutcome => ({
         note: "",

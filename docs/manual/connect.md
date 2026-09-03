@@ -9,10 +9,10 @@ Open **Settings → Connect**. You will see a row per supported host, each with 
 
 | Host | Notes |
 |---|---|
-| Codex | |
-| Claude Code | |
-| opencode | |
-| Grok CLI | |
+| Codex | Project file `.codex/config.toml`; the folder must be trusted in Codex |
+| Claude Code | Project file `.mcp.json` via `claude mcp add -s project`; Claude Code may ask you to approve the server once |
+| opencode | Project file `opencode.json` plus a skills copy in `.opencode/skills/` |
+| Grok CLI | User-scoped native plugin |
 | Antigravity | User-scoped native plugin; background sessions use `--add-dir` — see below |
 
 Press **Connect** on the one you use. Two things happen: Kanmer registers this
@@ -20,13 +20,23 @@ project's board with that host's agent-tool client, and it installs Kanmer's
 skills for that host so the agent knows the working practices, not just the
 tools. The row reports what it wrote.
 
+The three project-file hosts all receive the same registration: the installed
+launcher at `%LOCALAPPDATA%\Kanmer\bin\kanmer-mcp.cmd`, resolved on whichever
+machine opens the project, plus the board branch saved in Settings. Nothing in
+the file names your user folder, the Kanmer install directory or the board's
+path — the server finds the board from the project directory it is started in.
+Connect checks that the launcher answers before it writes anything, and refuses
+with repair guidance if it does not. Because the files are still per-machine
+opt-in state, Connect also adds them (and the `.opencode/skills/` copy) to the
+project's `.gitignore` when the project is a git checkout, so a later commit
+does not carry them.
+
 Grok and Antigravity use native `kanmer` plugins installed in the user's host
 profile, so each affects every workspace for that user. Connect warns before
 this user-scoped change, preflights the CLI/runtime, validates the plugin,
 requires a functional host proof before migration cleanup, and then retires
-only legacy Kanmer project state. Other providers keep their project-scoped
-registration or skill paths; connecting them does not change your global
-configuration.
+only legacy Kanmer project state. Connecting a project-file host does not
+change your global configuration.
 
 ## Restart the agent afterwards
 

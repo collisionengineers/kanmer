@@ -11,7 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { removeTreeWithRetrySync } from "./io.js";
-import { detectStaleness, isCurrentCodexRegistration, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
+import { detectStaleness, isCurrentCodexRegistration, isLegacyLauncherDescriptor, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
 import { resolvePaths } from "./paths.js";
 import { defaultBoardConfig } from "./board.js";
 import type { BoardConfig } from "./types.js";
@@ -352,10 +352,73 @@ describe("detectStaleness — provider MCP registrations", () => {
       2,
     );
 
-  it("says nothing when the registration points at this board", () => {
+  it("reports an explicit --root, even at this board, as a legacy descriptor on Windows only (GUI-149)", () => {
+    // Until GUI-149 an explicit --root pointing at this board was "fine". It is
+    // still not a wrong board, but it is the pre-portable shape Connect no
+    // longer writes, so on Windows it is one reconnect away from current.
     writeAgents();
     put(path.join(root, ".mcp.json"), registration(root));
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") {
+      expect(rows).toMatchObject([{ state: "behind", detail: expect.stringContaining("legacy launcher descriptor") }]);
+    } else {
+      expect(rows).toEqual([]);
+    }
+  });
+
+  it("treats the portable launcher registration as current in .mcp.json and opencode.json (GUI-149)", () => {
+    writeAgents();
+    const args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"];
+    put(
+      path.join(root, ".mcp.json"),
+      JSON.stringify({ mcpServers: { kanmer: { type: "stdio", command: "powershell.exe", args, env: { KANMER_BOARD_BRANCH: "kanmer-board" } } } }),
+    );
+    put(
+      path.join(root, "opencode.json"),
+      JSON.stringify({ mcp: { kanmer: { type: "local", command: ["powershell.exe", ...args], environment: { KANMER_BOARD_BRANCH: "kanmer-board" }, enabled: true } } }),
+    );
     expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
+  });
+
+  it("reports the pre-GUI-149 absolute Electron shape as behind on Windows only, in either JSON host", () => {
+    writeAgents();
+    const exe = "C:\\Users\\someone\\AppData\\Local\\Programs\\Kanmer\\Kanmer.exe";
+    const script = "C:\\Users\\someone\\AppData\\Local\\Programs\\Kanmer\\resources\\mcp\\kanmer-mcp.cjs";
+    put(
+      path.join(root, ".mcp.json"),
+      JSON.stringify({ mcpServers: { kanmer: { type: "stdio", command: exe, args: [script, "--root", root], env: { ELECTRON_RUN_AS_NODE: "1" } } } }),
+    );
+    put(
+      path.join(root, "opencode.json"),
+      JSON.stringify({ mcp: { kanmer: { type: "local", command: [exe, script], environment: { ELECTRON_RUN_AS_NODE: "1" }, enabled: true } } }),
+    );
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") {
+      expect(rows.map((r) => r.state)).toEqual(["behind", "behind"]);
+      expect(rows.map((r) => r.detail)).toEqual([
+        expect.stringContaining(".mcp.json registers Kanmer with a legacy launcher descriptor"),
+        expect.stringContaining("opencode.json registers Kanmer with a legacy launcher descriptor"),
+      ]);
+    } else {
+      expect(rows).toEqual([]);
+    }
+  });
+
+  it("judges the JSON descriptor by machine-specific values only (GUI-149)", () => {
+    const entry = (kanmer: unknown) => JSON.stringify({ mcpServers: { kanmer } });
+    expect(isLegacyLauncherDescriptor(JSON.stringify({ mcpServers: { other: {} } }), "json")).toBeNull();
+    expect(isLegacyLauncherDescriptor("{ not json", "json")).toBeNull();
+    expect(isLegacyLauncherDescriptor(entry({ command: "node", args: ["kanmer-mcp.cjs"] }), "json")).toBe(false);
+    expect(isLegacyLauncherDescriptor(entry({ command: "powershell.exe", args: ["-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"] }), "json")).toBe(false);
+    expect(isLegacyLauncherDescriptor(entry({ command: "C:\\Users\\someone\\AppData\\Local\\Programs\\Kanmer\\Kanmer.exe", args: [] }), "json")).toBe(true);
+    expect(isLegacyLauncherDescriptor(entry({ command: "node", args: ["/opt/kanmer/resources/mcp/kanmer-mcp.cjs"] }), "json")).toBe(true);
+    expect(isLegacyLauncherDescriptor(entry({ command: "node", args: ["kanmer-mcp.cjs", "--repo-root", "C:/x"] }), "json")).toBe(true);
+    expect(isLegacyLauncherDescriptor(entry({ command: "node", args: ["kanmer-mcp.cjs"], cwd: "C:/x" }), "json")).toBe(true);
+    expect(isLegacyLauncherDescriptor(entry({ command: "node", args: ["kanmer-mcp.cjs"], env: { ELECTRON_RUN_AS_NODE: "1" } }), "json")).toBe(true);
+    expect(isLegacyLauncherDescriptor(JSON.stringify({ mcp: { kanmer: { command: ["node", "kanmer-mcp.cjs"], environment: { ELECTRON_RUN_AS_NODE: "1" } } } }), "json")).toBe(true);
+    // TOML delegates to the Codex judgement, inverted.
+    expect(isLegacyLauncherDescriptor('[mcp_servers.other]\ncommand = "x"\n', "toml")).toBeNull();
+    expect(isLegacyLauncherDescriptor('[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d"]\n', "toml")).toBe(true);
   });
 
   it("reports a registration pointing somewhere else as behind", () => {
@@ -507,7 +570,7 @@ describe("detectStaleness — provider MCP registrations", () => {
       JSON.stringify({
         mcpServers: {
           other: { command: "node", args: ["C:/repos/kanmer/other.js", "--root", "/elsewhere"] },
-          kanmer: { command: "node", args: ["kanmer-mcp.cjs", "--root", root] },
+          kanmer: { command: "node", args: ["kanmer-mcp.cjs"] },
         },
       }),
     );

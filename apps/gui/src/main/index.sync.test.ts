@@ -250,7 +250,8 @@ describe("syncProject production Retry caller", () => {
     try {
       await __kanmerTest.applyGitPreferences(" release-board ", 0);
       const registration = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf8")) as { mcpServers: Record<string, any> };
-      expect(registration.mcpServers.kanmer.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "release-board" });
+      expect(registration.mcpServers.kanmer.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+      expect(registration.mcpServers.kanmer.command).toBe("powershell.exe");
       expect(registration.mcpServers.other).toEqual({ command: "keep" });
     } finally {
       __kanmerTest.contexts.delete(repo);

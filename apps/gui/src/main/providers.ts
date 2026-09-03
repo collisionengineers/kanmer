@@ -6,8 +6,8 @@
 import { basename, join } from "node:path";
 import * as TOML from "smol-toml";
 import {
-  CODEX_PORTABLE_ARGS,
-  CODEX_PORTABLE_COMMAND,
+  PORTABLE_LAUNCHER_ARGS,
+  PORTABLE_LAUNCHER_COMMAND,
   dispatchProviderById,
   listDispatchProviders,
   STALENESS_PROVIDER_PATHS,
@@ -25,14 +25,15 @@ export interface Invocation {
 }
 
 /**
- * The one machine-portable Codex launcher contract. The environment expands
- * LOCALAPPDATA on the destination machine; Connect must never expand or
- * replace this path with an install, board or source root.
+ * The one machine-portable launcher contract, shared by every project
+ * registration (Codex since GUI-100; Claude Code and OpenCode since GUI-149).
+ * The environment expands LOCALAPPDATA on the destination machine; Connect
+ * must never expand or replace this path with an install, board or source root.
  */
 // A command path that does not resolve is otherwise a non-terminating
 // PowerShell error, which would make the probe appear healthy. Make that
 // condition terminating before preserving the launcher's own exit code.
-const CODEX_PORTABLE_PROBE_COMMAND = `$ErrorActionPreference = 'Stop'; ${CODEX_PORTABLE_COMMAND} --probe; exit $LASTEXITCODE`;
+const PORTABLE_LAUNCHER_PROBE_COMMAND = `$ErrorActionPreference = 'Stop'; ${PORTABLE_LAUNCHER_COMMAND} --probe; exit $LASTEXITCODE`;
 
 /** The local default shared by the GUI registration and MCP runtime. */
 export const DEFAULT_BOARD_BRANCH = "kanmer-board";
@@ -49,24 +50,56 @@ export function nativeFunctionalPrompt(boardBranch: string | undefined): string 
   return `Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format, board_expected_branch, board_actual_branch, board_on_expected_branch copied from that tool response. The expected board branch is ${expected}; copy boardWorktree.expectedBranch, boardWorktree.actualBranch, and boardWorktree.onBoardBranch. Do not invent values or return a marker.`;
 }
 
-/** Return a fresh canonical Codex invocation so callers cannot mutate shared state. */
-export function codexPortableInvocation(boardBranch?: string): Invocation {
+/**
+ * Return a fresh canonical portable invocation so callers cannot mutate shared
+ * state. Its only variable part is the project-scoped board branch; the board
+ * and repo roots are discovered by the server from the host's cwd (ADR-0012),
+ * exactly as the Codex registration has done since GUI-100.
+ */
+export function portableLauncherInvocation(boardBranch?: string): Invocation {
   return {
     command: "powershell.exe",
-    args: [...CODEX_PORTABLE_ARGS],
+    args: [...PORTABLE_LAUNCHER_ARGS],
     env: boardBranch === undefined ? {} : { KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) },
   };
 }
 
+/** @deprecated Pre-GUI-149 name; the contract is not Codex-specific. */
+export const codexPortableInvocation = portableLauncherInvocation;
+
 /** Add the installer-owned health-check mode to the canonical command string. */
-export function codexPortableProbeInvocation(): Invocation {
+export function portableLauncherProbeInvocation(): Invocation {
   return {
     command: "powershell.exe",
     // Keep the probe derived from the registered command so normal argv
-    // serialization exercises the same PowerShell path Codex will use.
-    args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_PROBE_COMMAND],
+    // serialization exercises the same PowerShell path every host will use.
+    args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", PORTABLE_LAUNCHER_PROBE_COMMAND],
     env: {},
   };
+}
+
+/** @deprecated Pre-GUI-149 name; the probe is not Codex-specific. */
+export const codexPortableProbeInvocation = portableLauncherProbeInvocation;
+
+/**
+ * The project-relative paths a provider's Connect writes and which therefore
+ * belong in the project's `.gitignore` (FRD-012 R1c): its registration file
+ * and, for copy-skills hosts, the skills directory. Derived from the spec so a
+ * new host is covered by construction rather than by remembering a list.
+ * Native-plugin hosts write nothing project-scoped and yield nothing; the
+ * AGENTS.md managed block is deliberately absent — it is meant to be committed.
+ */
+export function connectIgnoreEntries(provider: AgentProvider): string[] {
+  const entries: string[] = [];
+  const reg = provider.register;
+  if ((reg.kind === "cli" || reg.kind === "configFile") && reg.configPath && !reg.configPath.startsWith("~")) {
+    entries.push(reg.configPath);
+  }
+  const install = provider.install;
+  if (install.kind === "copySkills" && install.skillsScope === "project" && install.skillsDir) {
+    entries.push(install.skillsDir.endsWith("/") ? install.skillsDir : `${install.skillsDir}/`);
+  }
+  return entries;
 }
 
 /** The installer-owned Windows runtime used by native plugin MCP configs. */

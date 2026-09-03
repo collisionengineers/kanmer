@@ -42,3 +42,9 @@ Review record `scratch/review` v`95f312e0f1bb90b7` found one blocker and five mi
 - **F-005 (nit)** — comment in the GUI-100 test records why grok/antigravity have no case.
 - **F-006 (nit)** — accepted as-is: the note names what was appended to `.gitignore`; whether the file is already tracked is the user's call.
 Plugin bundle regenerated again (core changed). Tests after remediation: GUI 214 passed across providers/connect/index.sync/openaiTunnel/kanmerGit; core staleness 56 passed. `npm run verify` run 6: see the line appended below.
+
+## Remediation commit a6eb8c1f (review F-001..F-005)
+
+- Head after remediation: `a6eb8c1f` (`fix(gui): keep the OpenAI tunnel rooted, drop dead invocation params, judge both JSON keys`), pushed 2026-09-03.
+- Verify run 6 (2026-09-03 17:40Z) failed on two `scripts/verify-skill-prose.test.mjs` cases with **empty validator stdout** (child spawn failure; the test asserted only `status != 0`). Not a regression: `node --test scripts/verify-skill-prose.test.mjs` at a6eb8c1f → 54/54 pass (252 s). The assertion gap is fixed by [[CORE-139]].
+- Verify run 7 (full rail, `TMP`/`TEMP` outside the home folder): PASS, exit 0 (`C:kt-tmpgui149-verify7.log`, 13 steps ending `plugin-sync OK — 41 tools match, bundle bytes match`), run started 2026-09-03T18:57Z.

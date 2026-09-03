@@ -13,13 +13,13 @@ stageEntered:
 taken_at: '2026-09-03T19:03:47.705Z'
 branch: CORE-139-ci-storm-shipped-artefacts
 worktree: .worktrees/core-139
-claim_expires_at: '2026-09-03T19:37:08.678Z'
+claim_expires_at: '2026-09-03T19:48:39.604Z'
 claim_controller: claude-code
 lease_id: ed6b3b3a-2d1c-4f26-be8a-6d5a7a26d69e
-lease_revision: 3
+lease_revision: 4
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-139'
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-03T19:07:08.678Z'
+lease_phase: running-command
+lease_heartbeat_at: '2026-09-03T19:08:39.604Z'
 labels:
   - ci
   - skills
@@ -33,7 +33,7 @@ refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
 archived: false
 created: '2026-09-03T18:59:42.801Z'
-updated: '2026-09-03T19:07:08.678Z'
+updated: '2026-09-03T19:08:39.604Z'
 ---
 
 ## What

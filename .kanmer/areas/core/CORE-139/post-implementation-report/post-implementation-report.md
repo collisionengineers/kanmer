@@ -43,4 +43,4 @@ git -C .worktrees/kanmer push origin kanmer-board
 
 ## PR
 
-https://github.com/collisionengineers/kanmer/pull/314 — head `35f5f2f246259302069787e1986a03fa835fa0bc`
+https://github.com/collisionengineers/kanmer/pull/314 — head `bb773f142e263890ad6ed78981f8024d092bfab5` (rebased onto c25e4590 after GUI-149 merged; same diff)

@@ -5,7 +5,7 @@ import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, rmdir, writeFile } f
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
-import { CURRENT_FORMAT } from "@kanmer/core";
+import { CURRENT_FORMAT, discoverBoardRoot } from "@kanmer/core";
 import {
   formatSkillsStamp,
   isNewerVersion,
@@ -125,17 +125,69 @@ export const probeCodexLauncher = probeLauncher;
  * the server from the host's working directory instead (ADR-0012), which is
  * what the Codex registration has relied on since GUI-100.
  *
- * `boardRoot` and `sourceRoot` are kept in the signature so callers and the
- * branch-change reconcile path are unchanged; nothing about them is serialised.
+ * There are deliberately no root parameters: a caller that needs a board pinned
+ * by path is not writing a project registration and must say so by calling
+ * `rootedServerInvocation` instead (the OpenAI tunnel does — see below). The
+ * first cut of GUI-149 kept the old `(id, boardRoot, sourceRoot, branch)`
+ * signature "so callers need not change", which silently handed the tunnel a
+ * rootless command; the type system cannot catch a parameter that is accepted
+ * and ignored, so the parameter is gone.
  */
-export function serverInvocation(
-  id: ProviderId,
-  _boardRoot: string,
-  _sourceRoot: string,
+export function serverInvocation(id: ProviderId, boardBranch = DEFAULT_BOARD_BRANCH): Invocation {
+  void id; // every project-registration host shares the contract; kept for call-site readability
+  return portableLauncherInvocation(boardBranch.trim() || DEFAULT_BOARD_BRANCH);
+}
+
+/**
+ * The Electron-as-Node invocation pinned to an explicit board (and, when it
+ * differs, repository) root — what FRD-026 R3 requires for the OpenAI tunnel's
+ * `--mcp-command`. The tunnel runtime outlives the app and is started by
+ * `tunnel-client` from a cwd Kanmer does not control, so cwd discovery (which
+ * the project registrations rely on) is exactly what it must **not** do:
+ * a public tunnel bound to "whatever board the cwd reaches" would be a
+ * cross-project leak. Not used by any Connect registration since GUI-149.
+ */
+export function rootedServerInvocation(
+  boardRoot: string,
+  sourceRoot: string,
   boardBranch = DEFAULT_BOARD_BRANCH,
 ): Invocation {
-  void id;
-  return portableLauncherInvocation(boardBranch.trim() || DEFAULT_BOARD_BRANCH);
+  const env = {
+    ELECTRON_RUN_AS_NODE: "1",
+    KANMER_BOARD_BRANCH: boardBranch.trim() || DEFAULT_BOARD_BRANCH,
+  };
+  let script: string;
+  if (app.isPackaged) {
+    script = join(process.resourcesPath, "mcp", "kanmer-mcp.cjs");
+  } else {
+    const installRoot = resolve(app.getAppPath(), "..", "..");
+    const standalone = join(installRoot, "packages", "mcp-server", "dist", "standalone", "kanmer-mcp.cjs");
+    const esm = join(installRoot, "packages", "mcp-server", "dist", "index.js");
+    script = existsSync(standalone) ? standalone : esm;
+  }
+  const args = [script, "--root", boardRoot];
+  // Only when the board is elsewhere: `refs` resolve against the source
+  // checkout, and the server cannot see it from --root alone.
+  if (resolve(sourceRoot) !== resolve(boardRoot)) args.push("--repo-root", sourceRoot);
+  return { command: process.execPath, args, env };
+}
+
+/**
+ * The portable registration finds the board by ADR-0012 discovery from the
+ * project directory, so a board that discovery cannot reach from there —
+ * attached somewhere other than `<project>/.worktrees/kanmer` or colocated —
+ * will not be found by the host. Connect still writes the registration (the
+ * user may be about to move the board, and Codex has behaved this way since
+ * GUI-100) but says so in its output instead of reporting a clean success.
+ */
+function discoverabilityNote(projectRoot: string, boardRoot: string): string | null {
+  const found = discoverBoardRoot(projectRoot);
+  if (found.found && samePath(found.root, boardRoot)) return null;
+  const seen = found.found ? `discovery from the project directory finds ${found.root} instead` : "discovery from the project directory finds no board";
+  return (
+    `Warning: this board (${boardRoot}) is not discoverable from ${projectRoot} — ${seen}. ` +
+    "The host starts the server in the project directory, so keep the board colocated or under .worktrees/kanmer for it to be found."
+  );
 }
 
 /**
@@ -605,7 +657,8 @@ export async function reconcileProviderRegistration(
         output: `${id} registration is present but has no provider-owned refresh path; reconnect it manually. No file was changed.`,
       };
     }
-    const invocation = serverInvocation(id, boardRoot, projectRoot, normalizeBoardBranch(boardBranch));
+    void boardRoot; // the portable registration carries no root; discovery from the project directory finds the board
+    const invocation = serverInvocation(id, normalizeBoardBranch(boardBranch));
     const next = merge(existing, invocation);
     if (next !== existing) await writeAtomic(path, next);
     const ignoreNote = await ensureConnectIgnore(provider, projectRoot);
@@ -1352,7 +1405,7 @@ export async function connectAgent(
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options, boardBranch);
-  const inv = serverInvocation(id, boardRoot, projectRoot, boardBranch);
+  const inv = serverInvocation(id, boardBranch);
   try {
     // Every project registration names the installer-owned launcher, so a
     // missing or broken launcher must fail here — before any file is written
@@ -1411,6 +1464,8 @@ export async function connectAgent(
     }
     const ignoreNote = await ensureConnectIgnore(provider, projectRoot);
     if (ignoreNote) output += ` ${ignoreNote}.`;
+    const reachNote = discoverabilityNote(projectRoot, boardRoot);
+    if (reachNote) output += ` ${reachNote}`;
     const skills = await installSkills(provider, projectRoot, boardBranch, options).catch(
       (e): SkillsInstallOutcome => ({
         note: "",

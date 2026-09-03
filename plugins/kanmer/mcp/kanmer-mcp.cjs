@@ -42926,11 +42926,13 @@ function isLegacyLauncherDescriptor(text, format) {
   }
   if (typeof doc !== "object" || doc === null) return null;
   const rec = doc;
+  let judged = false;
   for (const key of ["mcpServers", "mcp"]) {
     const servers = rec[key];
     if (typeof servers !== "object" || servers === null) continue;
     const entry = servers["kanmer"];
     if (typeof entry !== "object" || entry === null) continue;
+    judged = true;
     const e = entry;
     const strings = [];
     for (const field of ["command", "args"]) {
@@ -42947,9 +42949,8 @@ function isLegacyLauncherDescriptor(text, format) {
       const env = e[envKey];
       if (typeof env === "object" && env !== null && "ELECTRON_RUN_AS_NODE" in env) return true;
     }
-    return false;
   }
-  return null;
+  return judged ? false : null;
 }
 function isCurrentCodexRegistration(text) {
   const kanmerTables = tomlTableSections(text).filter(

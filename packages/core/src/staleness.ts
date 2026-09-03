@@ -760,11 +760,16 @@ export function isLegacyLauncherDescriptor(text: string, format: "json" | "toml"
   }
   if (typeof doc !== "object" || doc === null) return null;
   const rec = doc as Record<string, unknown>;
+  // Both keys are examined (`.mcp.json` uses `mcpServers`, `opencode.json`
+  // uses `mcp`); a legacy value under either is a verdict, an entry under
+  // neither is "nothing to judge".
+  let judged = false;
   for (const key of ["mcpServers", "mcp"]) {
     const servers = rec[key];
     if (typeof servers !== "object" || servers === null) continue;
     const entry = (servers as Record<string, unknown>)["kanmer"];
     if (typeof entry !== "object" || entry === null) continue;
+    judged = true;
     const e = entry as Record<string, unknown>;
     const strings: string[] = [];
     for (const field of ["command", "args"]) {
@@ -782,9 +787,8 @@ export function isLegacyLauncherDescriptor(text: string, format: "json" | "toml"
       const env = e[envKey];
       if (typeof env === "object" && env !== null && "ELECTRON_RUN_AS_NODE" in (env as Record<string, unknown>)) return true;
     }
-    return false;
   }
-  return null;
+  return judged ? false : null;
 }
 
 /**

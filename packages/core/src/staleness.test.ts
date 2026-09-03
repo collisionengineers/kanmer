@@ -416,6 +416,16 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(isLegacyLauncherDescriptor(entry({ command: "node", args: ["kanmer-mcp.cjs"], cwd: "C:/x" }), "json")).toBe(true);
     expect(isLegacyLauncherDescriptor(entry({ command: "node", args: ["kanmer-mcp.cjs"], env: { ELECTRON_RUN_AS_NODE: "1" } }), "json")).toBe(true);
     expect(isLegacyLauncherDescriptor(JSON.stringify({ mcp: { kanmer: { command: ["node", "kanmer-mcp.cjs"], environment: { ELECTRON_RUN_AS_NODE: "1" } } } }), "json")).toBe(true);
+    // Both top-level keys are judged, not just the first one that has an entry:
+    // a portable entry under one key does not excuse a legacy one under the other.
+    expect(isLegacyLauncherDescriptor(JSON.stringify({
+      mcpServers: { kanmer: { command: "powershell.exe", args: ["-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"] } },
+      mcp: { kanmer: { command: ["node", "kanmer-mcp.cjs", "--root", "C:/x"] } },
+    }), "json")).toBe(true);
+    expect(isLegacyLauncherDescriptor(JSON.stringify({
+      mcpServers: { other: { command: "x" } },
+      mcp: { kanmer: { command: ["node", "kanmer-mcp.cjs"] } },
+    }), "json")).toBe(false);
     // TOML delegates to the Codex judgement, inverted.
     expect(isLegacyLauncherDescriptor('[mcp_servers.other]\ncommand = "x"\n', "toml")).toBeNull();
     expect(isLegacyLauncherDescriptor('[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d"]\n', "toml")).toBe(true);

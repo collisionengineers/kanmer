@@ -38,6 +38,7 @@ const {
   reconcileProviderRegistration,
   reconcileSkills,
   removeBundledSkillsOnly,
+  rootedServerInvocation,
   serverInvocation,
   skillsStatus,
   updateSkills,
@@ -596,24 +597,42 @@ describe("portable Codex launcher contract (GUI-100)", () => {
       args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"],
       env: { KANMER_BOARD_BRANCH: "kanmer-board" },
     };
-    const codex = serverInvocation("codex", "C:/board-a", "C:/source-a");
+    const codex = serverInvocation("codex");
     expect(codex).toEqual(portable);
-    const second = serverInvocation("codex", "D:/other-board", "D:/other-source");
+    const second = serverInvocation("codex");
     expect(second).toEqual(codex);
     expect(second.args).not.toBe(codex.args);
 
     // Claude Code and OpenCode used to receive process.execPath, the bundled
     // script and --root/--repo-root here. Same contract for all three now.
+    // Grok and Antigravity are native-plugin hosts (`register.kind: "none"`)
+    // and never reach serverInvocation — connectAgent hands them to
+    // connectNativePlugin before building an invocation — so there is no
+    // fourth or fifth case to assert here.
     for (const id of ["claude", "opencode"] as const) {
-      const inv = serverInvocation(id, "C:/board-a", "C:/source-a");
+      const inv = serverInvocation(id);
       expect(inv).toEqual(portable);
-      expect(JSON.stringify(inv)).not.toMatch(/Users|Kanmer.exe|kanmer-mcp.cjs|--root|--repo-root|cwd|ELECTRON_RUN_AS_NODE|board-a|source-a/);
+      expect(JSON.stringify(inv)).not.toMatch(/Users|Kanmer\.exe|kanmer-mcp\.cjs|--root|--repo-root|cwd|ELECTRON_RUN_AS_NODE/);
     }
 
-    const custom = serverInvocation("claude", "C:/board-a", "C:/source-a", " release-board ");
+    const custom = serverInvocation("claude", " release-board ");
     expect(custom.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
-    const hostile = serverInvocation("claude", "C:/board-a", "C:/source-a", "team&whoami");
+    const hostile = serverInvocation("claude", "team&whoami");
     expect(hostile.env).toEqual({ KANMER_BOARD_BRANCH: "team&whoami" });
+  });
+
+  it("keeps the OpenAI tunnel's --mcp-command pinned to the selected roots (FRD-026 R3)", () => {
+    // The tunnel runtime is started by tunnel-client from a cwd Kanmer does not
+    // control and outlives the app, so it must not rely on cwd discovery: a
+    // rootless command there would bind a public tunnel to whatever board the
+    // cwd happens to reach. This is the one caller that keeps the rooted form.
+    const rooted = rootedServerInvocation("C:/board-a", "C:/source-a", " release-board ");
+    expect(rooted.command).toBe(process.execPath);
+    expect(rooted.args.slice(1)).toEqual(["--root", "C:/board-a", "--repo-root", "C:/source-a"]);
+    expect(rooted.args[0]).toMatch(/kanmer-mcp\.cjs$|index\.js$/);
+    expect(rooted.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "release-board" });
+    const colocated = rootedServerInvocation("C:/proj", "C:/proj");
+    expect(colocated.args.slice(1)).toEqual(["--root", "C:/proj"]);
   });
 
   it("runs the fixed probe with explicit argv and bounded Windows options", async () => {

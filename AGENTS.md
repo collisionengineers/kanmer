@@ -35,7 +35,7 @@ registrations. Hosted Actions should mirror the same value in the repository
 variable, but Actions variables are not inherited by local processes.
 When a native runtime supervisor launches Kanmer through an operator-private
 wrapper, that wrapper must export both `KANMER_PROVIDER_CWD` and
-`KANMER_BOARD_BRANCH` before invoking the stable launcher. Native
+`KANMER_BOARD_BRANCH` before invoking the stable launcher.
 The GUI's OpenAI tunnel controls manage the same long-lived native runtime
 alias through `tunnel-client runtimes connect/status/stop/rm`. Application quit
 does not stop that runtime; readiness requires structured non-stale status, and
@@ -524,18 +524,27 @@ the worktree later resolves:
 The `verify` job deliberately skips edited events: metadata-only changes need a
 fresh body-derived gate result, not another full Windows verification of the
 unchanged source tree. It also runs on every push to `main`, so a merge SHA
-carries a bound rail result. A push to `main` or a `workflow_dispatch` runs the
-`regate` job, which re-runs the `kanmer-gate` job of the latest pull-request
-run for every open PR into `main`. The gate reads the remote board tip, so a
+carries a bound rail result. A `workflow_dispatch` runs only the `regate` job,
+never the rail: the pre-CORE-139 condition tested `github.ref`, which is
+`refs/heads/main` on a dispatch too, and every board push was re-proving an
+already-proven commit (25 identical rails on one SHA). A push to `main` runs
+both `verify` and `regate`, which re-runs the `kanmer-gate` job of the latest
+pull-request run for every open PR into `main`. The workflow's `concurrency`
+group (keyed by event and PR number or ref) cancels a superseded run for every
+event except `push`, whose result is the post-merge receipt. The gate reads the
+remote board tip, so a
 board push should also re-judge open PRs — but `pr.yml` cannot listen for
 `push: kanmer-board`: GitHub runs push workflows from the pushed ref's tree, and
 the board branch carries only `.gitignore` and `.kanmer`. That hook is
 **operator-enabled**: `.github/workflows/board-regate.yml` (on `main`) is the
 file an operator copies onto the board branch once (instructions in its
-header); it dispatches `pr.yml` on `main`, whose `regate` job then re-runs the
-gates. Agents never commit to the board branch, so until an operator installs
-it, re-gate by hand with `gh workflow run pr.yml --ref main` after pushing the
-board. Missing/stale attestations,
+header); it dispatches `pr.yml` on `main` only when an open pull request into
+`main` exists, coalesces a burst of board pushes into one dispatch, and its
+`regate` job then re-runs the gates. The board-branch copy is not refreshed
+automatically: when the file changes on `main`, an operator re-copies it onto
+the board branch. Agents never commit to the board branch, so until an operator
+installs it, re-gate by hand with `gh workflow run pr.yml --ref main` after
+pushing the board. Missing/stale attestations,
 `needs-changes`, unreachable commits, and `SYNC_REQUIRED` (an attestation
 `board_sha` absent from the fetched board) are warnings until the repository
 variable `KANMER_GATE_STRICT` is set to `1`/`true`, which makes them errors.

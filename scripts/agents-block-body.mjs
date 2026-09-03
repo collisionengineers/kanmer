@@ -57,7 +57,7 @@ registrations. Hosted Actions should mirror the same value in the repository
 variable, but Actions variables are not inherited by local processes.
 When a native runtime supervisor launches Kanmer through an operator-private
 wrapper, that wrapper must export both \`KANMER_PROVIDER_CWD\` and
-\`KANMER_BOARD_BRANCH\` before invoking the stable launcher. Native
+\`KANMER_BOARD_BRANCH\` before invoking the stable launcher.
 The GUI's OpenAI tunnel controls manage the same long-lived native runtime
 alias through \`tunnel-client runtimes connect/status/stop/rm\`. Application quit
 does not stop that runtime; readiness requires structured non-stale status, and

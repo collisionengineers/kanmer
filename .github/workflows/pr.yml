@@ -18,6 +18,14 @@ on:
 permissions:
   contents: read
 
+# One live run per PR (or per ref for a dispatch): a newer head or a burst of
+# board-push dispatches cancels the superseded run instead of queueing behind
+# it. A push to `main` is never cancelled — its `verify` result is the bound
+# post-merge receipt kanmer-verify consumes, and it must finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
 defaults:
   run:
     shell: bash
@@ -25,9 +33,14 @@ defaults:
 jobs:
   # Edited PR events skip the rail; a push runs it only for main so every
   # merge SHA carries a bound verify result (the board-branch push does not).
+  # A `workflow_dispatch` never runs it (CORE-139): the old condition tested
+  # only `github.ref`, which is `refs/heads/main` on a dispatch too, so every
+  # board push was re-proving an already-proven commit.
   verify:
     name: verify
-    if: github.event.action != 'edited' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+    if: >-
+      (github.event_name == 'pull_request' && github.event.action != 'edited')
+      || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-latest
     steps:
       - name: Check out the pull request

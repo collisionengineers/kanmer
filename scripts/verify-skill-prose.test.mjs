@@ -10,6 +10,21 @@ import { removeTreeWithRetrySync } from "../packages/core/dist/index.js";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const script = join(root, "scripts", "verify-skill-prose.mjs");
 
+// CORE-139. A validator that could not even start must fail the test as an
+// infrastructure failure carrying its spawn error, never as a validator miss:
+// `status` is null on a spawn failure, which `notEqual(status, 0)` accepts,
+// and the FAIL-line assertion then reports the wrong defect against empty
+// output — exactly how GUI-149's sixth rail run was misread.
+const spawnValidator = (fixture) => {
+  const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+  assert.equal(result.error, undefined, `validator did not start: ${result.error?.message}`);
+  assert.ok(
+    result.stdout.length > 0,
+    `validator produced no output (status ${result.status}, signal ${result.signal})\n${result.stderr}`,
+  );
+  return result;
+};
+
 test("rejects a v2 stage sequence in AGENTS.md", () => {
   const fixture = mkdtempSync(join(tmpdir(), "kanmer-skill-prose-"));
   try {
@@ -23,7 +38,7 @@ test("rejects a v2 stage sequence in AGENTS.md", () => {
       "Stages: backlog → researching → planning → implementing → review → verifying → done\n",
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /AGENTS\.md:1/);
     assert.match(result.stdout, /no v2 stage names/);
@@ -45,7 +60,7 @@ test("rejects a groom skill without the board-vs-reality sweep contract", () => 
     const groom = join(fixture, "plugins", "kanmer", "skills", "kanmer-groom", "SKILL.md");
     writeFileSync(groom, readFileSync(groom, "utf8").replace(/`main`\s+history/, "repository history"));
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /kanmer-groom keeps the bounded, evidence-first, proposal-only sweep/);
   } finally {
@@ -128,7 +143,7 @@ test("auto prose validator rejects the legacy unbounded serial fallback", () => 
       ),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /no unbounded serial fallback/);
   } finally {
@@ -149,7 +164,7 @@ test("auto prose validator rejects partial-roster success language", () => {
     const auto = join(fixture, "plugins", "kanmer", "skills", "kanmer-auto", "SKILL.md");
     writeFileSync(auto, `${readFileSync(auto, "utf8")}\nContinue until every ticket is done.\n`);
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /no partial completion presented as success/);
   } finally {
@@ -173,7 +188,7 @@ test("review prose validator rejects the deleted legacy review-asset claim", () 
       `${readFileSync(review, "utf8")}\nThe legacy \`pr-*\` review assets remain untouched here; SKILL-015 owns their deletion.\n`,
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /no stale legacy review-asset prose/);
   } finally {
@@ -200,7 +215,7 @@ test("skill prose validator rejects a resumed execution flow that recreates its 
       ),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /kanmer-execute separates resumed and fresh worktree flows/);
   } finally {
@@ -226,7 +241,7 @@ test("skill prose validator rejects a resumed flow without repository and retain
         .replace("Do not release a paused ticket", "Release a paused ticket"),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /kanmer-execute validates resumed repository, location, and pause handoff/);
   } finally {
@@ -261,7 +276,7 @@ test("skill prose validator rejects document writes on refusal and closeout rele
       ),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /ready:false refusal externally handed off and read-only/);
     assert.match(result.stdout, /closeout preserves a paused ticket's resume metadata/);
@@ -291,7 +306,7 @@ test("skill prose validator rejects a review flow that parks needs-changes in Re
       readFileSync(execute, "utf8").replace("never open a second PR for the same ticket", "open a fresh PR for each round"),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}kanmer-review takes the sanctioned same-PR return/);
     assert.match(result.stdout, /FAIL {2}kanmer-execute re-enters on the existing PR/);
@@ -337,7 +352,7 @@ test("skill prose validator rejects incomplete protected-batch execution, review
         ),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}kanmer-execute emits the complete frozen batch footer roster/);
     assert.match(result.stdout, /FAIL {2}kanmer-review writes one member-owned exact-head pass attestation per roster ticket/);
@@ -415,7 +430,7 @@ test("skill prose validator rejects batch run, renewal CAS, manifest projection,
         ),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}kanmer-review reads the complete active manifest projection before batch attestation/);
     assert.match(result.stdout, /FAIL {2}kanmer-execute binds all batch work authority to actor plus durable controller_run/);
@@ -445,7 +460,7 @@ test("skill prose validator rejects a resumed flow without reference inputs or a
         .replace("only while the ticket remains in\n`implementing`", "at every ticket stage"),
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /retains reference inputs and limits resumption to implementation/);
   } finally {
@@ -482,7 +497,7 @@ test("goal contract validator rejects an unfrozen roster and a missing preflight
     );
     edit(auto, "### Preflight before the first mutation", "### Getting started");
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}kanmer-auto accepts the five goal scopes and freezes its roster/);
     assert.match(result.stdout, /FAIL {2}kanmer-auto preflights identity, delivery target and board health/);
@@ -498,7 +513,7 @@ test("goal contract validator rejects trusting a stale gate and buying another r
     edit(auto, "### Push the board before trusting a gate", "### Board synchronisation");
     edit(auto, "creates no new remediation allowance", "creates one new remediation allowance");
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}kanmer-auto pushes the board before it trusts a gate result/);
     assert.match(result.stdout, /FAIL {2}kanmer-auto bounds churn and adds no second route around the budget/);
@@ -516,7 +531,7 @@ test("goal contract validator rejects a controller that performs the merge", () 
       `${readFileSync(auto, "utf8")}\nThe controller merges the PR once every required check is green.\n`,
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}no controller performing the merge itself/);
   } finally {
@@ -532,7 +547,7 @@ test("goal contract validator rejects a run record that loses its scope or roste
     edit(join(assets, "run-state-template.md"), "**frozen at", "selected at");
     edit(join(assets, "current-run-template.md"), "\nscope: group\n", "\n");
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}run-state template records delivery_target:/);
     assert.match(result.stdout, /FAIL {2}run-state Selection contract freezes the roster and the ledger tracks the replan/);
@@ -556,7 +571,7 @@ test("goal contract validator rejects a stale-gate review and an asserted transi
       "Treat a red run on a known-flaky host as transient.",
     );
 
-    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    const result = spawnValidator(fixture);
     assert.notEqual(result.status, 0);
     assert.match(result.stdout, /FAIL {2}kanmer-review binds its gate reading to a pushed board/);
     assert.match(result.stdout, /FAIL {2}kanmer-verify earns transient with evidence and reads a proof in full/);
@@ -576,7 +591,7 @@ const expectFail = (stdout, name) =>
   assert.ok(stdout.includes(`FAIL  ${name}`), `expected FAIL for check: ${name}\n${stdout}`);
 const expectPass = (stdout, name) =>
   assert.ok(stdout.includes(`PASS  ${name}`), `expected PASS for check: ${name}\n${stdout}`);
-const runOn = (fixture) => spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+const runOn = (fixture) => spawnValidator(fixture);
 
 test("protected batch validator independently rejects replacing the automation run_id authority", () => {
   const fixture = goalFixture("kanmer-batch-run-id-contract-");
@@ -2631,7 +2646,7 @@ test("constrained-step prose validator rejects weakened authority, path and reco
     const fixture = goalFixture(`kanmer-constrained-step-${mutation.label}-`);
     try {
       edit(mutation.file(fixture), mutation.from, mutation.to);
-      const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+      const result = spawnValidator(fixture);
       assert.notEqual(result.status, 0, `${mutation.label} mutation should fail the validator`);
       expectFail(result.stdout, mutation.failure);
     } finally {
@@ -2727,5 +2742,40 @@ test("review-budget validator rejects removing any one anti-churn sentence", () 
     } finally {
       removeTreeWithRetrySync(fixture);
     }
+  }
+});
+
+/**
+ * CORE-139. The shipped skills are copied into other repositories, so a link
+ * that climbs out of its skill folder is a broken link in every consuming repo
+ * (and the consuming repo's link checker blames itself). The pristine tree must
+ * pass; a single escaping link must redden exactly check 21 and name the file,
+ * line and target so the output is the evidence.
+ */
+test("skill-link validator rejects a link that escapes its skill folder", () => {
+  const fixture = goalFixture("kanmer-skill-link-escape-");
+  try {
+    const pristine = runOn(fixture);
+    expectPass(pristine.stdout, "no shipped skill link escapes its skill folder");
+    const setup = skillFile(fixture, "kanmer-setup");
+    writeFileSync(
+      setup,
+      `${readFileSync(setup, "utf8")}\nSee [the manual](../../../../docs/manual/greenfield.md) for depth.\n`,
+    );
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "no shipped skill link escapes its skill folder");
+    assert.match(
+      result.stdout,
+      /kanmer-setup\/SKILL\.md:\d+ {2}\.\.\/\.\.\/\.\.\/\.\.\/docs\/manual\/greenfield\.md/,
+    );
+    // An in-folder relative link, an anchor and a URL are not escapes.
+    writeFileSync(
+      setup,
+      `${readFileSync(setup, "utf8").replace("(../../../../docs/manual/greenfield.md)", "(assets/notes.md)")}\n[top](#top) and [docs](https://example.test/x.md)\n`,
+    );
+    expectPass(runOn(fixture).stdout, "no shipped skill link escapes its skill folder");
+  } finally {
+    removeTreeWithRetrySync(fixture);
   }
 });

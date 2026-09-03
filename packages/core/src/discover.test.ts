@@ -33,9 +33,17 @@ function fakeIO(tree: { dirs?: string[]; files?: string[] }): DiscoverIO {
 const R = path.resolve("/repos");
 const at = (...parts: string[]) => path.join(R, ...parts);
 
+/**
+ * The marker that makes a `.kanmer` directory a board (MCP-056): every fixture
+ * board carries `version.json`, the file every format-2+ board has. A bare
+ * `.kanmer` directory is exactly what `~/.kanmer` (the FRD-029 endpoint
+ * registry) looks like, and discovery must not bind to it.
+ */
+const marker = (...parts: string[]) => at(...parts, ".kanmer", "version.json");
+
 describe("discoverBoardRoot", () => {
   it("finds a colocated board at the start directory", () => {
-    const io = fakeIO({ dirs: [R, at("proj"), at("proj", ".kanmer")] });
+    const io = fakeIO({ dirs: [R, at("proj"), at("proj", ".kanmer")], files: [marker("proj")] });
     const res = discoverBoardRoot(at("proj"), io);
     expect(res).toMatchObject({ found: true, root: at("proj"), how: "cwd" });
   });
@@ -49,7 +57,7 @@ describe("discoverBoardRoot", () => {
         at("proj", ".worktrees", "kanmer"),
         at("proj", ".worktrees", "kanmer", ".kanmer"),
       ],
-      files: [at("proj", ".git")],
+      files: [at("proj", ".git"), marker("proj", ".worktrees", "kanmer")],
     });
     const res = discoverBoardRoot(at("proj"), io);
     expect(res).toMatchObject({
@@ -68,6 +76,7 @@ describe("discoverBoardRoot", () => {
         at("proj", "src"),
         at("proj", "src", "lib"),
       ],
+      files: [marker("proj")],
     });
     const res = discoverBoardRoot(at("proj", "src", "lib"), io);
     expect(res).toMatchObject({ found: true, root: at("proj"), how: "ancestor" });
@@ -92,6 +101,7 @@ describe("discoverBoardRoot", () => {
         at("proj", ".git"), // a directory in reality; a file here would also pass
         at("proj", ".worktrees", "api-003", ".git"), // the linked-worktree pointer
         at("proj", ".worktrees", "kanmer", ".git"),
+        marker("proj", ".worktrees", "kanmer"),
       ],
     });
     const res = discoverBoardRoot(at("proj", ".worktrees", "api-003", "src"), io);
@@ -112,6 +122,7 @@ describe("discoverBoardRoot", () => {
         at("parent", "nested", ".git"), // a real repository boundary
         at("parent", "nested", "src"),
       ],
+      files: [marker("parent")],
     });
     const res = discoverBoardRoot(at("parent", "nested", "src"), io);
     expect(res.found).toBe(false);
@@ -131,6 +142,7 @@ describe("discoverBoardRoot", () => {
         at("proj", ".worktrees", "kanmer", ".kanmer"),
         at("proj", "src"),
       ],
+      files: [marker("proj", ".worktrees", "kanmer")],
     });
     const res = discoverBoardRoot(at("proj", "src"), io);
     expect(res).toMatchObject({
@@ -151,6 +163,7 @@ describe("discoverBoardRoot", () => {
         at("proj", ".worktrees", "kanmer"),
         at("proj", ".worktrees", "kanmer", ".kanmer"),
       ],
+      files: [marker("proj", ".worktrees", "aaa"), marker("proj", ".worktrees", "kanmer")],
     });
     const res = discoverBoardRoot(at("proj"), io);
     expect(res).toMatchObject({ found: true, root: at("proj", ".worktrees", "kanmer") });
@@ -167,6 +180,7 @@ describe("discoverBoardRoot", () => {
         at("proj", ".worktrees", "board-b"),
         at("proj", ".worktrees", "board-b", ".kanmer"),
       ],
+      files: [marker("proj", ".worktrees", "board-a"), marker("proj", ".worktrees", "board-b")],
     });
     const res = discoverBoardRoot(at("proj"), io);
     expect(res).toMatchObject({ found: true, root: at("proj", ".worktrees", "board-a") });
@@ -211,5 +225,76 @@ describe("discoverBoardRoot", () => {
     };
     expect(() => discoverBoardRoot(at("proj"), io)).not.toThrow();
     expect(discoverBoardRoot(at("proj"), io).found).toBe(false);
+  });
+
+  // MCP-056: what makes a `.kanmer` a board.
+
+  it("skips a registry-only .kanmer at an ancestor, names it as skipped, and keeps walking", () => {
+    // `~/.kanmer/endpoints.json` is the FRD-029 endpoint registry, not a board.
+    // Before MCP-056 any cwd beneath `~` with no board of its own bound to `~`.
+    const io = fakeIO({
+      dirs: [R, at("home"), at("home", ".kanmer"), at("home", "tmp"), at("home", "tmp", "work")],
+      files: [at("home", ".kanmer", "endpoints.json")],
+    });
+    const res = discoverBoardRoot(at("home", "tmp", "work"), io);
+    expect(res.found).toBe(false);
+    expect(res.tried).toContain(`${at("home", ".kanmer")} (no board marker)`);
+    expect(res.tried).not.toContain(at("home", ".kanmer"));
+  });
+
+  it("skips a registry-only .kanmer and still finds the real board beyond it", () => {
+    const io = fakeIO({
+      dirs: [
+        R,
+        at("proj"),
+        at("proj", ".kanmer"),
+        at("proj", "vendor"),
+        at("proj", "vendor", ".kanmer"), // a decoy on the way up
+        at("proj", "vendor", "pkg"),
+      ],
+      files: [marker("proj"), at("proj", "vendor", ".kanmer", "endpoints.json")],
+    });
+    const res = discoverBoardRoot(at("proj", "vendor", "pkg"), io);
+    expect(res).toMatchObject({ found: true, root: at("proj"), how: "ancestor" });
+    expect(res.tried).toContain(`${at("proj", "vendor", ".kanmer")} (no board marker)`);
+  });
+
+  it("skips a registry-only .kanmer inside .worktrees/* in favour of a real board candidate", () => {
+    const io = fakeIO({
+      dirs: [
+        R,
+        at("proj"),
+        at("proj", ".worktrees"),
+        at("proj", ".worktrees", "kanmer"),
+        at("proj", ".worktrees", "kanmer", ".kanmer"), // named `kanmer` but not a board
+        at("proj", ".worktrees", "zzz"),
+        at("proj", ".worktrees", "zzz", ".kanmer"),
+      ],
+      files: [at("proj", ".worktrees", "kanmer", ".kanmer", "endpoints.json"), marker("proj", ".worktrees", "zzz")],
+    });
+    const res = discoverBoardRoot(at("proj"), io);
+    expect(res).toMatchObject({ found: true, root: at("proj", ".worktrees", "zzz"), how: "cwd-worktree" });
+    expect(res.tried).toContain(`${at("proj", ".worktrees", "kanmer", ".kanmer")} (no board marker)`);
+  });
+
+  it("does not treat a .kanmer FILE as a board", () => {
+    const io = fakeIO({ dirs: [R, at("proj")], files: [at("proj", ".kanmer")] });
+    const res = discoverBoardRoot(at("proj"), io);
+    expect(res.found).toBe(false);
+    expect(res.tried[0]).toBe(`${at("proj", ".kanmer")} (no board marker)`);
+  });
+
+  it.each([
+    ["version.json", { files: [at("proj", ".kanmer", "version.json")] }],
+    ["data/board.yml", { dirs: [at("proj", ".kanmer", "data")], files: [at("proj", ".kanmer", "data", "board.yml")] }],
+    ["project.json", { files: [at("proj", ".kanmer", "project.json")] }],
+    ["areas/ (format 2 without a version file)", { dirs: [at("proj", ".kanmer", "areas")] }],
+    ["tickets/ (legacy format 1)", { dirs: [at("proj", ".kanmer", "tickets")] }],
+  ])("accepts a .kanmer carrying only %s as a board", (_label, extra: { dirs?: string[]; files?: string[] }) => {
+    const io = fakeIO({
+      dirs: [R, at("proj"), at("proj", ".kanmer"), ...(extra.dirs ?? [])],
+      files: extra.files ?? [],
+    });
+    expect(discoverBoardRoot(at("proj"), io)).toMatchObject({ found: true, root: at("proj"), how: "cwd" });
   });
 });

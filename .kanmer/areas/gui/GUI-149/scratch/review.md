@@ -1,307 +1,209 @@
 ---
 kind: review-attestation
 pr: "313"
-head_sha: "55c572cd90f8ad35115d0062fc52ed6e1c1d18df"
-verdict: needs-changes
+head_sha: "a6eb8c1f03f4f0a7c0d755b59805ba0fc19231d6"
+verdict: pass
 reviewer: "independent-review-agent (claude-opus-5, distinct role from implementer claude-code)"
 independent: true
 plan_hash: "4c860cb46e627048"
-ticket_updated: "2026-09-03T17:11:54.009Z"
-board_sha: "57f6903ff859f12326c4a35ee62f20ed77a0f9bb"
+ticket_updated: "2026-09-03T19:09:11.122Z"
+board_sha: "a972a3dda051b3a09537708d142cfca667cb4924"
 expected_reviewers:
   - "independent-review-agent (claude-opus-5, distinct role from implementer claude-code)"
 threads_snapshot: []
 findings:
   - id: F-001
     severity: blocker
-    summary: "serverInvocation() now returns the rootless portable launcher for every caller, silently changing the OpenAI secure-tunnel MCP target at index.ts:1560 -> openaiTunnel.ts:421 from the root-pinned Electron-as-Node invocation FRD-026 R3 requires to a launcher with no board or repo root; the tunnel-client runtime outlives the app (FRD-026 R4), so its MCP child resolves whatever board ADR-0012 cwd discovery finds, which can bind one profile to another project's board (FRD-026 R1). Untested, out of the plan's declared scope, and unmentioned in files.md or the post-implementation report."
-    disposition: open
+    summary: "serverInvocation() also produced the OpenAI secure tunnel's --mcp-command (index.ts:1560 -> openaiTunnel.ts), so the tunnel lost the root-pinned Electron-as-Node invocation FRD-026 R3 requires and would have resolved its board by cwd discovery from a runtime Kanmer does not own."
+    disposition: fixed
   - id: F-002
     severity: minor
-    summary: "A board worktree attached outside the project (kanmerGit.ts:547-548 adopts it at any path; discover.ts:92 says .worktrees/kanmer is a convention, not an invariant) is unreachable by cwd discovery, so rootless Claude/OpenCode registrations find no board where the pre-GUI-149 file worked; a hand-written --root repair is then reported 'behind' and reconnect deletes it."
-    disposition: accepted-risk
-    reason: "Pre-existing class: Codex has carried exactly this since GUI-100 and the FRD-012 R1e amendment is a deliberate choice of ADR-0012 discovery over pinning. The failure is loud (no board found), not silent corruption. The remaining ask is documentation - R1e/R7 should state the discoverability precondition - which does not warrant this ticket's remediation batch."
+    summary: "A board worktree attached outside the project is unreachable by ADR-0012 discovery, so a rootless Claude/OpenCode registration finds no board where the pre-GUI-149 file worked, and a hand-written --root repair is then reported behind."
+    disposition: fixed
   - id: F-003
     severity: minor
-    summary: "serverInvocation (connect.ts:131-140) retains _boardRoot, _sourceRoot and `void id;` - three parameters that no longer affect the result. Preserving the signature to avoid caller churn is exactly what let F-001's caller change contract while still type-checking and still reading as though it pinned a board."
-    disposition: open
+    summary: "serverInvocation retained _boardRoot and _sourceRoot - accepted-and-ignored parameters that let F-001's caller change contract while still type-checking and still reading at the call site as though it pinned a board."
+    disposition: fixed
   - id: F-004
     severity: minor
-    summary: "isLegacyLauncherDescriptor (staleness.ts:763) returns on the first of ['mcpServers','mcp'] that holds a kanmer object, so a file carrying a portable mcpServers.kanmer and a legacy mcp.kanmer reports clean even though the loop reads as 'check both'."
-    disposition: accepted-risk
-    reason: "Unreachable through any file Kanmer writes or any host it supports: .mcp.json owns mcpServers and opencode.json owns mcp, and no provider writes both keys into one file. Collecting from every key before deciding is a two-line refinement for the next change to this function."
+    summary: "isLegacyLauncherDescriptor returned on the first of ['mcpServers','mcp'] holding a kanmer object, so a file carrying a portable entry under one key and a legacy entry under the other reported clean."
+    disposition: fixed
   - id: F-005
     severity: note
-    summary: "connect.test.ts:593 deletes the GUI-100 grok case (grok.command === process.execPath, --root present) rather than replacing it, dropping the only assertion that grok is not routed through serverInvocation."
-    disposition: accepted-risk
-    reason: "Verified unreachable in production: grok's register.kind is 'none', so connectAgent returns via connectNativePlugin before serverInvocation is called and reconcileProviderRegistration bails on the missing configPath. The coverage loss is real but pins behaviour that no code path can reach; a one-line comment would carry the reasoning."
+    summary: "connect.test.ts deleted the GUI-100 grok case (grok.command === process.execPath, --root present) rather than replacing it, dropping the only record that grok is not routed through serverInvocation."
+    disposition: fixed
   - id: F-006
     severity: note
-    summary: "ensureConnectIgnore (connect.ts:155-159) reports 'added .mcp.json to .gitignore' even when the project already tracks that file, where the new rule has no effect at all - .gitignore does not apply to tracked paths."
+    summary: "ensureConnectIgnore reports 'added .mcp.json to .gitignore' even when the project already tracks that file, where the new rule has no effect - .gitignore does not apply to tracked paths."
     disposition: accepted-risk
-    reason: "Cosmetic wording on a best-effort note; the registration itself has already succeeded and nothing depends on the text. Worth one clause ('run git rm --cached if it is already tracked') the next time this string is edited."
+    reason: "Cosmetic wording on a best-effort note that follows an already-successful registration; nothing reads the text. The author's answer - the note names what was appended, and whether the path is already tracked is the user's call - is defensible, and the remaining ask ('run git rm --cached if it is already tracked') is one clause for the next edit of this string. Carried forward unchanged from the 55c572cd attestation, where it was already accepted."
+  - id: F-007
+    severity: minor
+    summary: "discoverabilityNote() (connect.ts, new in a6eb8c1f) calls discoverBoardRoot inside connectAgent's try block with no unit test and, unlike the neighbouring best-effort ensureConnectIgnore, no local catch: a throw from the walk would turn an already-written, successful registration into ok:false."
+    disposition: accepted-risk
+    reason: "New in the remediation, so it consumes no budget, and the exposure is close to nil: the walk uses existsSync (never throws), readdirSafe (which catches), and one statSync with throwIfNoEntry:false on a .git path it has just seen to exist. The residual is a mislabelled result under an exotic permission failure, not a lost registration - the registration file is already written when the note is computed. Worth a try/catch and one test the next time connect.ts's output assembly is touched."
+  - id: F-008
+    severity: note
+    summary: "The PR body still describes the 55c572cd state: it does not mention rootedServerInvocation or the tunnel, and its Verification section cites 'npm run verify exit 0 (run 5)', which was the pre-remediation head. The squash-merge commit message body is taken from it."
+    disposition: accepted-risk
+    reason: "PR metadata that changes no code. Nothing in the body is false at this head - serverInvocation does return the portable contract for all three project hosts and installedElectronInvocation is gone - it is incomplete. The authoritative remediation record is on the ticket: post-implementation-report v bcbc122adb6f181d ('Remediation after review' and 'Remediation commit a6eb8c1f') and files.md v 086380fcd64b842a, which lists index.ts with its plan deviation. The binding verification evidence is the hosted CI run at this exact head, quoted below, not the body's run-5 line."
 ---
-# Independent review — GUI-149, PR #313 @ `55c572cd`
+# Independent review (delta, round 1) — GUI-149, PR #313 @ `a6eb8c1f`
 
-One consolidated review (`review_round` 0) of the whole PR against the ticket
-body, `files/files.md`, the 5-step plan (`4c860cb46e627048`), the 8-item
-checklist, the post-implementation report, FRD-012 (R1, R1a, R1c, R1d, R1e, R4,
-R7), FRD-026 (the OpenAI secure tunnel), ADR-0012 and ADR-0013. The reviewer is
-a distinct agent role from the implementer and wrote none of this code. The
-controller named no other expected reviewer. The head carries no GitHub review,
-comment or thread at all (`gh pr view 313 --json reviews,comments` → both empty),
-so `threads_snapshot` is truthfully empty.
+Delta review of remediation commit
+`a6eb8c1f03f4f0a7c0d755b59805ba0fc19231d6` against the `needs-changes`
+attestation on `55c572cd` (v `95f312e0f1bb90b7`). `review_round` is 1 and
+`remediation_budget` is 1, so this is the one delta review the ticket gets: its
+scope is F-001..F-006, the lines changed since the previously attested head,
+their callers and contracts, and the relevant tests. The reviewer is a distinct
+agent role from the implementer `claude-code` and wrote none of this code; the
+controller named no other expected reviewer, so the set is settled.
+`gh pr view 313 --json comments,reviews,latestReviews` and the GraphQL
+`reviewThreads` surface all return empty at this head — no human review, no
+comment, and no `chatgpt-codex-connector` thread — so `threads_snapshot` is
+truthfully empty and there is nothing to resolve.
 
-**Verdict: needs-changes.** One blocker (F-001) plus a failing required check.
+**Verdict: pass.** The blocker is fixed, four of the five remaining findings are
+fixed rather than argued away, and `verify` is green at this exact head.
 
-## What changed
+## The delta
 
-`serverInvocation()` (`apps/gui/src/main/connect.ts:131`) stops branching on
-provider id: every caller now receives `portableLauncherInvocation(branch)` —
-`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& (Join-Path
-$env:LOCALAPPDATA 'Kanmer\bin\kanmer-mcp.cmd')"` with `KANMER_BOARD_BRANCH` as
-the only env entry. `installedElectronInvocation()` is deleted, so `.mcp.json`
-and `opencode.json` no longer serialise `process.execPath`, the bundled
-`kanmer-mcp.cjs`, `--root`, `--repo-root` or `ELECTRON_RUN_AS_NODE`.
-`probeLauncher()` gates all three project-file hosts before any write. A new
-shared `apps/gui/src/main/gitIgnore.ts` carries `ensureIgnore`/
-`ignoreEntriesToAppend` out of `kanmerGit.ts` (now returning what it appended),
-and `ensureConnectIgnore()` (`connect.ts:152`) appends each provider's
-`register.configPath` and project-scoped `install.skillsDir/` to the target
-project's `.gitignore` when `<project>/.git` exists — best-effort, reported in
-the Connect output, never `ok:false`. Core gains
-`isLegacyLauncherDescriptor()` (`packages/core/src/staleness.ts:750`) and wires
-it into `registrationRows()` for the three portable hosts on Windows.
+`git diff 55c572cd..a6eb8c1f` is 7 files, +114/-24: `connect.ts`, `index.ts`,
+`connect.test.ts`, `staleness.ts`, `staleness.test.ts`,
+`FRD-012-connect.md`, and the regenerated `plugins/kanmer/mcp/kanmer-mcp.cjs`.
+No other file in the PR moved.
 
-The scope discipline is otherwise good: `.claude-plugin/**`, `.agents/**`,
-grok/antigravity provider entries and the installer scripts are untouched, and
-grok's `register.kind: "none"` means the unconditional probe cannot reach it.
+**F-001 — fixed, and provably a no-op for the tunnel.** The deleted
+`installedElectronInvocation()` is restored under the name
+`rootedServerInvocation(boardRoot, sourceRoot, boardBranch)` with a body that is
+line-for-line the function at `cd5b6b6b` — same packaged/dev script resolution,
+same `[script, "--root", boardRoot]`, same conditional `--repo-root` when
+`resolve(sourceRoot) !== resolve(boardRoot)`, same `ELECTRON_RUN_AS_NODE: "1"`
+env, same `process.execPath` command. `index.ts:1560` now calls it directly.
+Branch normalisation is equivalent (the old path trimmed twice, the new path
+once, to the same value), so the tunnel's `--mcp-command` at this head is
+**behaviourally identical to `main`** and FRD-026 R3's "with the selected board
+root and optional repository root" is satisfied again. `openaiTunnel.ts` and
+`openaiTunnel.test.ts` are untouched by the whole PR
+(`git diff --stat cd5b6b6b...a6eb8c1f -- apps/gui/src/main/openaiTunnel*` is
+empty), which is what "restored, not re-implemented" has to mean. The factory is
+now covered directly by "keeps the OpenAI tunnel's `--mcp-command` pinned to the
+selected roots (FRD-026 R3)" in `connect.test.ts`, which asserts the command,
+the root argv, the script tail, the env, and the colocated case that omits
+`--repo-root`. The three secondary limbs of F-001 fall with it: a dev build can
+initialise a tunnel again (the Electron path handles unpackaged), and
+`shellArg` round-trips the same string it always did.
 
-## Independent verification at this head
+**F-003 — fixed.** `serverInvocation(id, boardBranch)` no longer accepts the roots
+it ignored; both production callers (`connectAgent`,
+`reconcileProviderRegistration`) and every test call site are updated, and the
+JSDoc now states the rule that F-001 violated: a caller that needs a pinned
+board is not writing a project registration and must say so by calling
+`rootedServerInvocation`. F-001 and F-003 were one root-cause class — a factory
+whose ignored parameters let a caller's contract change silently — and the
+remedy is one: split the factory in two, name each for what it pins, and delete
+the ignored parameters so the compiler names every consumer. Residual: `id` is
+still accepted and `void`-ed. That is not the same defect — `id` is a closed
+union carrying no root or binding information, every project-file host shares
+one contract, and the comment says so — but it is the same shape, and the next
+parameter added there should be load-bearing or absent.
 
-Live, on this machine, not assumed:
+**F-002 — fixed, beyond the accepted risk.** The previous attestation accepted
+this as a pre-existing class needing documentation. The author documented it
+*and* made it observable: FRD-012 R1e now carries an explicit **Precondition**
+naming `<project>/.kanmer` or `<project>/.worktrees/<name>/.kanmer` as the
+reachable layouts (exactly what `discoverBoardRoot` probes per level before the
+`.git`-directory boundary), states that a board attached elsewhere is reachable
+by no project-file host, and records that the OpenAI tunnel is not a project
+registration and keeps the rooted form. `connectAgent` appends a warning when
+`discoverBoardRoot(projectRoot)` does not resolve to the selected `boardRoot`
+(`samePath` resolves and lower-cases on win32), naming both the selected board
+and what discovery found instead. Connect still writes the registration, which
+is the right call: Codex has behaved this way since GUI-100 and the user may be
+about to move the board. See F-007 for the one thing this addition lacks.
 
-1. **The `&` survives `execFile` into `.mcp.json` — the plan's central premise
-   holds.** In a scratch git repo outside every real repo (`C:\kt-tmp\review-149`,
-   since removed) I ran the exact production argv through `child_process.execFile`
-   with `shell: false` against `C:\Users\Alex\.local\bin\claude.exe` (2.1.259):
-   `["mcp","add","kanmer","-s","project","-e","KANMER_BOARD_BRANCH=kanmer-board","--","powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-Command","& (Join-Path $env:LOCALAPPDATA 'Kanmer\bin\kanmer-mcp.cmd')"]`.
-   The produced `.mcp.json` is byte-for-byte the R1e contract, `&`, single
-   quotes and backslashes verbatim, `"type": "stdio"` added by the CLI:
-   `command: "powershell.exe"`, `args: ["-NoProfile","-ExecutionPolicy","Bypass","-Command","& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"]`,
-   `env: { KANMER_BOARD_BRANCH: "kanmer-board" }`. Removed afterwards with
-   `claude mcp remove kanmer -s project`. No real repo's `.mcp.json`, no
-   user-scope server in `~/.claude.json` and no plugin/marketplace state was
-   touched.
-2. **Whether that file actually starts the server: INCONCLUSIVE, blocked by
-   approval.** `claude mcp list` in the same directory reported
-   `kanmer: powershell.exe … - ⏸ Pending approval (run \`claude\` to approve)`.
-   That is exactly the condition the new Claude output note describes, so the
-   note is corroborated rather than speculative; proving the handshake needs an
-   interactive approval this review may not give. Real-host acceptance stays
-   owed, as the checklist's post-merge item already says.
-3. **The launcher itself is healthy from an ordinary project cwd.** Running the
-   production probe string (`$ErrorActionPreference='Stop'; & (Join-Path
-   $env:LOCALAPPDATA 'Kanmer\bin\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE`)
-   from the scratch repo printed `Kanmer MCP launcher: healthy`, exit 0.
-4. **OpenCode's schema matches.** Fetched https://opencode.ai/docs/mcp-servers/:
-   a local server is `mcp.<name>` with `type: "local"` (string), `command`
-   (array of strings), optional `environment` (object), `enabled` (boolean),
-   `cwd` and `timeout`. `opencodeMerge` emits exactly `{ type, command,
-   environment, enabled }` and is unchanged by this PR; the array form carries
-   the PowerShell argv without a shell, so nothing here needs the `&` to be
-   re-parsed.
-5. **Tests, run in the worktree.** `apps/gui`:
-   `npx vitest run --no-file-parallelism src/main/providers.test.ts
-   src/main/connect.test.ts src/main/index.sync.test.ts` → 3 files, **139
-   passed**, exit 0. `packages/core`: `npx vitest run src/staleness.test.ts` →
-   **56 passed**, exit 0.
-6. **The plugin-bundle deviation is what it claims to be.** `git diff
-   cd5b6b6b..55c572cd -- plugins/kanmer/mcp/kanmer-mcp.cjs` is 51/5 lines and
-   contains only the transpiled `isLegacyLauncherDescriptor`,
-   `PORTABLE_LAUNCHER_*` and the `registrationRows` rewiring — no descriptor,
-   manifest or skill change. Regenerating it is forced by `mcpb:check` inside
-   `npm run verify`, so the "Do not modify `plugins/**`" deviation is
-   unavoidable and correctly disclosed.
+**F-004 — fixed.** `isLegacyLauncherDescriptor` now sets a `judged` flag per key
+instead of returning inside the loop, so a legacy entry under either
+`mcpServers` or `mcp` is a verdict, "an entry under neither" stays `null`, and
+the tri-state contract is unchanged. Two unit cases pin both directions: a
+portable `mcpServers.kanmer` beside a legacy `mcp.kanmer` is `true`, and a
+non-Kanmer `mcpServers` beside a portable `mcp.kanmer` is `false`.
 
-**No weakened assertions.** Every removed expectation is an assertion of the
-behaviour this ticket deliberately deletes (`ELECTRON_RUN_AS_NODE` in the env,
-`process.execPath` as the command) and each is replaced by a stronger one — a
-`toEqual` on the whole portable descriptor plus a `not.toMatch(/Users|Kanmer\.exe|
-kanmer-mcp\.cjs|--root|--repo-root|cwd|ELECTRON_RUN_AS_NODE/)` guard in both
-`providers.test.ts` and `connect.test.ts`. The many `{ probeRunner: probeOk }`
-additions are required by the now-unconditional probe, not a loosening. The
-`kanmerGit.test.ts` edits are the renamed symlink-refusal message only, and both
-symlink assertions survive. The new GUI-149 blocks add real coverage: probe
-failure writes nothing for claude and opencode (`.mcp.json`, `opencode.json`
-and `.gitignore` all asserted absent), the `.gitignore` append is exact-string
-and idempotent, a non-git project is left alone, and the R1f reconcile path is
-covered separately.
+**F-005 — fixed.** The GUI-100 selection test carries a comment recording why
+there is no grok or antigravity case: `register.kind: "none"` sends them to
+`connectNativePlugin` before an invocation is built. The reasoning no longer
+lives only in a review record.
 
-## Deviations from the plan — judged
+**F-006 — accepted-risk, carried forward** with the author's reason recorded in
+the frontmatter above. It was already accepted at `55c572cd` and nothing in the
+delta changed it.
 
-- `plugins/kanmer/mcp/kanmer-mcp.cjs` regenerated against the plan's "Do not
-  modify `plugins/**`": **accepted**, verified above, and the right call — the
-  alternative is a red `mcpb:check`.
-- `apps/gui/src/main/index.sync.test.ts`: **accepted**. It pinned the Electron
-  env shape on the production reconcile caller; the replacement asserts the
-  portable env *and* `command === "powershell.exe"`, which is stricter.
-- `apps/gui/src/renderer/src/manual/chapters.generated.ts`: **accepted**,
-  mechanical output of `npm run build:manual` for the `docs/manual/connect.md`
-  edit, one line.
-- AGENTS.md §8 gotcha 4 corrected alongside the planned §8 rewrite:
-  **accepted** — the sentence "Project-scoped `connect.ts` registrations may
-  still invoke the install-root `Kanmer.exe` directly" becomes false with this
-  commit, so leaving it would ship a lie in the file agents read first.
-- `isLegacyLauncherDescriptor` narrowed to *absolute* `Kanmer.exe`/
-  `kanmer-mcp.cjs`: **accepted and better than the plan** — it preserves the
-  existing core test that a bare `node kanmer-mcp.cjs` with no `--root` is not
-  stale.
-- Symlink-refusal test for `ensureConnectIgnore` dropped: **accepted**, the
-  moved helper's throw is still covered twice in `kanmerGit.test.ts` and the
-  caller converts any throw to a note.
+**Regenerated bundle.**
+`git diff 55c572cd..a6eb8c1f -- plugins/kanmer/mcp/kanmer-mcp.cjs` is exactly the
+transpiled `judged` flag — five lines, no descriptor, manifest or skill change —
+so the rebuild is the `mcpb:check` obligation and nothing else. `verify`'s final
+step confirms it ("plugin-sync OK, bundle bytes match").
 
-The `.gitignore` comment block, FRD-012 R1/R1c/R1e/R7 and `docs/manual/
-connect.md` are all consistent with the code, and the R1c rationale ("a
-teammate without Kanmer installed would otherwise inherit a server that cannot
-start") is the honest replacement for the "hardcoded absolute paths" reason the
-change removes.
+## Whole-diff pass
 
-## Findings
+I re-read the full `cd5b6b6b...a6eb8c1f` diff once for anything the residual list
+did not cover: `gitIgnore.ts` (the append-only helper, its last-negation-wins
+rule and the symlink refusal), `connectIgnoreEntries()` (derived from the provider
+spec, skipping `~`-rooted and non-project paths), `registrationRows()` (the three
+portable hosts, one row per file, the deliberate `continue` that suppresses the
+duplicate `--root` row), the `.gitignore` comment block, AGENTS.md §8,
+`docs/manual/connect.md` and its regenerated chapter. The codex TOML path is
+behaviour-preserving: `isLegacyLauncherDescriptor(text, "toml")` is
+`isCurrentCodexRegistration` inverted with `null` preserved. The absolute-path
+regex is anchored at a drive or root and terminated at
+`kanmer.exe`/`kanmer-mcp.cjs`, so a relative script or bare command is still not
+judged — which is what keeps the existing core test meaningful. Two new findings
+came out of this pass, F-007 (minor) and F-008 (note); by the skill's rule a new
+minor or note consumes no remediation budget and does not block, and both are
+dispositioned above.
 
-**F-001 (blocker)** — `apps/gui/src/main/connect.ts:131` /
-`apps/gui/src/main/index.ts:1560` / `apps/gui/src/main/openaiTunnel.ts:421`.
+## Required checks — evidence
 
-`serverInvocation` is not only the project-registration factory. Its one other
-production caller is the OpenAI secure-tunnel manager:
+Hosted CI, run **33794682858** on head
+`a6eb8c1f03f4f0a7c0d755b59805ba0fc19231d6` (triggered by the remediation push at
+2026-09-03T19:08:34Z):
 
-```
-openAITunnel = new OpenAITunnelManager(
-  app.getPath("userData"), undefined,
-  (roots) => serverInvocation("claude", roots.boardRoot, roots.repoRoot, readSettings().kanmerBranch),
-);
-```
+- **`verify`** — job **100779395876**, `completed` / **`success`**,
+  19:08:38Z → 19:18:33Z, `head_sha` `a6eb8c1f03…`. The full Windows rail: core,
+  GUI unit tests, the GUI build, the scripts tests and `mcpb:check`. This is the
+  binding verification evidence for this head; the author's local run 7 agrees
+  with it.
+- **`kanmer-gate`** — job **100779396416**, `completed` / **`failure`** at
+  19:09:31Z, with exactly one finding:
+  `STALE_REVIEW … review attestation head 55c572cd90f8ad35115d0062fc52ed6e1c1d18df does not match PR head a6eb8c1f03f4f0a7c0d755b59805ba0fc19231d6`
+  (`verdict: needs-changes`). Every other check in that same run passed:
+  `NO_TICKET`, `OPEN_QUESTIONS`, `WRONG_STAGE` (review), `DEPENDENCY_BLOCKED` (no
+  live blockers), `WRONG_TARGET` (base `main`), `NO_REVIEW_RECORD`,
+  `COMMITS_UNREACHABLE` (both `55c572cd` and `a6eb8c1f` reachable) and
+  `SYNC_REQUIRED` (`state: current` against fetched board tip `a972a3dd`), under
+  `KANMER_GATE_STRICT: true`. The failure is therefore this attestation's own
+  absence and nothing else; it is re-run after this record is written and
+  pushed, and the merge waits for it to be green.
+- `regate` skipped (pull-request event), as designed.
 
-`OpenAITunnelManager.initialize` turns that invocation into the
-`--mcp-command` string handed to `tunnel-client runtimes connect`
-(`openaiTunnel.ts:421`, via `buildOpenAITunnelMcpCommand` at `:183`). Before
-this commit it was `"C:/…/Kanmer.exe" "C:/…/kanmer-mcp.cjs" --root
-"<board>" --repo-root "<repo>"` — self-pinning. After it, it is
-`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& (Join-Path
-$env:LOCALAPPDATA 'Kanmer/bin/kanmer-mcp.cmd')"` with no root of any kind.
+`board_sha` `a972a3dda051b3a09537708d142cfca667cb4924` is the pushed board tip
+this review read: `get_status.boardSync` reports `localSha` = `remoteSha` = that
+value with `ahead: 0`, `behind: 0`, and the gate above already fetched the same
+tip.
 
-FRD-026 **R3 (Canonical target)** says verbatim: "`runtimes connect` uses the
-existing packaged Electron-as-Node stdio invocation **with the selected board
-root and optional repository root**." This PR contradicts that requirement and
-amends only FRD-012; FRD-026 is not in `refs`, not in the plan's governing-doc
-list, and the tunnel is mentioned nowhere in `files.md` or the
-post-implementation report. The plan lists `index.ts` under "Do not modify" and
-`files.md` justifies it as "signature of `serverInvocation` is preserved so no
-caller changes" — the signature is preserved, the contract is not, which is
-precisely how this got through unnoticed.
+## Acceptance and residual risk
 
-Failure scenario: a user registers the OpenAI tunnel for project A and later
-for project B. Per FRD-026 R4 the tunnel-client runtime is deliberately *not* a
-GUI-owned child — closing the app or the project leaves it running, and it is
-re-launched outside Kanmer. Its child MCP process therefore starts with a
-working directory Kanmer does not control, and the rootless launcher resolves
-the board by ADR-0012 cwd discovery: `discoverBoardRoot` walks up from that
-directory and binds to the first `.kanmer` or `.worktrees/*/.kanmer` it meets —
-project B's board, the reviewer's own repo, or nothing. That is a silent
-cross-project board binding served over a public tunnel, which FRD-026 **R1
-(Project isolation)** forbids ("The GUI must not combine boards behind one
-profile"), and the doctor's `MCP_TARGET` check would still report pass because
-it only inspects the exit code of `runtimes connect`. Secondarily, an
-unpackaged/dev build can no longer initialise a tunnel at all (no launcher),
-and `shellArg` (`openaiTunnel.ts:178`) rewrites the backslashes and re-quotes
-the `-Command` payload for the tunnel client's own parser — round-tripping `&`,
-`(`, `)` and the embedded single quotes through it is unverified.
+The plan's five steps and both pre-review checklist items are satisfied at this
+head; the single unchecked item is the `[post-merge]` real-host acceptance, which
+is correctly still **INCONCLUSIVE** — no build containing this commit is
+installed — and is owed at 0.4.1 (CORE-137), stated in the checklist, the
+post-implementation report and the PR body. That is a verification obligation
+for `kanmer-verify` and the release, not a review blocker.
 
-No test covers this: `openaiTunnel.test.ts:71` and `:141` still exercise the
-manager's default `() => ({ command: process.execPath, args: [] })` factory and
-a hand-written Electron example, so the production wiring at `index.ts:1560` is
-untested in both the old and the new shape.
-
-The fix is small and inside this packet's own files: give the tunnel its own
-root-pinned factory (or restore the deleted Electron invocation for that one
-caller) and drop the now-dead `boardRoot`/`sourceRoot` parameters from
-`serverInvocation` so the compiler names every remaining consumer; or, if the
-operator prefers the portable target there too, amend FRD-026 R3/R1 explicitly
-and prove the tunnel's MCP cwd. Either way it belongs on this PR, not a new
-ticket — it is caused by this diff and fixed in files this plan already owns.
-
-**F-002 (minor)** — `packages/core/src/staleness.ts:921` +
-`apps/gui/src/main/connect.ts:131`, root-cause class "the board is not always
-under the project".
-
-`ensureBoardWorktree` adopts the board-branch worktree **at whatever path git
-reports** (`apps/gui/src/main/kanmerGit.ts:547-548`), and `discover.ts:92`
-states the same thing in a comment: "`.worktrees/kanmer` is a convention, not
-an invariant". But `discoverBoardRoot` only probes `<level>/.kanmer` and
-`<level>/.worktrees/*/.kanmer` and stops at the first `.git` **directory** — the
-project root. So a user who ran `git worktree add C:/boards/proj kanmer-board`
-has `ctx.boardRoot = C:/boards/proj`, and a Claude/OpenCode registration with
-no `--root` finds no board at all where the pre-GUI-149 file worked. The same
-user's hand-written repair (adding `--root C:/boards/proj` back) is now
-reported `mcp-registration behind` with fix "reconnect this project in the
-Kanmer app", and reconnecting deletes it — a repair loop. Codex has owned half
-of this since GUI-100, so this is an existing class extended to two more hosts
-rather than a new defect; the FRD-012 R1e/R7 amendment should state the
-discoverability precondition it now depends on ("the board is reachable by
-ADR-0012 discovery from the host's project directory") instead of implying
-discovery always succeeds. Not a return-blocking defect on its own.
-
-**F-003 (minor)** — `apps/gui/src/main/connect.ts:131-140`. `serverInvocation`
-keeps `_boardRoot` and `_sourceRoot` and opens with `void id;` — three
-parameters that no longer affect the result. Keeping the signature to avoid
-caller churn is what allowed F-001's caller to change contract silently while
-still type-checking and still reading, at the call site, as though it pinned a
-board. Same root-cause class as F-001; fixing F-001 by narrowing the signature
-disposes of this too.
-
-**F-004 (minor)** — `packages/core/src/staleness.ts:763`. The loop
-`for (const key of ["mcpServers", "mcp"])` `return`s on the **first** key that
-holds a `kanmer` object, so a file carrying both a portable `mcpServers.kanmer`
-and a legacy `mcp.kanmer` is judged only by `mcpServers` and reports clean.
-Contrived today (each host owns one key), but the loop reads as "check both"
-and does not; collecting from every key before deciding is a two-line change.
-
-**F-005 (nit)** — `apps/gui/src/main/connect.test.ts:593`. The GUI-100
-selection test's grok case (`grok.command === process.execPath`, `--root`
-present, Electron env) was deleted rather than replaced. It is genuinely
-unreachable now — grok's `register.kind` is `"none"`, so neither `connectAgent`
-(which returns via `connectNativePlugin` first) nor `reconcileProviderRegistration`
-(which bails on a missing `configPath`) ever calls `serverInvocation` for it —
-but that reasoning lives only in this review. One asserted line, or a comment,
-would pin it.
-
-**F-006 (nit)** — `apps/gui/src/main/connect.ts:155-159`. `ensureConnectIgnore`
-reports "added `.mcp.json` to .gitignore" whenever the rule was absent from the
-file, including when the project already **tracks** `.mcp.json` — where the new
-rule has no effect at all, because `.gitignore` does not apply to tracked
-paths. A team that had committed its `.mcp.json` (which this very change makes
-reasonable, since the file is now machine-portable) gets a note claiming an
-outcome that did not happen. Saying "added … to .gitignore; run `git rm
---cached` if it is already tracked" would be accurate.
-
-## Required checks
-
-Not green at this head, independently of the findings above:
-`kanmer-gate` **FAILURE** (completed 17:11:42Z) and `verify` **IN_PROGRESS** on
-run 33783013596. `kanmer-gate` is expected to be red until a review attestation
-exists on the pushed board, but it must be re-run and green before any merge
-decision, and `verify` has no conclusion yet. `reviewDecision` is empty; there
-are no reviews and no comments.
-
-## Residual risk
-
-F-002 through F-006 are recorded as residual risk for the implementer and do
-not by themselves require a return. F-001 does. Real-host acceptance (scratch
-repo → Connect ×3 → `git status` shows only `.gitignore`; `claude -p`
-`get_status` → `rootSource: cwd-worktree`; hand-edited legacy `.mcp.json` →
-`behind`) remains INCONCLUSIVE and owed at 0.4.1, which the checklist's
-post-merge item and the post-implementation report both state honestly; item 2
-above narrows *why* it cannot be closed from a dev machine (Claude Code's
-per-project approval), which is useful evidence for whoever runs it.
+Residual risk carried into the merge: F-006, F-007 and F-008 as dispositioned
+above; the reachability precondition F-002 now documents (a board attached
+outside the project is warned about, not refused); and the unchanged fact that
+an unpackaged dev build cannot Connect a project-file host, which AGENTS.md
+records. No finding of any severity is left `open`.
 
 This review writes no proof and records no merge SHA.

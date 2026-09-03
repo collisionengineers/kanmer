@@ -33,12 +33,12 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
 commits:
-  - 35f5f2f246259302069787e1986a03fa835fa0bc
+  - bb773f142e263890ad6ed78981f8024d092bfab5
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/314'
 archived: false
 created: '2026-09-03T18:59:42.801Z'
-updated: '2026-09-03T19:34:13.198Z'
+updated: '2026-09-03T19:35:55.614Z'
 ---
 
 ## What

@@ -5,10 +5,11 @@
 - [x] Step 3 — `gitIgnore.ts` shared helper; `ensureConnectIgnore` after registration and in reconcile; gitignore tests (once, not twice, not without `.git`)
 - [x] Step 4 — `isLegacyLauncherDescriptor` + `registrationRows` wiring for `.mcp.json`/`opencode.json`; core staleness tests green
 - [x] Step 5 — FRD-012 R1/R1c/R1e/R7, AGENTS.md §8 gotcha, `.gitignore` comment, `docs/manual/connect.md`
-- [ ] [pre-review] `npm run verify` exit 0; no weakened assertions
-- [ ] [pre-review] Post-implementation report written; PR opened with `Kanmer: GUI-149`; stop at the boundary
+- [x] [pre-review] `npm run verify` exit 0; no weakened assertions
+- [x] [pre-review] Post-implementation report written; PR opened with `Kanmer: GUI-149`; stop at the boundary
 - [ ] [post-merge] Real-host acceptance (scratch repo Connect ×3, `git status`, `claude -p` get_status, staleness row) recorded in proof or marked INCONCLUSIVE naming the build that owes it
 
 ## Progress notes
 
 - 2026-09-03: Steps 1-5 implemented in worktree `.worktrees/gui-149` (branch `GUI-149-portable-registrations`); providers/connect 128 tests and core staleness 56 tests green; full `npm run verify` in progress.
+- 2026-09-03: `npm run verify` exit 0 (run 5); commit 55c572cd90f8ad35115d0062fc52ed6e1c1d18df; PR https://github.com/collisionengineers/kanmer/pull/313; post-implementation report written. Real-host acceptance owed at 0.4.1 (INCONCLUSIVE now).

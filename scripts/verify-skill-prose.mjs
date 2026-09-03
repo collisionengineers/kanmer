@@ -14,7 +14,7 @@
 // Usage: node scripts/verify-skill-prose.mjs [repo-root]
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, relative, dirname } from "node:path";
+import { join, relative, dirname, resolve, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1833,6 +1833,36 @@ for (const [name, rules] of forbiddenGoalClaims) {
   const hit = rules.find((rule) => rule.test(autoSkill));
   check(`no ${name}`, hit === undefined, hit ? `matched ${hit}` : "unsafe controller claim absent");
 }
+
+console.log("\n=== 21. no shipped skill link escapes its skill folder ===");
+// CORE-139. The skills are copied into other repositories, where a link that
+// climbs out of its skill folder points at nothing — and the consuming repo's
+// own link checker reports it as that repo's broken link. kanmer-setup's
+// `../../../../docs/manual/greenfield.md` resolved only inside this monorepo
+// and turned Pegasus's documentation job red on every PR. Scheme, absolute and
+// anchor-only targets are not links into this tree; every other target must
+// resolve inside the skill folder the file lives in. Cross-skill links are
+// flagged too: nothing today needs one, and a stricter rule is a cheaper rule
+// to relax than a looser one is to tighten.
+const escaping = [];
+for (const p of files) {
+  if (!p.endsWith(".md")) continue;
+  const skillDir = join(skillsDir, relative(skillsDir, p).split(/[\\/]/)[0]);
+  read(p)
+    .split("\n")
+    .forEach((l, i) => {
+      for (const m of l.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+        const target = m[1];
+        if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#") || target.startsWith("/")) continue;
+        const inside = relative(skillDir, resolve(dirname(p), target.split("#")[0]));
+        if (inside.startsWith("..") || isAbsolute(inside)) {
+          escaping.push({ file: rel(p), line: i + 1, target });
+        }
+      }
+    });
+}
+escaping.forEach((h) => console.log(`      ${h.file}:${h.line}  ${h.target}`));
+check("no shipped skill link escapes its skill folder", escaping.length === 0, `${escaping.length} hits`);
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

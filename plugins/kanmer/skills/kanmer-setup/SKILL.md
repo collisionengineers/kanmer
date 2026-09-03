@@ -166,8 +166,10 @@ on the second run is not reconciliation.
 A genuinely fresh project has no issues, no plans and no history to mine. Then,
 and only then, build the board from a brief.
 
-Use [`docs/manual/greenfield.md`](../../../../docs/manual/greenfield.md) to choose
-the appropriate initial depth and keep the first horizon bounded. It is a
+Use the Kanmer manual's greenfield chapter (`docs/manual/greenfield.md` in the
+Kanmer repository, or the in-app manual) to choose the appropriate initial depth
+and keep the first horizon bounded. This skill is copied into other
+repositories, so it never links into the Kanmer tree. It is a
 planning aid, not an alternative to this brief-first interview or its explicit
 confirmation before board creation.
 
@@ -252,7 +254,7 @@ registrations. Hosted Actions should mirror the same value in the repository
 variable, but Actions variables are not inherited by local processes.
 When a native runtime supervisor launches Kanmer through an operator-private
 wrapper, that wrapper must export both `KANMER_PROVIDER_CWD` and
-`KANMER_BOARD_BRANCH` before invoking the stable launcher. Native
+`KANMER_BOARD_BRANCH` before invoking the stable launcher.
 The GUI's OpenAI tunnel controls manage the same long-lived native runtime
 alias through `tunnel-client runtimes connect/status/stop/rm`. Application quit
 does not stop that runtime; readiness requires structured non-stale status, and

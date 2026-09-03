@@ -20,9 +20,16 @@ on:
   push:
     branches: [kanmer-board]
 
+# A burst of board pushes coalesces into one dispatch: the superseded run is
+# cancelled rather than queued behind it (CORE-139).
+concurrency:
+  group: board-regate-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: write
   contents: read
+  pull-requests: read
 
 jobs:
   dispatch-regate:
@@ -33,4 +40,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh workflow run pr.yml --ref main
+        # A re-gate with no open PR has no consumer: skip the dispatch here
+        # instead of charging a run on main that exits at its first step.
+        run: |
+          open="$(gh pr list --base main --state open --limit 1 --json number --jq 'length')"
+          if [ "$open" = "0" ]; then
+            echo "no open pull requests into main; not dispatching"
+            exit 0
+          fi
+          gh workflow run pr.yml --ref main

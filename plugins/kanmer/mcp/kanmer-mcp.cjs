@@ -42539,8 +42539,9 @@ function classifyReleaseEvidence(snapshot, ticketId) {
   if (terminalStates.size > 1) return { state: "contended" };
   return { state: terminalStates.has("superseded") ? "superseded" : "not-applicable" };
 }
-var CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
-var CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND];
+var PORTABLE_LAUNCHER_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
+var PORTABLE_LAUNCHER_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", PORTABLE_LAUNCHER_COMMAND];
+var CODEX_PORTABLE_ARGS = PORTABLE_LAUNCHER_ARGS;
 var BLOCK_START = "<!-- kanmer:instructions:start \u2014 managed by kanmer-setup; edits inside will be overwritten -->";
 var BLOCK_END = "<!-- kanmer:instructions:end -->";
 var STALENESS_PROVIDER_PATHS = {
@@ -42912,6 +42913,45 @@ function kanmerRootIn(text, format) {
     return null;
   }
 }
+function isLegacyLauncherDescriptor(text, format) {
+  if (format === "toml") {
+    const current = isCurrentCodexRegistration(text);
+    return current === null ? null : !current;
+  }
+  let doc;
+  try {
+    doc = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (typeof doc !== "object" || doc === null) return null;
+  const rec = doc;
+  let judged = false;
+  for (const key of ["mcpServers", "mcp"]) {
+    const servers = rec[key];
+    if (typeof servers !== "object" || servers === null) continue;
+    const entry = servers["kanmer"];
+    if (typeof entry !== "object" || entry === null) continue;
+    judged = true;
+    const e = entry;
+    const strings = [];
+    for (const field of ["command", "args"]) {
+      const value = e[field];
+      if (typeof value === "string") strings.push(value);
+      else if (Array.isArray(value)) {
+        for (const v of value) if (typeof v === "string") strings.push(v);
+      }
+    }
+    const absoluteKanmer = /^(?:[a-z]:[\\/]|[\\/]).*(?:kanmer\.exe|kanmer-mcp\.cjs)$/i;
+    if (strings.some((s) => absoluteKanmer.test(s) || /^--(?:root|repo-root)(?:=|$)/i.test(s))) return true;
+    if (typeof e["cwd"] === "string") return true;
+    for (const envKey of ["env", "environment"]) {
+      const env = e[envKey];
+      if (typeof env === "object" && env !== null && "ELECTRON_RUN_AS_NODE" in env) return true;
+    }
+  }
+  return judged ? false : null;
+}
 function isCurrentCodexRegistration(text) {
   const kanmerTables = tomlTableSections(text).filter(
     ({ path: path132 }) => path132[0] === "mcp_servers" && path132[1] === "kanmer"
@@ -43012,14 +43052,21 @@ function registrationRows(repoRoot, projectRoot2) {
       });
       continue;
     }
-    const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
-    if (process.platform === "win32" && rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+    const format = rel.endsWith(".toml") ? "toml" : "json";
+    const root = kanmerRootIn(text, format);
+    const portableHosts = [
+      STALENESS_PROVIDER_PATHS.codex.registrationFile,
+      STALENESS_PROVIDER_PATHS.claude.registrationFile,
+      STALENESS_PROVIDER_PATHS.opencode.registrationFile
+    ];
+    if (process.platform === "win32" && portableHosts.includes(rel) && isLegacyLauncherDescriptor(text, format) === true) {
       rows.push({
         artefact: "mcp-registration",
         state: "behind",
-        detail: `${rel} registers Kanmer with a legacy Codex launcher descriptor. Codex must use the portable PowerShell invocation so normal Windows argv serialization can start it.`,
+        detail: `${rel} registers Kanmer with a legacy launcher descriptor (an absolute install, board or repo path). Connect now writes the portable installer-owned launcher, which survives reinstalls and carries no machine paths.`,
         fix: "reconnect this project in the Kanmer app"
       });
+      continue;
     }
     if (root === null || sameRoot(root, projectRoot2)) continue;
     rows.push({

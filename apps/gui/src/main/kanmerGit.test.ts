@@ -530,7 +530,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(refused.available).toBe(false);
     expect(refused.boardRoot).toBe(resolve(boardRoot));
     expect(refused.paused).toBe(true);
-    expect(refused.error).toContain("Refusing symlinked board ignore path");
+    expect(refused.error).toContain("Refusing symlinked ignore path");
     expect(readFileSync(target, "utf8")).toBe("sentinel\n");
   });
 
@@ -678,7 +678,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(attached.boardRoot).toBe(expectedRoot);
     expect(attached.branch).toBe("source-ignore-symlink");
     expect(attached.paused).toBe(true);
-    expect(attached.error).toContain("Refusing symlinked board ignore path");
+    expect(attached.error).toContain("Refusing symlinked ignore path");
     expect(await git(expectedRoot, "symbolic-ref", "--short", "HEAD")).toBe("source-ignore-symlink");
   });
 

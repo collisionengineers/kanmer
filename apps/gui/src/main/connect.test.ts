@@ -38,6 +38,7 @@ const {
   reconcileProviderRegistration,
   reconcileSkills,
   removeBundledSkillsOnly,
+  rootedServerInvocation,
   serverInvocation,
   skillsStatus,
   updateSkills,
@@ -72,6 +73,9 @@ async function writeTree(root: string, files: Record<string, string>): Promise<v
 
 const missing = async (...segments: string[]) =>
   expect(readFile(join(...segments), "utf8")).rejects.toThrow();
+
+/** Every project registration now preflights the installer-owned launcher (GUI-149); tests that are not about the probe pass this. */
+const probeOk = async () => ({ stdout: "Kanmer MCP launcher: healthy\n", stderr: "" });
 
 const antigravityAbsentCommandRunner = async (command: string) => {
   if (command === "agy plugin list") return { stdout: "No imported plugins.", stderr: "" };
@@ -587,27 +591,48 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     expect(JSON.stringify(descriptor)).not.toContain("${KANMER_BOARD_BRANCH");
   });
 
-  it("selects one fresh rootless invocation for Codex and preserves installed Electron for other providers", () => {
-    const codex = serverInvocation("codex", "C:/board-a", "C:/source-a");
-    expect(codex).toEqual({
+  it("selects one fresh rootless invocation for every project registration (GUI-100, GUI-149)", () => {
+    const portable = {
       command: "powershell.exe",
       args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"],
       env: { KANMER_BOARD_BRANCH: "kanmer-board" },
-    });
-    const second = serverInvocation("codex", "D:/other-board", "D:/other-source");
+    };
+    const codex = serverInvocation("codex");
+    expect(codex).toEqual(portable);
+    const second = serverInvocation("codex");
     expect(second).toEqual(codex);
     expect(second.args).not.toBe(codex.args);
 
-    const custom = serverInvocation("codex", "C:/board-a", "C:/source-a", " release-board ");
+    // Claude Code and OpenCode used to receive process.execPath, the bundled
+    // script and --root/--repo-root here. Same contract for all three now.
+    // Grok and Antigravity are native-plugin hosts (`register.kind: "none"`)
+    // and never reach serverInvocation — connectAgent hands them to
+    // connectNativePlugin before building an invocation — so there is no
+    // fourth or fifth case to assert here.
+    for (const id of ["claude", "opencode"] as const) {
+      const inv = serverInvocation(id);
+      expect(inv).toEqual(portable);
+      expect(JSON.stringify(inv)).not.toMatch(/Users|Kanmer\.exe|kanmer-mcp\.cjs|--root|--repo-root|cwd|ELECTRON_RUN_AS_NODE/);
+    }
+
+    const custom = serverInvocation("claude", " release-board ");
     expect(custom.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+    const hostile = serverInvocation("claude", "team&whoami");
+    expect(hostile.env).toEqual({ KANMER_BOARD_BRANCH: "team&whoami" });
+  });
 
-    const grok = serverInvocation("grok", "C:/board-a", "C:/source-a");
-    expect(grok.command).toBe(process.execPath);
-    expect(grok.args).toContain("C:/board-a");
-    expect(grok.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "kanmer-board" });
-
-    const openAi = serverInvocation("claude", "C:/board-a", "C:/source-a", "team&whoami");
-    expect(openAi.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "team&whoami" });
+  it("keeps the OpenAI tunnel's --mcp-command pinned to the selected roots (FRD-026 R3)", () => {
+    // The tunnel runtime is started by tunnel-client from a cwd Kanmer does not
+    // control and outlives the app, so it must not rely on cwd discovery: a
+    // rootless command there would bind a public tunnel to whatever board the
+    // cwd happens to reach. This is the one caller that keeps the rooted form.
+    const rooted = rootedServerInvocation("C:/board-a", "C:/source-a", " release-board ");
+    expect(rooted.command).toBe(process.execPath);
+    expect(rooted.args.slice(1)).toEqual(["--root", "C:/board-a", "--repo-root", "C:/source-a"]);
+    expect(rooted.args[0]).toMatch(/kanmer-mcp\.cjs$|index\.js$/);
+    expect(rooted.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "release-board" });
+    const colocated = rootedServerInvocation("C:/proj", "C:/proj");
+    expect(colocated.args.slice(1)).toEqual(["--root", "C:/proj"]);
   });
 
   it("runs the fixed probe with explicit argv and bounded Windows options", async () => {
@@ -651,13 +676,11 @@ describe("portable Codex launcher contract (GUI-100)", () => {
       dispatch: false,
     } as AgentProvider);
 
-    const result = await connectAgent("mcp-044" as ProviderId, root, root, {}, " release-board ");
+    const result = await connectAgent("mcp-044" as ProviderId, root, root, { probeRunner: probeOk }, " release-board ");
     expect(result.ok).toBe(true);
     const registration = JSON.parse(await readFile(join(root, ".mcp-044.json"), "utf8"));
-    expect(registration.invocation.env).toEqual({
-      ELECTRON_RUN_AS_NODE: "1",
-      KANMER_BOARD_BRANCH: "release-board",
-    });
+    expect(registration.invocation.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+    expect(registration.invocation.command).toBe("powershell.exe");
   });
 
   it("refreshes only an owned existing registration and preserves other hosts", async () => {
@@ -676,7 +699,8 @@ describe("portable Codex launcher contract (GUI-100)", () => {
 
     expect(result).toMatchObject({ ok: true });
     const registration = JSON.parse(await readFile(join(root, ".mcp.json"), "utf8")) as { mcpServers: Record<string, any> };
-    expect(registration.mcpServers.kanmer.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "release-board" });
+    expect(registration.mcpServers.kanmer.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+    expect(registration.mcpServers.kanmer.command).toBe("powershell.exe");
     expect(registration.mcpServers.other).toEqual({ command: "keep" });
     await expect(readFile(join(other, ".mcp.json"), "utf8")).resolves.toBe(beforeOther);
   });
@@ -714,6 +738,7 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     } as AgentProvider);
 
     const result = await connectAgent("mcp-114" as ProviderId, root, root, {
+      probeRunner: probeOk,
       commandRunner: async () => {
         shellCalled = true;
         return { stdout: "shell", stderr: "" };
@@ -919,7 +944,7 @@ describe("a failed plugin-install command is reported, not swallowed (MCP-013)",
     const cmd = await failingCommand(root, "Failed to add marketplace: Marketplace file not found");
     const id = useProvider("mp-broken", [cmd]);
 
-    const result = await connectAgent(id, root, root);
+    const result = await connectAgent(id, root, root, { probeRunner: probeOk });
 
     expect(result.ok).toBe(false);
     // Settings.tsx renders `command` under "Run this yourself:" with a copy
@@ -940,7 +965,7 @@ describe("a failed plugin-install command is reported, not swallowed (MCP-013)",
     await writeFile(second, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran");\n`);
     const id = useProvider("mp-ordered", [cmd, `node "${second}"`]);
 
-    const result = await connectAgent(id, root, root);
+    const result = await connectAgent(id, root, root, { probeRunner: probeOk });
 
     expect(result.ok).toBe(false);
     // `plugin install <name>@<marketplace>` cannot succeed when the
@@ -953,7 +978,7 @@ describe("a failed plugin-install command is reported, not swallowed (MCP-013)",
     const root = await tempRoot();
     const id = useProvider("mp-ok", [await succeedingCommand(root)]);
 
-    const result = await connectAgent(id, root, root);
+    const result = await connectAgent(id, root, root, { probeRunner: probeOk });
 
     expect(result.ok).toBe(true);
     expect(result.output).toContain("plugin installed");
@@ -963,7 +988,7 @@ describe("a failed plugin-install command is reported, not swallowed (MCP-013)",
     const root = await tempRoot();
     const id = useProvider("mp-agents", [await succeedingCommand(root)]);
 
-    const first = await connectAgent(id, root, root);
+    const first = await connectAgent(id, root, root, { probeRunner: probeOk });
     const agentsPath = join(root, "AGENTS.md");
     const firstAgents = await readFile(agentsPath, "utf8");
 
@@ -971,7 +996,7 @@ describe("a failed plugin-install command is reported, not swallowed (MCP-013)",
     expect(first.output).toContain("AGENTS.md block ensured");
     expect(firstAgents).toContain("kanmer:instructions:start");
 
-    const second = await connectAgent(id, root, root);
+    const second = await connectAgent(id, root, root, { probeRunner: probeOk });
     expect(second.ok).toBe(true);
     await expect(readFile(agentsPath, "utf8")).resolves.toBe(firstAgents);
 
@@ -1045,7 +1070,7 @@ describe("the marketplace command is given the marketplace root (MCP-013)", () =
       dispatch: false,
     } as AgentProvider);
 
-    await connectAgent("mp-root" as ProviderId, root, root);
+    await connectAgent("mp-root" as ProviderId, root, root, { probeRunner: probeOk });
     testProviders.clear();
 
     expect(seen).toEqual([marketplaceRoot()]);
@@ -1087,7 +1112,7 @@ describe("the marketplace command is given the marketplace root (MCP-013)", () =
       dispatch: false,
     } as AgentProvider);
     try {
-      const result = await connectAgent("claude" as ProviderId, root, root, {}, "team&whoami");
+      const result = await connectAgent("claude" as ProviderId, root, root, { probeRunner: probeOk }, "team&whoami");
       expect(result.ok).toBe(true);
       expect(await readFile(observed, "utf8")).toBe("team&whoami");
       expect(seen).toHaveLength(1);
@@ -1247,7 +1272,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const cmd = await noopCommand(root);
     const id = useSyntheticClaude({ commands: (dir) => { seen.push(dir); return [cmd]; } });
 
-    const first = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+    const first = await connectAgent(id, root, root, { probeRunner: probeOk, claudePluginStateDir: await hostStateDir(null, null) });
 
     expect(first.ok).toBe(true);
     // The host is handed the stable root, not a temp directory.
@@ -1267,7 +1292,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     await mkdir(dirname(retired), { recursive: true });
     await writeFile(retired, "retired\n");
 
-    const second = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(stable, null) });
+    const second = await connectAgent(id, root, root, { probeRunner: probeOk, claudePluginStateDir: await hostStateDir(stable, null) });
 
     expect(second.ok).toBe(true);
     // Same path, refreshed — not a second directory.
@@ -1286,7 +1311,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     await writeFile(failing, "process.stderr.write('Failed to add marketplace\\n');\nprocess.exit(1);\n");
     const id = useSyntheticClaude({ commands: () => [`node ${q(failing)}`] });
 
-    const result = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+    const result = await connectAgent(id, root, root, { probeRunner: probeOk, claudePluginStateDir: await hostStateDir(null, null) });
 
     expect(result.ok).toBe(false);
     // A failed Connect must not take the marketplace with it: the previous
@@ -1306,6 +1331,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
       const states: (MarketplaceHostState | undefined)[] = [];
       const id = useSyntheticClaude({ commands: (_dir, state) => { states.push(state); return [cmd]; } });
       const result = await connectAgent(id, root, root, {
+        probeRunner: probeOk,
         claudePluginStateDir: await hostStateDir(marketplacePath, pluginVersion),
       });
       expect(result.ok).toBe(true);
@@ -1336,7 +1362,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const id = useSyntheticClaude({ commands: (_dir, state) => { states.push(state); return [cmd]; } });
 
     // A machine that has never installed a Claude plugin has neither file.
-    const result = await connectAgent(id, root, root, { claudePluginStateDir: join(root, "no-such-dir") });
+    const result = await connectAgent(id, root, root, { probeRunner: probeOk, claudePluginStateDir: join(root, "no-such-dir") });
 
     expect(result.ok).toBe(true);
     expect(states[0]).toEqual({ marketplace: "absent", pluginInstalled: false });
@@ -1404,6 +1430,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
 
     const result = await connectAgent(id, root, root, {
+        probeRunner: probeOk,
       claudePluginStateDir: await hostStateDir(null, "0.3.12"),
       // The exact state of the reported defect: every command exited 0 and the
       // host was still on the previous release.
@@ -1427,6 +1454,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
 
     const result = await connectAgent(id, root, root, {
+        probeRunner: probeOk,
       claudePluginStateDir: await hostStateDir(null, null),
       hostVersionRunner: async () => ({ stdout: pluginList(null), stderr: "" }),
     });
@@ -1442,6 +1470,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
 
     const result = await connectAgent(id, root, root, {
+        probeRunner: probeOk,
       claudePluginStateDir: await hostStateDir(null, null),
       hostVersionRunner: async () => { throw new Error("'claude' is not recognized"); },
     });
@@ -1459,6 +1488,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const id = useSyntheticClaude({ commands: () => [cmd], installedVersion: claudeInstall().installedVersion });
 
     const result = await connectAgent(id, root, root, {
+        probeRunner: probeOk,
       claudePluginStateDir: await hostStateDir(null, null),
       hostVersionRunner: async () => ({ stdout: pluginList(bundled), stderr: "" }),
     });
@@ -1508,7 +1538,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     const removeCommands = claudeInstall().hostRemoveCommands;
     const id = useSyntheticClaude({ commands: () => [cmd], hostRemoveCommands: removeCommands });
 
-    const connected = await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+    const connected = await connectAgent(id, root, root, { probeRunner: probeOk, claudePluginStateDir: await hostStateDir(null, null) });
     expect(connected.ok).toBe(true);
 
     const ran: string[] = [];
@@ -1539,7 +1569,7 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     // codex is such a host: Connect stages nothing durable for it, so there is
     // nothing of its own for disconnect to remove.
     const id = useSyntheticClaude({ commands: () => [cmd] });
-    await connectAgent(id, root, root, { claudePluginStateDir: await hostStateDir(null, null) });
+    await connectAgent(id, root, root, { probeRunner: probeOk, claudePluginStateDir: await hostStateDir(null, null) });
 
     const ran: string[] = [];
     const disconnected = await disconnectAgent(id, root, {
@@ -1549,4 +1579,74 @@ describe("Claude's marketplace is staged where the host can keep reading it (GUI
     expect(disconnected.ok).toBe(true);
     expect(ran).toEqual([]);
   }, 60_000);
+});
+
+describe("every project registration is portable and gitignored (GUI-149)", () => {
+  const forbidden = /Users|Kanmer\.exe|kanmer-mcp\.cjs|--root|--repo-root|ELECTRON_RUN_AS_NODE/;
+  const launcherArgs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"];
+  const probeFails = async () => {
+    throw new Error("exit 65: Kanmer MCP launcher: installation is missing or invalid.");
+  };
+
+  it.each(["claude", "opencode"] as const)("refuses %s before writing anything when the launcher probe fails", async (id) => {
+    const root = await tempRoot();
+    const result = await connectAgent(id, root, root, {
+      probeRunner: probeFails,
+      argvCommandRunner: async () => {
+        throw new Error("the host CLI must not be invoked after a failed probe");
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("No absolute-path fallback was used");
+    await missing(root, ".mcp.json");
+    await missing(root, "opencode.json");
+    await missing(root, ".gitignore");
+  });
+
+  it("writes the portable launcher and appends the registration file and skills directory to a git project's .gitignore once", async () => {
+    const root = await tempRoot();
+    await mkdir(join(root, ".git"));
+    await writeFile(join(root, ".gitignore"), "node_modules/\n");
+
+    const first = await connectAgent("opencode", root, root, { probeRunner: probeOk });
+    expect(first.ok).toBe(true);
+    expect(first.output).toContain("added opencode.json, .opencode/skills/ to .gitignore");
+    const after = await readFile(join(root, ".gitignore"), "utf8");
+    expect(after).toBe("node_modules/\nopencode.json\n.opencode/skills/\n");
+
+    const registration = JSON.parse(await readFile(join(root, "opencode.json"), "utf8")) as { mcp: Record<string, unknown> };
+    expect(registration.mcp.kanmer).toEqual({
+      type: "local",
+      command: ["powershell.exe", ...launcherArgs],
+      environment: { KANMER_BOARD_BRANCH: "kanmer-board" },
+      enabled: true,
+    });
+    expect(JSON.stringify(registration)).not.toMatch(forbidden);
+
+    // Idempotent: a second Connect neither duplicates the rules nor reports them.
+    const second = await connectAgent("opencode", root, root, { probeRunner: probeOk });
+    expect(second.ok).toBe(true);
+    expect(second.output).not.toContain(".gitignore");
+    await expect(readFile(join(root, ".gitignore"), "utf8")).resolves.toBe(after);
+  });
+
+  it("leaves a project that is not a git checkout without a .gitignore", async () => {
+    const root = await tempRoot();
+    const result = await connectAgent("opencode", root, root, { probeRunner: probeOk });
+    expect(result.ok).toBe(true);
+    await missing(root, ".gitignore");
+  });
+
+  it("gitignores on the branch-change reconcile path as well", async () => {
+    const root = await tempRoot();
+    await mkdir(join(root, ".git"));
+    await writeFile(join(root, "opencode.json"), JSON.stringify({ mcp: { kanmer: { type: "local", command: ["old"] } } }));
+    const result = await reconcileProviderRegistration("opencode", root, root, "release-board");
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("added opencode.json, .opencode/skills/ to .gitignore");
+    await expect(readFile(join(root, ".gitignore"), "utf8")).resolves.toBe("opencode.json\n.opencode/skills/\n");
+    const registration = JSON.parse(await readFile(join(root, "opencode.json"), "utf8")) as { mcp: Record<string, any> };
+    expect(registration.mcp.kanmer.command).toEqual(["powershell.exe", ...launcherArgs]);
+    expect(registration.mcp.kanmer.environment).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+  });
 });

@@ -5,7 +5,7 @@ import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, rmdir, writeFile } f
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
-import { CURRENT_FORMAT } from "@kanmer/core";
+import { CURRENT_FORMAT, discoverBoardRoot } from "@kanmer/core";
 import {
   formatSkillsStamp,
   isNewerVersion,
@@ -18,8 +18,9 @@ import {
   type ProviderId,
   antigravityBindingNote,
   antigravityPortableInvocation,
-  codexPortableInvocation,
-  codexPortableProbeInvocation,
+  connectIgnoreEntries,
+  portableLauncherInvocation,
+  portableLauncherProbeInvocation,
   DEFAULT_BOARD_BRANCH,
   codexTrustFromConfig,
   codexTrustNote,
@@ -38,6 +39,7 @@ import {
   type MarketplaceVersionCheck,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
+import { ensureIgnore } from "./gitIgnore.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 
 const execAsync = promisify(exec);
@@ -66,15 +68,16 @@ export interface ConnectResult {
 }
 
 /**
- * Preflight the installer-owned launcher before Codex Connect touches any
- * project config or legacy registration. The runner is injectable for unit
- * tests; production uses explicit execFile argv with no shell concatenation.
+ * Preflight the installer-owned launcher before any project registration
+ * (Codex, Claude Code, OpenCode) touches a project config or legacy
+ * registration. The runner is injectable for unit tests; production uses
+ * explicit execFile argv with no shell concatenation.
  */
-export async function probeCodexLauncher(
+export async function probeLauncher(
   projectRoot: string,
   run: CodexProbeRunner = execFileAsync,
 ): Promise<ConnectResult> {
-  const invocation = codexPortableProbeInvocation();
+  const invocation = portableLauncherProbeInvocation();
   // Keep the fallback directly pasteable in PowerShell. The command is sent as
   // ordinary argv, the same way Codex starts the registered server.
   // A double-quoted PowerShell argument expands `$env:*`, `$LASTEXITCODE`, and
@@ -100,18 +103,51 @@ export async function probeCodexLauncher(
       ok: false,
       command,
       output:
-        `Kanmer launcher probe failed before changing Codex configuration: ${detail} ` +
+        `Kanmer launcher probe failed before changing any host configuration: ${detail} ` +
         "Repair or reinstall Kanmer, then retry Connect. No absolute-path fallback was used.",
     };
   }
 }
 
+/** @deprecated Pre-GUI-149 name; the probe gates every project registration. */
+export const probeCodexLauncher = probeLauncher;
+
 /**
- * How the installed Electron binary launches the MCP server for non-Codex
- * providers: Electron-as-Node, with the selected board and optional source
- * root pinned exactly as before GUI-100.
+ * The server invocation every project registration writes.
+ *
+ * One contract for Codex, Claude Code and OpenCode: the installer-owned
+ * launcher resolved from `LOCALAPPDATA` on the destination machine, with the
+ * project's board branch as the only variable. Until GUI-149 the two JSON
+ * hosts still received `process.execPath`, the bundled script path, `--root`
+ * and `--repo-root` — four absolute paths that went stale on a reinstall,
+ * bypassed the versioned runtime the launcher prefers, and made `.mcp.json`
+ * and `opencode.json` unshareable. The board and repo roots are discovered by
+ * the server from the host's working directory instead (ADR-0012), which is
+ * what the Codex registration has relied on since GUI-100.
+ *
+ * There are deliberately no root parameters: a caller that needs a board pinned
+ * by path is not writing a project registration and must say so by calling
+ * `rootedServerInvocation` instead (the OpenAI tunnel does — see below). The
+ * first cut of GUI-149 kept the old `(id, boardRoot, sourceRoot, branch)`
+ * signature "so callers need not change", which silently handed the tunnel a
+ * rootless command; the type system cannot catch a parameter that is accepted
+ * and ignored, so the parameter is gone.
  */
-function installedElectronInvocation(
+export function serverInvocation(id: ProviderId, boardBranch = DEFAULT_BOARD_BRANCH): Invocation {
+  void id; // every project-registration host shares the contract; kept for call-site readability
+  return portableLauncherInvocation(boardBranch.trim() || DEFAULT_BOARD_BRANCH);
+}
+
+/**
+ * The Electron-as-Node invocation pinned to an explicit board (and, when it
+ * differs, repository) root — what FRD-026 R3 requires for the OpenAI tunnel's
+ * `--mcp-command`. The tunnel runtime outlives the app and is started by
+ * `tunnel-client` from a cwd Kanmer does not control, so cwd discovery (which
+ * the project registrations rely on) is exactly what it must **not** do:
+ * a public tunnel bound to "whatever board the cwd reaches" would be a
+ * cross-project leak. Not used by any Connect registration since GUI-149.
+ */
+export function rootedServerInvocation(
   boardRoot: string,
   sourceRoot: string,
   boardBranch = DEFAULT_BOARD_BRANCH,
@@ -136,17 +172,45 @@ function installedElectronInvocation(
   return { command: process.execPath, args, env };
 }
 
-/** Select the portable Codex contract without changing any other provider. */
-export function serverInvocation(
-  id: ProviderId,
-  boardRoot: string,
-  sourceRoot: string,
-  boardBranch = DEFAULT_BOARD_BRANCH,
-): Invocation {
-  const normalizedBranch = boardBranch.trim() || DEFAULT_BOARD_BRANCH;
-  return id === "codex"
-    ? codexPortableInvocation(normalizedBranch)
-    : installedElectronInvocation(boardRoot, sourceRoot, normalizedBranch);
+/**
+ * The portable registration finds the board by ADR-0012 discovery from the
+ * project directory, so a board that discovery cannot reach from there —
+ * attached somewhere other than `<project>/.worktrees/kanmer` or colocated —
+ * will not be found by the host. Connect still writes the registration (the
+ * user may be about to move the board, and Codex has behaved this way since
+ * GUI-100) but says so in its output instead of reporting a clean success.
+ */
+function discoverabilityNote(projectRoot: string, boardRoot: string): string | null {
+  const found = discoverBoardRoot(projectRoot);
+  if (found.found && samePath(found.root, boardRoot)) return null;
+  const seen = found.found ? `discovery from the project directory finds ${found.root} instead` : "discovery from the project directory finds no board";
+  return (
+    `Warning: this board (${boardRoot}) is not discoverable from ${projectRoot} — ${seen}. ` +
+    "The host starts the server in the project directory, so keep the board colocated or under .worktrees/kanmer for it to be found."
+  );
+}
+
+/**
+ * Keep the files Connect writes out of the project's history (FRD-012 R1c).
+ *
+ * Appends the provider's registration file and copied-skills directory to the
+ * project's own `.gitignore`, the same way the board machinery already adds
+ * `.kanmer/` and `.worktrees/`. Only for a project that is a git checkout, and
+ * best-effort: the registration has already succeeded, so a `.gitignore` that
+ * cannot be written is reported in the Connect output, never as a failure.
+ * Disconnect leaves the lines in place — they are harmless, and removing lines
+ * from a user's `.gitignore` is outside "what connect wrote" (R4).
+ */
+async function ensureConnectIgnore(provider: AgentProvider, projectRoot: string): Promise<string | null> {
+  const entries = connectIgnoreEntries(provider);
+  if (entries.length === 0 || !existsSync(join(projectRoot, ".git"))) return null;
+  try {
+    const appended = await ensureIgnore(join(projectRoot, ".gitignore"), entries);
+    return appended.length > 0 ? `added ${appended.join(", ")} to .gitignore` : null;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return `could not update .gitignore (${detail}); add ${entries.join(", ")} to it yourself`;
+  }
 }
 
 /**
@@ -593,10 +657,16 @@ export async function reconcileProviderRegistration(
         output: `${id} registration is present but has no provider-owned refresh path; reconnect it manually. No file was changed.`,
       };
     }
-    const invocation = serverInvocation(id, boardRoot, projectRoot, normalizeBoardBranch(boardBranch));
+    void boardRoot; // the portable registration carries no root; discovery from the project directory finds the board
+    const invocation = serverInvocation(id, normalizeBoardBranch(boardBranch));
     const next = merge(existing, invocation);
     if (next !== existing) await writeAtomic(path, next);
-    return { ok: true, command, output: `${id} registration refreshed for board branch ${normalizeBoardBranch(boardBranch)}.` };
+    const ignoreNote = await ensureConnectIgnore(provider, projectRoot);
+    return {
+      ok: true,
+      command,
+      output: `${id} registration refreshed for board branch ${normalizeBoardBranch(boardBranch)}.${ignoreNote ? ` ${ignoreNote}.` : ""}`,
+    };
   } catch (error) {
     return { ok: false, command, output: error instanceof Error ? error.message : String(error) };
   }
@@ -1335,12 +1405,13 @@ export async function connectAgent(
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options, boardBranch);
-  const inv = serverInvocation(id, boardRoot, projectRoot, boardBranch);
+  const inv = serverInvocation(id, boardBranch);
   try {
-    if (id === "codex") {
-      const probe = await probeCodexLauncher(projectRoot, options.probeRunner);
-      if (!probe.ok) return probe;
-    }
+    // Every project registration names the installer-owned launcher, so a
+    // missing or broken launcher must fail here — before any file is written
+    // — for all three hosts, not only Codex (GUI-149).
+    const probe = await probeLauncher(projectRoot, options.probeRunner);
+    if (!probe.ok) return probe;
     let command: string;
     let output: string;
     if (provider.register.kind === "cli") {
@@ -1353,6 +1424,12 @@ export async function connectAgent(
         ? await (options.argvCommandRunner ?? defaultNativeCommandRunner)(argv.file, argv.args, projectRoot)
         : await execAsync(command, { cwd: projectRoot });
       output = (stdout || stderr || "Registered.").trim();
+      // Claude Code approves project-scoped servers per project, and a changed
+      // command may be treated as a new server. Say so rather than letting
+      // "Pending approval" in `claude mcp list` read as a failed Connect.
+      if (id === "claude") {
+        output += " Claude Code may ask you to approve this project's kanmer server on its next start.";
+      }
     } else if (provider.register.kind === "configFile") {
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       const existing = existsSync(path) ? await readFile(path, "utf8") : null;
@@ -1385,6 +1462,10 @@ export async function connectAgent(
     } else {
       throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);
     }
+    const ignoreNote = await ensureConnectIgnore(provider, projectRoot);
+    if (ignoreNote) output += ` ${ignoreNote}.`;
+    const reachNote = discoverabilityNote(projectRoot, boardRoot);
+    if (reachNote) output += ` ${reachNote}`;
     const skills = await installSkills(provider, projectRoot, boardBranch, options).catch(
       (e): SkillsInstallOutcome => ({
         note: "",

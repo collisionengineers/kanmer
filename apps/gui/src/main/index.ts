@@ -102,7 +102,7 @@ import {
   skillsStatus,
   updateSkills,
   bundledSkillsRoot,
-  serverInvocation,
+  rootedServerInvocation,
   type ConnectTarget,
 } from "./connect.js";
 import { listProviders } from "./providers.js";
@@ -1557,7 +1557,8 @@ app.whenReady().then(async () => {
   openAITunnel = new OpenAITunnelManager(
     app.getPath("userData"),
     undefined,
-    (roots) => serverInvocation("claude", roots.boardRoot, roots.repoRoot, readSettings().kanmerBranch),
+    // The tunnel keeps the rooted Electron invocation (FRD-026 R3); project registrations do not (GUI-149).
+    (roots) => rootedServerInvocation(roots.boardRoot, roots.repoRoot, readSettings().kanmerBranch),
   );
   openAITunnel.subscribe((status) => mainWindow?.webContents.send(CH.openAITunnelStatus, status));
   registerIpc();

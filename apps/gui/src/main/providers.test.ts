@@ -9,6 +9,9 @@ import {
   classifyLegacyCodexEntry,
   codexPortableInvocation,
   codexPortableProbeInvocation,
+  connectIgnoreEntries,
+  portableLauncherInvocation,
+  type AgentProvider,
   normalizeBoardBranch,
   dispatchableProviders,
   codexServerName,
@@ -879,5 +882,61 @@ describe("marketplace references match the manifests that define them (MCP-013)"
     // `codex plugin add kanmer@kanmer` looks right and installs nothing.
     expect(matches(commandsFor("claude").join("\n"), codex.plugin, codex.marketplace)).toBe(false);
     expect(matches("codex plugin add kanmer@kanmer", codex.plugin, codex.marketplace)).toBe(false);
+  });
+});
+
+describe("every project registration is portable and gitignored (GUI-149)", () => {
+  const forbidden = /Users|Kanmer\.exe|kanmer-mcp\.cjs|--root|--repo-root|cwd|ELECTRON_RUN_AS_NODE/;
+  const launcherArgs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"];
+
+  it("Claude's mcp add argv and refresh merge carry only the launcher and the branch", () => {
+    const reg = providerById("claude")!.register as Extract<AgentProvider["register"], { kind: "cli" }>;
+    const inv = portableLauncherInvocation("release-board");
+    const argv = reg.addArgv!(inv, "C:/Users/me/proj");
+    expect(argv).toEqual({
+      file: "claude",
+      args: ["mcp", "add", "kanmer", "-s", "project", "-e", "KANMER_BOARD_BRANCH=release-board", "--", "powershell.exe", ...launcherArgs],
+    });
+    expect(JSON.stringify(argv.args)).not.toMatch(forbidden);
+    // The branch-change reconcile path writes .mcp.json through this merge and
+    // must land on the same shape the CLI does.
+    const merged = JSON.parse(reg.merge!(null, inv)) as { mcpServers: Record<string, unknown> };
+    expect(merged.mcpServers.kanmer).toEqual({
+      command: "powershell.exe",
+      args: launcherArgs,
+      env: { KANMER_BOARD_BRANCH: "release-board" },
+    });
+    expect(JSON.stringify(merged)).not.toMatch(forbidden);
+  });
+
+  it("OpenCode's merge carries only the launcher and the branch", () => {
+    const reg = providerById("opencode")!.register as Extract<AgentProvider["register"], { kind: "configFile" }>;
+    const merged = JSON.parse(reg.merge(null, portableLauncherInvocation("release-board"))) as { mcp: Record<string, unknown> };
+    expect(merged.mcp.kanmer).toEqual({
+      type: "local",
+      command: ["powershell.exe", ...launcherArgs],
+      environment: { KANMER_BOARD_BRANCH: "release-board" },
+      enabled: true,
+    });
+    expect(JSON.stringify(merged)).not.toMatch(forbidden);
+  });
+
+  it("derives the .gitignore entries from each provider's spec, nothing for native-plugin hosts", () => {
+    const entries = Object.fromEntries(PROVIDERS.map((p) => [p.id, connectIgnoreEntries(p)]));
+    expect(entries).toEqual({
+      codex: [".codex/config.toml"],
+      claude: [".mcp.json"],
+      opencode: ["opencode.json", ".opencode/skills/"],
+      grok: [],
+      antigravity: [],
+    });
+  });
+
+  it("every derived entry is already a rule in this repo's own .gitignore (this repo is itself a Connect target)", () => {
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+    const lines = fs.readFileSync(path.join(repoRoot, ".gitignore"), "utf8").split(/\r?\n/).map((line) => line.trim());
+    for (const provider of PROVIDERS) {
+      for (const entry of connectIgnoreEntries(provider)) expect(lines).toContain(entry);
+    }
   });
 });

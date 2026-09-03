@@ -1,10 +1,14 @@
 import { execFile as execFileCallback } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { appendFile, cp, lstat, mkdir, readFile, readlink, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readlink, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { liveBoardBranchError, liveBoardBranchMatches } from "./syncBranch.js";
+import { ensureIgnore, ignoreEntriesToAppend } from "./gitIgnore.js";
+
+// Re-exported for the existing test surface; the implementation moved to gitIgnore.ts (GUI-149).
+export { ignoreEntriesToAppend };
 import type { NativeReconnectRequirement } from "../shared/ipc.js";
 import { removeTreeWithRetry, withExclusiveFileLock } from "@kanmer/core";
 
@@ -371,36 +375,6 @@ export async function renameBoardBranch(boardRoot: string, to: string): Promise<
     }
   }
   return { ok: true, from, error: null };
-}
-
-export function ignoreEntriesToAppend(before: string, entries: string[]): string[] {
-  const lines = before.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
-  // Append-only is the compare-and-swap boundary: existing lines are never
-  // rewritten from a stale snapshot. A managed rule is needed when absent or
-  // when a later negation may have made its earlier copy ineffective.
-  return entries.filter((entry) => {
-    const last = lines.lastIndexOf(entry);
-    return last < 0 || lines.slice(last + 1).some((line) => line.startsWith("!"));
-  });
-}
-
-async function ensureIgnore(file: string, entries: string[]): Promise<void> {
-  let stat;
-  try {
-    stat = await lstat(file);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-  if (stat?.isSymbolicLink()) throw new Error(`Refusing symlinked board ignore path: ${file}`);
-  const before = stat ? await readFile(file, "utf8") : "";
-  const append = ignoreEntriesToAppend(before, entries);
-  if (append.length === 0) return;
-  // O_APPEND makes the merge one kernel append operation. Any concurrent
-  // human/process lines remain in place, including edits made in the old
-  // compare/write window; the next reconciliation can append again if a new
-  // negation arrives after these managed rules.
-  const prefix = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
-  await appendFile(file, `${prefix}${append.join("\n")}\n`, { encoding: "utf8", flag: "a" });
 }
 
 async function ensureBoardWorktreeIgnore(boardRoot: string): Promise<void> {

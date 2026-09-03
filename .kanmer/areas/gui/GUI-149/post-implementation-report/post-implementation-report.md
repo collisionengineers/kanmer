@@ -32,3 +32,13 @@ Branch `GUI-149-portable-registrations` (worktree `.worktrees/gui-149`), based o
 
 ## Result
 `npm run verify` exit 0 on run 5 (2026-09-03, `TMP`/`TEMP` = `C:\kt-tmp`; plugin-sync OK, 41 tools, bundle bytes match). Commit `55c572cd` on `GUI-149-portable-registrations`; PR recorded in the ticket's `prs[]`.
+
+## Remediation after review (needs-changes on 55c572cd)
+Review record `scratch/review` v`95f312e0f1bb90b7` found one blocker and five minors/nits. Fixed on the same branch in one commit:
+- **F-001 (blocker)** — `serverInvocation` also produced the OpenAI tunnel's `--mcp-command` (`index.ts` → `openaiTunnel.ts`), so the tunnel lost its rooted Electron invocation (FRD-026 R3). Restored as `rootedServerInvocation(boardRoot, sourceRoot, branch)` in `connect.ts`, used only by the tunnel factory in `index.ts`; test "keeps the OpenAI tunnel's --mcp-command pinned to the selected roots (FRD-026 R3)". `index.ts` is therefore modified (one line + comment) although the plan listed it under Do-not-modify — the plan's premise ("signature preserved so no caller changes") was what hid the defect.
+- **F-003 (minor)** — `serverInvocation(id, boardBranch)` no longer accepts the roots it ignored; callers updated.
+- **F-002 (minor)** — FRD-012 R1e now states the discoverability precondition; Connect appends a warning to its output when ADR-0012 discovery from the project directory does not resolve to the selected board (no failure: Codex has behaved this way since GUI-100 and the user may be about to move the board).
+- **F-004 (minor)** — `isLegacyLauncherDescriptor` examines both `mcpServers` and `mcp`; two unit cases added.
+- **F-005 (nit)** — comment in the GUI-100 test records why grok/antigravity have no case.
+- **F-006 (nit)** — accepted as-is: the note names what was appended to `.gitignore`; whether the file is already tracked is the user's call.
+Plugin bundle regenerated again (core changed). Tests after remediation: GUI 214 passed across providers/connect/index.sync/openaiTunnel/kanmerGit; core staleness 56 passed. `npm run verify` run 6: see the line appended below.

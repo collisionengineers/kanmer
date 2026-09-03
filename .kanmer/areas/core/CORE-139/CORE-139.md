@@ -13,16 +13,6 @@ stageEntered:
   review: '2026-09-03T19:20:27.331Z'
   verifying: '2026-09-03T19:49:39.206Z'
   done: '2026-09-03T23:15:09.230Z'
-taken_at: '2026-09-03T19:03:47.705Z'
-branch: CORE-139-ci-storm-shipped-artefacts
-worktree: .worktrees/core-139
-claim_expires_at: '2026-09-03T23:44:38.287Z'
-claim_controller: claude-code
-lease_id: ed6b3b3a-2d1c-4f26-be8a-6d5a7a26d69e
-lease_revision: 10
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-139'
-lease_phase: verifying
-lease_heartbeat_at: '2026-09-03T23:14:38.287Z'
 labels:
   - ci
   - skills
@@ -40,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/314'
 archived: false
 created: '2026-09-03T18:59:42.801Z'
-updated: '2026-09-03T23:15:09.230Z'
+updated: '2026-09-03T23:15:36.919Z'
 ---
 
 ## What
@@ -76,3 +66,5 @@ Out of scope (0.4.2): a staleness row for the operator-installed board-regate co
 - [ ] `npm run verify` green.
 
 ## Outcome
+
+Shipped in PR #314, squash-merged into main at 4d00fbfc on 2026-09-03 (head bb773f14 after a rebase; reviewer F-001 accepted-risk: `cancel-in-progress` should also exclude `edited` events, for 0.4.2). Proof PASS at the merge SHA; live: dispatch 33798758534 ran only regate. Operator step outstanding: re-copy `.github/workflows/board-regate.yml` onto kanmer-board.

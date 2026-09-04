@@ -15,13 +15,13 @@ stageEntered:
 taken_at: '2026-09-03T23:56:32.479Z'
 branch: CORE-119-golden-board-evaluations
 worktree: .worktrees/core-119
-claim_expires_at: '2026-09-04T06:35:53.375Z'
+claim_expires_at: '2026-09-04T06:45:56.062Z'
 claim_controller: claude-code
 lease_id: 3088fc60-11fb-4a10-8f47-52fea2d29ab6
-lease_revision: 26
+lease_revision: 27
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-119'
-lease_phase: review
-lease_heartbeat_at: '2026-09-04T06:05:53.375Z'
+lease_phase: verifying
+lease_heartbeat_at: '2026-09-04T06:15:56.061Z'
 labels:
   - reliable-autonomy
 groups:
@@ -34,7 +34,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/318'
 archived: false
 created: '2026-08-26T21:02:42.079Z'
-updated: '2026-09-04T06:12:52.188Z'
+updated: '2026-09-04T06:15:56.061Z'
 ---
 
 ## What

@@ -2,10 +2,12 @@
 id: CORE-137
 type: ticket
 title: Publish and validate v0.4.1 and promote it as the live control plane
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-09-04T00:44:04.889Z'
 labels:
   - release
   - v0.4.1
@@ -18,7 +20,7 @@ refs:
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-09-02T00:47:51.076Z'
-updated: '2026-09-02T00:47:51.076Z'
+updated: '2026-09-04T00:44:04.889Z'
 ---
 
 ## Why

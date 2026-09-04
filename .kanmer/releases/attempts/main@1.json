@@ -11,7 +11,7 @@
   "created_at": "2026-09-04T07:14:34.341Z",
   "owner": "kt",
   "supersedes": null,
-  "release_tag": null,
+  "release_tag": "v0.4.1",
   "included_prs": [
     "310",
     "311",
@@ -36,11 +36,16 @@
     "CORE-119",
     "CORE-137"
   ],
-  "artifact_manifest": [],
-  "verification_state": "pending",
+  "artifact_manifest": [
+    "kanmer-0.4.1.mcpb sha256:81d5ca4839458f7714547c1910244800fbcf9e103b2daad4a3da188289028ee1",
+    "Kanmer-Setup-0.4.1.exe sha256:b9f41e928f58dc9fa4310721b8cf33f482b47e1337e1c1413da35ab06ca44ed2",
+    "Kanmer-Setup-0.4.1.exe.blockmap sha256:4471fe9922edc9b6b9e104bf191131c745791ad6504015ba1b6df2615b323093",
+    "latest.yml sha256:597836bc285097474d0194d25b8161648753c5decdd9d5d06bc50e9f429ba974"
+  ],
+  "verification_state": "passed",
   "retry": null,
-  "outcome": "active",
-  "terminal_at": null,
+  "outcome": "released",
+  "terminal_at": "2026-09-04T11:37:26.496Z",
   "successor": null,
   "failure_reason": null
 }

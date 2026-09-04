@@ -155,3 +155,11 @@ Build candidate code on ordinary ticket/batch workspaces and copied/disposable b
 ## Definition of done
 
 All HZN-008 members are terminal with exact-SHA proof where applicable; required CI/gates are green; golden scenarios pass; no selected ticket is unexplained in Review/Verifying or has an unresolved lease; the release-channel lease is clear; stable promotion/rollback is evidenced.
+
+## Closure and run ledger — v0.4.1 (2026-09-04)
+
+- **Run:** [[CORE-137]] executed the protected v0.4.1 release path from cut-point `04a977516fcb29500b5df2fd6aacea24e2e3d54e`; independently reviewed PR #319 merged as `4e94ad806d5f74dbfdc9b0789190624addf4cbdd`.
+- **Release:** public latest `v0.4.1` contains the four coherent updater/plugin assets. Tag workflow 33865938392 and independent remote-asset verification passed. Live attempt `main@1` is terminal `released`, verification `passed`, and the `main` channel has no lease.
+- **Promotion:** packaged/copy smoke, full copied-board workflow, fresh Claude Code full-payload check, Claude marketplace fault/recovery, three-host portable Connect idempotence, setup reconciliation, Pegasus documentation CI, retained-0.4.0 rollback and final 0.4.1 cut-over all passed. The immutable ticket proof retains every failed/inconclusive attempt and the later remedy.
+- **Live authority:** installed packaged server 0.4.1 generation `0.4.1-7432`, SHA-256 `3f7af329d5e634f4d90cf4aa65cea53f72c1b92117e5307329a9bd31d63c9d90`, serves logical project `dc201ffe-56fa-40b3-aa27-3a01b371c7db` at fingerprint `kanmer-proj-v1:5dbaab312733032858ad528e48eeaa4221b4356f9b7899d892540d964c10b268`.
+- **Definition of done:** all selected HZN-008 members are terminal with exact-SHA evidence where applicable; the golden contract evaluates PASS; no selected ticket remains in Review or Verifying; CORE-137 is Done with `production-verified` delivery; its claim is retained only until workspace cleanup; the release-channel lease is clear. HZN-008 is closed by v0.4.1.

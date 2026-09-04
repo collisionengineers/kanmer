@@ -2,7 +2,7 @@
 id: CORE-137
 type: ticket
 title: Publish and validate v0.4.1 and promote it as the live control plane
-status: verifying
+status: done
 area: core
 assignee: kt
 profile: chore
@@ -11,18 +11,8 @@ stageEntered:
   review: '2026-09-04T07:42:45.128Z'
   implementing: '2026-09-04T07:54:51.870Z'
   verifying: '2026-09-04T09:58:39.193Z'
-taken_at: '2026-09-04T07:16:07.241Z'
-branch: release/v0.4.1
-worktree: 'C:/Users/Alex/Documents/GitHub/kanmer-release-0.4.1'
-claim_expires_at: '2026-09-04T12:59:04.589Z'
-claim_controller: kt
+  done: '2026-09-04T11:42:51.567Z'
 review_round: 1
-lease_id: 794c896f-2c6a-43fd-ab2b-12dfd4ec01f4
-lease_revision: 31
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer-release-0.4.1'
-lease_provider: claude-code
-lease_phase: running-command
-lease_heartbeat_at: '2026-09-04T10:59:04.589Z'
 labels:
   - release
   - v0.4.1
@@ -34,24 +24,32 @@ refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 commits:
-  - 4fd6998aa75078b4f25baa8da3b8329500a5ee8b
-  - 6637239d2af844f9fae4c59bc572ec6535341509
-  - daaf95fa234cc0ce87cd5dd83d556cad6610fdfc
+  - 4e94ad806d5f74dbfdc9b0789190624addf4cbdd
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/319'
+delivery_state: production-verified
+delivery_branch: main
+delivery_sha: 4e94ad806d5f74dbfdc9b0789190624addf4cbdd
+delivery_release_branch: main
+delivery_release_tag: v0.4.1
+delivery_recorded_at: '2026-09-04T11:42:27.338Z'
 archived: false
 created: '2026-09-02T00:47:51.076Z'
-updated: '2026-09-04T10:59:04.589Z'
+updated: '2026-09-04T11:49:44.025Z'
 ---
 
 ## Why
-v0.4.1 closes [[HZN-008]]: it ships [[MCP-055]] (structuredContent carries the whole result — the 0.4.0 regression that blinds Claude Code), [[SKILL-039]] (anti-churn amendment in skills and core), [[CORE-133]] (reconciliation classifier recovers missing/unrecorded workspaces) and [[CORE-119]] (golden boards and promotion/rollback proof), plus [[GUI-147]] if it is merged before the cut. Release and remediation work ship no new features.
+v0.4.1 closes [[HZN-008]]: it ships [[MCP-055]] (structuredContent carries the whole result — the 0.4.0 regression that blinds Claude Code), [[SKILL-039]] (anti-churn amendment in skills and core), [[CORE-133]] (reconciliation classifier recovers missing/unrecorded workspaces) and [[CORE-119]] (golden boards and promotion/rollback proof), plus [[GUI-147]]. Release and remediation work shipped no new features.
 
 ## Outcome
-Same shape as [[CORE-136]] (its `plan/plan.md` is the template, copied with these deltas): version 0.4.1; base = `origin/main` after CORE-119 merges; `## 0.4.1` section in `apps/gui/release-notes.md` grouped by outcome (Fixed / Skills and policy / Proof); rollback installer `KanmerBackups\installers\0.4.0`; acquire the live `release_channel` for `main` before prepare and `complete` it after publish (0.4.0 only rehearsed the channel on a copied board; the horizon's Definition of done needs the lease clear on the live board); promotion acceptance adds (a) a Claude Code session shows the full `get_status` payload, (b) `claude plugin list` reports kanmer 0.4.1 after Connect (or after the manual marketplace repair recorded in GUI-147), (c) `kanmer-setup` + `npm run verify:agents-block` green.
+v0.4.1 is published as the public latest release and installed as the live control plane. PR https://github.com/collisionengineers/kanmer/pull/319 merged at 2026-09-04T09:58:23Z as `4e94ad806d5f74dbfdc9b0789190624addf4cbdd`; the ticket records production-verified delivery on `main` at tag `v0.4.1`.
 
-## Cut point (all must be true)
-MCP-055, SKILL-039, CORE-133, CORE-119 Done with exact-SHA proofs; GUI-147 Done or explicitly deferred to 0.4.2; nothing in Implementing/Review; `counts.taken` 0; only `.worktrees/kanmer` exists; board pushed (`boardSync.ahead` 0); hosted `verify` green at the `origin/main` tip; fresh clone `npm run verify` green; GUI-141 and MCP-052 decisions recorded (done 2026-09-02).
+The exact-merge rail, public asset coherence, tag workflow, packaged and copied-board acceptance, fresh Claude full-payload check, portable Connect matrix, setup reconciliation, rollback to 0.4.0 and final 0.4.1 cut-over all passed. Live release attempt `main@1` is terminal released with verification passed and four asset digests; its channel lease is clear. HZN-008 records this ticket as its closer.
+
+Residual observation, not a release blocker: Claude Code 2.1.260 removes the installed plugin while removing a marketplace, so the first deliberately induced cache-miss repair pass stopped at a redundant uninstall. It remained visibly failed and the next Connect restored enabled 0.4.1 with no host error. The failed and successful attempts remain in proof; no new release feature or compatibility path was added.
+
+## Cut point
+MCP-055, GUI-147, SKILL-039, GUI-149, CORE-139, MCP-056, CORE-133, GUI-150 and CORE-119 were Done with exact-SHA proof; the board was pushed and quiescent; hosted and fresh-clone verification were green at cut-point `04a977516fcb29500b5df2fd6aacea24e2e3d54e`.
 
 ## Verification
-Proof at the release merge SHA: `gh release view v0.4.1` public with four assets, `verify-release-assets --remote-coherent` PASS, tag `release-verify` run success, installed `get_status.server.version == 0.4.1` on the live board, copied-board smoke, rollback rehearsal to 0.4.0 and back, Claude Code full-payload observation, `claude plugin list` 0.4.1.
+See `proof/proof.md` for the chronological proof bound to merge SHA `4e94ad806d5f74dbfdc9b0789190624addf4cbdd` and `scratch/promotion.md` for the full operator transcript.

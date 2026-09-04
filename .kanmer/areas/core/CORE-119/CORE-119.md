@@ -4,12 +4,13 @@ type: ticket
 title: >-
   Build golden-board evaluations and stable-to-candidate promotion rollback
   proof
-status: implementing
+status: review
 area: core
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-09-02T00:47:16.030Z'
+  review: '2026-09-04T05:48:33.274Z'
 taken_at: '2026-09-03T23:56:32.479Z'
 branch: CORE-119-golden-board-evaluations
 worktree: .worktrees/core-119
@@ -28,9 +29,11 @@ links: []
 refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/318'
 archived: false
 created: '2026-08-26T21:02:42.079Z'
-updated: '2026-09-04T05:45:49.349Z'
+updated: '2026-09-04T05:48:33.274Z'
 ---
 
 ## What

@@ -6,7 +6,7 @@ verdict: pass
 reviewer: "codex-independent-release-reviewer"
 independent: true
 plan_hash: "3ea6ccf2aff79ea3"
-ticket_updated: "2026-09-04T09:43:48.006Z"
+ticket_updated: "2026-09-04T09:49:17.467Z"
 board_sha: "1093dc4838e53a04733329d6d51492d274e42302"
 expected_reviewers:
   - "codex-independent-release-reviewer"
@@ -81,7 +81,7 @@ F-004 through F-010 retain the previous accepted-risk dispositions. The remediat
 
 ## Evidence
 
-- Plan binding: 3ea6ccf2aff79ea3; ticket timestamp: 2026-09-04T09:43:48.006Z; pushed board reviewed at 1093dc4838e53a04733329d6d51492d274e42302.
+- Plan binding: 3ea6ccf2aff79ea3; ticket timestamp: 2026-09-04T09:49:17.467Z; pushed board reviewed at 1093dc4838e53a04733329d6d51492d274e42302.
 - git diff 6637239d..daaf95fa confirms the remediation is one release-notes-only commit; the complete PR stays at nine planned files and git diff --check exits 0.
 - Independent npm run plugin:check exits 0: 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests are v0.4.1, and the isolated handshake lists 41 tools.
 - Hosted verify at the exact head passed in run 33858904027.

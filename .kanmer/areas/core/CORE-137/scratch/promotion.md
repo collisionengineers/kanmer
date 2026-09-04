@@ -25,3 +25,11 @@ Every step of the plan with its command, exit code and evidence. Appended as the
 ## Step 2 — live release channel
 
 `release_channel acquire` (installed 0.4.0 server, live board): channel `main`, attempt `main@1`, `integration_sha` `04a977516fcb29500b5df2fd6aacea24e2e3d54e`, lease `9e315210-4663-4de9-a3c0-ceb39427c2ab` (renewed every 10 min by a keeper process; revision tracked in `C:kt-tmpcore137channel.json`).
+
+## Step 3 — fresh release clone
+
+`git clone https://github.com/collisionengineers/kanmer.git C:\Users\Alex\Documents\GitHub\kanmer-release-0.4.1` exit 0; HEAD `04a977516fcb29500b5df2fd6aacea24e2e3d54e` (equals the acquired `integration_sha`); `git status --porcelain` empty; `npm ci` exit 0 (`C:\kt-tmp\core137\clone.log`).
+
+## Step 4 — release notes
+
+`## 0.4.1` inserted above `## 0.4.0` in `apps/gui/release-notes.md` (Fixed / Skills and policy / Proof / upgrading paragraph; each bullet checked against the merged ticket's post-implementation report, CORE-119's bullet rewritten from its merged change); committed on local `main` as `4fd6998a docs(release): add v0.4.1 notes`. `main` is not pushed; the commit rides inside the release PR.

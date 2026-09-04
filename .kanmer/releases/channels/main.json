@@ -3,9 +3,9 @@
   "channel": "main",
   "attempt_id": "main@1",
   "lease_id": "9e315210-4663-4de9-a3c0-ceb39427c2ab",
-  "lease_revision": 14,
+  "lease_revision": 15,
   "owner": "kt",
   "acquired_at": "2026-09-04T07:14:34.341Z",
-  "expires_at": "2026-09-04T09:46:08.477Z",
-  "heartbeat_at": "2026-09-04T09:16:08.477Z"
+  "expires_at": "2026-09-04T09:56:10.257Z",
+  "heartbeat_at": "2026-09-04T09:26:10.257Z"
 }

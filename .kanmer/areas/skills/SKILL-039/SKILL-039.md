@@ -15,19 +15,7 @@ stageEntered:
   implementing: '2026-09-02T10:05:32.205Z'
   verifying: '2026-09-02T13:37:02.873Z'
   done: '2026-09-02T14:38:02.062Z'
-taken_at: '2026-09-02T01:42:01.023Z'
-branch: SKILL-039-anti-churn-amendment
-worktree: .worktrees/skill-039
-claim_expires_at: '2026-09-02T13:06:39.266Z'
-claim_controller: claude-code
 review_round: 1
-lease_id: e7ed4a73-ed26-47b6-872f-9b3246726829
-lease_revision: 11
-lease_worker_run: skill039-remediation
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\skill-039'
-lease_provider: codex
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-02T12:36:39.266Z'
 labels:
   - reliable-autonomy
   - review-budget
@@ -46,7 +34,7 @@ prs:
   - '312'
 archived: false
 created: '2026-09-01T18:50:34.754Z'
-updated: '2026-09-02T14:38:02.062Z'
+updated: '2026-09-04T05:50:57.042Z'
 ---
 
 ## Why

@@ -2,7 +2,7 @@
 id: CORE-137
 type: ticket
 title: Publish and validate v0.4.1 and promote it as the live control plane
-status: review
+status: verifying
 area: core
 assignee: kt
 profile: chore
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-09-04T00:44:04.889Z'
   review: '2026-09-04T07:42:45.128Z'
   implementing: '2026-09-04T07:54:51.870Z'
+  verifying: '2026-09-04T09:58:39.193Z'
 taken_at: '2026-09-04T07:16:07.241Z'
 branch: release/v0.4.1
 worktree: 'C:/Users/Alex/Documents/GitHub/kanmer-release-0.4.1'
@@ -40,7 +41,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/319'
 archived: false
 created: '2026-09-02T00:47:51.076Z'
-updated: '2026-09-04T09:49:17.467Z'
+updated: '2026-09-04T09:58:39.193Z'
 ---
 
 ## Why

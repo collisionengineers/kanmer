@@ -19,7 +19,7 @@ Every step of the plan with its command, exit code and evidence. Appended as the
 | Item | Value |
 |---|---|
 | Precondition | `git -C .worktrees/kanmer status --porcelain` empty; local == `origin/kanmer-board` (0/0) at `c3b767441bcead8108244ea7de81145ad9831b0b` |
-| Archive | `` (3336 entries, 6 411 477 bytes) |
+| Archive | `C:/Users/Alex/Documents/KanmerBackups/kanmer-board-20260904T071345Z.zip` (3336 entries, 6 411 477 bytes) |
 | SHA-256 | `d2e224b39ff68ae2e909fac9934ef9d33b8eb650e0bc748eedd5a29351e213ad` |
 
 ## Step 2 — live release channel

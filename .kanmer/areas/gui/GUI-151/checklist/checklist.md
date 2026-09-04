@@ -13,3 +13,14 @@
 - PASS: `git diff --check`.
 - INCONCLUSIVE: direct `file://` browser navigation was rejected by browser security policy. No bypass was attempted.
 - A jsdom interaction check was attempted but could not run because dependencies are not installed in this checkout; no package was added for this artifact.
+
+## Closeout — GUI-151
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-151`
+- [ ] `git branch -d GUI-151-interactive-kanmer-ui-mockup` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

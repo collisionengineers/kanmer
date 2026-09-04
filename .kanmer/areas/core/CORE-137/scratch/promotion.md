@@ -12,7 +12,7 @@ Every step of the plan with its command, exit code and evidence. Appended as the
 | Local ticket branches | none (`local-closeout-plan-docs`, `updater-implementation` are pre-existing non-ticket local branches, left for the operator) |
 | Board pushed | `boardSync.ahead` 0, board head `c3b767441bcead8108244ea7de81145ad9831b0b` |
 | Hosted `verify` at the `origin/main` tip | run 33843422690 at `04a97751`: success |
-| Fresh-tree `npm run verify` at the tip | CORE-119 proof: detached worktree at `04a97751`, exit 0, 14 steps (`C:kt-tmpcore119erify-merged.log`); the release clone's prepare rail (step 5) repeats it |
+| Fresh-tree `npm run verify` at the tip | CORE-119 proof: detached worktree at `04a97751`, exit 0, 14 steps (`C:\\kt-tmp\\core119\\verify-merged.log`); the release clone's prepare rail (step 5) repeats it |
 
 ## Step 1 — board backup
 
@@ -24,7 +24,7 @@ Every step of the plan with its command, exit code and evidence. Appended as the
 
 ## Step 2 — live release channel
 
-`release_channel acquire` (installed 0.4.0 server, live board): channel `main`, attempt `main@1`, `integration_sha` `04a977516fcb29500b5df2fd6aacea24e2e3d54e`, lease `9e315210-4663-4de9-a3c0-ceb39427c2ab` (renewed every 10 min by a keeper process; revision tracked in `C:kt-tmpcore137channel.json`).
+`release_channel acquire` (installed 0.4.0 server, live board): channel `main`, attempt `main@1`, `integration_sha` `04a977516fcb29500b5df2fd6aacea24e2e3d54e`, lease `9e315210-4663-4de9-a3c0-ceb39427c2ab` (renewed every 10 min by a keeper process; revision tracked in `C:\\kt-tmp\\core137\\channel.json`).
 
 ## Step 3 — fresh release clone
 
@@ -36,4 +36,4 @@ Every step of the plan with its command, exit code and evidence. Appended as the
 
 ## Step 5 — prepare
 
-`npm run release -- 0.4.1 --ticket CORE-137` in the clone: exit 0; prepared commit `6637239d2af844f9fae4c59bc572ec6535341509` on `release/v0.4.1`; PR https://github.com/collisionengineers/kanmer/pull/319; `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.1, isolated MCP handshake lists 41 tools`; golden `20/20 scenarios passed in 16786 ms (budget 300000 ms)` (`C:kt-tmpcore137prepare.log`).
+`npm run release -- 0.4.1 --ticket CORE-137` in the clone: exit 0; prepared commit `6637239d2af844f9fae4c59bc572ec6535341509` on `release/v0.4.1`; PR https://github.com/collisionengineers/kanmer/pull/319; `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.1, isolated MCP handshake lists 41 tools`; golden `20/20 scenarios passed in 16786 ms (budget 300000 ms)` (`C:\\kt-tmp\\core137\\prepare.log`).

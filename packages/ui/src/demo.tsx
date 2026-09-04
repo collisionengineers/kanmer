@@ -493,7 +493,7 @@ export function createDemoClient(seed?: {
     },
     connectAgent: async (t) => ({ ok: false, command: `kanmer connect ${t}`, output: "Not available outside the Kanmer app." }),
     disconnectAgent: async (t) => ({ ok: false, command: `kanmer disconnect ${t}`, output: "Not available outside the Kanmer app." }),
-    getSkillsStatus: async () => ({ scope: "project", installedVersion: "0.2.0", bundledVersion: "0.2.0", updateAvailable: false }),
+    getSkillsStatus: async () => ({ scope: "project", installedVersion: "0.2.0", bundledVersion: "0.2.0", updateAvailable: false, hostError: null }),
     updateSkills: async (t) => ({ ok: true, command: `kanmer skills update ${t}`, output: "Skills are current." }),
     dispatchAgent: async (ticketId, provider) => ({
       dispatchId: `demo-${ticketId}`,

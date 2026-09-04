@@ -24,6 +24,12 @@ export const VERIFY_STEPS = Object.freeze([
   "npm run mcpb:check",
   "npm run smoke:protocol",
   "npm run smoke:discovery",
+  // FRD-035 AC1/AC5: the golden-board evaluation runs every scenario class
+  // against disposable mkdtemp boards and fails closed on its own wall-clock
+  // budget. It joins this one array rather than a new workflow because
+  // AGENTS.md says to extend VERIFY_STEPS, never build a third verification
+  // pyramid — one edit reaches pr.yml, main pushes, release.yml and release.mjs.
+  "npm run golden",
   "npm run verify:skills",
   "npm run verify:agents-block",
   "npm run plugin:check",

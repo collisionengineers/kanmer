@@ -508,6 +508,8 @@ Run from the repo root unless noted.
 | `npm run inspect` | build, then open MCP Inspector against the server (root `./sandbox`) |
 | `node packages/mcp-server/src/smoke.mjs` | stdio smoke test against the built server |
 | `npm run smoke:protocol` | raw-JSON-RPC stdio check against every protocol version the SDK supports, plus the per-request `_meta` client-identity path |
+| `npm run golden` | the FRD-035 golden-board evaluation: every scenario class run against disposable `kanmer-golden-*` mkdtemp boards, one terminal PASS/FAIL/SIMULATED/UNAVAILABLE line per scenario and a transcript JSON (`--out`, `--only`). Hermetic and offline; a `VERIFY_STEPS` entry, bounded by its own fail-closed `KANMER_GOLDEN_BUDGET_MS` (default 300000). `--root` is refused: it never touches the live board (ADR-0021). Exit 0 = pass, 1 = a scenario failed or a capability was unavailable, 2 = the run could not start |
+| `npm run golden:promotion -- --candidate <v> …` | the FRD-035 stable→candidate promotion/rollback rehearsal against a **copied** board. Operator/release only, deliberately not in CI (a hosted runner has no prior stable install, no retained installer and no live-board backup). `--dry-run` reports the contract shape. It never installs, rolls back, marks a candidate stable, or mutates Git/GitHub/the live board |
 | `npm run verify:agents-block` | end-to-end check of the `kanmer-setup` AGENTS.md managed block (insert, refresh, idempotence, CLAUDE.md pointer, malformed markers) |
 | `node scripts/agents-block.mjs <repo>` | write/refresh that block in a target repo (what `kanmer-setup` calls) |
 
@@ -738,6 +740,7 @@ way, so it could not fail.
 7. The real test: open a project in the GUI, have an agent `create_item`/`move_item` against it, confirm the board live-updates; edit in the GUI, confirm the agent's `get_item` sees it.
 8. If the setup skill or its managed block changed: `node scripts/verify-agents-block.mjs`.
 9. If `/docs/` or the `kanmer-docs` asset changed: `npm run verify:docs` — the manual and resolved generated-document mirror checks must be green.
+9b. If a lease, reconciliation, review-budget, release-channel or delivery contract changed: `npm run golden` — the FRD-035 scenario roster is where those refusals are proved end to end, and a class with no scenario refuses the run rather than passing quietly.
 10. **If the GUI packaging or the updater changed:** `npm run dist:check`, then boot the **packaged** binary under `KANMER_SMOKE` (`release/win-unpacked/Kanmer.exe --user-data-dir=<fresh dir>`). Compiling is not evidence — this pair is what catches "works in dev, silently dead when packaged", which is the most likely way an updater change ships broken. If `npm run dist` fails with `EBUSY` because a Kanmer is running from `release/`, build elsewhere instead: `npx electron-builder --win --config.directories.output=release-check` from `apps/gui`, then `node scripts/check-updater-package.mjs --out apps/gui/release-check`.
 
 ---

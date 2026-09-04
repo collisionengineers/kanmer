@@ -19,6 +19,8 @@
     "verify": "node scripts/verify.mjs",
     "smoke:protocol": "node packages/mcp-server/src/smoke-protocol.mjs",
     "smoke:discovery": "node packages/mcp-server/src/smoke-discovery.mjs",
+    "golden": "node packages/mcp-server/src/golden-board.mjs",
+    "golden:promotion": "node scripts/golden-promotion.mjs",
     "smoke:http": "npm run build:server && node packages/mcp-server/src/smoke-http.mjs",
     "smoke:remote": "npm run build:server && node packages/mcp-server/src/smoke-remote.mjs",
     "smoke:doctor": "npm run build:server && node packages/mcp-server/src/smoke-doctor.mjs",

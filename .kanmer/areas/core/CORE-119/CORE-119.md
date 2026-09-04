@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Build golden-board evaluations and stable-to-candidate promotion rollback
   proof
-status: verifying
+status: done
 area: core
 assignee: claude-code
 profile: feature
@@ -12,6 +12,7 @@ stageEntered:
   preparing: '2026-09-02T00:47:16.030Z'
   review: '2026-09-04T05:48:33.274Z'
   verifying: '2026-09-04T06:12:52.188Z'
+  done: '2026-09-04T06:30:14.937Z'
 taken_at: '2026-09-03T23:56:32.479Z'
 branch: CORE-119-golden-board-evaluations
 worktree: .worktrees/core-119
@@ -34,7 +35,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/318'
 archived: false
 created: '2026-08-26T21:02:42.079Z'
-updated: '2026-09-04T06:25:58.639Z'
+updated: '2026-09-04T06:30:14.937Z'
 ---
 
 ## What

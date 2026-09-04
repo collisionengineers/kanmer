@@ -33,3 +33,7 @@ Every step of the plan with its command, exit code and evidence. Appended as the
 ## Step 4 — release notes
 
 `## 0.4.1` inserted above `## 0.4.0` in `apps/gui/release-notes.md` (Fixed / Skills and policy / Proof / upgrading paragraph; each bullet checked against the merged ticket's post-implementation report, CORE-119's bullet rewritten from its merged change); committed on local `main` as `4fd6998a docs(release): add v0.4.1 notes`. `main` is not pushed; the commit rides inside the release PR.
+
+## Step 5 — prepare
+
+`npm run release -- 0.4.1 --ticket CORE-137` in the clone: exit 0; prepared commit `6637239d2af844f9fae4c59bc572ec6535341509` on `release/v0.4.1`; PR https://github.com/collisionengineers/kanmer/pull/319; `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.1, isolated MCP handshake lists 41 tools`; golden `20/20 scenarios passed in 16786 ms (budget 300000 ms)` (`C:kt-tmpcore137prepare.log`).

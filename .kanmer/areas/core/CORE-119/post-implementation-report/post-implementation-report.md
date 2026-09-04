@@ -225,3 +225,11 @@ At the exact merge SHA, in a disposable detached worktree:
 - Record the PR in this ticket's `prs[]`, then the independent exact-head review.
 - Do **not** run the live promotion rehearsal, install or roll back any release,
   or start CORE-137: those are ADR-0021 operator actions and CORE-137's scope.
+
+## Controller rail (2026-09-04)
+
+Run by the controller after the implementer stopped, in the recorded worktree with its own `node_modules` (workspace resolution stays inside the checkout, so `plugin:check` certifies there; the plan's "main checkout" wording was written before that was established), default `TMP`.
+
+| Command | cwd | Exit | Result |
+|---|---|---|---|
+| `npm run verify` | `.worktrees/core-119` (HEAD 31878132b42edef52d3d18e9d84c600b860e5082 dirty=0) | 0 | PASS, 14 steps; `20/20 scenarios passed in 16592 ms (budget 300000 ms)`; `n/a`; ending `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.0, isolated MCP handshake lists 41 tools` (`C:\kt-tmp\core119\verify.log`) |

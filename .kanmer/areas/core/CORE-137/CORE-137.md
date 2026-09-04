@@ -2,12 +2,23 @@
 id: CORE-137
 type: ticket
 title: Publish and validate v0.4.1 and promote it as the live control plane
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: kt
 profile: chore
 stageEntered:
   preparing: '2026-09-04T00:44:04.889Z'
+taken_at: '2026-09-04T07:16:07.241Z'
+branch: release/v0.4.1
+worktree: 'C:/Users/Alex/Documents/GitHub/kanmer-release-0.4.1'
+claim_expires_at: '2026-09-04T07:46:07.242Z'
+claim_controller: kt
+lease_id: 794c896f-2c6a-43fd-ab2b-12dfd4ec01f4
+lease_revision: 1
+lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer-release-0.4.1'
+lease_provider: claude-code
+lease_phase: implementing
+lease_heartbeat_at: '2026-09-04T07:16:07.241Z'
 labels:
   - release
   - v0.4.1
@@ -20,7 +31,7 @@ refs:
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-09-02T00:47:51.076Z'
-updated: '2026-09-04T00:44:04.889Z'
+updated: '2026-09-04T07:16:07.241Z'
 ---
 
 ## Why

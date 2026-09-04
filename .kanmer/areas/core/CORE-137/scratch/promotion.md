@@ -37,3 +37,20 @@ Every step of the plan with its command, exit code and evidence. Appended as the
 ## Step 5 — prepare
 
 `npm run release -- 0.4.1 --ticket CORE-137` in the clone: exit 0; prepared commit `6637239d2af844f9fae4c59bc572ec6535341509` on `release/v0.4.1`; PR https://github.com/collisionengineers/kanmer/pull/319; `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.1, isolated MCP handshake lists 41 tools`; golden `20/20 scenarios passed in 16786 ms (budget 300000 ms)` (`C:\\kt-tmp\\core137\\prepare.log`).
+
+## Steps 6–7 — delta review and merge
+
+Independent reviewer `codex-independent-release-reviewer` wrote PASS attestation `scratch/review` v`6eb631af9294c6d5` at exact head `daaf95fa234cc0ce87cd5dd83d556cad6610fdfc`, plan hash `3ea6ccf2aff79ea3`, and ticket timestamp `2026-09-04T09:49:17.467Z`. F-001 through F-003 are fixed; F-004 through F-010 remain terminally accepted-risk; F-011 is fixed by the completed exact-head rail. Hosted `verify` run 33858904027 job 100978587075 PASS (14m32s); replacement `kanmer-gate` job 100982948637 PASS (7m35s); zero review threads; merge state CLEAN.
+
+PR #319 squash-merged at `2026-09-04T09:58:23Z` as `4e94ad806d5f74dbfdc9b0789190624addf4cbdd`. CORE-137 moved Review → Verifying at `2026-09-04T09:58:39.193Z`; board pushed at `be39d14f241c734b3b92e5a4fe264614514fc7ec`.
+
+`release_channel record` on `main@1` (lease revision 20) recorded PRs 310–319 and tickets MCP-055, GUI-147, SKILL-039, GUI-149, CORE-139, MCP-056, CORE-133, GUI-150, CORE-119 and CORE-137 with verification pending.
+
+## Exact-merge verification attempt
+
+- `gh pr view 319 --json state,mergeCommit,url,mergedAt,headRefOid,baseRefOid` exit 0: state MERGED, merge commit `4e94ad806d5f74dbfdc9b0789190624addf4cbdd`.
+- `git fetch origin` exit 0.
+- `git worktree add --detach .worktrees/verify-core-137-4e94ad806d5f74dbfdc9b0789190624addf4cbdd 4e94ad806d5f74dbfdc9b0789190624addf4cbdd` exit 0.
+- Detached assertions: `rev-parse HEAD` exact SHA (exit 0), `symbolic-ref --short -q HEAD` empty/detached (exit 1 as expected), `status --short --branch` = `## HEAD (no branch)` (exit 0), common Git directory = source repository (exit 0).
+- `npm ci` in the detached worktree exit 0 (647 packages installed).
+- `npm run verify` in the detached worktree exit 0: core 876/876; GUI 553/553; MCP/server 243 tests with 242 pass + 1 Windows-not-applicable skip; scripts 180/180; MCP smoke 384/384; headless, MCPB, protocol 54/54, discovery 15/15, golden 20/20 in 28032ms; skill prose, managed AGENTS block 31/31 and plugin consistency all PASS.

@@ -15,8 +15,8 @@ Verified on merged `main` at `04a977516fcb29500b5df2fd6aacea24e2e3d54e` (PR #318
 | Command | cwd | Exit | Result |
 |---|---|---|---|
 | `npm ci` | verify worktree | 0 | dependencies installed (`C:\kt-tmp\core119\npmci-merged.log`) |
-| `npm run verify` (default `TMP`) | verify worktree | 0 | VERIFY_PASS (`C:\kt-tmp\core119\verify-merged.log`) |
-| Hosted `verify` on the push to `main` at `04a97751` (run 33843422690) | GitHub Actions | — | HOSTED_PASS |
+| `npm run verify` (default `TMP`) | verify worktree | 0 | PASS, 14 steps; golden step `20/20 scenarios passed in 17865 ms (budget 300000 ms)`; `Tests  553 passed` in the GUI suite; ending `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.0, isolated MCP handshake lists 41 tools` (`C:\kt-tmp\core119\verify-merged.log`) |
+| Hosted `verify` on the push to `main` at `04a97751` (run 33843422690) | GitHub Actions | — | success (`verify: success`, `regate: success`) |
 
 ## Acceptance census (from the plan)
 

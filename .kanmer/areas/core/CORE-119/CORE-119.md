@@ -13,16 +13,6 @@ stageEntered:
   review: '2026-09-04T05:48:33.274Z'
   verifying: '2026-09-04T06:12:52.188Z'
   done: '2026-09-04T06:30:14.937Z'
-taken_at: '2026-09-03T23:56:32.479Z'
-branch: CORE-119-golden-board-evaluations
-worktree: .worktrees/core-119
-claim_expires_at: '2026-09-04T06:55:58.639Z'
-claim_controller: claude-code
-lease_id: 3088fc60-11fb-4a10-8f47-52fea2d29ab6
-lease_revision: 28
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-119'
-lease_phase: verifying
-lease_heartbeat_at: '2026-09-04T06:25:58.639Z'
 labels:
   - reliable-autonomy
 groups:
@@ -31,11 +21,16 @@ links: []
 refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
+commits:
+  - '646891e1'
+  - 31878132b42edef52d3d18e9d84c600b860e5082
+  - b1a1eee115db0aa63493bc3024957d69e0aa84a3
+  - 04a977516fcb29500b5df2fd6aacea24e2e3d54e
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/318'
 archived: false
 created: '2026-08-26T21:02:42.079Z'
-updated: '2026-09-04T06:30:14.937Z'
+updated: '2026-09-04T06:31:00.912Z'
 ---
 
 ## What
@@ -51,6 +46,9 @@ The new autonomy model must be demonstrated end to end while v0.3.12 remains the
 - Cover the approved controller, lease, batch, capture, delivery, review, reconciliation, multi-project and release scenarios.
 - Measure outcomes, corrections, churn and safety failures.
 - Verify backup, promotion, CRUD/workflow acceptance and rollback against copied boards.
+
+
+**Shipped (closeout 2026-09-04):** PR #318 squash-merged at 04a977516fcb29500b5df2fd6aacea24e2e3d54e (branch head b1a1eee1 after the reviewer updated it onto 59ded74b; implementation commits 646891e1, 31878132). Proof PASS at the merge SHA (local rail + hosted run 33843422690). Deviations recorded in the post-implementation report (GB-17 on the repo fixture; fixture plan pins evidence versions; coverage-gap full run exits 2; v0.4.0 fixture holds 18 typed attempts; GB-15 needs a second git repository; `stampClaim` writes claim frontmatter directly). Review: 0 blocker, 0 major, 1 minor (F-002: `driveCopiedBoard()` runs `--launcher` verbatim without binding it to `--board-copy`; carried into CORE-137's plan step 10j as an operator binding rule), 5 notes. The live promotion rehearsal is CORE-137's.
 
 ## Verification
 

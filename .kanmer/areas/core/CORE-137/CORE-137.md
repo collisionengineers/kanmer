@@ -2,7 +2,7 @@
 id: CORE-137
 type: ticket
 title: Publish and validate v0.4.1 and promote it as the live control plane
-status: implementing
+status: review
 area: core
 assignee: kt
 profile: chore
@@ -32,11 +32,15 @@ links: []
 refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
+commits:
+  - 4fd6998aa75078b4f25baa8da3b8329500a5ee8b
+  - 6637239d2af844f9fae4c59bc572ec6535341509
+  - daaf95fa234cc0ce87cd5dd83d556cad6610fdfc
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/319'
 archived: false
 created: '2026-09-02T00:47:51.076Z'
-updated: '2026-09-04T09:32:34.258Z'
+updated: '2026-09-04T09:34:36.589Z'
 ---
 
 ## Why

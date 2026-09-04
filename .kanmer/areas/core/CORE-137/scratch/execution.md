@@ -7,3 +7,7 @@
 - 2026-09-04T07:56:36.411Z lease-phase review → implementing (lease 794c896f-2c6a-43fd-ab2b-12dfd4ec01f4 rev 6; expires 2026-09-04T08:26:36.403Z)
 
 - 2026-09-04T09:32:34.268Z lease-phase implementing → running-command (lease 794c896f-2c6a-43fd-ab2b-12dfd4ec01f4 rev 17; expires 2026-09-04T10:02:34.258Z)
+
+## 2026-09-04 review-round-1 remediation
+
+Pushed immutable PR head `daaf95fa234cc0ce87cd5dd83d556cad6610fdfc` with the single commit `docs(release): correct v0.4.1 notes after review`. It fixes F-001 through F-003 in `apps/gui/release-notes.md`. Fresh `npm run plugin:check` and `git diff --check` both exited 0. The release clone is clean and matches `origin/release/v0.4.1`; hosted `verify` and `kanmer-gate` were pending immediately after the push. No PR-body edit was made after the push.

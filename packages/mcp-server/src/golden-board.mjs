@@ -191,12 +191,12 @@ function attestation({ pr, headSha, verdict, findings = [], planHash = "plan-v1"
     `plan_hash: "${planHash}"`,
     `ticket_updated: "${ticketUpdated}"`,
     findings.length ? "findings:" : "findings: []",
-    body,
+    ...(findings.length ? [body] : []),
     "---",
     "",
     "Golden attestation body.",
     "",
-  ].filter((line) => line !== "").join("\n") + "\n";
+  ].join("\n");
 }
 
 function proofRecord({ result, mergedSha, failureClass }) {
@@ -759,7 +759,7 @@ export const SCENARIOS = [
       });
       rec.check("a capture is created from an observation alone", capture.ok, capture.message.slice(0, 160));
       const gates = await tool(ctx.server, rec, "get_doc_gates", { id: capture.payload.id });
-      const owed = (gates.payload?.boundaries ?? []).flatMap((boundary) => boundary.missing ?? boundary.requirements ?? []);
+      const owed = (gates.payload?.boundaries ?? []).flatMap((boundary) => boundary.requirements ?? []);
       rec.check(
         "the capture owes no pipeline document",
         gates.ok && gates.payload.profile === "capture" && owed.length === 0,
@@ -808,11 +808,11 @@ export const SCENARIOS = [
         `${promoted.payload?.capture_disposition} / ${promoted.payload?.profile}`,
       );
       const gatesAfter = await tool(ctx.server, rec, "get_doc_gates", { id: capture.payload.id });
-      const owedAfter = (gatesAfter.payload?.boundaries ?? []).flatMap((boundary) => boundary.missing ?? []);
+      const owedAfter = (gatesAfter.payload?.boundaries ?? []).flatMap((boundary) => boundary.requirements ?? []);
       rec.check(
         "only from that decision does the selected profile's gate set apply",
         gatesAfter.ok && gatesAfter.payload.profile === "feature" && owedAfter.length > 0,
-        `${gatesAfter.payload?.profile} owes ${owedAfter.join(", ")}`,
+        `${gatesAfter.payload?.profile} owes ${owedAfter.length}`,
       );
       rec.bump("unnecessaryDocuments", 0);
     },
@@ -891,11 +891,19 @@ export const SCENARIOS = [
           id: ctx.fixture.meta.done,
           delivery_state: "released",
           delivery_branch: "main",
+          delivery_sha: SHA_A,
+          delivery_release_branch: "main",
+          delivery_release_tag: "v0.0.0-golden",
         });
         rec.check(
-          "final release is recorded separately from the workflow stage",
+          "final release is recorded separately from the workflow stage, with its own evidence",
           delivered.ok && delivered.payload.delivery_state === "released" && delivered.payload.status === "done",
-          `${delivered.payload?.delivery_state} @ ${delivered.payload?.status}`,
+          delivered.ok ? `${delivered.payload?.delivery_state} @ ${delivered.payload?.status}` : delivered.message.slice(0, 200),
+        );
+        rec.check(
+          "a hotfix delivered on the release branch records the backport it owes the integration branch",
+          delivered.ok && delivered.payload.delivery_backport_required === "dev",
+          String(delivered.payload?.delivery_backport_required),
         );
       } finally {
         await store.setBoard(original);
@@ -944,8 +952,8 @@ export const SCENARIOS = [
       rec.check("its terminal outcome is superseded", first?.outcome === "superseded", String(first?.outcome));
       rec.check(
         "it names its successor, and the successor names it as its predecessor",
-        Boolean(first?.superseded_by) && second?.supersedes === "main@1",
-        `${first?.superseded_by} / ${second?.supersedes}`,
+        first?.successor === "main@2" && second?.supersedes === "main@1",
+        `${first?.successor} / ${second?.supersedes}`,
       );
       rec.check("the successor inherits no verification evidence", (second?.verification_state ?? "pending") === "pending", String(second?.verification_state));
 
@@ -1220,10 +1228,9 @@ export const SCENARIOS = [
 
       // 3. Foreign repository and branch mismatch stay refused.
       const foreign = await mk("GB-15 foreign repository workspace");
-      const foreignRoot = ctx.fixtures.get("seeded")?.boardRoot ?? os.tmpdir();
       stampClaim(ctx.fixture.boardRoot, foreign, {
-        branch: "golden/foreign",
-        worktree: path.relative(ctx.fixture.meta.repoRoot, foreignRoot).replaceAll("\\", "/"),
+        branch: ctx.fixture.meta.foreignBranch,
+        worktree: ctx.fixture.meta.foreignRepo,
         taken_at: new Date().toISOString(),
         claim_expires_at: new Date(Date.now() - 60 * 60_000).toISOString(),
         claim_controller: "golden-foreign",
@@ -1341,14 +1348,22 @@ export const SCENARIOS = [
 
       const packet = await tool(ctx.server, rec, "get_execution_packet", { id, step: 1 });
       const step = packet.payload?.step ?? null;
-      rec.check("a step-packet/2 is compiled for ordered step 1", packet.ok && step?.kind === "step-packet/2" && step?.step?.index === 1, JSON.stringify(packet.payload?.reason ?? "").slice(0, 200));
+      rec.check(
+        "a step-packet/2 is compiled for ordered step 1",
+        packet.ok && step?.packetVersion === "step-packet/2" && step?.step?.index === 1 && typeof step?.packetId === "string",
+        JSON.stringify(packet.payload?.reason ?? step?.packetVersion ?? "").slice(0, 200),
+      );
       rec.check(
         "it is limited to that step's declared file and carries its tests, commands and stop condition",
-        Array.isArray(step?.step?.allowedFiles) && step.step.allowedFiles.includes("tracked.txt") && step.step.allowedFiles.length === 1 &&
-          Boolean(step?.step?.commands) && Boolean(step?.stopCondition ?? step?.step?.stopCondition),
-        JSON.stringify(step?.step?.allowedFiles ?? []),
+        Array.isArray(step?.allowedFiles) && step.allowedFiles.length === 1 && step.allowedFiles.includes("tracked.txt") &&
+          (step?.commands ?? []).length > 0 && (step?.tests ?? []).length > 0 && typeof step?.stopCondition === "string" && step.stopCondition.length > 0,
+        JSON.stringify({ allowedFiles: step?.allowedFiles, commands: step?.commands, tests: step?.tests }),
       );
-      rec.check("the plan's Do not modify list rides on the packet", JSON.stringify(step ?? {}).includes("forbidden/"), "forbidden/**");
+      rec.check(
+        "the plan's Do not modify list rides on the packet as forbidden files",
+        (step?.forbiddenFiles ?? []).some((pattern) => pattern.startsWith("forbidden/")),
+        JSON.stringify(step?.forbiddenFiles ?? []),
+      );
 
       const worktree = path.join(ctx.fixture.meta.repoRoot, ctx.fixture.meta.stepWorktree);
       fs.mkdirSync(path.join(worktree, "forbidden"), { recursive: true });
@@ -1775,7 +1790,11 @@ async function main(argv) {
       }
     } catch (thrown) {
       error = thrown;
-      rec.check("the scenario ran to completion", false, String(thrown?.stack ?? thrown).slice(0, 500));
+      // The server buffers stderr and only surfaces it on failure, so a child
+      // that never started says why here instead of only "timed out".
+      const stderr = servers.get(scenario.fixture)?.stderr?.() ?? "";
+      const detail = `${String(thrown?.message ?? thrown)}${stderr ? ` | server stderr: ${stderr.slice(-300)}` : ""}`;
+      rec.check("the scenario ran to completion", false, detail.slice(0, 500));
     }
     const result = terminalResult(rec);
     rec.counters.elapsedMs = Date.now() - scenarioStarted;

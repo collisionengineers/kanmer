@@ -40,9 +40,19 @@ export const GOLDEN_PREFIX = "kanmer-golden-";
 /** Per-request ceiling, copied from smoke-protocol.mjs:36. */
 export const REQUEST_TIMEOUT_MS = 20_000;
 
-/** The server binary under test; `KANMER_SERVER` is the smoke convention. */
+/**
+ * The server binary under test; `KANMER_SERVER` is the smoke convention.
+ *
+ * Resolved to an absolute path against this process's cwd on purpose: the
+ * documented invocation is repo-relative (`KANMER_SERVER=plugins/kanmer/mcp/
+ * kanmer-mcp.cjs`), while the child is deliberately spawned with its cwd
+ * OUTSIDE the repository so a scenario proves the server bound its board from
+ * `--root` rather than from discovery. Leaving the entry relative would make
+ * the child resolve it against that foreign cwd and never start.
+ */
 export function serverEntry() {
-  return process.env.KANMER_SERVER ?? path.join(here, "..", "dist", "index.js");
+  const configured = process.env.KANMER_SERVER;
+  return configured ? path.resolve(configured) : path.join(here, "..", "dist", "index.js");
 }
 
 function casefold(value) {

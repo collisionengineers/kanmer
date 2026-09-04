@@ -75,7 +75,11 @@ export async function freshFixture() {
   };
 }
 
-const STEP_PLAN = `# Plan — golden feature ticket
+// The plan pins the exact content versions of the evidence it was written
+// against: step compilation refuses a plan whose `## Starting state` does not
+// match the current `research`/`files` versions, which is the point — a packet
+// must not be minted from superseded evidence.
+const STEP_PLAN = (researchVersion, filesVersion) => `# Plan — golden feature ticket
 
 ## Objective
 
@@ -83,7 +87,7 @@ Change one bounded file so a step packet can be compiled from this plan.
 
 ## Starting state
 
-Evidence: \`files/files.md\`.
+Evidence: \`research/research.md\`@\`${researchVersion}\`, \`files/files.md\`@\`${filesVersion}\`.
 
 ## Governing docs
 
@@ -187,9 +191,9 @@ async function seedBoard(boardRoot, { legacy = false } = {}) {
     profile: "feature",
     docs_todo: true,
   });
-  await store.setDoc(feature.id, "research", "# Research — golden feature ticket\n\nRecorded so the leave-preparing gate has its input.\n");
-  await store.setDoc(feature.id, "files", "# Files — golden feature ticket\n\n| Path | Why |\n|---|---|\n| `tracked.txt` | the bounded change |\n");
-  await store.setDoc(feature.id, "plan", STEP_PLAN);
+  const research = await store.setDoc(feature.id, "research", "# Research — golden feature ticket\n\nRecorded so the leave-preparing gate has its input.\n");
+  const files = await store.setDoc(feature.id, "files", "# Files — golden feature ticket\n\n| Path | Why |\n|---|---|\n| `tracked.txt` | the bounded change |\n");
+  await store.setDoc(feature.id, "plan", STEP_PLAN(research.version, files.version));
   await store.setDoc(feature.id, "checklist", STEP_CHECKLIST);
 
   if (legacy) {
@@ -268,6 +272,15 @@ export async function repoFixture() {
     // step packet requires a proven recorded branch and worktree, so it cannot
     // share the deliberately dirty one.
     git(root, ["worktree", "add", "--quiet", path.join(".worktrees", "step"), "feature/step"]);
+    // A SEPARATE repository under the same checkout: a recorded workspace whose
+    // `--git-common-dir` differs is `foreign-repository`, which recovery must
+    // still refuse. A bare directory would only be `unavailable`, which is a
+    // different (and weaker) assertion.
+    fs.mkdirSync(path.join(root, "foreign-repo"), { recursive: true });
+    git(path.join(root, "foreign-repo"), ["init", "--initial-branch=golden/foreign", "--quiet"]);
+    fs.writeFileSync(path.join(root, "foreign-repo", "readme.txt"), "a different repository\n", "utf8");
+    git(path.join(root, "foreign-repo"), ["add", "-A"]);
+    git(path.join(root, "foreign-repo"), ["commit", "-m", "foreign baseline", "--quiet"]);
 
     const boardRoot = path.join(root, ".worktrees", "kanmer");
     const meta = await seedBoard(boardRoot, {});
@@ -287,6 +300,8 @@ export async function repoFixture() {
         missingWorktree: ".worktrees/gone",
         missingBranch: "feature/gone",
         stepWorktree: ".worktrees/step",
+        foreignRepo: "foreign-repo",
+        foreignBranch: "golden/foreign",
         stepBranch: "feature/step",
         boardWorktree: ".worktrees/kanmer",
         dirtyFile: path.join(root, ".worktrees", "keep", "tracked.txt"),

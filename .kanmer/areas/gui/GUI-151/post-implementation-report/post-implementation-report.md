@@ -2,46 +2,45 @@
 
 ## Result
 
-Added a self-contained, dependency-free interactive Kanmer UI mockup at `apps/gui/kanmer-mockup.html`. It uses the production renderer's current theme tokens, hierarchy, six-stage workflow, area colours, density, cards, tabs, filters, modals, drawers, and menu styling while keeping all seeded state in memory.
+Added a self-contained, dependency-free interactive Kanmer UI mockup at `apps/gui/kanmer-mockup.html`. It keeps all seeded state in memory while implementing the board, editor, document, activity, settings, menu, and keyboard interactions.
 
 ## Changed files
 
-- `apps/gui/kanmer-mockup.html` — standalone markup, renderer-matched CSS, two fictional projects, realistic ticket/document/activity data, and all mock interactions.
+- `apps/gui/kanmer-mockup.html` — standalone markup, renderer-matched CSS, three fictional projects, dense ticket/document/activity data, and browser-native interactions.
 
 No production renderer source, package, build configuration, governing document, or real board data was changed.
 
 ## Implemented interactions
 
-- Project tabs and per-project fake boards.
-- Board, Standup, and Archived views with production-style badge semantics.
-- Search plus area, group, assignee, and label filters.
-- Six-stage drag/drop and context-menu movement.
-- Ticket creation, editor fields, document tabs, checklist toggles, save, archive, and restore.
-- Activity drawer and ticket navigation.
-- Settings navigation, dark/light theme, and compact/comfortable density.
-- Ctrl+K command palette, Ctrl+F search, Ctrl+N create, Ctrl+1…3 views, Escape dismissal.
-- Demo reset to the original seed.
+Project tabs; Board/Standup/Archived; search and facets; six-stage drag/drop and context-menu movement; ticket creation/editing; document tabs and checklist toggles; archive/restore; activity; Settings; theme/density; Ctrl+K, Ctrl+F, Ctrl+N, Ctrl+1…3, and Escape.
 
 ## Governing docs
 
-Meets `docs/functional/frd/FRD-019-gui-shell.md` as a non-production demonstration of the current shell. It does not modify or claim to replace the Electron implementation.
+Meets `docs/functional/frd/FRD-019-gui-shell.md` as a standalone demonstration of the current Electron shell.
+
+## Remediation round 1
+
+The user supplied side-by-side screenshots and rejected the initial build for visual mismatch. Commit `d000253edefbdca6318158c7fe5d3823dd1cca7e` remedies that single fidelity class:
+
+- Removed the mock-only information banner that changed the shell height.
+- Restored the production single-row 49px filter bar and fixed select widths.
+- Matched the 37px project strip, 51px top bar, board padding, six-column geometry, card typography, gaps, edge colours, area headers, and add-card controls.
+- Reproduced the visible `collision-claude`, `pegasus`, `kanmer` tab ordering and repository-path control.
+- Increased seeded board density and area diversity to match the real app's populated column rhythm.
+- Preserved the same in-memory interactions and existing PR.
 
 ## Validation
 
-- PASS — inline JavaScript syntax compiled with Node.
-- PASS — static contract check confirmed all six stages and key interaction surfaces.
+- PASS — inline JavaScript syntax compiled with Node after remediation.
+- PASS — static visual-contract check confirmed three project labels, six stages, fixed filter sizing, area card edges, and per-column add controls.
 - PASS — `git diff --check`.
-- INCONCLUSIVE — the available browser automation rejected direct `file://` navigation by security policy. No alternate navigation bypass was attempted.
-- INCONCLUSIVE — a jsdom check could not start because dependencies are not installed; the artifact correctly adds no package.
+- The user's Chrome screenshot supplied direct evidence of the initial defect. The updated local-file tab requires reload for final human pixel comparison because automation cannot attach to a `file://` tab under browser security policy.
 
-## Commit
+## Commits
 
-- `6a4cf1aaef627b0f23a83138477009e5dfbd2ad6` — `feat(gui): add interactive Kanmer UI mockup`
-
-## Risks and follow-up
-
-The mockup's browser-native interactions are executable but the final dark/light visual pass must be performed by opening the file locally. It intentionally does not persist changes or communicate with Electron/MCP.
+- `6a4cf1aaef627b0f23a83138477009e5dfbd2ad6` — initial interactive mockup.
+- `d000253edefbdca6318158c7fe5d3823dd1cca7e` — screenshot-aligned shell remediation.
 
 ## Verification guidance
 
-Open `apps/gui/kanmer-mockup.html` directly. Exercise ticket selection/editing, drag a card between stages, filter the board, open Settings and switch themes, toggle a checklist item, use Ctrl+K, archive/restore a ticket, and press “Reset demo”.
+Reload `apps/gui/kanmer-mockup.html`. At 1920px width, compare the three shell bands, one-row filters, six equal columns, grouped area headers, compact cards, card edge colours, and scrolling Done column with the supplied Electron screenshot. Then exercise editor, drag/drop, Settings/theme, context menu, activity, Standup, and Archived.

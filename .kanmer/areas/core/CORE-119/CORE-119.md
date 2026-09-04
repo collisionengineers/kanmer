@@ -13,13 +13,13 @@ stageEntered:
 taken_at: '2026-09-03T23:56:32.479Z'
 branch: CORE-119-golden-board-evaluations
 worktree: .worktrees/core-119
-claim_expires_at: '2026-09-04T01:26:38.264Z'
+claim_expires_at: '2026-09-04T01:36:40.887Z'
 claim_controller: claude-code
 lease_id: 3088fc60-11fb-4a10-8f47-52fea2d29ab6
-lease_revision: 8
+lease_revision: 9
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-119'
 lease_phase: implementing
-lease_heartbeat_at: '2026-09-04T00:56:38.264Z'
+lease_heartbeat_at: '2026-09-04T01:06:40.887Z'
 labels:
   - reliable-autonomy
 groups:
@@ -30,7 +30,7 @@ refs:
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-08-26T21:02:42.079Z'
-updated: '2026-09-04T00:56:38.264Z'
+updated: '2026-09-04T01:06:40.887Z'
 ---
 
 ## What

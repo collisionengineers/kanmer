@@ -550,11 +550,20 @@ function ConnectSection(): JSX.Element {
                   · no background dispatch
                 </span>
               )}
-              {skills[p.id]?.updateAvailable && (
+              {skills[p.id]?.updateAvailable && skills[p.id]!.installedVersion !== skills[p.id]!.bundledVersion && (
                 <span className="hint">
                   {" "}
                   · skills v{skills[p.id]!.installedVersion} →{" "}
                   {skills[p.id]!.bundledVersion}
+                </span>
+              )}
+              {/* A plugin the host could not load has no skills and no board
+                  server whatever version it names; the panel must not look
+                  healthy over `cache-miss` (GUI-150). */}
+              {skills[p.id]?.hostError && (
+                <span className="hint" title={skills[p.id]!.hostError!}>
+                  {" "}
+                  · plugin failed to load: {skills[p.id]!.hostError}
                 </span>
               )}
             </span>
@@ -570,9 +579,11 @@ function ConnectSection(): JSX.Element {
                 // not copied into this project, so "in this project" named the
                 // wrong thing for the one host whose version actually drifts.
                 title={
-                  skills[p.id]!.scope === "marketplace"
-                    ? `This host has Kanmer's plugin v${skills[p.id]!.installedVersion} installed for this host; the bundled version is v${skills[p.id]!.bundledVersion}`
-                    : `Bundled skills (v${skills[p.id]!.bundledVersion}) are newer than the copy in this project (v${skills[p.id]!.installedVersion})`
+                  skills[p.id]!.hostError
+                    ? `This host's Kanmer plugin is not usable (${skills[p.id]!.hostError}); Update skills re-installs it`
+                    : skills[p.id]!.scope === "marketplace"
+                      ? `This host has Kanmer's plugin v${skills[p.id]!.installedVersion} installed for this host; the bundled version is v${skills[p.id]!.bundledVersion}`
+                      : `Bundled skills (v${skills[p.id]!.bundledVersion}) are newer than the copy in this project (v${skills[p.id]!.installedVersion})`
                 }
               >
                 {busy === `update:${p.id}` ? "Updating…" : "Update skills"}

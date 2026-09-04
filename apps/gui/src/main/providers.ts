@@ -210,17 +210,41 @@ export interface MarketplaceHostState {
 export interface MarketplaceVersionCheck {
   /** The read-only command that reports installed plugins. */
   command: string;
-  /** The version this host reports for the plugin, or null when it is absent. */
-  parse: (output: string) => string | null;
+  /** What this host reports for the plugin, or null when it is absent. */
+  parse: (output: string) => MarketplacePluginState | null;
   /** A pasteable repair for the user when the read-back disagrees. */
   repairCommand: string;
 }
 
 /**
- * The version a host reports for one `<plugin>@<marketplace>` in a
- * `claude plugin list` transcript, or null when it lists no such block.
+ * What a marketplace host reports about one installed plugin (GUI-150).
  *
- * The transcript is a sequence of blocks, measured against claude 2.1.233:
+ * Version alone was the whole read-back after GUI-147, and it was not enough:
+ * on 2026-09-03 `claude plugin list --json` reported `kanmer@kanmer` at the
+ * bundled version, `enabled: true`, and
+ * `errors: ["Marketplace kanmer failed to load: cache-miss"]` — the exact state
+ * GUI-147 exists to end — and a version-only check passed it. A plugin the host
+ * cannot load has no skills and no board server whatever version it names.
+ */
+export interface MarketplacePluginState {
+  version: string;
+  /** The scope the host reports (`user`, `local`, `project`), or null when it names none. */
+  scope: string | null;
+  enabled: boolean;
+  /** The host's own load errors for this plugin; empty when it loaded. */
+  errors: string[];
+}
+
+/**
+ * What a host reports for one `<plugin>@<marketplace>` in a
+ * `claude plugin list --json` document or a `claude plugin list` transcript,
+ * or null when it lists no such entry.
+ *
+ * JSON first (claude 2.1.259): an array of entries with `id`, `version`,
+ * `scope`, `enabled`, and `errors` only when the host failed to load the
+ * plugin. Anything that is not a JSON array falls back to the text transcript,
+ * measured against claude 2.1.233, so a host without `--json` still reports a
+ * version:
  *
  *     Installed plugins:
  *
@@ -232,25 +256,61 @@ export interface MarketplaceVersionCheck {
  * Scope is part of the identity, not decoration: the same plugin legitimately
  * appears more than once at different scopes, with different versions (this
  * machine lists `azure@claude-plugins-official` at both `user` 1.2.32 and
- * `local` 1.1.75). Kanmer installs at user scope, so that is the block whose
- * version answers "did the install take".
+ * `local` 1.1.75). Kanmer installs at user scope, so that is the entry whose
+ * state answers "did the install take, and did it load".
  */
-export function parseMarketplacePluginVersion(
+export function parseMarketplacePluginState(
   output: string,
   plugin: string,
   scope = "user",
-): string | null {
+): MarketplacePluginState | null {
+  const candidates = parseJsonPluginEntries(output, plugin) ?? parseTextPluginBlocks(output, plugin);
+  const scoped = candidates.find((candidate) => candidate.scope === scope);
+  return scoped ?? candidates[0] ?? null;
+}
+
+/** The `--json` document: every entry for `plugin`, or null when the output is not a JSON array. */
+function parseJsonPluginEntries(output: string, plugin: string): MarketplacePluginState[] | null {
+  const start = output.indexOf("[");
+  if (start < 0) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(output.slice(start, output.lastIndexOf("]") + 1));
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+  const entries: MarketplacePluginState[] = [];
+  for (const entry of parsed) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    if (e.id !== plugin || typeof e.version !== "string") continue;
+    entries.push({
+      version: e.version,
+      scope: typeof e.scope === "string" ? e.scope : null,
+      // Absent means enabled: the host omits the key on nothing today, but a
+      // missing flag must not read as a disabled plugin.
+      enabled: e.enabled !== false,
+      errors: Array.isArray(e.errors) ? e.errors.map((error) => String(error)) : [],
+    });
+  }
+  return entries;
+}
+
+/** The text transcript: every block for `plugin`. */
+function parseTextPluginBlocks(output: string, plugin: string): MarketplacePluginState[] {
   // A block header is a bare `name@marketplace`, optionally behind the CLI's
   // bullet glyph. `Version: 0.4.0` cannot match it — no `@`, and a space — which
   // is what keeps the two line kinds apart without counting lines.
   const header = /^(?:[^\w\s]+\s*)?([\w.@/-]+@[\w.-]+)$/;
-  const blocks: { name: string; version?: string; scope?: string }[] = [];
-  let block: { name: string; version?: string; scope?: string } | undefined;
+  type Block = { name: string; version?: string; scope?: string; enabled: boolean; errors: string[] };
+  const blocks: Block[] = [];
+  let block: Block | undefined;
   for (const raw of output.split(/\r?\n/)) {
     const line = raw.trim();
     const named = header.exec(line);
     if (named) {
-      block = { name: named[1]! };
+      block = { name: named[1]!, enabled: true, errors: [] };
       blocks.push(block);
       continue;
     }
@@ -261,11 +321,26 @@ export function parseMarketplacePluginVersion(
       continue;
     }
     const reported = /^Scope:\s*(\S+)/i.exec(line);
-    if (reported) block.scope = reported[1]!;
+    if (reported) {
+      block.scope = reported[1]!;
+      continue;
+    }
+    const status = /^Status:\s*(.+)$/i.exec(line);
+    if (status) {
+      block.enabled = !/disabled/i.test(status[1]!);
+      continue;
+    }
+    const error = /^Error:\s*(.+)$/i.exec(line);
+    if (error) block.errors.push(error[1]!.trim());
   }
-  const named = blocks.filter((candidate) => candidate.name === plugin);
-  const scoped = named.find((candidate) => candidate.scope === scope);
-  return (scoped ?? named[0])?.version ?? null;
+  return blocks
+    .filter((candidate) => candidate.name === plugin && candidate.version !== undefined)
+    .map((candidate) => ({
+      version: candidate.version!,
+      scope: candidate.scope ?? null,
+      enabled: candidate.enabled,
+      errors: candidate.errors,
+    }));
 }
 
 export type InstallSpec =
@@ -1044,8 +1119,11 @@ export const PROVIDERS: AgentProvider[] = [
         `claude plugin install ${CLAUDE_PLUGIN_REF} -s user -y`,
       ],
       installedVersion: {
-        command: "claude plugin list",
-        parse: (output) => parseMarketplacePluginVersion(output, CLAUDE_PLUGIN_REF),
+        // `--json` carries `enabled` and the host's own `errors` for the
+        // plugin, which the text transcript does not (GUI-150); the parser
+        // falls back to the transcript for a host that prints one anyway.
+        command: "claude plugin list --json",
+        parse: (output) => parseMarketplacePluginState(output, CLAUDE_PLUGIN_REF),
         repairCommand:
           `claude plugin uninstall ${CLAUDE_PLUGIN_REF} -s user -y && ` +
           `claude plugin install ${CLAUDE_PLUGIN_REF} -s user -y`,

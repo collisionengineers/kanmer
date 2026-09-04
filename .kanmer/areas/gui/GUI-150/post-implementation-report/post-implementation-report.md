@@ -18,7 +18,7 @@
 | `npm ci` | `.worktrees/gui-150` | 0 | dependencies installed |
 | `npm run test -w @kanmer/gui` | `.worktrees/gui-150` | 1 → 0 | first run: 552/553 (one new parse assertion targeted the wrong transcript block); after the fix `npx vitest run src/main/connect.test.ts` 64/64 and the rail's `npm test` 553/553 |
 | `npm run typecheck` | `.worktrees/gui-150` | 2 → 0 | first run: two `SkillsStatus` literals lacked `hostError` (`connect.ts` project-scope return, `packages/ui/src/demo.tsx`); fixed, then clean across all four workspaces |
-| `TMP='C:\kt-tmp' TEMP='C:\kt-tmp' npm run verify` | `.worktrees/gui-150` | 0 | PASS, 13 steps, default TMP (MCP-056 in tree), ending `plugin-sync OK — 41 tools match, bundle bytes match` (`C:kt-tmpgui150erify2.log`) (`C:\kt-tmp\gui150-verify1.log`) |
+| `npm run verify` (default `TMP`; MCP-056 is in this tree) | `.worktrees/gui-150` | 0 | PASS, 13 steps, ending `plugin-sync OK — 41 tools match, bundle bytes match`; 54 files / 553 tests (`C:/kt-tmp/gui150/verify2.log`; `verify1.log` is an aborted launch from the wrong cwd, not evidence) |
 
 ## Deviations from the plan
 

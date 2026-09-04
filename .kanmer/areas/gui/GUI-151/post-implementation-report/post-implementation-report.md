@@ -29,6 +29,10 @@ The user supplied side-by-side screenshots and rejected the initial build for vi
 - Increased seeded board density and area diversity to match the real app's populated column rhythm.
 - Preserved the same in-memory interactions and existing PR.
 
+### Complete Settings audit
+
+Commit `1639f5773844ebceaa1a628a9ace842710adeb29` replaces the placeholder Settings content with all nine current production tabs derived directly from `Settings.tsx`: Board, Profiles, Appearance, Git, Connect, Dispatch, Remote access, OpenAI tunnel, and Projects. It matches the production modal header (Cancel/Save), 150px rail, scrollable pane, stacked section geometry, area/prefix editor, full profile boundary table, appearance controls, Git branch/sync surface, provider rows, dispatch forms, both tunnel forms/status sections, and project registry cards. Theme, density, navigation, Save, and representative action controls remain interactive.
+
 ## Validation
 
 - PASS — inline JavaScript syntax compiled with Node after remediation.
@@ -40,6 +44,7 @@ The user supplied side-by-side screenshots and rejected the initial build for vi
 
 - `6a4cf1aaef627b0f23a83138477009e5dfbd2ad6` — initial interactive mockup.
 - `d000253edefbdca6318158c7fe5d3823dd1cca7e` — screenshot-aligned shell remediation.
+- `1639f5773844ebceaa1a628a9ace842710adeb29` — complete production Settings mirror.
 
 ## Verification guidance
 

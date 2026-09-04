@@ -14,15 +14,15 @@ stageEntered:
 taken_at: '2026-09-04T07:16:07.241Z'
 branch: release/v0.4.1
 worktree: 'C:/Users/Alex/Documents/GitHub/kanmer-release-0.4.1'
-claim_expires_at: '2026-09-04T11:59:59.022Z'
+claim_expires_at: '2026-09-04T12:05:08.852Z'
 claim_controller: kt
 review_round: 1
 lease_id: 794c896f-2c6a-43fd-ab2b-12dfd4ec01f4
-lease_revision: 21
+lease_revision: 22
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer-release-0.4.1'
 lease_provider: claude-code
 lease_phase: running-command
-lease_heartbeat_at: '2026-09-04T09:59:59.022Z'
+lease_heartbeat_at: '2026-09-04T10:05:08.852Z'
 labels:
   - release
   - v0.4.1
@@ -41,7 +41,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/319'
 archived: false
 created: '2026-09-02T00:47:51.076Z'
-updated: '2026-09-04T09:59:59.022Z'
+updated: '2026-09-04T10:05:08.852Z'
 ---
 
 ## Why

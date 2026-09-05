@@ -65,9 +65,14 @@ function toRelative(root, path) {
  * dirty trees with the same status lines but different content hash
  * differently, and a path going from untracked to modified (or back) also
  * changes the digest because the status line itself changed.
+ *
+ * `-uall` (CORE-144 F-002) is required: without it, git collapses an entire
+ * untracked directory to a single `?? dir/` entry, so a file added or edited
+ * inside an already-untracked directory left both the porcelain text and this
+ * digest unchanged. `-uall` lists every untracked file individually instead.
  */
 function computeDirtyDigest(root) {
-  const porcelain = execFileSync("git", ["status", "--porcelain=v1", "-z"], {
+  const porcelain = execFileSync("git", ["status", "--porcelain=v1", "-z", "-uall"], {
     cwd: root,
     encoding: "utf8",
   });
@@ -75,12 +80,17 @@ function computeDirtyDigest(root) {
 
   const entries = porcelain.split("\0").filter((entry) => entry.length > 0);
   const fileHashes = [];
-  for (const entry of entries) {
-    // Porcelain v1 format: "XY <path>", with a renamed entry carrying a
-    // second NUL-separated "from" path that follow-up split segments already
-    // isolated. Only hash paths that currently have readable content.
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    // Porcelain v1 format: "XY <path>". A rename/copy entry (status "R"/"C")
+    // carries a second NUL-separated "from" path with no status prefix of its
+    // own (CORE-140 F-004) — consume it here so it is never mis-parsed as an
+    // independent status+path pair.
     const status = entry.slice(0, 2);
     const path = entry.slice(3);
+    if (status.includes("R") || status.includes("C")) {
+      i += 1; // skip the paired "from" path
+    }
     if (status.includes("D")) continue; // deleted: nothing to hash
     const absolute = join(root, path);
     if (!existsSync(absolute) || statSync(absolute).isDirectory()) continue;

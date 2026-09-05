@@ -110,6 +110,14 @@ export const PROOF_RECORD_PARSER_VERSION = "proof-record/2#1";
 /** The schema number this build validates. Anything else is not `legacy`. */
 export const PROOF_RECORD_SCHEMA = 2;
 
+/**
+ * Options handed to every `gray-matter` call in this module. Its only job is to
+ * be present — see `parseProofDocument` below, which explains why. `yaml` is
+ * `gray-matter`'s own default engine for a `---` fence, so this changes nothing
+ * about how a proof is read.
+ */
+const PARSE_OPTIONS = { language: "yaml" } as const;
+
 const FULL_SHA = /^[0-9a-f]{40}$/u;
 const ATTEMPT_RESULTS = new Set<string>(["PASS", "FAIL", "INCONCLUSIVE"]);
 const AUTHORITIES = new Set<string>(["authoritative", "supporting"]);
@@ -436,10 +444,43 @@ export function parseProofRecord(frontmatter: unknown): ProofRecord {
  * Parse raw proof Markdown. Frontmatter that cannot be read at all is
  * `invalid`, not `legacy`: a document whose header is unparseable makes no
  * claim this build can describe, and the census must be able to name it.
+ *
+ * **`PARSE_OPTIONS` is load-bearing, and not for what it says.** `gray-matter`
+ * memoises parsed files in a module-global keyed by the input string, and it
+ * writes that entry *before* parsing:
+ *
+ * ```js
+ * matter.cache[file.content] = file;   // file.data is still {}
+ * return parseMatter(file, options);   // ← this is what throws
+ * ```
+ *
+ * So a document whose YAML throws leaves `{ data: {} }` cached under its own
+ * bytes, and every later read of those bytes returns empty frontmatter instead
+ * of throwing: `invalid` the first time, `legacy` (no `schema`) forever after,
+ * within one process. That is wrong in the most dangerous way available to this
+ * ticket — the census digest is computed from parsed state, so a dry run and
+ * the locked re-read that is supposed to confirm it disagreed over
+ * byte-identical documents. The cutover was refused, and a *second* attempt
+ * would have succeeded, bound to a census that had silently lost every invalid
+ * record. A validator whose answer depends on how many times it has been asked
+ * cannot bind anything. (Found in review on a copy of the live board: digests
+ * `0e5e6606…` then `ffcc83ee…`, identical bytes and sha256s.)
+ *
+ * The escape is the guard around that write — `if (!options)`. `gray-matter`
+ * neither reads nor writes the cache for any call that passes an options
+ * object, because it would otherwise have to key on the options too. So the
+ * point of `PARSE_OPTIONS` is that it *exists*, not what is in it; `language:
+ * "yaml"` is `gray-matter`'s own default for a `---` fence and changes no
+ * behaviour. Passing nothing here reintroduces the defect.
+ *
+ * `matter.clearCache()` was rejected as the fix: it mutates the same global
+ * every other caller shares, and it only helps the reader that remembers to
+ * call it — the next reader of those bytes is corrupted again. Not writing the
+ * entry at all is the property worth having.
  */
 export function parseProofDocument(raw: string): ProofRecord {
   try {
-    return parseProofRecord(matter(raw).data);
+    return parseProofRecord(matter(raw, PARSE_OPTIONS).data);
   } catch (error) {
     const reason = String(error instanceof Error ? error.message : error).replace(/[\r\n]+/gu, " ").slice(0, 240);
     return { state: "invalid", diagnostics: [`frontmatter could not be parsed: ${reason}`] };

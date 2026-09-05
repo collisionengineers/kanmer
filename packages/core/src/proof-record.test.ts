@@ -174,6 +174,24 @@ describe("parseProofRecord — legacy records are described, never reinterpreted
     expect(parsed.state).toBe("invalid");
     expect(diagnosticsOf(parsed)[0]).toContain("frontmatter could not be parsed");
   });
+
+  it("gives the same answer for the same bytes however many times it is asked (review round 1, F-001)", () => {
+    // `gray-matter` memoises by input string and, when the YAML throws, caches
+    // `{ data: {} }` under that key before rethrowing — so without
+    // `cache: false` these same bytes read `invalid` once and `legacy` for the
+    // rest of the process. The census digest is computed from parsed state, so
+    // that made a dry run and its own locked re-read disagree over identical
+    // documents. Three calls, because the defect only appears from the second.
+    const malformed = "---\nkind: [unclosed\n---\n\nbody\n";
+    const states = [1, 2, 3].map(() => parseProofDocument(malformed).state);
+    expect(states).toEqual(["invalid", "invalid", "invalid"]);
+
+    // The same property for a record that parses: repeated reads must not drift
+    // either, and must not be served from a stale entry for different bytes.
+    const good = parseProofDocument(["---", "kind: proof-record", "schema: 2", `merged_sha: "${SHA}"`, 'environment: "e"', 'verified_at: "2026-09-05T04:00:00.000Z"', "result: PASS", "attempts:", '  - attempted_at: "2026-09-05T04:00:00.000Z"', '    command: "npm run verify"', '    cwd: "."', "    exit_code: 0", "    result: PASS", "    authority: authoritative", '    summary: "ok"', "---", ""].join("\n"));
+    expect(good.state).toBe("valid-pass");
+    expect(parseProofDocument(malformed).state).toBe("invalid");
+  });
 });
 
 describe("parseProofRecord — the negative matrix", () => {

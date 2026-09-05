@@ -755,3 +755,86 @@ describe("typed proof validation (CORE-129)", () => {
     }
   });
 });
+
+/**
+ * Review round 1, F-002. The behaviour was implemented but nothing pinned it,
+ * and the checklist and plan asserted the opposite. The decision, now recorded
+ * here as well as in FRD-006 R7 and `kanmer-verify`: an operator waiver is an
+ * explicit human disposition and it DOES satisfy the strict gate — the verify
+ * skill has always said "only `PASS`, or an operator's `WAIVED_BY_OPERATOR`,
+ * permits the final move". What it must never be is anonymous, and what it
+ * must never do is authorise an *automated* move (reconciliation declines it
+ * separately, in `proofEvidence`).
+ */
+describe("operator waivers under strict proof validation (CORE-129, F-002)", () => {
+  const SHA = "c".repeat(40);
+
+  function waivedProof(over: { waivedBy?: string | null; reason?: string | null } = {}): string {
+    const lines = [
+      "---",
+      "kind: proof-record",
+      "schema: 2",
+      `merged_sha: "${SHA}"`,
+      'environment: "detached worktree, Node 24"',
+      'verified_at: "2026-09-05T04:00:00.000Z"',
+      "result: WAIVED_BY_OPERATOR",
+      "failure_class: inconclusive",
+    ];
+    if (over.waivedBy !== null) lines.push(`waived_by: "${over.waivedBy ?? "Alex"}"`);
+    if (over.reason !== null) lines.push(`waiver_reason: "${over.reason ?? "the installed-host check cannot run on this machine"}"`);
+    lines.push(
+      "attempts:",
+      '  - attempted_at: "2026-09-05T04:00:00.000Z"',
+      "    exit_code: null",
+      "    result: INCONCLUSIVE",
+      "    authority: authoritative",
+      "    failure_class: inconclusive",
+      '    summary: "no packaged build available on this host"',
+      "---",
+      "",
+      "Waived by Alex: the installed-host check cannot run here.",
+    );
+    return lines.join("\n");
+  }
+
+  async function strictTicket(): Promise<{ store: KanmerStore; root: string; id: string }> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-waiver-"));
+    const s = new KanmerStore(dir);
+    await s.init();
+    const item = await s.createItem({ type: "ticket", title: "Waived", profile: "chore" });
+    await s.setDoc(item.id, "plan", "# Plan");
+    await s.moveItem(item.id, { status: "implementing" });
+    await s.moveItem(item.id, { status: "verifying" });
+    return { store: s, root: dir, id: item.id };
+  }
+
+  it("admits a well-formed waiver naming the operator and the reason", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", waivedProof());
+      expect((await s.moveItem(id, { status: "done" })).status).toBe("done");
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("refuses a waiver that names no operator", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", waivedProof({ waivedBy: null }));
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(/waived_by naming the operator/);
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("refuses a waiver that gives no reason", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", waivedProof({ reason: null }));
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(/requires waiver_reason/);
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+});

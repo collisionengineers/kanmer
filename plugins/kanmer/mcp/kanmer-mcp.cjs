@@ -43309,6 +43309,7 @@ function assessReceipt(receipt, opts) {
 }
 var PROOF_RECORD_PARSER_VERSION = "proof-record/2#1";
 var PROOF_RECORD_SCHEMA = 2;
+var PARSE_OPTIONS = { language: "yaml" };
 var FULL_SHA2 = /^[0-9a-f]{40}$/u;
 var ATTEMPT_RESULTS = /* @__PURE__ */ new Set(["PASS", "FAIL", "INCONCLUSIVE"]);
 var AUTHORITIES = /* @__PURE__ */ new Set(["authoritative", "supporting"]);
@@ -43534,7 +43535,7 @@ function parseProofRecord(frontmatter) {
 }
 function parseProofDocument(raw) {
   try {
-    return parseProofRecord((0, import_gray_matter3.default)(raw).data);
+    return parseProofRecord((0, import_gray_matter3.default)(raw, PARSE_OPTIONS).data);
   } catch (error2) {
     const reason = String(error2 instanceof Error ? error2.message : error2).replace(/[\r\n]+/gu, " ").slice(0, 240);
     return { state: "invalid", diagnostics: [`frontmatter could not be parsed: ${reason}`] };

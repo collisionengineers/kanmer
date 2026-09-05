@@ -23,6 +23,14 @@ Proof is evidence the shipped result works, gathered on merged `main`. v3 types 
 
 `board.yml`'s optional `proofValidation.mode` decides what R4's hard gate means. Absent resolves to `report` (today's existence-only behaviour plus warnings); a board created today is written `strict`. An existing board reaches `strict` only through `migrate_board`: a dry run returns a read-only census of every canonical `proof/proof.md` bucketed `valid` / `legacy` / `invalid` / `absent`, with per-ticket diagnostics and a `digest` binding that exact reading; passing that digest back on a real run recomputes it under the board write lock and writes only the policy. The census and the cutover never touch proof bytes, tickets, stages or activity, and an ordinary `setBoard`/`updateBoard` cannot escalate to `strict` at all. `get_status.proofValidation` reports `{ mode, source }` so a stripped key is observable rather than silent.
 
+A well-formed `WAIVED_BY_OPERATOR` record **satisfies** the strict gate. That is
+not a loophole in R7 but the point of it: the waiver is the one result a machine
+may not write, it must name the operator and the reason, and `kanmer-verify` has
+always said that only a `PASS` or an operator's waiver permits the final move. A
+waiver missing either field is `invalid` and blocks like any other broken record.
+Reconciliation is the asymmetry that keeps this honest — it never recommends Done
+from a waiver, because deciding to ship despite the evidence is a person's call.
+
 Reconciliation reads the *same* parser (`packages/mcp-server/src/reconciliation.ts`'s `proofEvidence` delegates to it), so the movement gate and the read-only inspector cannot disagree about one document. There, `legacy` never yields a Done recommendation regardless of the board's mode: `report` relaxes the gate a human passes through, not the advice a machine gives.
 
 ## Acceptance criteria

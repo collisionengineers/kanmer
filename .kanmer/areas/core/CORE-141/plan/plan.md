@@ -1,3 +1,10 @@
+## Correction (plan v3, 2026-09-05 ~16:00 BST — read-only review found status overclaims)
+
+- **CORE-129 is Done** (merge `410bfd22`, PR #329) — not "still in Review". Verified PASS at the merge SHA; see the ticket's own proof record and Outcome. The earlier "treat as merged code, not yet Done" note below is superseded for CORE-129.
+- **CORE-147 status must be read live** via `get_item CORE-147` at the time this plan is consulted. As of this correction it reads `verifying` (stageEntered.verifying 2026-09-05T15:52:06Z) — verification is in progress, **not** Done. Do not write "Done" for CORE-147 anywhere until `get_item CORE-147` actually reports `status: done`; re-check before the cut.
+- Do not describe CORE-138/CORE-144/CORE-145's proofs as having run a `PROOF_RECEIPT_REJECTED` demonstration — only **MCP-057**'s proof did that. The other three carry receipts validated by `assessReceipt`, not a rejection demo.
+- Every proof's `observed_by` is `claude-code verifier (HZN-009)`, not Alex. Alex's role is merge authorisation (the human-owned control), a separate mechanism from proof provenance.
+
 ## Cut sequence
 
 1. Clean `main` at `4a1c3a23` (== `origin/main`): `git fetch origin && git status --porcelain` empty, `git rev-parse HEAD` == `git rev-parse origin/main`.
@@ -18,20 +25,20 @@ If step 10, 11 or 12 fails: **keep 0.4.1 as the live control plane**, do not fli
 
 ## Merged roster for 0.4.2 (source `c088be13..origin/main`, HEAD `4a1c3a23`)
 
-| Ticket | Title | Merge SHA | PR |
-|---|---|---|---|
-| DOC-028 | Route work by purpose in the managed block and name the configured integration branch | `bd368549` | #321 |
-| GUI-152 | Focus Board scopes, bounded columns and sidebar | `32aa54fc` | #323 |
-| CORE-140 | Build each rail artifact once and refuse a stale already-built step | `94165031` | #322 |
-| DOC-026 | Retire CLOSEOUT_PLAN.md, add the operating index, fix stale AGENTS.md pointers | `37b83b14` | #326 |
-| MCP-057 | Consult the bound post-merge verify run before creating a verification worktree; record receipts in proof | `e474f317` | #325 |
-| CORE-138 | Stop PR body edits cancelling verify; gate advisory on drafts; regate waits for in-progress runs | `9945b1f2` | #324 |
-| CORE-144 | Make the build-once guard see through the runner scripts; harden the dirty digest | `de5bace9` | #327 |
-| CORE-145 | Build core before the standalone HTTP tests on a fresh checkout | `58718455` | #328 |
-| CORE-129 | Validate typed proof records; add a report/strict board proof policy with a census-bound cutover | `410bfd22` | #329 |
-| CORE-147 | Declare the verification contract on the board (`delivery.verification`); drive receipt validation and the verify skill from it | `4a1c3a23` | #330 |
+| Ticket | Title | Merge SHA | PR | Ticket status |
+|---|---|---|---|---|
+| DOC-028 | Route work by purpose in the managed block and name the configured integration branch | `bd368549` | #321 | Done |
+| GUI-152 | Focus Board scopes, bounded columns and sidebar | `32aa54fc` | #323 | Done |
+| CORE-140 | Build each rail artifact once and refuse a stale already-built step | `94165031` | #322 | Done |
+| DOC-026 | Retire CLOSEOUT_PLAN.md, add the operating index, fix stale AGENTS.md pointers | `37b83b14` | #326 | Done |
+| MCP-057 | Consult the bound post-merge verify run before creating a verification worktree; record receipts in proof | `e474f317` | #325 | Done |
+| CORE-138 | Stop PR body edits cancelling verify; gate advisory on drafts; regate waits for in-progress runs | `9945b1f2` | #324 | Done |
+| CORE-144 | Make the build-once guard see through the runner scripts; harden the dirty digest | `de5bace9` | #327 | Done |
+| CORE-145 | Build core before the standalone HTTP tests on a fresh checkout | `58718455` | #328 | Done |
+| CORE-129 | Validate typed proof records; add a report/strict board proof policy with a census-bound cutover | `410bfd22` | #329 | **Done** (corrected — was reported Review, now verified PASS at merge SHA) |
+| CORE-147 | Declare the verification contract on the board (`delivery.verification`); drive receipt validation and the verify skill from it | `4a1c3a23` | #330 | **Verifying — read live via `get_item CORE-147` before relying on this row; verification in progress as of this correction** |
 
-CORE-129's PR is merged (`410bfd22`) but the ticket is still in **Review** on the live board (verify/closeout has not run against it yet) — treat it as merged code, not yet Done, in the closeout report. CORE-147 was pulled into 0.4.2 after the initial preparation pass (2026-09-05) and is Done.
+CORE-129's code and ticket are both confirmed Done. CORE-147's code is merged (`4a1c3a23`) but its own ticket lifecycle has not yet reached Done — re-check `get_item CORE-147` before the cut and before the closeout report is finalized.
 
 ## Strict-cutover decision rule (CORE-129 report/strict proof policy)
 

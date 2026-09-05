@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "325"
-head_sha: "99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d"
+head_sha: "24f226539f5b4ede4a0dbd941eb2d28232a667a7"
 verdict: pass
 reviewer: "independent-reviewer-mcp-057"
 independent: true
 plan_hash: "5e03efd45aa922cb"
 ticket_updated: "2026-09-05T03:37:55.203Z"
-board_sha: "3f498c164591e695f853c763b8eb0ee5a72e38d2"
+board_sha: "152c430d7ad752180b49d62c4e85a578798e21bc"
 expected_reviewers:
   - "independent-reviewer-mcp-057"
 threads_snapshot: []
@@ -34,12 +34,12 @@ findings:
     severity: note
     summary: "apps/gui/src/renderer/src/manual/chapters.generated.ts is in the diff although the ticket's files/files.md does not list it and the lane C shared-file owner is apps/gui/src/**."
     disposition: accepted-risk
-    reason: "Verified generated, not hand-edited: after `npm run build && npm run plugin:build` at 99f0cf70 `git status --short` is empty, `verify:docs` reports \"generated manual current\" and `check:manual` reports up to date (22 chapters). Round 2 did not re-edit docs/manual/proof.md, so the file is unchanged since round 1. Disclosed as a deviation in the post-implementation report."
+    reason: "Verified generated, not hand-edited: after `npm run build && npm run plugin:build` at 99f0cf70 `git status --short` is empty, `verify:docs` reports \"generated manual current\" and `check:manual` reports up to date (22 chapters). Its blob at this head is byte-identical to the one I checked (fc8e671b83f00f0198f84b589b09af088fc74a9e). Disclosed as a deviation in the post-implementation report."
   - id: "F-006"
     severity: note
-    summary: "CI at the reviewed head: required `verify` is green (9m40s, job 101242176572), but `kanmer-gate` is red for STALE_REVIEW — it read the round-1 attestation, which is bound to the superseded head 6b7049c7."
+    summary: "CI at the reviewed head 24f22653: required `verify` is green (7m37s, job 101244693975), and it exercised CORE-140's new build-once rail on this merged tree. `kanmer-gate` is red for STALE_REVIEW only — it read the round-2 attestation, bound to the superseded head 99f0cf70."
     disposition: accepted-risk
-    reason: "The gate's sole failing check is self-referential and is discharged by this record: it fails with \"review attestation head 6b7049c7… does not match PR head 99f0cf70…\" and every other check passes. The gate reads the remote board and does not re-run on a board push, so a green kanmer-gate observed at the final merged-forward head remains a merge precondition owned by the merger, not something this record can assert. The PR is also BEHIND main again after CORE-140 merged at 941650317be4cad4f6a86c6ab16362ee5dd8dfdb; the coordinator will update-branch and request one delta re-bind."
+    reason: "The gate's sole failing check is self-referential and is discharged by this record. The gate reads the remote board tip and does not re-run on a board push, so it must be re-run after this board push and observed green before merging; that observation is the merger's, and this record cannot assert it in advance. Every other gate check passed at the previous head, and the recorded ticket commits 6b7049c7 and 99f0cf70 are both ancestors of 24f22653, so COMMITS_UNREACHABLE stays satisfied."
   - id: "F-007"
     severity: note
     summary: "receiptAssessmentRejections() separates the SHA class from the rest by string-sniffing the human-readable reason text (`!reason.includes(\"head_sha\")`), so rewording either assessReceipt reason silently changes which finding code fires."
@@ -49,7 +49,7 @@ findings:
     severity: note
     summary: "The FAIL-route call passes `evidence.pullRequest.mergeSha ?? \"\"` although the VERIFYING_WITHOUT_MERGE_SHA guard earlier in the same block already guarantees a truthy mergeSha; the PASS route passes the narrowed value directly. Dead defensive code with an asymmetric shape."
     disposition: accepted-risk
-    reason: "Unreachable today, and harmless if it ever became reachable: an empty mergedSha only affects head_sha reasons, which this helper discards anyway, so the non-SHA rejections it reports would still be correct. Not worth a round-3 return."
+    reason: "Unreachable today, and harmless if it ever became reachable: an empty mergedSha only affects head_sha reasons, which this helper discards anyway, so the non-SHA rejections it reports would still be correct. Not worth a further return."
   - id: "F-009"
     severity: note
     summary: "\"Either finding blocks MOVE_TO_DONE and the backward ROUTE_VERIFICATION_FAILURE routes\" means it blocks the reconciliation recommendation: reconcileEvidence is called only from packages/mcp-server/src/reconciliation.ts:471 (reconcile_ticket / apply_reconciliation). The store's own verifying → done transition does not consult it, so a human calling move_item directly is not stopped by a rejected receipt."
@@ -67,13 +67,78 @@ findings:
     reason: "The tightening was directed by this review on the same PR through the skill's remediation lane, which does not require a plan rewrite, and it is recorded in full in the post-implementation report's \"Review round 1 remediation\" section and in this attestation. plan_hash is unchanged at 5e03efd45aa922cb, so the binding is honest about which plan version was reviewed."
 ---
 
+# Review — MCP-057 (round 1 delta, re-bound to the updated head)
+
+This replaces the round-1 attestation bound to `99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d`
+with the identical review re-bound to head
+`24f226539f5b4ede4a0dbd941eb2d28232a667a7`. Verdict, findings and dispositions
+are unchanged, because the reviewed content is unchanged. `review_round` stays
+1; this is not a new remediation round and consumes no budget — the head moved
+only because `gh pr update-branch` merged `main` forward.
+
+## Why the re-bind is content-free
+
+`24f22653` is a two-parent merge commit: parents are
+`99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d` (the head I reviewed) and
+`37b83b1435602dddeaea3da32668b4846d1be963` (`main`). Three independent checks,
+all run against the fetched objects rather than taken on trust:
+
+1. **Path-filtered diff.** `git diff 99f0cf70 24f22653` over all eleven
+   ticket-owned paths plus the rebuilt bundle and the generated manual chapter:
+   **empty**.
+2. **Blob identity.** `git rev-parse <sha>:<path>` for each of those thirteen
+   paths is identical at both commits — `proof-receipts.ts`
+   `96cab88a93f7bf1c70c38a50ae6d678ba1a86106`, `reconciliation.ts` (core)
+   `95147f86daa753488a7e1b9afdf7924c7a41d75f`, `reconciliation.ts` (mcp-server)
+   `5d39b17b0de48069720fa2ae467fe685c4a89bad`, `kanmer-verify/SKILL.md`
+   `1eb07ff148d5241b4ced0bf918de97e7969c5c01`, `kanmer-mcp.cjs`
+   `9f5f1ded88b9784b902a5edc025a03d50a349543`, and the other eight likewise.
+   Not "no diff" by rendering — the same objects.
+3. **Nothing leaked in the other direction.** `git diff --stat 37b83b14 24f22653`
+   is exactly this ticket's thirteen files, 773 insertions / 22 deletions. The
+   merge neither added anything of `main`'s to the ticket's side nor reverted
+   anything of `main`'s.
+
+What `main` brought in — CORE-140 at `941650317be4cad4f6a86c6ab16362ee5dd8dfdb`
+(`scripts/verify.mjs`, `scripts/run-tests.mjs`, `scripts/build-stamp.mjs`,
+`scripts/release.mjs`, `scripts/verify-steps.test.mjs`,
+`packages/mcp-server/scripts/run-http-tests.mjs`, root and mcp-server
+`package.json`, `.github/workflows/pr.yml`) and DOC-026 at
+`37b83b1435602dddeaea3da32668b4846d1be963` (`AGENTS.md`, `CLOSEOUT_PLAN.md`) —
+is eleven files, **none** of them this ticket's. I checked the one interaction
+worth checking: CORE-140's `package.json` edits are script-only, `package-lock.json`
+is untouched, so no dependency changed and no installed tree is invalidated.
+The combination itself is exercised by the hosted rail below.
+
+## CI at this head (run 33943293808)
+
+| Job | Id | State |
+|---|---|---|
+| `verify` | 101244693975 | **pass** (7m37s) — the whole rail on the merged tree, under CORE-140's new build-once logic |
+| `kanmer-gate` | 101244693775 | failure — `STALE_REVIEW` only, discharged by this record (F-006) |
+| `regate` | 101244694387 | skipped (PR event) |
+
+## Threads re-gathered at this head
+
+GitHub GraphQL `reviewThreads` 0 nodes, `comments` 0, `reviews` 0 at
+`24f226539f5b4ede4a0dbd941eb2d28232a667a7`. `threads_snapshot: []` remains the
+truthful value. No bot thread was posted; a bot is never a gate.
+
+---
+
+The full round-1 review — the eight-file remediation of F-001, the mutation
+test that killed the neutralised `job`/`workflow` checks in four tests, the
+end-to-end `PROOF_RECEIPT_REJECTED` verification on both routes, the
+back-compat argument, and every scoped command with its exit code — is recorded
+below unchanged. It applies verbatim to this head because the content is the
+same objects.
+
 # Review — MCP-057 (round 1, delta)
 
-Delta review of PR #325 at head `99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d`,
-scoped to the lines changed since the previously attested head
-`6b7049c735792ad01485dbe74f840733827c1c87`, their callers and contracts, and
-the relevant tests — plus a rerun of every scoped check. `review_round` is 1;
-the sanctioned return is audited in `scratch/execution.md` at
+Delta review of PR #325, scoped to the lines changed since the previously
+attested head `6b7049c735792ad01485dbe74f840733827c1c87`, their callers and
+contracts, and the relevant tests — plus a rerun of every scoped check. The
+sanctioned return is audited in `scratch/execution.md` at
 2026-09-05T03:26:08.290Z. I did not implement this ticket.
 
 Verdict: **pass**. F-001 is fixed at the mechanism, not papered over; no
@@ -84,12 +149,10 @@ finding of any severity is open.
 Two commits:
 
 - `b33278f6` — `git merge origin/main`. **It changes nothing in this ticket's
-  files.** I ran a path-filtered diff of `6b7049c7..b33278f6` over all eleven
+  files.** Path-filtered diff of `6b7049c7..b33278f6` over all eleven
   ticket-owned paths plus the bundle: **empty**. The merge brings 23 files —
-  DOC-028 (`bd368549`: AGENTS.md, both `agents-block-body.mjs` copies,
-  `kanmer-setup/SKILL.md`, `verify-agents-block.mjs`,
-  `agents-block-routing.test.mjs`) and GUI-152 (`32aa54fc`: `apps/gui/**`,
-  FRD-036) — both already on `main`. No conflict, no ticket-file drift.
+  DOC-028 (`bd368549`) and GUI-152 (`32aa54fc`) — both already on `main`. No
+  conflict, no ticket-file drift.
 - `99f0cf70` — the remediation: 8 files, 241 insertions, 22 deletions.
 
 ## Each remediation claim, verified in code
@@ -173,11 +236,11 @@ beside a real "rejects a receipt whose job is not verify".
 
 **7. Bundle.** Rebuilt and committed; byte-matches a fresh build (below).
 
-## Scoped checks rerun at 99f0cf70
+## Scoped checks rerun at 99f0cf70 — the same objects as this head
 
 In `.worktrees/MCP-057`, read-only apart from the restored mutation copy. Full
-`npm run verify` deliberately not run — the hosted rail owns it and it is green
-at this head.
+`npm run verify` deliberately not run locally — the hosted rail owns it and is
+green at `24f22653`.
 
 | Command | Exit | Result |
 |---|---|---|
@@ -194,31 +257,13 @@ at this head.
 
 ## Scope
 
-Still exactly the ticket's files. Round 2 touched no new path, added no
-dependency (`package.json`/`package-lock.json` absent from the diff), and left
+Exactly the ticket's files, in both rounds. No new path, no dependency
+(`package.json`/`package-lock.json` absent from the ticket's diff), and
 `scripts/verify.mjs`, `.github/workflows/pr.yml`, `agents-block-body.mjs`, the
-verify-rail scripts and `step-reconciliation.ts` untouched — the DOC-028 and
-CORE-140 files that appear in the branch arrived only through the `origin/main`
-merge and are byte-identical to `main`.
-
-## Threads
-
-No review threads, review comments or reviews exist on PR #325 at
-`99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d` — GitHub GraphQL `reviewThreads`
-0 nodes, `comments` 0, `reviews` 0. `threads_snapshot: []` is the truthful
-value. No `chatgpt-codex-connector` thread was posted; the bot is never a gate.
-
-## CI at this head (run 33942377774)
-
-| Job | Id | State |
-|---|---|---|
-| `verify` | 101242176572 | **pass** (9m40s) |
-| `kanmer-gate` | 101242176470 | failure — `STALE_REVIEW` only, discharged by this record (F-006) |
-| `regate` | 101242176885 | skipped (PR event) |
-
-The previous run 33941205872 at `6b7049c7` is now marked cancelled overall
-because the new push superseded it; its `verify` job had passed (7m41s) before
-that.
+verify-rail scripts, `AGENTS.md` and `step-reconciliation.ts` are untouched by
+this ticket — the DOC-028, GUI-152, CORE-140 and DOC-026 files present in the
+branch arrived only through the two `main` merges and are byte-identical to
+`main`.
 
 ## Residual risk
 
@@ -236,7 +281,6 @@ rather than hidden, which is the right boundary for this release.
 ## Merge preconditions the merger still owns
 
 This is a `pass` on the change, not a merge authorisation. Before merging:
-bring the branch up to date (`main` moved again — CORE-140 at
-`941650317be4cad4f6a86c6ab16362ee5dd8dfdb`), obtain one delta re-bind of this
-attestation to the new head, and observe `kanmer-gate` **green** at that head
-against a pushed board. I did not merge and did not move the ticket.
+re-run `kanmer-gate` at `24f22653` **after** this board push and observe it
+green, and confirm the head has not moved again. I did not merge and did not
+move the ticket.

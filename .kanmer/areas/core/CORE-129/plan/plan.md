@@ -1,11 +1,30 @@
 # Plan — CORE-129: validated proof authority and deliberate strict cutover
 
-> **Version 2 (2026-09-05).** Supersedes version 1, which was written against a
-> "v0.3.13" roster and base `4fda54b4`. Neither exists any more. This version is
+> **Version 3 (2026-09-05, review round 1).** Two corrections against version 2,
+> both from the independent review of PR #329; nothing else in the contract moves.
+>
+> 1. **F-002, waiver semantics.** Version 2's Step 2 said strict blocks a *waived*
+>    record. That was never the implemented behaviour and it contradicts both
+>    FRD-006 R7 and `kanmer-verify` ("only `PASS`, or an operator's
+>    `WAIVED_BY_OPERATOR`, permits the final move"). The decision is to **keep the
+>    behaviour**: a well-formed waiver — one naming the operator and the reason —
+>    parses to `valid-pass` and satisfies the strict gate, because it is an
+>    explicit disposition by a named human. What a waiver never does is authorise
+>    an *automated* move: reconciliation declines to recommend from one. Step 2's
+>    negative-case list and the acceptance checks below are corrected, and the
+>    reading is now pinned by tests in `docs.test.ts` rather than left to prose.
+> 2. **F-001, parser purity.** Required change 1 now states explicitly that
+>    `parseProofDocument` must be *pure over its input bytes*. `gray-matter`
+>    memoises by input string and caches `{ data: {} }` on a YAML throw, so the
+>    same document read as `invalid` once and `legacy` thereafter — which made a
+>    census disagree with its own locked re-read. `cache: false` is part of the
+>    contract, not an implementation detail.
+>
+> **Version 2 (2026-09-05)** superseded version 1, which was written against a
+> "v0.3.13" roster and base `4fda54b4`; neither exists any more. This plan is
 > written against `main` at `37b83b1435602dddeaea3da32668b4846d1be963`, release
-> **0.4.2**, horizon **HZN-009**. The "Required changes 1–5" contract below is
-> carried over unchanged in substance; what changed is the base, the roster, the
-> `receipts[]` requirement and the MCP-057 interaction.
+> **0.4.2**, horizon **HZN-009**. The "Required changes 1–5" contract is carried
+> over unchanged in substance.
 
 ## Objective
 
@@ -56,6 +75,12 @@ engine or dependency is introduced.
    - `parseProofRecord(frontmatter)` is pure (no IO, no `node:` imports) and
      mirrors `review-attestation.ts`'s style; `parseProofDocument(raw)` runs
      `gray-matter` and delegates, so no caller decodes proof frontmatter itself.
+   - **`parseProofDocument` must be a pure function of its input bytes** (F-001).
+     `gray-matter` memoises by input string and stores `{ data: {} }` under that
+     key when the YAML throws, so without `cache: false` the same document reads
+     `invalid` once and `legacy` for the rest of the process — and a census
+     disagrees with its own locked re-read over byte-identical documents. Pass
+     `{ cache: false }`; do not rely on `matter.clearCache()` discipline.
    - `proof-record/2` semantics: `kind: proof-record`, `schema: 2`, 40-hex
      `merged_sha`, non-empty `environment`, ISO `verified_at`, a `result`, and a
      non-empty `attempts[]`.
@@ -72,8 +97,9 @@ engine or dependency is introduced.
    - `WAIVED_BY_OPERATOR` is accepted at the **top level only**, and only with the
      operator identity fields the verify skill requires (`waived_by`,
      `waiver_reason`); it is the one documented exception to top-level/final-attempt
-     binding, and it is reported distinctly so reconciliation never recommends Done
-     from a waiver.
+     binding. It resolves to `valid-pass` — a named human's explicit disposition
+     satisfies the gate — and is flagged (`waived: true`) so reconciliation never
+     recommends Done from one.
    - Unknown top-level keys are **preserved and reported**, never dropped and never
      fatal.
    - `receipts[]` is parsed with MCP-057's `parseProofReceipts` (never
@@ -97,8 +123,10 @@ engine or dependency is introduced.
    - In `report` mode, existence still satisfies the requirement, and the parsed
      state plus its diagnostics are surfaced as `get_doc_gates` warnings (and
      therefore in the GUI).
-   - In `strict` mode, the proof requirement is satisfied only by `valid-pass`. The
-     visual-proof image advisory is unchanged and still runs after the hard check.
+   - In `strict` mode, the proof requirement is satisfied only by `valid-pass` —
+     that is, a PASS record, **or a well-formed operator waiver**, at the exact
+     merge SHA. The visual-proof image advisory is unchanged and still runs after
+     the hard check.
    - `setBoard`/`updateBoard`/`update_column` refuse a `report`-or-absent → `strict`
      escalation. Strict activation is available only through one dedicated
      digest-bound store method under the board write lock (used by change 3).
@@ -114,6 +142,9 @@ engine or dependency is introduced.
    - A real run requires the caller's exact digest, re-reads the census under the
      board write lock and writes only the board policy; a mismatch refuses without
      writing. `migrate_board` without a digest never enables strict.
+   - Because the parser is pure over bytes (change 1), two censuses of an unchanged
+     board return the same digest — which is what makes the locked re-read a
+     drift check rather than a coin toss.
    - Idempotent: an already-strict board reports no policy change and the same
      read-only census. Proofs, tickets, stages and activity are never edited.
    - The `migrate_board` tool description is updated. The tool roster stays 41.
@@ -126,7 +157,9 @@ engine or dependency is introduced.
      receipt findings intact.
    - Valid PASS still requires the exact merge SHA. Valid FAIL keeps the existing
      `implementation | plan | transient | inconclusive` routing. Legacy, invalid,
-     INCONCLUSIVE and waived records produce no Done recommendation.
+     INCONCLUSIVE and waived records produce no Done recommendation — a waiver
+     satisfies the gate a human walks through, and is still not a recommendation a
+     machine may make.
    - `reconcile_ticket` stays read-only; no new action, finding-free paths unchanged.
 
 5. **Publish the new record contract**
@@ -159,6 +192,8 @@ final attempt; top-level result/failure-class drift; `WAIVED_BY_OPERATOR` withou
 operator identity; a receipt whose `head_sha` ≠ `merged_sha`; a non-array
 `receipts`. Preserved: a valid one-attempt authoritative PASS; unknown top-level
 keys retained and reported; a legacy record (no `schema`) with today's shape.
+Purity (F-001): the same malformed bytes parse `invalid` on every call in one
+process, and a valid record read between them does not disturb either answer.
 
 ### Step 2 — report/strict board policy
 
@@ -170,9 +205,11 @@ Symbols: `ProofValidationSchema`, `resolveProofValidation`, `EvidenceProbe.proof
 `statusOf`, `gateReport`, `setBoardWithProofValidationGuard`.
 Negative cases: absent policy resolves `report`/`default`; explicit policy resolves
 `board`; `setBoard`/`updateBoard` escalation to strict refuses; strict blocks
-legacy/invalid/FAIL/INCONCLUSIVE/waived; strict passes a valid PASS; a
-non-canonical proof markdown cannot satisfy strict; visual advisory unchanged;
-report mode still satisfied by existence and emits warnings.
+legacy, invalid, FAIL and INCONCLUSIVE; strict passes a valid PASS; **strict also
+passes a well-formed `WAIVED_BY_OPERATOR` record and refuses one missing
+`waived_by` or `waiver_reason`** (F-002 correction); a non-canonical proof markdown
+cannot satisfy strict; visual advisory unchanged; report mode still satisfied by
+existence and emits warnings.
 
 ### Step 3 — census and cutover in `migrate_board`
 
@@ -182,7 +219,9 @@ Symbols: `auditProofRecords`, `ProofCensus`, `proofCensusDigest`,
 Negative cases: old-format board refuses the cutover; dry run writes nothing;
 incomplete census refuses; missing/stale digest refuses without writing; drift
 under the lock refuses; success changes only the board policy; repeat is
-idempotent; proof/ticket bytes unchanged.
+idempotent; proof/ticket bytes unchanged. Stability (F-001): two dry runs over an
+unchanged board return the same digest and buckets, and that digest still
+authorises the real run.
 
 ### Step 4 — reconciliation reuses the parser
 
@@ -205,11 +244,16 @@ Files: ADR-0011, FRD-002, FRD-006, `docs/manual/proof.md`, `docs/manual/gates.md
 
 - A valid schema-2 single-authoritative-PASS record is Done-eligible under strict,
   and only at the exact merge SHA.
+- A well-formed `WAIVED_BY_OPERATOR` record — naming the operator and the reason —
+  is likewise Done-eligible under strict; one missing either field is `invalid` and
+  blocks. Reconciliation recommends Done from neither.
 - The final ledger entry must be authoritative, so a later FAIL or INCONCLUSIVE can
   never hide behind an earlier or top-level PASS.
 - Blank environment, result/exit contradictions, timestamp ties and reversals,
   `verified_at` drift, incompatible failure classes and ambiguous manual/process
   evidence are `invalid`; unknown top-level keys are preserved and reported.
+- Parsing is pure over bytes: repeated reads of the same document in one process
+  give the same state, and two censuses of an unchanged board give one digest.
 - A `receipts[]` list is validated by the same parser: well-formed entries and
   unknown fields preserved, a `head_sha` ≠ `merged_sha` receipt invalid, and a proof
   without `receipts` unaffected.

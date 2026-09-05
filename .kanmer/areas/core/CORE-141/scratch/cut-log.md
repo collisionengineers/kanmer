@@ -229,3 +229,16 @@ Retry succeeded end-to-end. Full rail passed, GUI built, `npx electron-builder -
 `release_channel complete` (lease rev 2) → lease cleared, attempt `outcome: released`, `terminal_at: 2026-09-05T18:24:33.165Z`.
 
 Confirmed via `get_status.release`: `attemptCount: 2`, `main@2` present with `outcome: released`, `releaseTag: v0.4.2`, `verificationState: passed`, matching everything recorded, `channels: []` (no live lease remaining) — exactly as expected. `main@1` (v0.4.1) unchanged/untouched.
+
+### B3: fresh non-linked clone — PASS
+
+`git clone https://github.com/collisionengineers/kanmer.git "$TMP/kanmer-fresh-042"` exit 0. `git checkout v0.4.2` → HEAD `7a6e437574fd653f4c49d0a3fa00e6b5e4904809` ("release: v0.4.2 (#332)"), `package.json`/`apps/gui/package.json` both `0.4.2`. `npm ci` exit 0.
+
+- `npm run build` exit 0 (prerequisite dist for the checks).
+- `npm run plugin:check` — exit 0: "plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.2, isolated MCP handshake lists 41 tools".
+- `npm run mcpb:check` — exit 0: built `kanmer-0.4.2.mcpb` (manifest sha256 `85e6b5f2c68349b5ba878e28b59f0e5a7c57a9a8904739a7dc0d6c0d4f32444d`, server sha256 `20caa7551f8316524f9a54253597fa2826a9f9474962262c96cdc705e275a5bd`), schema validation passed, icon validation passed, unpacked and "check passed (3 files, 1796819 bytes)" — **1,796,819 bytes matches the published `kanmer-0.4.2.mcpb` asset size exactly.**
+- `npm run test:http -w @kanmer/mcp-server` — exit 0: 253 tests, 252 pass, 0 fail, 1 skipped, 66.78s.
+
+Clone deleted after: `rm -rf "$TMP/kanmer-fresh-042"`.
+
+Continuing to watch `release.yml` run `33983890950` for the tag push (`gh run list`/`gh run view`); still `in_progress` at the "Run the authoritative verification rail" step as of this check.

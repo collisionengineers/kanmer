@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "327"
-head_sha: "8ba0cc861b97a294a2e5f5137c6dc6a09d8bd88f"
+head_sha: "194c61a80530e812465c76b5afb3c1449b1b0526"
 verdict: pass
 reviewer: "independent-reviewer-subagent"
 independent: true
 plan_hash: "17e8861ac33c87d8"
 ticket_updated: "2026-09-05T04:11:11.798Z"
-board_sha: "21cd0f6b6ae5f0ac61a608c80e01101234857bcc"
+board_sha: "0f048907f20ac4b602a4e157573ae187238ca101"
 expected_reviewers:
   - "independent-reviewer-subagent"
 threads_snapshot: []
@@ -38,10 +38,10 @@ findings:
     severity: note
     summary: "The main() entry-point guard (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) is load-bearing in a dangerous direction: if it ever failed to match, `npm test` / `npm run test:built` would exit 0 having run nothing. Reviewer probed it on this Windows host with a faithful copy: relative invocation, absolute backslash path, all-lowercase drive-letter path, invocation from a different cwd, and via npm all run main(); import does not. Both sides derive from the same argv[1] string, so drive-letter and separator casing cannot diverge."
     disposition: accepted-risk
-    reason: "Empirically correct on Windows across five invocation shapes and identical to the pre-existing idiom already used by scripts/test-scripts.mjs, so it is not a new pattern. The one residual case is a path reached through a symlink (ESM realpaths the main module, argv[1] is not realpathed); no rail path is symlinked, and CI's green Windows verify run exercises the real guard end to end."
+    reason: "Empirically correct on Windows across five invocation shapes and identical to the pre-existing idiom already used by scripts/test-scripts.mjs, so it is not a new pattern. The one residual case is a path reached through a symlink (ESM realpaths the main module, argv[1] is not realpathed); no rail path is symlinked, and the green Windows verify run at 8ba0cc86 exercises the real guard end to end."
   - id: F-007
     severity: note
-    summary: "kanmer-gate was red at this head (run 33943879137, job 101247559337) with exactly one finding, NO_REVIEW_RECORD; the other eight checks passed and SYNC_REQUIRED reported 'unrecorded' because no attestation existed. Fixed by this record. The gate reads the remote board and does not re-trigger on a board push, so it must be re-run after the board carrying this attestation is pushed."
+    summary: "kanmer-gate was red at the previously attested head 8ba0cc86 (run 33943879137, job 101247559337) with exactly one finding, NO_REVIEW_RECORD. After the board carrying the first attestation reached the remote it was re-run and passed (job 101248787234): NO_REVIEW_RECORD pass, STALE_REVIEW pass, SYNC_REQUIRED 'current' (attested board 21cd0f6b on fetched tip 6f37b292), strict true. It must be re-run once more at 194c61a8 against this record's board_sha."
     disposition: fixed
   - id: F-008
     severity: minor
@@ -50,17 +50,52 @@ findings:
     reason: "A merge-order coordination cost, not a defect in either PR. The correct resolution is stated: keep CORE-145's existsSync-guarded `npm run build:core` as imperative code in the else branch and NOT as a COMMANDS.default entry — build:core expands to `npm run build -w @kanmer/core`, so declaring a conditional build as unconditional data would misstate the graph the new at-most-once assertion reads. No other file overlaps (#328's only other file is AGENTS.md)."
   - id: F-009
     severity: minor
-    summary: "The PR is BEHIND main: base 37b83b14, and origin/main has since gained e474f317 (MCP-057) and 9945b1f2 (CORE-138). mergeStateStatus is BEHIND with mergeable MERGEABLE."
+    summary: "The BEHIND condition recorded at 8ba0cc86 has been resolved by `gh pr update-branch`: head is now the merge commit 194c61a8, which brings in main's e474f317 (MCP-057) and 9945b1f2 (CORE-138). mergeStateStatus is now BLOCKED (checks pending), mergeable MERGEABLE."
+    disposition: fixed
+  - id: F-010
+    severity: minor
+    summary: "At the moment of this re-bind, `verify` and `kanmer-gate` at 194c61a8 (run 33968076419, jobs 101311615310 and 101311615182) were both queued/pending; `regate` skipping. The rail's own green evidence is from the previous head 8ba0cc86 (run 33943879137, job 101248787900, 8m1s)."
     disposition: accepted-risk
-    reason: "Mechanical and non-conflicting: git diff --name-only 37b83b14 origin/main shares no file with this PR's four, so `gh pr update-branch` will produce a content-inert merge. It is nonetheless a merge-time obligation — after update-branch the head moves and this attestation must be replaced by a delta re-bind, with verify and kanmer-gate re-run at the new head."
+    reason: "The merge is proven content-inert for this PR's scope (see the delta-proof section: all four CORE-144 blobs are byte-identical at 8ba0cc86 and 194c61a8), so the substantive review transfers. It is nonetheless a merge-time obligation, not a reviewer conclusion: the merger must require verify and kanmer-gate green at 194c61a8 before merging. Pending checks are recorded here as evidence, never presented as a green required gate."
 ---
 
-# Independent review — CORE-144, PR #327
+# Independent review — CORE-144, PR #327 (delta re-bind to `194c61a8`)
 
-Head `8ba0cc861b97a294a2e5f5137c6dc6a09d8bd88f`, branch
-`CORE-144-guard-fidelity`, base `main`, worktree `.worktrees/CORE-144`.
-Reviewer did not write this code, did not push to the branch, did not merge,
-and did not run the full `npm run verify`.
+Head `194c61a80530e812465c76b5afb3c1449b1b0526`, branch
+`CORE-144-guard-fidelity`, base `main`, worktree `.worktrees/CORE-144`. This
+head is `gh pr update-branch`'s merge of `main` (`9945b1f2`) into the branch;
+the substantive review below was performed on
+`8ba0cc861b97a294a2e5f5137c6dc6a09d8bd88f` and is carried forward after
+proving the merge changed nothing in CORE-144's scope. Reviewer did not write
+this code, did not push to the branch, did not merge, and did not run the full
+`npm run verify`.
+
+## Re-bind proof: the delta is only the merge of main
+
+- `git log --oneline 8ba0cc86..194c61a8` is exactly three commits — the merge
+  commit `194c61a8` plus the two `main` commits it brought in: `e474f317`
+  (MCP-057) and `9945b1f2` (CORE-138).
+- `git diff 9945b1f2...194c61a8 --stat` is **exactly** CORE-144's four files at
+  +197/−30: `packages/mcp-server/scripts/run-http-tests.mjs`,
+  `scripts/build-stamp.mjs`, `scripts/run-tests.mjs`,
+  `scripts/verify-steps.test.mjs`. Nothing else is contributed by this branch.
+- **Blob-level check, the decisive one:** all four files hash identically at
+  `8ba0cc86` and `194c61a8` — `cd6a77a9`, `aaecf72f`, `d7466f48`, `fa0b03e8`
+  respectively. Nothing was resolved, reformatted or dropped, so every scoped
+  check and mutation probe recorded below still describes the bytes now on the
+  PR head.
+- `git diff --name-only 8ba0cc86 194c61a8` is exactly main's 20 files
+  (MCP-057's `packages/core/**` receipts/reconciliation work and CORE-138's
+  `.github/workflows/pr.yml`, `check-pr.mjs`, `pr-workflow.test.mjs`, skills
+  and `AGENTS.md`). **No file appears on both sides**, so there was nothing to
+  conflict and no shared file to re-verify.
+- No conflict markers exist anywhere under `scripts/` or
+  `packages/mcp-server/scripts/` at the merged head.
+
+Verdict is therefore unchanged from the `8ba0cc86` review, and every finding
+is carried forward with its disposition; F-007 and F-009 are updated to their
+now-fixed state and F-010 is new (pending checks at this head — the written
+reason a new finding may appear in a later round).
 
 ## Scope reviewed
 
@@ -96,7 +131,7 @@ whole suite (196 tests, up from 189 at CORE-140, +3 of them from this PR).
 | No new dependencies | Diff is four files; no manifest or lockfile change; every addition uses node builtins. | met |
 | Entry-point guard works on Windows | Five-shape probe (relative, absolute backslash, lowercase drive, other cwd, via npm) all run `main()`; import does not. Both sides of the comparison derive from the same `argv[1]` string, so casing cannot diverge. See F-006. | met |
 
-## Reviewer-run scoped checks (in `.worktrees/CORE-144` at `8ba0cc86`)
+## Reviewer-run scoped checks (in `.worktrees/CORE-144` at `8ba0cc86`; every file they exercised is byte-identical at `194c61a8`)
 
 | Command | Result |
 |---|---|
@@ -112,22 +147,23 @@ whole suite (196 tests, up from 189 at CORE-140, +3 of them from this PR).
 | `git status --porcelain=v1` after every probe | clean |
 
 `npm ci` was not needed (the worktree's `node_modules` was already installed
-at this head). The full `npm run verify` was not run, per policy — CI ran it.
+at this head). The full `npm run verify` was not run, per policy — CI runs it.
 
 ## CI
 
-| Job | Run / job | Result |
-|---|---|---|
-| `verify` (windows, Node 24) | 33943879137 / 101247559781 | **success**, 8m1s, at `8ba0cc86` |
-| `kanmer-gate` | 33943879137 / 101247559337 | **fail** — `NO_REVIEW_RECORD` only; eight other checks pass; `boardSha` read as `b42b9855`. See F-007 |
-| `regate` | 33943879137 / 101247579557 | skipped (not a PR-event job) |
-| earlier attempt | 33943872470 | both jobs cancelled by the workflow's concurrency group — not evidence |
+| Head | Job | Run / job | Result |
+|---|---|---|---|
+| `8ba0cc86` | `verify` (windows, Node 24) | 33943879137 / 101248787900 | **success**, 8m1s |
+| `8ba0cc86` | `kanmer-gate` | 33943879137 / 101247559337, re-run 101248787234 | fail (`NO_REVIEW_RECORD` only), then **pass** after the first attestation reached the remote board — `STALE_REVIEW` pass, `SYNC_REQUIRED` current (`21cd0f6b` on tip `6f37b292`), `strict: true` |
+| `8ba0cc86` | `regate` | 33943879137 | skipped (not a PR-event job) |
+| `194c61a8` | `verify`, `kanmer-gate` | 33968076419 / 101311615310, 101311615182 | **pending at attestation time** — see F-010; both must be green before merge |
+| earlier | — | 33943872470 | both jobs cancelled by the workflow's concurrency group — not evidence |
 
 ## Threads
 
-`reviewThreads` is empty and there are no PR reviews or issue comments on this
-head, so `threads_snapshot` is an empty list truthfully. No bot threads exist,
-and none would be a gate in any case.
+`reviewThreads` is empty at `194c61a8` and there are no PR reviews or issue
+comments on this head, so `threads_snapshot` is an empty list truthfully. No
+bot threads exist, and none would be a gate in any case.
 
 ## Residual risk
 
@@ -138,16 +174,22 @@ up. The public `npm run test:http` build path changed form and is proven only
 by the reviewer's direct execution, not by the rail (F-005). The entry-point
 guard's failure mode is a silent zero-test pass rather than an error (F-006).
 None of the three is reachable without a further change to these same files.
+Finally, the rail has been proven green at `8ba0cc86` but not yet at
+`194c61a8`; the argument that it transfers rests on the blob-identity proof
+above, not on a completed run at the new head (F-010).
 
 ## Merge preconditions for the merger (Alex)
 
-1. `gh pr update-branch` — the PR is BEHIND (F-009). The head will move; this
-   attestation must then be replaced by a delta re-bind at the new head.
-2. Re-run `verify` and `kanmer-gate` at the new head, after the board branch
-   carrying this record is on the remote. The gate does not re-trigger on a
-   board push.
-3. Sequence #327 and #328 deliberately and resolve the known conflict in
-   `run-http-tests.mjs` as described in F-008.
+1. Require `verify` **and** `kanmer-gate` green at `194c61a8` (run
+   33968076419 or a later one). Pending is not green.
+2. `kanmer-gate` must run after the board branch carrying this record is on
+   the remote — it reads the remote board tip and does not re-trigger on a
+   board push. This record's `board_sha` is `0f048907…`.
+3. Re-check `git -C <board worktree> rev-parse kanmer-board` equals
+   `git -C <repo root> rev-parse origin/kanmer-board` immediately before
+   `gh pr merge`.
+4. Sequence #327 and #328 deliberately and resolve the known
+   `run-http-tests.mjs` conflict as described in F-008.
 
 No finding is `open`; no blocker or major finding was raised. There are no
 blocking changes for the implementing lane.

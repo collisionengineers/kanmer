@@ -28,6 +28,7 @@ groups:
   - HZN-009
 links:
   - MCP-057
+  - CORE-147
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-002-requirement-profiles.md
@@ -39,7 +40,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/329'
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T13:47:07.787Z'
+updated: '2026-09-05T14:09:17.234Z'
 ---
 
 ## What

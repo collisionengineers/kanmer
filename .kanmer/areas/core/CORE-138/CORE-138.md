@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Stop a PR body edit from cancelling verify, keep the merge gate advisory on
   drafts, and make regate re-evaluate an in-progress run
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-09-05T02:57:08.520Z'
 labels:
   - ci
   - merge-gate
@@ -24,7 +26,7 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T02:14:39.130Z'
+updated: '2026-09-05T02:57:08.520Z'
 ---
 
 ## Problem

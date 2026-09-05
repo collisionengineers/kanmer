@@ -13,16 +13,6 @@ stageEntered:
   review: '2026-09-05T04:21:49.616Z'
   verifying: '2026-09-05T13:38:33.315Z'
   done: '2026-09-05T13:49:25.398Z'
-taken_at: '2026-09-05T04:12:51.989Z'
-branch: CORE-145-mcp-server-build-core
-worktree: .worktrees/CORE-145
-claim_expires_at: '2026-09-05T04:42:51.989Z'
-claim_controller: claude-code
-lease_id: 1bf29689-d126-46e6-8ac6-a066ef0ce33a
-lease_revision: 1
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-145'
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T04:12:51.989Z'
 labels:
   - rail
   - build
@@ -44,7 +34,7 @@ delivery_sha: 58718455ffc2174e2cc34cccf72d5f0158fc876b
 delivery_recorded_at: '2026-09-05T13:49:33.899Z'
 archived: false
 created: '2026-09-05T03:03:02.310Z'
-updated: '2026-09-05T13:50:47.695Z'
+updated: '2026-09-05T13:51:09.602Z'
 ---
 
 Filed by the independent review of CORE-140 (PR #322). **Pre-existing on `main` at `c088be1391a1198c914fc3ef247103fd52c277c5`; not introduced by CORE-140.**

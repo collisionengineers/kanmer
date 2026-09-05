@@ -4,22 +4,23 @@ type: ticket
 title: >-
   Validate proof documents for internal consistency so a stale result cannot
   outlive its own evidence
-status: implementing
+status: review
 area: core
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-08-31T17:48:20.688Z'
+  review: '2026-09-05T13:44:47.422Z'
 taken_at: '2026-09-05T04:04:14.267Z'
 branch: CORE-129-typed-proof-record
 worktree: .worktrees/CORE-129
-claim_expires_at: '2026-09-05T14:13:43.718Z'
+claim_expires_at: '2026-09-05T14:14:30.566Z'
 claim_controller: claude-code
 lease_id: adc83e1b-1f39-4636-a0f4-a4f96d78b093
-lease_revision: 10
+lease_revision: 11
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-129'
 lease_phase: running-command
-lease_heartbeat_at: '2026-09-05T13:43:43.718Z'
+lease_heartbeat_at: '2026-09-05T13:44:30.566Z'
 labels:
   - reliable-autonomy
   - 0.4.2
@@ -38,7 +39,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/329'
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T13:43:43.718Z'
+updated: '2026-09-05T13:44:47.422Z'
 ---
 
 ## What

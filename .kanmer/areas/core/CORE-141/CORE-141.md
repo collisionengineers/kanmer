@@ -30,13 +30,13 @@ refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 commits:
-  - 8c515c4afbeba2a3ddf09f40d7d2c6fbe15656f5
+  - bc97f5799f7d794c1db9f380fad00cce4b0a9fa4
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/331'
   - 'https://github.com/collisionengineers/kanmer/pull/332'
 archived: false
 created: '2026-09-05T02:13:04.749Z'
-updated: '2026-09-05T17:43:30.818Z'
+updated: '2026-09-05T17:45:35.431Z'
 ---
 
 ## Why

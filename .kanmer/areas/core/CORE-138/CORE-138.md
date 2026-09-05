@@ -4,12 +4,22 @@ type: ticket
 title: >-
   Stop a PR body edit from cancelling verify, keep the merge gate advisory on
   drafts, and make regate re-evaluate an in-progress run
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-09-05T02:57:08.520Z'
+taken_at: '2026-09-05T02:58:13.328Z'
+branch: CORE-138-gate-handoff
+worktree: .worktrees/core-138
+claim_expires_at: '2026-09-05T03:28:13.328Z'
+claim_controller: claude-code
+lease_id: f40b49e8-b658-4928-8379-939a5d5796c8
+lease_revision: 1
+lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-138'
+lease_phase: implementing
+lease_heartbeat_at: '2026-09-05T02:58:13.328Z'
 labels:
   - ci
   - merge-gate
@@ -26,7 +36,7 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T02:57:08.520Z'
+updated: '2026-09-05T02:58:13.328Z'
 ---
 
 ## Problem

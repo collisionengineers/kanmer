@@ -323,3 +323,15 @@ Fresh MCP session against the installed 0.4.2 generation (`KANMER_NODE=...\Progr
 Temp root deleted after (`rm -rf "$TMP/kanmer-m5-b5" "$TMP/kanmer-m5-b5-run2"`; the first, buggy-parse attempt's root was also removed). No live board touched — this ran entirely against disposable synthesized boards under `--root`.
 
 **M5/AT-37: PASS.** Proceeding to B6 (rollback drill).
+
+### B6: Rollback drill (AT-38) — PASS
+
+Reproduced the exact activation mechanism `apps/gui/build/installer.nsh` uses (GUI-106): build a new junction `current.next` -> target generation, atomically delete the old `current` reparse point (`[System.IO.Directory]::Delete(path, $false)` — deletes only the junction/reparse point, not the target contents, matching NSIS's `RMDir` on a junction), then `Rename-Item current.next current`.
+
+**Rollback to 0.4.1:** `current` -> `0.4.1-7432`. `kanmer-mcp.cmd --probe` -> "healthy", exit 0. Fresh MCP session (`KANMER_SERVER=...\mcp\current\resources\mcp\kanmer-mcp.cjs`) against the live board: `server.version: 0.4.1`, `sha256Short: 3f7af329` (matches the originally recorded 0.4.1 digest exactly), `counts.byStage.done: 383`, `ticketCount: 398` — same live board, same counts as every 0.4.2 read above.
+
+**Forward to 0.4.2:** `current` -> `0.4.2-4920`. `--probe` -> healthy, exit 0. Fresh session: `server.version: 0.4.2`, `sha256Short: 20caa755`, same board counts (398/383) — confirms round-trip integrity.
+
+Confirmed 0.4.1 was never uninstalled: `%LOCALAPPDATA%\Kanmer\mcp\0.4.1-7432` still present on disk throughout; registry `DisplayVersion` now correctly reads `Kanmer 0.4.2` / `0.4.2` (the one Programs-and-Features entry tracks the currently-installed GUI app, which the in-app updater legitimately replaced — this is separate from the retained per-generation MCP server directories under `%LOCALAPPDATA%\Kanmer\mcp\`, which is where rollback capability actually lives).
+
+**AT-38: PASS.** All of B1-B6 now complete and PASS. Proceeding to B7 (closeout report) and B8 (proof + Done + closeout).

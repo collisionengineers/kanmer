@@ -4,13 +4,14 @@ type: ticket
 title: >-
   packages/mcp-server's build never builds @kanmer/core, so a fresh clone fails
   npm run test:http
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-09-05T04:12:13.725Z'
   review: '2026-09-05T04:21:49.616Z'
+  verifying: '2026-09-05T13:38:33.315Z'
 taken_at: '2026-09-05T04:12:51.989Z'
 branch: CORE-145-mcp-server-build-core
 worktree: .worktrees/CORE-145
@@ -38,7 +39,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/328'
 archived: false
 created: '2026-09-05T03:03:02.310Z'
-updated: '2026-09-05T13:26:20.387Z'
+updated: '2026-09-05T13:38:33.315Z'
 ---
 
 Filed by the independent review of CORE-140 (PR #322). **Pre-existing on `main` at `c088be1391a1198c914fc3ef247103fd52c277c5`; not introduced by CORE-140.**

@@ -1,5 +1,6 @@
 # Post-implementation report — CORE-129
 
+**PR:** https://github.com/collisionengineers/kanmer/pull/329 · **Head:** `1aa725eed1ba21b209f9981d8ab7e8881abe9c02`
 **Branch:** `CORE-129-typed-proof-record` · **Base:** `main` at `37b83b14`, with
 `origin/main` (`9945b1f2`, carrying MCP-057 `e474f317`, CORE-138, DOC-026,
 CORE-140) merged in before the PR opened.
@@ -126,6 +127,20 @@ attempt shapes and the waiver fields; `kanmer-closeout`, `kanmer-auto` and
 for the record and the `migrate_board` row. AGENTS.md §4 and §5 updated. Manual
 regenerated, plugin bundle rebuilt and committed.
 
+## Test coverage added
+
+| File | What it pins |
+|---|---|
+| `proof-record.test.ts` (new, 53) | the whole parser contract: accepted shapes, the negative matrix, chronology/authority binding, waivers, receipts, legacy |
+| `gates.test.ts` (+8) | report vs strict in `statusOf`; the absent-policy default; diagnostics surfaced verbatim; refusal in `detail` and never in `warnings`; the visual advisory appended not replaced |
+| `board.test.ts` (+5) | resolution and `source`; fresh-board strict; `board.yml` round-trip; an unknown mode refused |
+| `store.test.ts` (+6) | `setBoard`/`updateBoard` escalation refused (whole write refused); relaxing allowed; the cutover writes only the policy, re-asserts, refuses on assertion failure, and is idempotent |
+| `migrate.test.ts` (+9) | bucketing; byte fingerprints; digest stability and sensitivity; dry-run purity; stale digest; a successful cutover leaving proof bytes identical; idempotency; the pre-format-3 refusal |
+| `docs.test.ts` (+7) | end-to-end strict Done refusals and the report-mode warning, through a real store |
+| `reconciliation.test.ts` (+6) | `PROOF_RECORD_NOT_AUTHORITATIVE` per state, and its absence on the PASS/FAIL routes and on record-less evidence |
+| `packages/mcp-server/src/reconciliation.test.mjs` | fixtures upgraded to schema 2; the decoder tests rewritten for the new contract |
+| `smoke.mjs`, `golden-board.mjs` | strict gate refusal and admission end to end; the census dry run; GB-16's routes on typed records |
+
 ## v0.4.2 census — run against a COPY of the live board
 
 `cp -r .worktrees/kanmer/.kanmer "$TMP/kanmer-board-copy/.kanmer"`, then
@@ -162,18 +177,18 @@ regenerated, plugin bundle rebuilt and committed.
 |---|---|
 | `npm ci` | 0 |
 | `npm run build && node scripts/build-stamp.mjs --write` | 0 |
-| `npm run test -w @kanmer/core` | 0 (26 files) |
+| `npm run test -w @kanmer/core` | 0 |
 | `npm run test:built` | 0 |
 | `npm run typecheck` | 0 |
 | `node packages/core/scripts/check-browser.mjs` | 0 |
 | `node --test packages/mcp-server/src/reconciliation.test.mjs` | 0 (51 tests) |
 | `node packages/mcp-server/src/smoke.mjs` | 0 |
-| `npm run golden` | 0 (20/20) |
-| `npm run verify:skills` | 0 |
+| `npm run golden` | 0 (20/20 scenarios) |
+| `npm run verify:skills` | 0 (ALL CHECKS PASSED) |
 | `npm run verify:docs` | 0 |
-| `npm run check:manual` | 0 |
+| `npm run check:manual` | 0 (22 chapters up to date) |
 | `npm run plugin:build` | 0 (bundle committed) |
-| `npm run plugin:check` | 0 |
+| `npm run plugin:check` | 0 (41 tools match, bundle bytes match) |
 
 ## Deviations and judgement calls
 
@@ -197,7 +212,7 @@ regenerated, plugin bundle rebuilt and committed.
    first. The finding is kept and still tested at the `reconcileEvidence` level
    with directly-constructed evidence, because it answers a different question
    (receipt vs the **live** PR merge SHA) and must hold for evidence assembled by
-   any host. Called out because it converts a MCP-057 test from an integration
+   any host. Called out because it converts one MCP-057 test from an integration
    assertion into a unit one.
 4. **A manual attempt may not carry `command`/`cwd`.** Research required
    all-or-none process evidence; the previous verify prose invited
@@ -207,11 +222,12 @@ regenerated, plugin bundle rebuilt and committed.
    actually present, so a manual PASS remains writable.
 5. **Test fixtures split two ways.** Suites that model an *existing* board
    (`docs`, `store`, `delivery`, `release`) set `proofValidation: { mode: "report" }`
-   in their `beforeEach` with a comment; suites that assert the new behaviour
-   build their own strict store. `smoke.mjs` and `golden-board.mjs` were upgraded
-   to write schema-2 records instead, so both surfaces exercise strict end to end.
-   `capture.test.ts`, `project.test.ts`, `gates.test.ts` and
-   `profile-matrix.test.ts` needed no fixture change.
+   in their `beforeEach` with a comment saying why; suites that assert the new
+   behaviour build their own strict store. `smoke.mjs` and `golden-board.mjs`
+   were upgraded to write schema-2 records instead, so both surfaces exercise
+   strict end to end. `capture.test.ts`, `project.test.ts` and
+   `profile-matrix.test.ts` needed no change at all — worth noting, because it
+   says the fresh-board strict default did not disturb the profile/gate matrix.
 6. **No GUI change was required.** `gateError.ts` and `gateFeedback.ts` parse
    requirement names and `blockedBy` strings, neither of which changed shape;
    `npm run typecheck` covers both. The GUI sees the new `detail` and the richer
@@ -219,5 +235,5 @@ regenerated, plugin bundle rebuilt and committed.
 7. **There is no MCP path to relax strict → report.** Only the GUI Settings save
    (which reaches `setBoard`) can do it. The intended direction is report →
    strict, and adding a tool was out of scope; noted rather than fixed.
-8. **`plugin:check` was run from a clean clone** outside the worktree, per the
-   brief's fallback.
+8. **`plugin:check` ran cleanly inside the worktree** — the brief's clean-clone
+   fallback was not needed.

@@ -97,6 +97,22 @@ For end-user install/usage, see [README.md](README.md). This file is about *buil
 
 ---
 
+## 0.1 Operating index and historical documents
+
+- **Named heavy verifier:** Alex (the repository owner) is the named heavy
+  verification owner for this host; full `npm run verify` rails, packaging
+  and installer builds serialize behind that role; implementers run scoped
+  checks and let CI own the rail. This is what the managed block's "the named
+  verifier recorded in the repo's operating index" points at.
+- `CLOSEOUT_PLAN.md` — retired 2026-09-05 (DOC-026); superseded by
+  `apps/gui/release-notes.md` and the HZN-008 group closeout on the board
+  (`.kanmer/groups/HZN-008/closeout.md` on the board branch).
+- `MASTERPLAN.md` — historical programme plan (2026-08-20), kept, not current
+  operating authority.
+- `goal.md` — historical owner brief, kept.
+
+---
+
 ## 0. The operating rule
 
 **Kanmer's own work goes through Kanmer.** Not as a demonstration — as the way
@@ -227,12 +243,11 @@ kanmer/
         kanmer-plan/      # plan.md + checklist.md phase (+ their templates)
         kanmer-execute/   # worktree/branch, checklist, post-implementation-report.md, PR
         kanmer-review/    # 4-doc PR review, PR feedback → tickets, then merge → Verifying
-        kanmer-verify/    # Verifying stage: validate on merged main, write proof.md → Done
+        kanmer-verify/    # Verifying stage: validate at the exact merge SHA on the configured integration branch, write proof.md → Done
         kanmer-closeout/  # post-merge: proof finalized, commits/prs/deployment, cleanup
         kanmer-auto/      # schema-3 /goal controller: dependency-safe roster, bounded lanes/retries, review+verify
         kanmer-report/    # board report: standup ("now") or retro ("since <period>")
         kanmer-groom/     # board-editing triage: dedupe, split, archive, doc-gate debt
-        kanmer-import/    # GitHub issues → tickets, idempotent (PR feedback → kanmer-review)
         kanmer-setup/     # greenfield/brownfield/upgrade setup + AGENTS.md block
   .claude-plugin/marketplace.json  # Claude marketplace entry (repo-hosted)
   .agents/plugins/marketplace.json # codex marketplace entry (repo-hosted)
@@ -489,11 +504,11 @@ Run from the repo root unless noted.
 | `npm run setup` | install + build core, server, and GUI |
 | `npm run build` | build core + mcp-server (incl. standalone bundle) |
 | `npm run build:core` / `npm run build:server` | build just one package |
-| `npm test` | core **and GUI** vitest suites, **and** `npm run test:scripts`. Core Vitest files intentionally run serially: the suite exercises real filesystem and lock behaviour on Windows, so file parallelism can make timing evidence nondeterministic. GUI Vitest files also intentionally run serially: its real-Git sync fixtures are sensitive to Windows full-rail contention. Both commands retain their existing finite test and hook bounds. |
+| `npm test` | core **and GUI** vitest suites, **and** `npm run test:scripts`. Core Vitest files intentionally run serially: the suite exercises real filesystem and lock behaviour on Windows, so file parallelism can make timing evidence nondeterministic. GUI Vitest files also intentionally run serially: its real-Git sync fixtures are sensitive to Windows full-rail contention. Both commands retain their existing finite test and hook bounds. Builds `@kanmer/mcp-server` itself before testing it, same as always. The internal `npm run test:built` variant instead **refuses** if `dist/verify-stamp.json` (CORE-140) does not match the current source/lockfile/Node major — it never rebuilds — and only `scripts/verify.mjs` (after `build-stamp.mjs --write`) uses it; call the plain `npm test` yourself. |
 | `npm run test:scripts` | `node scripts/test-scripts.mjs`, which enumerates direct `scripts/*.test.mjs` files and runs them with `node:test`. Deliberately **not** vitest: `scripts/` is dependency-free, and `node:test` needs no root devDependency, no root config, and no `package-lock.json` churn (`release.mjs` refuses on a dirty tree) |
 | `npm run typecheck` | type-check **every** workspace — core, mcp-server, ui, gui. Use this, not the per-workspace form: vitest does not typecheck, so a green `npm test` says nothing about types, and a partial typecheck says nothing about the workspaces it skipped |
 | `npm run typecheck -w @kanmer/<pkg>` | one workspace, when you want a fast loop |
-| `npm run verify` | the authoritative PR check: tests (including manual and generated-document freshness), all-workspace typecheck, core/server build, the GUI build, all MCP smokes, skill and managed-block verification, then plugin synchronization. Run from a normal checkout, not a linked worktree, because `plugin:check` deliberately refuses there. |
+| `npm run verify` | the authoritative PR check: tests (including manual and generated-document freshness), all-workspace typecheck, core/server build, the GUI build, all MCP smokes, skill and managed-block verification, then plugin synchronization. Run from a normal checkout, not a linked worktree, because `plugin:check` deliberately refuses there. Builds core and the MCP server **once** (`npm run build`), writes `dist/verify-stamp.json` (gitignored) via `build-stamp.mjs --write`, then every later step that used to rebuild the same output (`npm test`, `npm run mcpb:check`) instead runs its `:built` variant, which asserts the stamp still matches (source HEAD/dirty-tree digest, `package-lock.json` hash, Node major, output hashes) and refuses rather than rebuilding stale evidence (CORE-140). |
 | `npm run verify:docs` | validate the manual, resolved `docs/contributing/doc-structure.md` mirror, target-neutral `kanmer-docs` asset, links/fences, and provider boundaries; run directly after documentation or canonical-asset changes. |
 | `npm run app` | build + launch the GUI |
 | `npm run dev:gui` | GUI with hot reload |
@@ -501,7 +516,7 @@ Run from the repo root unless noted.
 | `npm run dist:check` | `dist`, then `check-updater-package.mjs` — the eight things that must be true for the **packaged** app to auto-update |
 | `npm run release -- <version> --ticket <id>` | the protected-main preparation phase: run the shared `npm run verify` rail, bump/package deterministic artifacts on `release/v<version>`, push only that branch, and open a PR targeting exact `main` with a standalone `Kanmer: <id>` footer. It stops before tag/publisher calls and uses the operator's normal `gh auth` session. |
 | `npm run release -- <version> --publish --release-commit <full-sha>` | the post-merge publication phase: from clean merged `main`, require matching manifests and prove the supplied **post-merge** commit is reachable, then build the GUI before creating/pushing only `refs/tags/v<version>`. A GUI-build failure stops before any tag or GitHub Release exists. On build success it publishes once and verifies visibility/updater/every asset. Extend `VERIFY_STEPS`, never a third verification pyramid. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` skips Git/remote publication but still runs verification steps that may write local build outputs. |
-| `npm run mcpb:check` | build and deterministically validate the Windows Claude Desktop MCPB from the standalone server; generated output is under `dist/mcpb/` and is not committed |
+| `npm run mcpb:check` | build and deterministically validate the Windows Claude Desktop MCPB from the standalone server; generated output is under `dist/mcpb/` and is not committed. The internal `npm run mcpb:check:built` variant used by `scripts/verify.mjs` skips rebuilding the server and instead asserts `dist/verify-stamp.json` still matches (CORE-140) before packaging; it is not a public entry point, call the plain `npm run mcpb:check` yourself on a fresh checkout. |
 | `npm run smoke:headless` | run the standalone MCP server from a temporary host with no repository `node_modules`, using an explicit board root |
 | `node scripts/verify-release-assets.mjs <version> [--dir <localDir>]` | publisher-side check: compare a published release with the one retained local package generation |
 | `node scripts/verify-release-assets.mjs <version> --remote-coherent` | independent CI check: require installer, blockmap, MCPB and `latest.yml` exactly once, then download the public manifest/installer and verify version, URL, size, SHA-512 and GitHub SHA-256 without comparing a separately signed build. Exit 0 = pass, 1 = broken release, 2 = check could not run |

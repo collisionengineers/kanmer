@@ -58,6 +58,7 @@ Every ticket carries a **profile** that determines which documents each stage bo
 - P4. The `governing-doc` requirement is satisfied by a non-empty `refs` (repo-doc links, maintained by `link_doc`) **or** `docs_todo: true` (absorbed v2 behaviour).
 - P4a. **`questions-resolved`** (ADR-0011, FRD-009 R5) is the second pseudo-type: satisfied when `open-questions/` holds no unticked `- [ ]` above the `## Parked (explicitly deferred)` heading, and by an absent document. It is deliberately **not** the `open-questions` doc type — requirements are satisfied by a document existing, so requiring the document would be satisfied by a file of unanswered questions. It is the only requirement that reads a document's *content*; ADR-0011 bounds that exception and any further content-reading requirement must amend it. Every shipped profile carries it, `spike` included: a carve-out by work type would assert that some work is inherently unambiguous.
 - P5. Proof requirements may carry a type and source (`proof:visual`, `proof:visual@staging`) — semantics in FRD-006.
+- P5a. **The proof requirement is satisfied by existence only in `report` mode** (CORE-129). `board.yml`'s optional `proofValidation.mode` decides: absent resolves to `report`, which is the historical behaviour — any markdown under `proof/` satisfies the requirement, and the typed record's parsed state is surfaced as a non-blocking `get_doc_gates` warning. `strict` — the mode a board created today is written with — satisfies it only from a valid `proof-record/2` **PASS** in the canonical `proof/proof.md`; a legacy, self-contradicting, FAIL or INCONCLUSIVE record blocks, and the refusal names which of those it read. This is the second (and last) requirement permitted to read a document's content; ADR-0011 bounds it. An existing board reaches `strict` only through `migrate_board`'s deliberate, census-bound cutover — never as a side effect of an ordinary board write.
 - P6. Resolution order for a ticket's profile: explicit `profile:` on the ticket → the ticket's area's default profile (optional per-area setting) → the board default (`fix` on new boards).
 - P7. Profile is mutable (`update_item`); gates re-evaluate immediately. Changing area does not change an explicitly set profile.
 
@@ -70,7 +71,7 @@ Every ticket carries a **profile** that determines which documents each stage bo
 
 ## Acceptance criteria
 
-1. A `chore` ticket moves Backlog → Implementing in one call with only `plan/` populated; the same ticket is blocked entering Done until `proof/` has a document.
+1. A `chore` ticket moves Backlog → Implementing in one call with only `plan/` populated; the same ticket is blocked entering Done until `proof/` has a document (in `report` mode) or until `proof/proof.md` is a valid `proof-record/2` PASS (in `strict` mode).
 2. A `spike` ticket moves Backlog → Done once `research/` is non-empty; it never requires files/plan/proof.
 3. A `feature` ticket without `refs` or `docs_todo` cannot leave Backlog; the error names the governing-doc requirement.
 4. A `custom` ticket requiring `research/auth` is not satisfied by `research/db.md`.

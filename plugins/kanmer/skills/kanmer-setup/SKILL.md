@@ -65,6 +65,25 @@ let the user decide. Then apply.
 
 Safe to call unconditionally: an already-current board reports nothing to do.
 
+### Proof validation: report, then census, then strict
+
+The same dry run returns `proofValidation` — a read-only census of every
+ticket's `proof/proof.md`, bucketed valid / legacy / invalid / absent with a
+diagnosis per ticket, plus a `digest`. It writes nothing, ever.
+
+A board that predates typed proof records resolves to `report` mode: the Done
+gate still passes on any document under `proof/`, and the parsed state is only
+a warning. A board created by this version starts `strict`, where entering Done
+needs a valid `proof-record/2` PASS.
+
+Moving an existing board to `strict` is a decision the user takes, not one
+setup takes for them. Show the census — a board of any age will be almost
+entirely `legacy`, and that is expected, not a fault — and say plainly that
+strict changes what every in-flight ticket owes at the Done gate while
+rewriting no proof at all. Only if they agree, call `migrate_board` again
+without `dry_run` and with that exact `proof_census_digest`. Never pass a digest
+the user has not seen the census for.
+
 ## 4. Refresh the AGENTS.md operating instructions
 
 Run the script that owns the managed block (see below). It only ever rewrites

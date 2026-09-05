@@ -37581,10 +37581,12 @@ var import_fs5 = require("fs");
 var import_promises8 = __toESM(require("fs/promises"), 1);
 var import_path11 = __toESM(require("path"), 1);
 var import_path12 = __toESM(require("path"), 1);
-var import_crypto7 = require("crypto");
 var import_gray_matter3 = __toESM(require_gray_matter(), 1);
+var import_crypto7 = require("crypto");
+var import_gray_matter4 = __toESM(require_gray_matter(), 1);
 var import_promises9 = __toESM(require("fs/promises"), 1);
 var import_path13 = __toESM(require("path"), 1);
+var import_crypto8 = require("crypto");
 var import_chokidar = __toESM(require_chokidar(), 1);
 var ItemTypeSchema = external_exports.enum(["ticket", "plan", "research"]);
 var BoardColumnSchema = external_exports.object({
@@ -37769,6 +37771,9 @@ var GroupKindSchema = external_exports.object({
   prefix: external_exports.string().regex(/^[A-Z0-9]{2,6}$/, "prefix must be 2-6 uppercase alphanumerics"),
   color: external_exports.string().optional()
 });
+var ProofValidationConfigSchema = external_exports.object({
+  mode: external_exports.enum(["report", "strict"])
+});
 var BoardConfigSchema = external_exports.object({
   areas: external_exports.array(BoardColumnSchema).default([]),
   idPrefixes: IdPrefixesSchema,
@@ -37784,6 +37789,13 @@ var BoardConfigSchema = external_exports.object({
   repoDocs: external_exports.record(external_exports.string()).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
+  /**
+   * How hard the proof requirement is enforced (CORE-129). Absent ⇒ `report`,
+   * which is exactly today's existence-only behaviour, so every board written
+   * before this field keeps working unchanged and a Kanmer that predates it
+   * still reads the file. See `resolveProofValidation`.
+   */
+  proofValidation: ProofValidationConfigSchema.optional(),
   /** Git delivery policy (FRD-031). Absent ⇒ main-only; see `resolveDelivery`. */
   delivery: DeliveryConfigSchema.optional(),
   /** Project-declared research sources (FRD-027 / ADR-0020). */
@@ -39079,7 +39091,11 @@ function defaultBoardConfig() {
     profiles: structuredClone(DEFAULT_PROFILES),
     defaultProfile: DEFAULT_PROFILE_ID,
     groupKinds: structuredClone(DEFAULT_GROUP_KINDS),
-    proofTypes: [...DEFAULT_PROOF_TYPES]
+    proofTypes: [...DEFAULT_PROOF_TYPES],
+    // A board created today has no unvalidated history to protect, so it opts
+    // into the strict typed-proof contract from its first ticket (CORE-129).
+    // Existing boards resolve to `report` instead — see `resolveProofValidation`.
+    proofValidation: { mode: "strict" }
   };
 }
 var FIX_REVIEW_PROFILE = "fix";
@@ -39116,6 +39132,11 @@ function resolveProfiles(board) {
 }
 function resolveProofTypes(board) {
   return board.proofTypes ?? DEFAULT_PROOF_TYPES;
+}
+function resolveProofValidation(board) {
+  const mode = board.proofValidation?.mode;
+  if (mode === "report" || mode === "strict") return { mode, source: "board" };
+  return { mode: "report", source: "default" };
 }
 function resolveGroupKinds(board) {
   return board.groupKinds ?? DEFAULT_GROUP_KINDS;
@@ -39325,7 +39346,22 @@ async function listReferences(ticketDir) {
   const files = await listFilesRecursive(dir);
   return files.map((f) => ({ name: f, path: import_path5.default.join(dir, ...f.split("/")) }));
 }
-async function statusOf(req, ev) {
+function describeProofState(proof) {
+  if (!proof) return "there is no canonical `proof/proof.md`";
+  switch (proof.state) {
+    case "valid-pass":
+      return "`proof/proof.md` is a valid PASS record";
+    case "valid-fail":
+      return "`proof/proof.md` is a valid FAIL record";
+    case "valid-inconclusive":
+      return "`proof/proof.md` is a valid INCONCLUSIVE record";
+    case "legacy":
+      return "`proof/proof.md` predates the typed `proof-record/2` contract and has never been validated";
+    default:
+      return "`proof/proof.md` declares the typed proof contract and breaks it";
+  }
+}
+async function statusOf(req, ev, proofValidation) {
   if (req.type === GOVERNING_DOC) {
     return { requirement: req.raw, type: req.type, satisfied: ev.hasGoverningDoc() };
   }
@@ -39338,22 +39374,35 @@ async function statusOf(req, ev) {
   }
   const satisfied = req.named ? await ev.hasNamed(req.type, req.named) : await ev.hasType(req.type);
   const out = { requirement: req.raw, type: req.type, satisfied };
+  if (satisfied && req.type === "proof") {
+    const proof = ev.proofState ? await ev.proofState() : null;
+    if (proofValidation === "strict") {
+      if (!proof || proof.state !== "valid-pass") {
+        out.satisfied = false;
+        out.detail = `${describeProofState(proof)}. This board's proof policy is "strict", so entering Done needs a valid \`proof-record/2\` PASS at the exact merge SHA` + (proof && proof.diagnostics.length > 0 ? ` \u2014 ${proof.diagnostics.join("; ")}` : "") + `.`;
+      }
+    } else if (proof && proof.state !== "valid-pass") {
+      out.warning = `${describeProofState(proof)}. This board's proof policy is "report", so the move is allowed \u2014 read the whole document yourself` + (proof.diagnostics.length > 0 ? ` (${proof.diagnostics.join("; ")})` : "") + `.`;
+    }
+  }
   if (satisfied && req.type === "proof" && req.proofType === "visual") {
     if (!await ev.hasProofImages()) {
-      out.warning = `\`${req.raw}\` expects a screenshot, but no image files were found under proof/. Move allowed \u2014 check this yourself.`;
+      const advisory = `\`${req.raw}\` expects a screenshot, but no image files were found under proof/. Move allowed \u2014 check this yourself.`;
+      out.warning = out.warning ? `${out.warning} ${advisory}` : advisory;
     }
   }
   return out;
 }
 async function evaluateGateReport(input) {
   const { profiles, profileId, inlineRequires, stage, evidence } = input;
+  const proofValidation = input.proofValidation ?? "report";
   const from = stageIndex(stage);
   const boundaries = [];
   const warnings = [];
   for (const boundary of BOUNDARIES) {
     const reqs = requirementsFor(profiles, profileId, boundary, inlineRequires);
     if (!reqs.length) continue;
-    const requirements = await Promise.all(reqs.map((r) => statusOf(r, evidence)));
+    const requirements = await Promise.all(reqs.map((r) => statusOf(r, evidence, proofValidation)));
     for (const r of requirements) if (r.warning) warnings.push(r.warning);
     boundaries.push({
       boundary,
@@ -43199,6 +43248,303 @@ function assertNotBoardWorktree(worktree, paths) {
     );
   }
 }
+function parseProofReceipts(frontmatter) {
+  if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return [];
+  const raw = frontmatter.receipts;
+  if (raw === void 0) return [];
+  if (!Array.isArray(raw)) return { invalid: ["receipts must be an array when present"] };
+  const receipts = [];
+  const invalid = [];
+  raw.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      invalid.push(`receipts[${index}] must be an object`);
+      return;
+    }
+    const record22 = entry;
+    if (typeof record22.kind !== "string" || record22.kind.trim().length === 0) {
+      invalid.push(`receipts[${index}].kind must be a non-empty string`);
+      return;
+    }
+    receipts.push({ ...record22, kind: record22.kind });
+  });
+  if (invalid.length > 0) return { invalid };
+  return receipts;
+}
+var FULL_SHA = /^[0-9a-f]{40}$/;
+var KNOWN_RECEIPT_KINDS = /* @__PURE__ */ new Set(["github-actions-run"]);
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function assessReceipt(receipt, opts) {
+  const reasons = [];
+  if (!nonEmptyString(receipt.kind) || !KNOWN_RECEIPT_KINDS.has(receipt.kind)) {
+    reasons.push(`unknown receipt kind: ${String(receipt.kind)}`);
+  }
+  if (!nonEmptyString(receipt.job)) {
+    reasons.push("receipt is missing job");
+  } else if (receipt.job !== "verify") {
+    reasons.push(`receipt job must be "verify", got ${JSON.stringify(receipt.job)}`);
+  }
+  if (receipt.workflow !== "pr.yml") {
+    reasons.push(`receipt workflow must be "pr.yml", got ${JSON.stringify(receipt.workflow)}`);
+  }
+  if (receipt.run_id === void 0 || receipt.run_id === null || receipt.run_id === "") {
+    reasons.push("receipt is missing run_id");
+  }
+  if (!nonEmptyString(receipt.url)) {
+    reasons.push("receipt is missing url");
+  }
+  if (receipt.event !== "push") {
+    reasons.push(`receipt event must be "push", got ${JSON.stringify(receipt.event)}`);
+  }
+  if (receipt.conclusion !== "success") {
+    reasons.push(`receipt conclusion must be "success", got ${JSON.stringify(receipt.conclusion)}`);
+  }
+  if (!nonEmptyString(receipt.head_sha) || !FULL_SHA.test(receipt.head_sha)) {
+    reasons.push("receipt head_sha must be a full 40-hex Git object id");
+  } else if (receipt.head_sha !== opts.mergedSha) {
+    reasons.push("receipt head_sha does not match the PR merge SHA");
+  }
+  return reasons.length > 0 ? { kind: "rejected", reasons } : { kind: "satisfied" };
+}
+var PROOF_RECORD_PARSER_VERSION = "proof-record/2#1";
+var PROOF_RECORD_SCHEMA = 2;
+var FULL_SHA2 = /^[0-9a-f]{40}$/u;
+var ATTEMPT_RESULTS = /* @__PURE__ */ new Set(["PASS", "FAIL", "INCONCLUSIVE"]);
+var AUTHORITIES = /* @__PURE__ */ new Set(["authoritative", "supporting"]);
+var FAILURE_CLASSES = /* @__PURE__ */ new Set(["implementation", "plan", "transient", "inconclusive"]);
+var FAIL_CLASSES = /* @__PURE__ */ new Set(["implementation", "plan", "transient"]);
+var KNOWN_TOP_LEVEL = /* @__PURE__ */ new Set([
+  "kind",
+  "schema",
+  "merged_sha",
+  "environment",
+  "verified_at",
+  "result",
+  "failure_class",
+  "attempts",
+  "receipts",
+  "waived_by",
+  "waiver_reason"
+]);
+var KNOWN_ATTEMPT_KEYS = /* @__PURE__ */ new Set([
+  "attempted_at",
+  "result",
+  "authority",
+  "summary",
+  "failure_class",
+  "command",
+  "cwd",
+  "exit_code"
+]);
+function nonEmpty(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function instantOf(value) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.getTime();
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+function isoOf(value) {
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+function parseAttempt(raw, index, into) {
+  const at = `attempts[${index}]`;
+  const errors = [];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    into.push(`${at} must be an object`);
+    return null;
+  }
+  const entry = raw;
+  const unknownKeys = Object.keys(entry).filter((key) => !KNOWN_ATTEMPT_KEYS.has(key)).sort();
+  for (const key of unknownKeys) errors.push(`${at} has unknown key "${key}"`);
+  const attemptedAt = instantOf(entry.attempted_at);
+  if (attemptedAt === null) errors.push(`${at}.attempted_at must be an ISO-8601 timestamp`);
+  const result = entry.result;
+  if (typeof result !== "string" || !ATTEMPT_RESULTS.has(result)) {
+    errors.push(`${at}.result must be one of PASS, FAIL, INCONCLUSIVE`);
+  }
+  const authority = entry.authority;
+  if (typeof authority !== "string" || !AUTHORITIES.has(authority)) {
+    errors.push(`${at}.authority must be "authoritative" or "supporting"`);
+  }
+  if (!nonEmpty(entry.summary)) errors.push(`${at}.summary must be a non-empty string`);
+  const hasCommand = entry.command !== void 0;
+  const hasCwd = entry.cwd !== void 0;
+  const exit = entry.exit_code;
+  const hasExitKey = "exit_code" in entry;
+  if (!hasExitKey) {
+    errors.push(`${at}.exit_code is required (an integer, or null for a manual check)`);
+  } else if (exit === null) {
+    if (hasCommand || hasCwd) {
+      errors.push(`${at} has exit_code: null but also names command/cwd; a manual attempt records its procedure in summary`);
+    }
+  } else if (typeof exit !== "number" || !Number.isInteger(exit)) {
+    errors.push(`${at}.exit_code must be an integer or null`);
+  } else {
+    if (!nonEmpty(entry.command)) errors.push(`${at}.command must be a non-empty string beside an integer exit_code`);
+    if (!nonEmpty(entry.cwd)) errors.push(`${at}.cwd must be a non-empty string beside an integer exit_code`);
+  }
+  if (typeof exit === "number" && Number.isInteger(exit)) {
+    if (result === "PASS" && exit !== 0) errors.push(`${at} records PASS with a non-zero exit code`);
+    if (result === "FAIL" && exit === 0) errors.push(`${at} records FAIL with exit code 0`);
+  }
+  const failureClass = entry.failure_class;
+  if (failureClass !== void 0 && (typeof failureClass !== "string" || !FAILURE_CLASSES.has(failureClass))) {
+    errors.push(`${at}.failure_class must be one of implementation, plan, transient, inconclusive`);
+  } else if (result === "PASS" && failureClass !== void 0) {
+    errors.push(`${at} records PASS and must not carry a failure_class`);
+  } else if (result === "FAIL" && (typeof failureClass !== "string" || !FAIL_CLASSES.has(failureClass))) {
+    errors.push(`${at} records FAIL and must carry failure_class implementation, plan or transient`);
+  } else if (result === "INCONCLUSIVE" && failureClass !== "inconclusive") {
+    errors.push(`${at} records INCONCLUSIVE and must carry failure_class "inconclusive"`);
+  }
+  if (errors.length > 0) {
+    into.push(...errors);
+    return null;
+  }
+  return {
+    attempted_at: isoOf(entry.attempted_at),
+    result,
+    authority,
+    summary: entry.summary,
+    ...failureClass !== void 0 ? { failure_class: failureClass } : {},
+    ...hasCommand ? { command: entry.command } : {},
+    ...hasCwd ? { cwd: entry.cwd } : {},
+    exit_code: exit === null ? null : exit
+  };
+}
+function parseProofRecord(frontmatter) {
+  if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) {
+    return { state: "legacy", diagnostics: ["proof has no frontmatter record"] };
+  }
+  const data = frontmatter;
+  if (data.schema === void 0) {
+    return {
+      state: "legacy",
+      diagnostics: [
+        data.kind === "proof-record" ? "proof-record without schema: 2 \u2014 reported as legacy and never rewritten" : "proof is not a schema-2 proof-record \u2014 reported as legacy and never rewritten"
+      ]
+    };
+  }
+  if (data.schema !== PROOF_RECORD_SCHEMA) {
+    return { state: "invalid", diagnostics: [`schema must be ${PROOF_RECORD_SCHEMA}, got ${JSON.stringify(data.schema)}`] };
+  }
+  const errors = [];
+  const diagnostics = [];
+  if (data.kind !== "proof-record") errors.push('kind must be "proof-record"');
+  const mergedSha = typeof data.merged_sha === "string" ? data.merged_sha.trim() : "";
+  if (!FULL_SHA2.test(mergedSha)) errors.push("merged_sha must be a full 40-hex Git object id");
+  if (!nonEmpty(data.environment)) errors.push("environment must be a non-empty string");
+  const verifiedAt = instantOf(data.verified_at);
+  if (verifiedAt === null) errors.push("verified_at must be an ISO-8601 timestamp");
+  const result = data.result;
+  const RESULTS = /* @__PURE__ */ new Set(["PASS", "FAIL", "INCONCLUSIVE", "WAIVED_BY_OPERATOR"]);
+  if (typeof result !== "string" || !RESULTS.has(result)) {
+    errors.push("result must be one of PASS, FAIL, INCONCLUSIVE, WAIVED_BY_OPERATOR");
+  }
+  const waived = result === "WAIVED_BY_OPERATOR";
+  if (waived) {
+    if (!nonEmpty(data.waived_by)) errors.push("WAIVED_BY_OPERATOR requires waived_by naming the operator");
+    if (!nonEmpty(data.waiver_reason)) errors.push("WAIVED_BY_OPERATOR requires waiver_reason");
+  } else {
+    if (data.waived_by !== void 0) errors.push("waived_by is only valid with result: WAIVED_BY_OPERATOR");
+    if (data.waiver_reason !== void 0) errors.push("waiver_reason is only valid with result: WAIVED_BY_OPERATOR");
+  }
+  const rawAttempts = data.attempts;
+  const declaredAttempts = Array.isArray(rawAttempts) ? rawAttempts.length : -1;
+  const attempts = [];
+  if (!Array.isArray(rawAttempts) || rawAttempts.length === 0) {
+    errors.push("attempts must be a non-empty array");
+  } else {
+    for (const [index, entry] of rawAttempts.entries()) {
+      const parsed = parseAttempt(entry, index, errors);
+      if (parsed) attempts.push(parsed);
+    }
+  }
+  if (attempts.length === declaredAttempts && attempts.length > 0) {
+    for (let index = 1; index < attempts.length; index += 1) {
+      const previous = instantOf(attempts[index - 1].attempted_at);
+      const current = instantOf(attempts[index].attempted_at);
+      if (current === previous) {
+        errors.push(`attempts[${index}].attempted_at ties attempts[${index - 1}]; attempt timestamps must strictly increase`);
+      } else if (current < previous) {
+        errors.push(`attempts[${index}].attempted_at precedes attempts[${index - 1}]; attempt timestamps must strictly increase`);
+      }
+    }
+    const final = attempts[attempts.length - 1];
+    if (final.authority !== "authoritative") {
+      errors.push("the final attempt must be authoritative; a supporting entry may only precede the verdict");
+    } else {
+      const finalAt = instantOf(final.attempted_at);
+      if (verifiedAt !== null && verifiedAt !== finalAt) {
+        errors.push("verified_at must equal the final authoritative attempt's attempted_at");
+      }
+      if (!waived && typeof result === "string" && RESULTS.has(result) && result !== final.result) {
+        errors.push(`result "${result}" disagrees with the final authoritative attempt's "${final.result}"`);
+      }
+      const topClass = data.failure_class;
+      if (final.result === "PASS") {
+        if (topClass !== void 0) errors.push("a PASS record must not carry a top-level failure_class");
+      } else if (topClass !== final.failure_class) {
+        errors.push(`top-level failure_class must equal the final authoritative attempt's ${JSON.stringify(final.failure_class)}`);
+      }
+    }
+  }
+  const parsedReceipts = parseProofReceipts(data);
+  let receipts = [];
+  if (Array.isArray(parsedReceipts)) {
+    receipts = parsedReceipts;
+    for (const [index, receipt] of receipts.entries()) {
+      const head = receipt.head_sha;
+      if (head === void 0) continue;
+      if (typeof head !== "string" || !FULL_SHA2.test(head.trim())) {
+        errors.push(`receipts[${index}].head_sha must be a full 40-hex Git object id`);
+      } else if (head.trim() !== mergedSha) {
+        errors.push(`receipts[${index}].head_sha does not match this record's merged_sha`);
+      }
+    }
+  } else {
+    for (const reason of parsedReceipts.invalid) errors.push(reason);
+  }
+  const unknown2 = {};
+  for (const key of Object.keys(data).sort()) {
+    if (KNOWN_TOP_LEVEL.has(key)) continue;
+    unknown2[key] = data[key];
+    diagnostics.push(`unknown top-level key "${key}" preserved but not interpreted`);
+  }
+  if (errors.length > 0) return { state: "invalid", diagnostics: errors.sort() };
+  const finalResult = attempts[attempts.length - 1].result;
+  const state = waived ? "valid-pass" : finalResult === "PASS" ? "valid-pass" : finalResult === "FAIL" ? "valid-fail" : "valid-inconclusive";
+  if (waived) diagnostics.push(`operator waiver by ${String(data.waived_by).trim()} over a ${finalResult} ledger`);
+  return {
+    state,
+    result,
+    waived,
+    mergedSha,
+    environment: data.environment.trim(),
+    verifiedAt: isoOf(data.verified_at),
+    ...data.failure_class !== void 0 ? { failureClass: data.failure_class } : {},
+    attempts,
+    receipts,
+    unknown: unknown2,
+    diagnostics
+  };
+}
+function parseProofDocument(raw) {
+  try {
+    return parseProofRecord((0, import_gray_matter3.default)(raw).data);
+  } catch (error2) {
+    const reason = String(error2 instanceof Error ? error2.message : error2).replace(/[\r\n]+/gu, " ").slice(0, 240);
+    return { state: "invalid", diagnostics: [`frontmatter could not be parsed: ${reason}`] };
+  }
+}
+function proofCensusBucket(state) {
+  if (state === "legacy") return "legacy";
+  if (state === "invalid") return "invalid";
+  return "valid";
+}
 var WIKILINK_RE = /\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]/g;
 function parseWikiLinks(body) {
   const ids = /* @__PURE__ */ new Set();
@@ -43273,35 +43619,35 @@ async function linkItems(store2, sourceId, targetId, action, rel = "relates", op
   }
   return store2.updateItem(sourceId, { [field]: [...set], expectedRevision: opts.expectedRevision });
 }
-var FULL_SHA = /^[0-9a-f]{40}$/iu;
+var FULL_SHA3 = /^[0-9a-f]{40}$/iu;
 var SUPERSEDED_REASON = /^superseded by [0-9a-f]{40}$/iu;
 var SEVERITIES = /* @__PURE__ */ new Set(["blocker", "major", "minor", "note"]);
 var DISPOSITIONS = /* @__PURE__ */ new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket", "obsolete-after-change"]);
-function nonEmpty(value) {
+function nonEmpty2(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 function parseReviewAttestation(raw) {
   if (raw === null) return { state: "absent" };
   try {
-    const data = (0, import_gray_matter3.default)(raw).data;
+    const data = (0, import_gray_matter4.default)(raw).data;
     if (!data || typeof data !== "object") return { state: "invalid", reason: "frontmatter is not an object" };
     if (data.kind !== "review-attestation") return { state: "invalid", reason: 'kind must be "review-attestation"' };
-    if (!nonEmpty(data.pr)) return { state: "invalid", reason: "pr must be a non-empty string" };
-    if (typeof data.head_sha !== "string" || !FULL_SHA.test(data.head_sha)) {
+    if (!nonEmpty2(data.pr)) return { state: "invalid", reason: "pr must be a non-empty string" };
+    if (typeof data.head_sha !== "string" || !FULL_SHA3.test(data.head_sha)) {
       return { state: "invalid", reason: "head_sha must be a full hexadecimal Git object id" };
     }
     if (data.verdict !== "pass" && data.verdict !== "needs-changes") {
       return { state: "invalid", reason: 'verdict must be "pass" or "needs-changes"' };
     }
-    if (!nonEmpty(data.reviewer)) return { state: "invalid", reason: "reviewer must be a non-empty string" };
+    if (!nonEmpty2(data.reviewer)) return { state: "invalid", reason: "reviewer must be a non-empty string" };
     if (typeof data.independent !== "boolean") return { state: "invalid", reason: "independent must be boolean" };
-    if (!nonEmpty(data.plan_hash)) return { state: "invalid", reason: "plan_hash must be a non-empty string" };
-    if (!nonEmpty(data.ticket_updated)) return { state: "invalid", reason: "ticket_updated must be a non-empty string" };
+    if (!nonEmpty2(data.plan_hash)) return { state: "invalid", reason: "plan_hash must be a non-empty string" };
+    if (!nonEmpty2(data.ticket_updated)) return { state: "invalid", reason: "ticket_updated must be a non-empty string" };
     if (!Array.isArray(data.findings)) return { state: "invalid", reason: "findings must be an array" };
-    if (data.board_sha !== void 0 && (typeof data.board_sha !== "string" || !FULL_SHA.test(data.board_sha))) {
+    if (data.board_sha !== void 0 && (typeof data.board_sha !== "string" || !FULL_SHA3.test(data.board_sha))) {
       return { state: "invalid", reason: "board_sha must be a full hexadecimal Git object id when present" };
     }
-    if (data.expected_reviewers !== void 0 && (!Array.isArray(data.expected_reviewers) || !data.expected_reviewers.every(nonEmpty))) {
+    if (data.expected_reviewers !== void 0 && (!Array.isArray(data.expected_reviewers) || !data.expected_reviewers.every(nonEmpty2))) {
       return { state: "invalid", reason: "expected_reviewers must be an array of non-empty strings when present" };
     }
     if (data.threads_snapshot !== void 0 && !Array.isArray(data.threads_snapshot)) {
@@ -43312,15 +43658,15 @@ function parseReviewAttestation(raw) {
       if (!f || typeof f !== "object") return { state: "invalid", reason: `findings[${index}] must be an object` };
       if (typeof f.id !== "string" || !/^F-\d{3,}$/u.test(f.id)) return { state: "invalid", reason: `findings[${index}].id must be an F-### identifier` };
       if (!SEVERITIES.has(f.severity)) return { state: "invalid", reason: `findings[${index}].severity is invalid` };
-      if (!nonEmpty(f.summary)) return { state: "invalid", reason: `findings[${index}].summary must be non-empty` };
+      if (!nonEmpty2(f.summary)) return { state: "invalid", reason: `findings[${index}].summary must be non-empty` };
       if (!DISPOSITIONS.has(f.disposition)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
-      if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk" || f.disposition === "obsolete-after-change") && !nonEmpty(f.reason)) {
+      if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk" || f.disposition === "obsolete-after-change") && !nonEmpty2(f.reason)) {
         return { state: "invalid", reason: `findings[${index}].reason is required for ${f.disposition}` };
       }
       if (f.disposition === "obsolete-after-change" && !SUPERSEDED_REASON.test(f.reason)) {
         return { state: "invalid", reason: `findings[${index}].reason must be superseded by <full-sha> for obsolete-after-change` };
       }
-      if (f.disposition === "deferred-to-ticket" && !nonEmpty(f.ticket)) {
+      if (f.disposition === "deferred-to-ticket" && !nonEmpty2(f.ticket)) {
         return { state: "invalid", reason: `findings[${index}].ticket is required for deferred-to-ticket` };
       }
     }
@@ -44127,7 +44473,17 @@ var KanmerStore = class _KanmerStore {
       profileId,
       inlineRequires: item.requires,
       stage: item.status,
+      proofValidation: resolveProofValidation(board).mode,
       evidence: {
+        // Read from the packet's own inventory rather than re-reading disk, so
+        // the packet's gate answer is computed from exactly the bytes the
+        // packet reports (CORE-129).
+        proofState: async () => {
+          const document = inventory.find((candidate) => candidate.doc === "proof/proof.md");
+          if (!document || document.content === void 0 || document.content === null) return null;
+          const parsed = parseProofDocument(document.content);
+          return { state: parsed.state, diagnostics: parsed.diagnostics };
+        },
         hasType: async (type) => !isGateExempt(type) && documentsOfType(type).length > 0,
         hasNamed: async (type, named) => {
           if (isGateExempt(type)) return false;
@@ -44231,7 +44587,38 @@ var KanmerStore = class _KanmerStore {
       () => withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
         const previous = await this.getBoard();
         await this.assertNoStrandedColumns(previous, board);
+        assertNoProofValidationEscalation(previous, board);
         await writeBoard(this.paths, board);
+      })
+    );
+  }
+  /**
+   * Turn on strict proof validation, bound to a census the caller has already
+   * seen (CORE-129 change 3).
+   *
+   * This exists as its own method — rather than "just set the field with
+   * `updateBoard`" — because turning strict on is the one board edit that can
+   * change what an *existing* ticket owes. Every historical proof on a board of
+   * any age is `legacy` under the typed parser, so the cutover is only safe
+   * once someone has read the census and accepted what it says. `assertCurrent`
+   * re-runs that census while this method holds the board write lock and
+   * refuses on any drift, so the thing authorised is the thing applied and not
+   * merely something that looked the same a moment earlier.
+   *
+   * It writes the policy and nothing else: no proof, ticket, stage or activity
+   * record is touched, which is what makes the cutover reversible by hand.
+   */
+  async activateStrictProofValidation(assertCurrent) {
+    return this.withLeaseLock(
+      () => withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+        const previous = await this.getBoard();
+        if (previous.proofValidation?.mode === "strict") {
+          return { board: previous, changed: false };
+        }
+        await assertCurrent();
+        const next = { ...structuredClone(previous), proofValidation: { mode: "strict" } };
+        await writeBoard(this.paths, next);
+        return { board: next, changed: true };
       })
     );
   }
@@ -44242,6 +44629,7 @@ var KanmerStore = class _KanmerStore {
         const previous = await this.getBoard();
         const next = await mutator(structuredClone(previous));
         await this.assertNoStrandedColumns(previous, next);
+        assertNoProofValidationEscalation(previous, next);
         await writeBoard(this.paths, next);
         return next;
       })
@@ -47213,9 +47601,11 @@ ${content.trim()}
     }
     const blocking = firstBlocking(report, fromStatus, toStatus);
     if (!blocking) return;
-    const missing = blocking.requirements.filter((r) => !r.satisfied).map((r) => r.requirement);
+    const unmet = blocking.requirements.filter((r) => !r.satisfied);
+    const missing = unmet.map((r) => r.requirement);
+    const details = unmet.map((r) => r.detail).filter((detail) => Boolean(detail));
     throw new Error(
-      `${item.id} cannot move from "${fromStatus}" to "${toStatus}": ${blocking.label} requires ${missing.join(", ")} (profile "${report.profile}"). Write the missing document(s) with set_ticket_doc` + (missing.includes(GOVERNING_DOC) ? `, or link a governing doc via refs / set docs_todo` : "") + (missing.includes(QUESTIONS_RESOLVED) ? `. "${QUESTIONS_RESOLVED}" is not a document: open-questions/ still has unticked "- [ ]" lines. Answer them and tick the box, or move them under "## Parked (explicitly deferred)" with a reason for deferring` : "") + `, then move. Call get_doc_gates for the full picture.`
+      `${item.id} cannot move from "${fromStatus}" to "${toStatus}": ${blocking.label} requires ${missing.join(", ")} (profile "${report.profile}"). ` + (details.length > 0 ? `${details.join(" ")} ` : "") + `Write the missing document(s) with set_ticket_doc` + (missing.includes(GOVERNING_DOC) ? `, or link a governing doc via refs / set docs_todo` : "") + (missing.includes(QUESTIONS_RESOLVED) ? `. "${QUESTIONS_RESOLVED}" is not a document: open-questions/ still has unticked "- [ ]" lines. Answer them and tick the box, or move them under "## Parked (explicitly deferred)" with a reason for deferring` : "") + `, then move. Call get_doc_gates for the full picture.`
     );
   }
   /**
@@ -47230,14 +47620,29 @@ ${content.trim()}
       area?.defaultProfile,
       board.defaultProfile
     );
+    let proofProbe = null;
     return evaluateGateReport({
       profiles: resolveProfiles(board),
       profileId,
       inlineRequires: item.requires,
       stage: item.status,
+      proofValidation: resolveProofValidation(board).mode,
       evidence: {
         hasType: (type) => typeSatisfied(ticketDir, type),
         hasNamed: (type, named) => namedSatisfied(ticketDir, type, named),
+        proofState: () => {
+          proofProbe ??= (async () => {
+            let raw;
+            try {
+              raw = await readText(docPathIn(ticketDir, "proof"));
+            } catch {
+              return null;
+            }
+            const parsed = parseProofDocument(raw);
+            return { state: parsed.state, diagnostics: parsed.diagnostics };
+          })();
+          return proofProbe;
+        },
         hasGoverningDoc: () => {
           if (item.docs_todo === true) return true;
           return (item.refs ?? []).some((rel) => repoDocKindOf(board, rel) !== null);
@@ -47582,64 +47987,12 @@ function pruneUndefined(obj) {
   }
   return out;
 }
-function parseProofReceipts(frontmatter) {
-  if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return [];
-  const raw = frontmatter.receipts;
-  if (raw === void 0) return [];
-  if (!Array.isArray(raw)) return { invalid: ["receipts must be an array when present"] };
-  const receipts = [];
-  const invalid = [];
-  raw.forEach((entry, index) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-      invalid.push(`receipts[${index}] must be an object`);
-      return;
-    }
-    const record22 = entry;
-    if (typeof record22.kind !== "string" || record22.kind.trim().length === 0) {
-      invalid.push(`receipts[${index}].kind must be a non-empty string`);
-      return;
-    }
-    receipts.push({ ...record22, kind: record22.kind });
-  });
-  if (invalid.length > 0) return { invalid };
-  return receipts;
-}
-var FULL_SHA2 = /^[0-9a-f]{40}$/;
-var KNOWN_RECEIPT_KINDS = /* @__PURE__ */ new Set(["github-actions-run"]);
-function nonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-function assessReceipt(receipt, opts) {
-  const reasons = [];
-  if (!nonEmptyString(receipt.kind) || !KNOWN_RECEIPT_KINDS.has(receipt.kind)) {
-    reasons.push(`unknown receipt kind: ${String(receipt.kind)}`);
-  }
-  if (!nonEmptyString(receipt.job)) {
-    reasons.push("receipt is missing job");
-  } else if (receipt.job !== "verify") {
-    reasons.push(`receipt job must be "verify", got ${JSON.stringify(receipt.job)}`);
-  }
-  if (receipt.workflow !== "pr.yml") {
-    reasons.push(`receipt workflow must be "pr.yml", got ${JSON.stringify(receipt.workflow)}`);
-  }
-  if (receipt.run_id === void 0 || receipt.run_id === null || receipt.run_id === "") {
-    reasons.push("receipt is missing run_id");
-  }
-  if (!nonEmptyString(receipt.url)) {
-    reasons.push("receipt is missing url");
-  }
-  if (receipt.event !== "push") {
-    reasons.push(`receipt event must be "push", got ${JSON.stringify(receipt.event)}`);
-  }
-  if (receipt.conclusion !== "success") {
-    reasons.push(`receipt conclusion must be "success", got ${JSON.stringify(receipt.conclusion)}`);
-  }
-  if (!nonEmptyString(receipt.head_sha) || !FULL_SHA2.test(receipt.head_sha)) {
-    reasons.push("receipt head_sha must be a full 40-hex Git object id");
-  } else if (receipt.head_sha !== opts.mergedSha) {
-    reasons.push("receipt head_sha does not match the PR merge SHA");
-  }
-  return reasons.length > 0 ? { kind: "rejected", reasons } : { kind: "satisfied" };
+function assertNoProofValidationEscalation(previous, next) {
+  if (next.proofValidation?.mode !== "strict") return;
+  if (previous.proofValidation?.mode === "strict") return;
+  throw new Error(
+    `PROOF_VALIDATION_ESCALATION_REFUSED: enabling strict proof validation changes what every ticket on this board owes at the Done gate, so it cannot be set by an ordinary board write. Run migrate_board with dry_run: true to census the existing proof records, then pass that census digest back to migrate_board to enable it deliberately.`
+  );
 }
 function finding(code, level, message) {
   return { code, level, message };
@@ -47819,6 +48172,18 @@ function reconcileEvidence(input) {
           findings.push(finding("VERIFICATION_INCONCLUSIVE", "warning", "verification did not distinguish an implementation, plan or transient failure; the ticket stays in Verifying until the proof names a class"));
           return none();
       }
+    }
+    if (evidence.proof.state === "invalid" && evidence.proof.record) {
+      const { state, diagnostics } = evidence.proof.record;
+      const why = state === "legacy" ? "the proof predates the typed proof-record/2 contract and has never been validated" : state === "valid-inconclusive" ? "the proof is a valid INCONCLUSIVE record, which is not a PASS" : state === "valid-pass" ? "the proof is an operator waiver, which is a human disposition rather than an automated recommendation" : "the proof declares the typed proof-record/2 contract and breaks it";
+      findings.push(
+        finding(
+          "PROOF_RECORD_NOT_AUTHORITATIVE",
+          "warning",
+          `${why}; reconciliation does not recommend Done${diagnostics.length > 0 ? ` (${diagnostics.join("; ")})` : ""}`
+        )
+      );
+      return none();
     }
   }
   if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean" && evidence.workspace.claimIdentity === "matches-claim") {
@@ -48391,7 +48756,8 @@ async function migrateBoard(store2, opts = {}) {
   const backfill = await backfillStages(store2, { dryRun });
   const v3 = await migrateToV3(store2, { dryRun });
   const identity = await migrateIdentity(store2, { dryRun, fallbackFingerprint: opts.fallbackFingerprint });
-  return { v2, backfill, v3, identity };
+  const proofValidation = await migrateProofValidation(store2, { dryRun, censusDigest: opts.proofCensusDigest });
+  return { v2, backfill, v3, identity, proofValidation };
 }
 async function migrateIdentity(store2, opts = {}) {
   const existing = await store2.getProject();
@@ -48404,6 +48770,87 @@ async function migrateIdentity(store2, opts = {}) {
     fallbackFingerprint: opts.fallbackFingerprint
   });
   return { allocated, wouldAllocate: false, project_id: record22.project_id, origin: record22.origin };
+}
+async function auditProofRecords(store2) {
+  const problems = [];
+  const entries = [];
+  const { items, warnings } = await store2.listItemsWithWarnings({ includeArchived: true });
+  for (const warning of warnings) {
+    problems.push(`${warning.file}: ${warning.message}`);
+  }
+  const tickets = items.filter((item) => item.type === "ticket").sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  for (const item of tickets) {
+    const file = import_path13.default.join(ticketDirIn(store2.paths, item.area || NO_AREA_DIR, item.id), "proof", "proof.md");
+    let raw = null;
+    try {
+      raw = await pathExists(file) ? await readText(file) : null;
+    } catch (error2) {
+      problems.push(`${item.id}: proof/proof.md could not be read (${String(error2 instanceof Error ? error2.message : error2)})`);
+      continue;
+    }
+    if (raw === null) {
+      entries.push({ id: item.id, stage: item.status, archived: item.archived === true, state: null, bucket: "absent", bytes: 0, sha256: "", diagnostics: [] });
+      continue;
+    }
+    const parsed = parseProofDocument(raw);
+    entries.push({
+      id: item.id,
+      stage: item.status,
+      archived: item.archived === true,
+      state: parsed.state,
+      bucket: proofCensusBucket(parsed.state),
+      bytes: Buffer.byteLength(raw, "utf8"),
+      sha256: (0, import_crypto8.createHash)("sha256").update(raw, "utf8").digest("hex"),
+      diagnostics: parsed.diagnostics
+    });
+  }
+  const counts = { valid: 0, legacy: 0, invalid: 0, absent: 0, total: entries.length };
+  for (const entry of entries) counts[entry.bucket] += 1;
+  const digest22 = (0, import_crypto8.createHash)("sha256").update(PROOF_RECORD_PARSER_VERSION).update("-").update(
+    entries.map((entry) => [entry.id, entry.stage, entry.archived ? "1" : "0", String(entry.bytes), entry.sha256, entry.state ?? "absent"].join(" | ")).join("\n")
+  ).digest("hex");
+  return {
+    parserVersion: PROOF_RECORD_PARSER_VERSION,
+    complete: problems.length === 0,
+    problems,
+    counts,
+    entries,
+    digest: `proof-census-v1:${digest22}`
+  };
+}
+async function migrateProofValidation(store2, opts = {}) {
+  const dryRun = opts.dryRun ?? false;
+  const board = await store2.getBoard();
+  const from = board.proofValidation?.mode === "strict" ? "strict" : "report";
+  const census = await auditProofRecords(store2);
+  const base = { dryRun, from, to: from, changed: false, census, refused: null };
+  if (!opts.censusDigest) return base;
+  if (dryRun) {
+    return { ...base, refused: "dry_run does not apply a cutover; re-run without dry_run to apply this digest" };
+  }
+  if (from === "strict") return base;
+  const format = await store2.detectFormat();
+  if (format < 3) {
+    return { ...base, refused: `the board is still format ${format}; migrate the format first, then run the proof-validation cutover on a current-format board` };
+  }
+  if (!census.complete) {
+    return { ...base, refused: `the census is incomplete, so it is not evidence about this whole board: ${census.problems.join("; ")}` };
+  }
+  if (opts.censusDigest !== census.digest) {
+    return { ...base, refused: `census digest mismatch: this board now reads as ${census.digest}` };
+  }
+  try {
+    const result = await store2.activateStrictProofValidation(async () => {
+      const current = await auditProofRecords(store2);
+      if (!current.complete) throw new Error(`PROOF_CENSUS_INCOMPLETE: ${current.problems.join("; ")}`);
+      if (current.digest !== opts.censusDigest) {
+        throw new Error(`PROOF_CENSUS_DIGEST_MISMATCH: the board changed while the cutover was being applied; it now reads as ${current.digest}`);
+      }
+    });
+    return { ...base, to: "strict", changed: result.changed, refused: null };
+  } catch (error2) {
+    return { ...base, refused: String(error2 instanceof Error ? error2.message : error2) };
+  }
 }
 function watchKanmer(projectRoot2, onChange, options2 = {}) {
   const paths = resolvePaths(projectRoot2);
@@ -50046,7 +50493,6 @@ var import_node_child_process4 = require("child_process");
 var import_promises12 = __toESM(require("fs/promises"), 1);
 var import_node_path7 = __toESM(require("path"), 1);
 var import_node_util3 = require("util");
-var import_gray_matter4 = __toESM(require_gray_matter(), 1);
 
 // src/errors.ts
 var RELEASE_HELD_PREFIX = "RELEASE_CHANNEL_HELD:";
@@ -50151,30 +50597,37 @@ function errorStdout(error2) {
   const value = error2?.stdout;
   return typeof value === "string" ? value : null;
 }
-function validTimestamp(value) {
-  const text = value instanceof Date ? value.toISOString() : value;
-  return typeof text === "string" && text.trim().length > 0 && !Number.isNaN(Date.parse(text));
-}
-var FAILURE_CLASSES = ["implementation", "plan", "transient", "inconclusive"];
+var FAILURE_CLASSES2 = ["implementation", "plan", "transient", "inconclusive"];
 function failureClassOf(raw) {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-  return FAILURE_CLASSES.includes(value) ? value : "inconclusive";
+  return FAILURE_CLASSES2.includes(value) ? value : "inconclusive";
 }
 function proofEvidence(raw) {
   if (!raw) return { state: "absent" };
-  try {
-    const parsed = (0, import_gray_matter4.default)(raw).data;
-    if (parsed.kind !== "proof-record" || typeof parsed.result !== "string" || typeof parsed.merged_sha !== "string" || !parsed.merged_sha.trim() || typeof parsed.environment !== "string" || !parsed.environment.trim() || !validTimestamp(parsed.verified_at) || !Array.isArray(parsed.attempts)) return { state: "invalid" };
-    const result = parsed.result.trim().toUpperCase();
-    const mergedSha = parsed.merged_sha.trim();
-    const parsedReceipts = parseProofReceipts(parsed);
-    const receipts = Array.isArray(parsedReceipts) && parsedReceipts.length > 0 ? parsedReceipts : void 0;
-    if (result === "PASS") return { state: "pass", mergedSha, ...receipts ? { receipts } : {} };
-    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class), ...receipts ? { receipts } : {} };
-    return { state: "invalid" };
-  } catch {
-    return { state: "invalid" };
+  const record3 = parseProofDocument(raw);
+  const summary = { record: { state: record3.state, diagnostics: record3.diagnostics } };
+  if (record3.state === "legacy" || record3.state === "invalid") return { state: "invalid", ...summary };
+  const receipts = record3.receipts.length > 0 ? record3.receipts : void 0;
+  if (record3.waived) return { state: "invalid", ...summary };
+  if (record3.state === "valid-pass") {
+    return { state: "pass", mergedSha: record3.mergedSha, ...receipts ? { receipts } : {}, ...summary };
   }
+  if (record3.state === "valid-fail") {
+    return {
+      state: "fail",
+      mergedSha: record3.mergedSha,
+      failureClass: failureClassOf(record3.failureClass),
+      ...receipts ? { receipts } : {},
+      ...summary
+    };
+  }
+  return {
+    state: "fail",
+    mergedSha: record3.mergedSha,
+    failureClass: "inconclusive",
+    ...receipts ? { receipts } : {},
+    ...summary
+  };
 }
 function requiredChecksEvidence(raw) {
   if (!Array.isArray(raw)) return "unavailable";
@@ -52073,6 +52526,14 @@ function createKanmerMcpServer(policy = "local-stdio") {
         // answers "is the release channel clear?" in the orientation call every
         // session already makes.
         release: await releaseStatus(store),
+        /**
+         * CORE-129 typed proof policy. `mode` is what the Done gate enforces;
+         * `source` says whether the board declared it or it was defaulted, so a
+         * board whose `proofValidation` key an older server stripped on write
+         * reads as `{ mode: "report", source: "default" }` rather than silently
+         * looking configured.
+         */
+        proofValidation: resolveProofValidation(board),
         deploymentTracking: board.deployment !== void 0,
         boardWorktree: {
           path: projectRoot,
@@ -52119,6 +52580,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
         defaultProfile: board.defaultProfile ?? "fix",
         groupKinds: resolveGroupKinds(board),
         proofTypes: resolveProofTypes(board),
+        proofValidation: resolveProofValidation(board),
         docTypes: DOC_TYPES,
         gateExemptFolders: GATE_EXEMPT_DIRS,
         boundaries: BOUNDARIES,
@@ -53118,9 +53580,12 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "migrate_board",
     {
       title: "Migrate / upgrade the board",
-      description: "Bring the board fully current: run the v1\u2192v2 migration if needed, then backfill the 7-stage default (alias-aware, additive \u2014 never renames or reorders existing stages, never touches item files), then the one-time logical identity migration (FRD-029): a board without .kanmer/project.json receives a `project_id` with the prior machine-local fingerprint recorded as its auditable fallback, reported under `identity`. Pass dry_run: true to preview what would move, which stages would be added and whether an identity would be allocated, without writing. The agent-facing route to the same upgrade the GUI offers.",
+      description: "Bring the board fully current: run the v1\u2192v2 migration if needed, then backfill the 7-stage default (alias-aware, additive \u2014 never renames or reorders existing stages, never touches item files), then the one-time logical identity migration (FRD-029): a board without .kanmer/project.json receives a `project_id` with the prior machine-local fingerprint recorded as its auditable fallback, reported under `identity`. Pass dry_run: true to preview what would move, which stages would be added and whether an identity would be allocated, without writing. The agent-facing route to the same upgrade the GUI offers. Every call also returns `proofValidation` (CORE-129): a READ-ONLY census of every ticket's canonical `proof/proof.md`, bucketed `valid` / `legacy` / `invalid` / `absent` with per-ticket diagnostics, plus a `digest` binding that exact reading. The census writes nothing \u2014 proof bytes, tickets, stages and activity are untouched by it, in a dry run and a real run alike. Enabling STRICT proof validation \u2014 where entering Done needs a valid `proof-record/2` PASS rather than merely a file under `proof/` \u2014 is a separate, deliberate act: read a dry run's census, then pass that exact `proof_census_digest` back on a non-dry run. The digest is recomputed under the board write lock, and the cutover is refused WITHOUT WRITING if the board changed, if the census is incomplete, or if the board is not yet format 3 (migrate the format first). Calling this tool without `proof_census_digest` NEVER enables strict; an already-strict board reports `changed: false` and the same read-only census.",
       inputSchema: {
-        dry_run: external_exports.boolean().optional().describe("Preview without writing")
+        dry_run: external_exports.boolean().optional().describe("Preview without writing"),
+        proof_census_digest: external_exports.string().optional().describe(
+          "The exact `proofValidation.census.digest` from a dry run, to enable strict proof validation (CORE-129). Omit it and strict is never enabled."
+        )
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
@@ -53129,12 +53594,20 @@ function createKanmerMcpServer(policy = "local-stdio") {
     // could never be read-only and `identity.wouldAllocate` was unreachable over
     // MCP. Same guard order as write() — WRONG_PROJECT first, then actor, then
     // init — but init only when actually writing.
-    guard(async ({ dry_run, expected_project }, extra) => {
+    guard(async ({
+      dry_run,
+      proof_census_digest,
+      expected_project
+    }, extra) => {
       await assertExpectedProject(expected_project);
       store.setActor(actorName(server, extra));
       if (!dry_run) await ensureInit();
       const legacy = await legacyIdentity();
-      const report = await migrateBoard(store, { dryRun: dry_run, fallbackFingerprint: legacy.fingerprint });
+      const report = await migrateBoard(store, {
+        dryRun: dry_run,
+        fallbackFingerprint: legacy.fingerprint,
+        proofCensusDigest: proof_census_digest
+      });
       await resolveProject();
       return ok(report);
     })

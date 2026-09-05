@@ -8,20 +8,30 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** The authoritative ordered verification commands for PRs and releases. */
+/**
+ * The authoritative ordered verification commands for PRs and releases.
+ *
+ * `node scripts/build-stamp.mjs --write` runs immediately after the one root
+ * build and stamps its outputs (core, server, standalone). Every later step
+ * that would otherwise rebuild the same output instead consumes the `:built`
+ * variant, which asserts the stamp still matches (CORE-140) instead of
+ * rebuilding — `npm run test:built` and `npm run mcpb:check:built` in place of
+ * the public `npm test` / `npm run mcpb:check`.
+ */
 export const VERIFY_STEPS = Object.freeze([
   "npm run build",
+  "node scripts/build-stamp.mjs --write",
   // The renderer bundles @kanmer/core/browser; only a real build proves the
   // renderer graph stays browser-safe (GUI-146).
   "npm run build -w @kanmer/gui",
   // The GUI imports @kanmer/core from its package export. A clean checkout
   // has no generated dist yet, so build the workspace artifacts before tests.
-  "npm test",
+  "npm run test:built",
   "npm run typecheck",
   "npm run verify:docs",
   "node packages/mcp-server/src/smoke.mjs",
   "npm run smoke:headless",
-  "npm run mcpb:check",
+  "npm run mcpb:check:built",
   "npm run smoke:protocol",
   "npm run smoke:discovery",
   // FRD-035 AC1/AC5: the golden-board evaluation runs every scenario class
@@ -53,7 +63,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   writeFileSync(join(testBoard, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
   try {
     for (const step of VERIFY_STEPS) {
-      run(step, step === "npm test" ? { ...process.env, KANMER_ROOT: testBoard } : process.env);
+      run(step, step === "npm run test:built" ? { ...process.env, KANMER_ROOT: testBoard } : process.env);
     }
   } finally {
     rmSync(testBoard, { recursive: true, force: true });

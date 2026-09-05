@@ -19,7 +19,8 @@
     "start": "node dist/index.js",
     "doctor": "node dist/doctor-cli.js",
     "typecheck": "tsc --noEmit",
-    "test:http": "npm run build && node --test src/check-pr.test.mjs src/delivery.test.mjs src/release.test.mjs src/reconciliation.test.mjs src/step-reconciliation.test.mjs src/http-auth.test.mjs src/http-secret.test.mjs src/http.test.mjs src/project-registry.test.mjs src/sources.test.mjs src/remote-host.test.mjs src/remote-cli.test.mjs src/doctor.test.mjs src/integration/remote-public.test.mjs src/tunnels/cloudflared-config.test.mjs src/tunnels/cloudflared-validate.test.mjs src/tunnels/cloudflared.test.mjs src/tunnels/fixtures/fake-cloudflared.test.mjs src/tunnels/logs.test.mjs src/tunnels/readiness.test.mjs src/tunnels/supervisor.test.mjs",
+    "test:http": "node scripts/run-http-tests.mjs",
+    "test:http:built": "node scripts/run-http-tests.mjs --assume-built",
     "smoke:doctor": "npm run build && node src/smoke-doctor.mjs"
   },
   "dependencies": {

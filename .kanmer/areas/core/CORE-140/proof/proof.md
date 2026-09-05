@@ -4,6 +4,8 @@ merged_sha: "941650317be4cad4f6a86c6ab16362ee5dd8dfdb"
 environment: "detached verification worktree .worktrees/verify-core-140-941650317be4cad4f6a86c6ab16362ee5dd8dfdb at exact merge SHA; Windows, Git Bash, Node v24.15.0, npm 11.14.1"
 verified_at: "2026-09-05T03:55:00Z"
 result: PASS
+pr_url: "https://github.com/collisionengineers/kanmer/pull/322"
+merged_at: "2026-09-05T03:39:38Z"
 attempts:
   - attempted_at: "2026-09-05T03:41:00Z"
     command: "gh pr view 322 --json state,mergeCommit,url"
@@ -195,3 +197,10 @@ observation. The detached-worktree checks corroborate the ticket's own named
 scoped-check plan directly, including a positive assert-pass and a correct
 assert-FAIL-then-restore mutation probe. Nothing failed and nothing required
 here was left unavailable.
+
+## Closeout addendum
+
+PR: https://github.com/collisionengineers/kanmer/pull/322 (MERGED at
+2026-09-05T03:39:38Z, merge commit 941650317be4cad4f6a86c6ab16362ee5dd8dfdb).
+Confirmed via `gh pr view 322 --json state,mergedAt,url,mergeCommit` during
+closeout on 2026-09-05.

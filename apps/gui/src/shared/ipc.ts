@@ -83,6 +83,8 @@ export const CH = {
   setTheme: "kanmer:setTheme",
   setNotifications: "kanmer:setNotifications",
   setPreferences: "kanmer:setPreferences",
+  getViewPrefs: "kanmer:getViewPrefs",
+  setViewPrefs: "kanmer:setViewPrefs",
   setDispatchSettings: "kanmer:setDispatchSettings",
   setKanmerGitPreferences: "kanmer:setKanmerGitPreferences",
   getKanmerGitStatus: "kanmer:getKanmerGitStatus",
@@ -311,6 +313,26 @@ export interface UiPreferences {
   confirmOnDelete: boolean;
   defaultPriority: string;
   defaultArea: string;
+}
+
+/**
+ * Focus Board view preferences for one project (FRD-036 R8) — mirror of
+ * main/settings.ts ViewPrefs.
+ *
+ * Personal display state, not board data: the scope the rail is on, whether the
+ * rail is collapsed, and which page each column is showing. Main stores these
+ * under the **logical** `project_id` from `.kanmer/project.json`, resolved from
+ * the `projectId` root path every other project-scoped method already takes —
+ * so no path field is added to this boundary and a project keeps its
+ * preferences across worktrees (AGENTS.md §8 gotcha 15). Never written to a
+ * ticket; never readable by a gate.
+ */
+export interface ViewPrefs {
+  /** A `Scope` id; the renderer owns that vocabulary and re-validates on read. */
+  scope: string;
+  sidebarCollapsed: boolean;
+  /** Column id → 1-based page. Only pages past the first are stored. */
+  columnPages?: Record<string, number>;
 }
 
 export interface DispatchProviderSettings {
@@ -635,6 +657,10 @@ export interface KanmerApi {
   setNotifications(on: boolean): Promise<AppSettings>;
   /** Merge a partial UI-preferences patch (Phase 4.4). */
   setPreferences(patch: Partial<UiPreferences>): Promise<AppSettings>;
+  /** This project's remembered Focus Board view preferences, or the defaults. */
+  getViewPrefs(projectId: string): Promise<ViewPrefs>;
+  /** Replace this project's view preferences; returns what was actually stored. */
+  setViewPrefs(projectId: string, prefs: ViewPrefs): Promise<ViewPrefs>;
   setDispatchSettings(settings: DispatchSettings): Promise<AppSettings>;
   setKanmerGitPreferences(prefs: KanmerGitPreferences): Promise<AppSettings>;
   getKanmerGitStatus(projectId: string): Promise<KanmerGitStatus>;

@@ -214,6 +214,32 @@ try {
       !imports ? "no import of agents-block-body.mjs" : declaresOwn ? "declares its own BLOCK_BODY" : "",
     );
   }
+
+  // 10-13. DOC-028: the block routes work by purpose and names the configured
+  // integration branch instead of a literal `main`. These four checks are
+  // string-presence checks on the one canonical BLOCK_BODY, same as checks
+  // 10/11/12/13 are meant to be lightweight tripwires against regressing the
+  // specific wording this ticket introduced — not a restatement of check 1's
+  // structural rule-count assertion.
+  {
+    check(
+      "BLOCK_BODY no longer claims proof is written on merged main",
+      !BLOCK_BODY.includes("Proof is written on merged"),
+    );
+    check(
+      "BLOCK_BODY names delivery.integrationBranch instead of a literal branch",
+      BLOCK_BODY.includes("delivery.integrationBranch"),
+    );
+    check(
+      "BLOCK_BODY routes direct work before starting a workflow and names one heavy verifier per host",
+      BLOCK_BODY.includes("Resolve the request before starting a workflow") &&
+        BLOCK_BODY.includes("One heavy verification owner per host"),
+    );
+    check(
+      "BLOCK_BODY separates deployment from ordinary Done",
+      BLOCK_BODY.includes("Deployment belongs to a release"),
+    );
+  }
 } finally {
   fs.rmSync(sandbox, { recursive: true, force: true });
 }

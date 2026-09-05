@@ -67,14 +67,12 @@ attempts:
     result: PASS
     authority: supporting
     summary: "B3 fresh non-linked clone at v0.4.2 (7a6e4375...): npm ci exit 0; plugin:check exit 0 (41 tools match, manifests at v0.4.2); mcpb:check exit 0 (built kanmer-0.4.2.mcpb, 1796819 bytes, matches published asset exactly); test:http exit 0 (253 tests, 252 pass, 1 skip, 0 fail, 66.78s)."
-  - attempted_at: "2026-09-05T19:28:05Z"
-    command: "Kanmer-Setup-0.4.2.exe /S (direct, via bash exec)"
-    cwd: "C:/Users/Alex/Documents/GitHub/kanmer/apps/gui/release"
+  - attempted_at: "2026-09-05T18:28:05Z"
     exit_code: null
     result: FAIL
     authority: supporting
     failure_class: implementation
-    summary: "B4 manual install attempt 1: hung 7+ minutes with near-zero CPU and an unexpected visible 'Kanmer Setup' window (installer.nsh's customCheckAppRunning MessageBox guard did not auto-answer silently as expected). Killed the stuck installer process only (PID 14512, not an app/MCP process); no generation change resulted."
+    summary: "B4 manual install attempt 1 (manual procedure, no process exit code recorded): ran Kanmer-Setup-0.4.2.exe /S directly from apps/gui/release via bash exec at 19:28:05 local (18:28:05Z). It hung 7+ minutes with near-zero CPU and an unexpected visible 'Kanmer Setup' window (installer.nsh's customCheckAppRunning MessageBox guard did not auto-answer silently as expected). The stuck installer process only (PID 14512, not an app/MCP process) was terminated; no generation change resulted."
   - attempted_at: "2026-09-05T18:36:56Z"
     command: "Start-Process Kanmer-Setup-0.4.2.exe -ArgumentList '/S' (PowerShell)"
     cwd: "C:/Users/Alex/Documents/GitHub/kanmer/apps/gui/release"
@@ -127,3 +125,7 @@ Full HZN-009 closeout report: group doc `HZN-009/closeout.md`. Full command-by-c
 | M5/AT-37 disposable mutation | attempt 9 |
 | Rollback drill AT-38 | attempt 10 (authoritative) |
 | Independent CI (push-to-main verify, tag release-verify) | receipts 1-2 |
+
+## Record correction 2026-09-05 (post-release kanmer-setup)
+
+Attempt 6 was rewritten as a proper manual attempt: the schema-2 parser refused the original entry because it carried `command`/`cwd` alongside `exit_code: null`, and its timestamp had been written as local time with a `Z` suffix (19:28 local = 18:28Z), which also broke the strictly increasing order. No result, authority or outcome changed; the procedure text moved into the summary. Made before the board's proof policy was switched to strict.

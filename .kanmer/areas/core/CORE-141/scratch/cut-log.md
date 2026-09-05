@@ -180,3 +180,18 @@ All 8 steps of the briefed sequence ran to completion:
 8. This report
 
 Phase B (independent review/merge of PR #332, `release.mjs --publish`, host adoption, M5, rollback drill, closeout, HZN-009 closeout.md) is out of scope here and not started.
+
+## Phase B — Publish (B1)
+
+Coordinator merged release PR #332 as `7a6e437574fd653f4c49d0a3fa00e6b5e4904809` on `main`, reviewed with attestation `4616fad7…`, gate+verify green. Confirmed locally: `git status --short` clean, `HEAD` = `7a6e437574fd653f4c49d0a3fa00e6b5e4904809`, `apps/gui/package.json`/`package.json` version `0.4.2`.
+
+### B1 dry-run
+`export GH_TOKEN=$(gh auth token)`; `node scripts/release.mjs 0.4.2 --publish --release-commit 7a6e437574fd653f4c49d0a3fa00e6b5e4904809 --dry-run` — exit 0. Re-ran full rail (35/35 managed-block checks, `plugin:check` green: "plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.2, isolated MCP handshake lists 41 tools"). Output:
+```
+--- dry run: the verification gate passed ---
+Would verify 7a6e437574fd653f4c49d0a3fa00e6b5e4904809 is an ancestor of clean main
+Would create and push only refs/tags/v0.4.2
+Would build/publish one Windows installer and verify visibility, updater, and every asset digest
+No Git or remote release state was written.
+```
+No GUI-154 crash. Proceeding to the real `--publish`.

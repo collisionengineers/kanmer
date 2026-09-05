@@ -1,0 +1,8 @@
+# Files touched (CORE-144)
+
+- `scripts/run-tests.mjs` — export `COMMANDS = { default, assumeBuilt }` as pure data; `main()` loops over the selected list instead of inlining `run(...)` calls.
+- `packages/mcp-server/scripts/run-http-tests.mjs` — export `COMMANDS = { default: ["npm run build -w @kanmer/mcp-server"], assumeBuilt: [] }`; run the default build via that data (from repo root, with the explicit `-w` flag) instead of a bare `npm run build` from the package cwd, so the literal text matches what the resolver expands.
+- `scripts/verify-steps.test.mjs` — import both `COMMANDS` exports; teach `resolve_()` to expand a `node scripts/run-tests.mjs[ --assume-built]` / `node scripts/run-http-tests.mjs[ --assume-built]` leaf via the matching runner's `COMMANDS[mode]` instead of treating it as an opaque leaf; add a "each workspace's build script reached at most once" assertion (catches a duplicate workspace build that the existing root-only count cannot see); add a mutation regression test that drops `--assume-built` from a synthetic copy of `test:built` and asserts the resolver now sees the reintroduced duplicate `@kanmer/mcp-server` build; add a temp-repo test reproducing the untracked-directory digest gap (`probe-dir/a.txt` then `probe-dir/b.txt`).
+- `scripts/build-stamp.mjs` — `computeDirtyDigest`: add `-uall` to the `git status --porcelain=v1 -z` call so untracked directories are listed file-by-file instead of collapsing to one `?? dir/` entry; also fix the F-004 rename/copy parsing (consume the paired NUL-separated "from" path instead of mis-parsing it as its own status+path entry).
+
+No package.json script surface, `VERIFY_STEPS` ordering, or public `test`/`mcpb:check` command changed.

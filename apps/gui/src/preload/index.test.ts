@@ -41,3 +41,21 @@ describe("preload remote access bridge", () => {
     );
   });
 });
+
+describe("preload view-preferences bridge", () => {
+  beforeEach(() => electron.ipcRenderer.invoke.mockClear());
+
+  it("forwards the project id, and nothing else, when reading view preferences", async () => {
+    // The renderer never sees the logical project_id — main resolves it. So
+    // this call must carry exactly the same argument every other
+    // project-scoped method carries, and no path or identity field.
+    await electron.exposedApi()!.getViewPrefs("C:/repo");
+    expect(electron.ipcRenderer.invoke).toHaveBeenCalledWith(CH.getViewPrefs, "C:/repo");
+  });
+
+  it("forwards the whole preference value when writing", async () => {
+    const prefs = { scope: "done", sidebarCollapsed: true, columnPages: { done: 3 } };
+    await electron.exposedApi()!.setViewPrefs("C:/repo", prefs);
+    expect(electron.ipcRenderer.invoke).toHaveBeenCalledWith(CH.setViewPrefs, "C:/repo", prefs);
+  });
+});

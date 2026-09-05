@@ -6,6 +6,47 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.4.2
+
+**Delivery Recovery.** 0.4.1 fixed what 0.4.0 broke; 0.4.2 makes Kanmer materially better at helping a real project finish, without weakening evidence. No new user-facing feature beyond the Focus Board's first cut and the proof/verify changes below.
+
+### Fixed
+
+- **A pull request body edit no longer cancels a useful, still-running verify.** Two separate mechanisms: draft-first handoff means the merge gate stays advisory while a PR is a draft and only turns hard once it is marked ready; a separate `edited`-event concurrency carve-out means that, independent of draft state, editing the PR description no longer cancels an in-progress required `verify` run — it only re-evaluates the gate. A new push still supersedes the previous run, as it always did.
+- **`kanmer-verify` reads the evidence that already exists instead of re-running it.** Before creating a verification worktree, it now looks up the bound post-merge `verify` run for the exact merge SHA and records it as a typed `receipts[]` entry in proof; a missing or non-matching receipt is named, never silently treated as passing.
+- **A stale proof can no longer outlive its own evidence.** A proof's top-level `result` is now validated against its own typed `attempts[]` — a record whose frontmatter says PASS while a later recorded attempt says FAIL is reported inconsistent rather than trusted at face value. Historical free-prose proofs are reported as legacy/unvalidated, never heuristically reinterpreted. The live board stays on `report` policy for this release (see "Operating changes" below); a later, separate operator step decides strict enforcement.
+- **A full rail build runs once per artifact, not several times.** The verification rail, the standalone build and the packaging step used to each rebuild the same output; a build-once stamp now refuses an already-built step whose inputs changed, so a stale artifact can never pass as current.
+- **The build-once guard now sees through the rail's own runner scripts, and its dirty-tree check covers untracked directories.** A step that ran via an intermediate runner script used to be invisible to the guard, and a new untracked directory did not count toward the dirty digest that decides whether a build is reproducible evidence — both are closed, so a stale or unreproducible step is refused rather than waved through.
+- **A fresh clone's HTTP test suite builds its own dependency first.** `packages/mcp-server`'s build did not build `@kanmer/core` first, so `npm run test:http` failed on a clean checkout that had never built core; it now builds core before the standalone HTTP tests run.
+- **A repository now declares its own verification contract, and the evidence lookup reads it.** `board.yml`'s `delivery.verification` names the workflow, required jobs and triggering event that count as this repository's post-integration run; receipt validation and the `kanmer-verify` skill read that declaration instead of assuming Kanmer's own. A repository with no post-integration run recorded at the merge commit falls back to the designated verifier running the check in a detached worktree, exactly as before — nothing here removes that fallback. A consuming repository still on an older server sees the previous default behaviour unchanged.
+
+### Skills and policy
+
+- **The managed AGENTS.md block routes work by purpose and names your actual integration branch**, never a hardcoded `main` — a project that develops on one branch and releases from another now reads correct instructions. Ticket loading is scoped rather than pulling in unrelated backlog.
+- **The old root `CLOSEOUT_PLAN.md` (v0.3.8–v0.3.10 era) is retired**, replaced by an operating index and this file's per-release history; nothing still points at it as current instruction.
+
+### Focus Board
+
+- **A first cut of the Focus Board** — scopes, bounded columns and a sidebar — ships as the first of two planned lanes; list view, conflict UI and time-in-stage tracking are carried to 0.5.0.
+
+### Runtime and security posture
+
+The desktop installer is carried forward on **Electron 31.7.7 (end of support)** with `sandbox: false` on the main window, unchanged from 0.4.1. This release makes **no new runtime or security-posture claim** for the desktop artifact; that requalification (Electron upgrade, IPC/sandbox review) is scoped to 0.5.0. CI now runs on **Node 24**. The qualified new surface in this release is the **MCP server, the MCPB bundle, and the plugin skills** — not the desktop shell.
+
+### Operating changes
+
+Verification is evidence-first: a matching post-merge receipt satisfies an obligation instead of re-running work that already ran. PR handoff is draft-first: a PR opens as a draft, and only marking it ready engages the hard merge gate. Separately, a PR description edit no longer cancels an in-progress required `verify` run — a new push still supersedes the previous run, as it always did. The verification rail builds each artifact once per canonical path and refuses a stale already-built step. The managed AGENTS.md block routes instructions by purpose and by your configured integration branch. Proof records carry a report/strict policy: this release leaves the **live board in `report` policy** — proof inconsistencies are recorded and visible, but not yet a hard gate — with the strict cutover left as a deliberate, later operator decision.
+
+### Known issues / carried to 0.5.0
+
+- **CORE-142** — the gate-only hosted required check and blocking attestation (needs repository administration) is not in this release.
+- **CORE-143** — the implemented heavy-verification permit remains procedural in 0.4.2 (Alex is the named heavy verifier by convention, not by an enforced lock).
+- **CORE-146** — scheduled for 0.5.0 (HZN-010): reconciliation cannot recommend Done after a squash merge until `commits[]` holds the merge SHA.
+- **GUI-153** — Focus Board list view, conflict UI, time-in-stage tracking and packaged qualification.
+- **MCP-058** — a known smoke-test flake: the "ready packet is read-only" check is intermittently flaky and is tracked, not fixed, in this release.
+
+**Upgrading from 0.4.1:** install, then run `kanmer-setup` in each managed repository to refresh the AGENTS.md operating block and skills. Boards need no migration, and a rollback to 0.4.1 needs no board change — the retained 0.4.1 generation stays available under `%LOCALAPPDATA%\Kanmer\mcp\`.
+
 ## 0.4.1
 
 A repair release. 0.4.0 blinded one agent host, left another on the previous plugin, wrote machine-specific paths into consuming repositories, and ran its own full verification rail on every board push. 0.4.1 fixes each of those, tightens the skills' review discipline, and adds the proof harness the next promotion runs on. No new feature.

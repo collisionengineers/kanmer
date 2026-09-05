@@ -237,3 +237,35 @@ regenerated, plugin bundle rebuilt and committed.
    strict, and adding a tool was out of scope; noted rather than fixed.
 8. **`plugin:check` ran cleanly inside the worktree** — the brief's clean-clone
    fallback was not needed.
+
+## Final rail figures (build once, `test:built` at head `1aa725ee`)
+
+`npm run build && node scripts/build-stamp.mjs --write` then `npm run test:built`
+— **exit 0**, stamp `head 1aa725eed1ba, dirty=false`. Per step:
+
+| Step | Result |
+|---|---|
+| `check:manual` | 22 chapters up to date |
+| `@kanmer/core` | 26 files / **995 tests** passed |
+| `@kanmer/gui` | 57 files / **646 tests** passed |
+| `@kanmer/mcp-server` HTTP/node suites | passed (includes the 51 reconciliation tests and the promotion fixtures) |
+| `test:scripts` | 13 suites / **193 tests** passed |
+
+## Hosted checks
+
+`kanmer-gate` passed on the draft push. Marking the PR ready superseded that run
+(GitHub cancelled run `33969786183` with "Canceling since a higher priority
+waiting request … exists" — the ordinary concurrency behaviour CORE-138 addresses,
+not a real failure); run `33969406401` re-ran `verify` and `kanmer-gate` on the
+ready event and was in progress at handoff. The reviewer should read the current
+run, not the cancelled one.
+
+## A note on this branch's commit list
+
+Implementation began before #325 (MCP-057) merged, so `pr325` was merged into this
+branch to obtain `proof-receipts.ts`. Main squash-merged the same content as
+`e474f317`, so MCP-057's original commits appear in `git log main..HEAD` while
+contributing nothing to the diff: `git diff --name-only main...HEAD` is 35 files
+and contains no `proof-receipts.*`, which is the "identical to main" signal. The
+diff is CORE-129 only; the double-merge is visible in the commit list alone, and
+is also flagged as a comment on the PR.

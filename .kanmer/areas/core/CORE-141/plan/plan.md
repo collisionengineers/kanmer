@@ -1,7 +1,7 @@
-## Correction (plan v3, 2026-09-05 ~16:00 BST — read-only review found status overclaims)
+## Correction (plan v4, 2026-09-05 ~16:10 BST — CORE-147 reached Done)
 
-- **CORE-129 is Done** (merge `410bfd22`, PR #329) — not "still in Review". Verified PASS at the merge SHA; see the ticket's own proof record and Outcome. The earlier "treat as merged code, not yet Done" note below is superseded for CORE-129.
-- **CORE-147 status must be read live** via `get_item CORE-147` at the time this plan is consulted. As of this correction it reads `verifying` (stageEntered.verifying 2026-09-05T15:52:06Z) — verification is in progress, **not** Done. Do not write "Done" for CORE-147 anywhere until `get_item CORE-147` actually reports `status: done`; re-check before the cut.
+- **CORE-129 is Done** (merge `410bfd22`, PR #329). Verified PASS at the merge SHA; see the ticket's own proof record and Outcome.
+- **CORE-147 is Done** (merge `4a1c3a23`, PR #330), verified PASS at that exact merge SHA, closed out and released. The earlier "verify live before relying on this" re-check marker is resolved and removed.
 - Do not describe CORE-138/CORE-144/CORE-145's proofs as having run a `PROOF_RECEIPT_REJECTED` demonstration — only **MCP-057**'s proof did that. The other three carry receipts validated by `assessReceipt`, not a rejection demo.
 - Every proof's `observed_by` is `claude-code verifier (HZN-009)`, not Alex. Alex's role is merge authorisation (the human-owned control), a separate mechanism from proof provenance.
 
@@ -21,6 +21,8 @@
 12. Rollback drill: point the host at the retained 0.4.1 generation, confirm it answers, then switch back to 0.4.2.
 13. Write `HZN-009/closeout.md` (file 11 §5 template) with M1–M5 as PASS/PROCEDURAL/FAIL/INCONCLUSIVE/NOT RUN; update `contracts/release-resumption-gate.json` in the pack.
 
+This CORE-141 ticket's own PR (release notes only) carries no version bump, tag, or publish — those happen via `scripts/release.mjs` after this PR merges, per step 6 onward above.
+
 If step 10, 11 or 12 fails: **keep 0.4.1 as the live control plane**, do not flip `--latest` (or revert it if already flipped is not possible — pull the release from `latest` manually), and record M5 truthfully as FAIL/INCONCLUSIVE, not PASS.
 
 ## Merged roster for 0.4.2 (source `c088be13..origin/main`, HEAD `4a1c3a23`)
@@ -35,10 +37,10 @@ If step 10, 11 or 12 fails: **keep 0.4.1 as the live control plane**, do not fli
 | CORE-138 | Stop PR body edits cancelling verify; gate advisory on drafts; regate waits for in-progress runs | `9945b1f2` | #324 | Done |
 | CORE-144 | Make the build-once guard see through the runner scripts; harden the dirty digest | `de5bace9` | #327 | Done |
 | CORE-145 | Build core before the standalone HTTP tests on a fresh checkout | `58718455` | #328 | Done |
-| CORE-129 | Validate typed proof records; add a report/strict board proof policy with a census-bound cutover | `410bfd22` | #329 | **Done** (corrected — was reported Review, now verified PASS at merge SHA) |
-| CORE-147 | Declare the verification contract on the board (`delivery.verification`); drive receipt validation and the verify skill from it | `4a1c3a23` | #330 | **Verifying — read live via `get_item CORE-147` before relying on this row; verification in progress as of this correction** |
+| CORE-129 | Validate typed proof records; add a report/strict board proof policy with a census-bound cutover | `410bfd22` | #329 | Done |
+| CORE-147 | Declare the verification contract on the board (`delivery.verification`); drive receipt validation and the verify skill from it | `4a1c3a23` | #330 | Done |
 
-CORE-129's code and ticket are both confirmed Done. CORE-147's code is merged (`4a1c3a23`) but its own ticket lifecycle has not yet reached Done — re-check `get_item CORE-147` before the cut and before the closeout report is finalized.
+All ten roster tickets are confirmed Done on the live board.
 
 ## Strict-cutover decision rule (CORE-129 report/strict proof policy)
 

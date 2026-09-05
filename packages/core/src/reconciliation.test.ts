@@ -385,3 +385,73 @@ describe("reconcileEvidence", () => {
       .toEqual(["action", "advisory", "revision", "targetStatus", "ticketId"]);
   });
 });
+
+describe("a proof that carries no authority says which kind of no (CORE-129)", () => {
+  const verifying = {
+    ticket: ticket("verifying"),
+    pullRequest: { state: "merged" as const, mergeSha: sha("a"), requiredChecks: "pass" as const },
+  };
+
+  it("names a legacy record rather than falling through to a generic no-op", () => {
+    const result = reconcileEvidence(
+      evidence({ ...verifying, proof: { state: "invalid", record: { state: "legacy", diagnostics: ["proof-record without schema: 2 — reported as legacy and never rewritten"] } } }),
+    );
+    expect(result.recommendation).toBeNull();
+    const finding = result.findings.find((candidate) => candidate.code === "PROOF_RECORD_NOT_AUTHORITATIVE");
+    expect(finding?.level).toBe("warning");
+    expect(finding?.message).toContain("predates the typed proof-record/2 contract");
+    expect(finding?.message).toContain("never rewritten");
+    // The generic fallback must not also fire: two findings about the same
+    // absence would be two different explanations of one fact.
+    expect(result.findings.some((candidate) => candidate.code === "NO_RECONCILIATION_NEEDED")).toBe(false);
+  });
+
+  it("names a self-contradicting record and quotes the parser's diagnostics", () => {
+    const result = reconcileEvidence(
+      evidence({
+        ...verifying,
+        proof: { state: "invalid", record: { state: "invalid", diagnostics: ['result "PASS" disagrees with the final authoritative attempt\'s "FAIL"'] } },
+      }),
+    );
+    expect(result.recommendation).toBeNull();
+    const finding = result.findings.find((candidate) => candidate.code === "PROOF_RECORD_NOT_AUTHORITATIVE");
+    expect(finding?.message).toContain("declares the typed proof-record/2 contract and breaks it");
+    expect(finding?.message).toContain('result "PASS" disagrees');
+  });
+
+  it("names an operator waiver as a human decision rather than acting on it", () => {
+    const result = reconcileEvidence(
+      evidence({ ...verifying, proof: { state: "invalid", record: { state: "valid-pass", diagnostics: [] } } }),
+    );
+    expect(result.recommendation).toBeNull();
+    expect(
+      result.findings.find((candidate) => candidate.code === "PROOF_RECORD_NOT_AUTHORITATIVE")?.message,
+    ).toContain("human disposition");
+  });
+
+  it("leaves an evidence shape with no parsed record exactly as it was", () => {
+    // A host that predates CORE-129, or one that could not parse at all: the
+    // finding is additive and must not fire without a record to describe.
+    const result = reconcileEvidence(evidence({ ...verifying, proof: { state: "invalid" } }));
+    expect(result.recommendation).toBeNull();
+    expect(result.findings.some((candidate) => candidate.code === "PROOF_RECORD_NOT_AUTHORITATIVE")).toBe(false);
+    expect(result.findings.some((candidate) => candidate.code === "NO_RECONCILIATION_NEEDED")).toBe(true);
+  });
+
+  it("does not fire on a PASS or FAIL route, which keep their own findings", () => {
+    const pass = reconcileEvidence(
+      evidence({ ...verifying, proof: { state: "pass", mergedSha: sha("a"), record: { state: "valid-pass", diagnostics: [] } } }),
+    );
+    expect(pass.recommendation?.action).toBe("MOVE_TO_DONE");
+    expect(pass.findings.some((candidate) => candidate.code === "PROOF_RECORD_NOT_AUTHORITATIVE")).toBe(false);
+
+    const fail = reconcileEvidence(
+      evidence({
+        ...verifying,
+        proof: { state: "fail", mergedSha: sha("a"), failureClass: "implementation" as ReconciliationFailureClass, record: { state: "valid-fail", diagnostics: [] } },
+      }),
+    );
+    expect(fail.recommendation?.action).toBe("ROUTE_VERIFICATION_FAILURE");
+    expect(fail.findings.some((candidate) => candidate.code === "PROOF_RECORD_NOT_AUTHORITATIVE")).toBe(false);
+  });
+});

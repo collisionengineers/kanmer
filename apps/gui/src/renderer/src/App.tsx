@@ -13,6 +13,16 @@ import type {
   RepoStaleness,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
+import { clampPages, pageOf } from "./lib/paging.js";
+import {
+  DEFAULT_SCOPE,
+  isScope,
+  scopeCounts,
+  scopeItems,
+  scopeLabel,
+  stagesForScope,
+  type Scope,
+} from "./lib/scopes.js";
 import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ContextMenu, useDismissOnOutside, type MenuItem } from "./components/ContextMenu.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
@@ -34,8 +44,10 @@ import type {
   Theme,
   UiPreferences,
   UpdateStatusEvent,
+  ViewPrefs,
 } from "../../shared/ipc.js";
 import { Board, type BoardMove } from "./components/Board.js";
+import { Sidebar } from "./components/Sidebar.js";
 import { Manual } from "./components/Manual.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
@@ -87,6 +99,7 @@ interface GatePopover {
 /** Per-tab transient UI state, preserved across tab switches. */
 interface SavedTabState {
   view: View;
+  scope: Scope;
   filters: Filters;
   search: string;
   selectedId: string | null;
@@ -188,6 +201,16 @@ export function App(): JSX.Element {
   clientRef.current = client;
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [view, setView] = useState<View>("ticket");
+  // The Focus Board's navigation axis, orthogonal to `view` (FRD-036 R1). The
+  // Archived *view* is expressed as the `archived` scope, so the tab strip and
+  // the rail are two controls over one piece of state rather than two states
+  // that can disagree.
+  const [scope, setScope] = useState<Scope>(DEFAULT_SCOPE);
+  const [columnPages, setColumnPages] = useState<Record<string, number>>({});
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Set while a project's stored preferences are being applied, so the effect
+  // that saves them does not immediately write back what it just read.
+  const restoringPrefs = useRef(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<EditorMode>("approval");
   const [search, setSearch] = useState("");
@@ -251,6 +274,15 @@ export function App(): JSX.Element {
   searchValRef.current = search;
   const selectedRef = useRef(selectedId);
   selectedRef.current = selectedId;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  // `revealItem` is defined far below (it needs the filter pipeline), and the
+  // reveal listener is installed far above. A ref, not a forward reference:
+  // naming the callback in this effect's dependency array would read a
+  // block-scoped const in its temporal dead zone and throw during render.
+  const revealItemRef = useRef<(id: string) => void>(() => {});
 
   const refresh = useCallback(async (options: { preserveError?: boolean } = {}) => {
     try {
@@ -342,6 +374,7 @@ export function App(): JSX.Element {
       if (prev) {
         savedStates.current.set(prev, {
           view: viewRef.current,
+          scope: scopeRef.current,
           filters: filtersRef.current,
           search: searchValRef.current,
           selectedId: selectedRef.current,
@@ -366,6 +399,20 @@ export function App(): JSX.Element {
       setSelectedId(saved?.selectedId ?? null);
       setEditorMode("approval");
       setSettings(await window.kanmer.getSettings());
+      // View preferences are per logical project and outlive the session; the
+      // in-session tab snapshot wins while a tab is open, because it is what
+      // the user was actually looking at a moment ago.
+      restoringPrefs.current = true;
+      if (saved) {
+        setScope(saved.scope);
+      } else {
+        const prefs = await window.kanmer
+          .getViewPrefs(res.projectId)
+          .catch(() => null);
+        setScope(isScope(prefs?.scope) ? prefs.scope : DEFAULT_SCOPE);
+        setSidebarCollapsed(prefs?.sidebarCollapsed === true);
+        setColumnPages(prefs?.columnPages ?? {});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -571,11 +618,10 @@ export function App(): JSX.Element {
   // Toast clicks reveal the item they were about — focusing its project's tab.
   useEffect(() => {
     return window.kanmer.onReveal(({ projectId, id }) => {
-      setView("ticket");
-      if (projectId === rootRef.current) trySelect(id);
-      else void openProject(projectId).then(() => trySelect(id));
+      if (projectId === rootRef.current) revealItemRef.current(id);
+      else void openProject(projectId).then(() => revealItemRef.current(id));
     });
-  }, [trySelect, openProject]);
+  }, [openProject]);
 
   // Background-dispatch status: track running tickets for the card spinner
   // badge, and toast a line when one finishes.
@@ -851,6 +897,7 @@ export function App(): JSX.Element {
     setPendingGateDoc({ id: gatePopover.id, doc: documentType });
     setGatePopover(null);
     setView("ticket");
+    setScope((s) => (s === "archived" ? DEFAULT_SCOPE : s));
     openEditor(gatePopover.id);
   }, [gatePopover, openEditor]);
 
@@ -1222,6 +1269,7 @@ export function App(): JSX.Element {
       if (ctrl && e.key.toLowerCase() === "n") {
         e.preventDefault();
         setView("ticket");
+        setScope((s) => (s === "archived" ? DEFAULT_SCOPE : s));
         setCreateOpen(true);
       } else if ((ctrl && e.key.toLowerCase() === "f") || (!inField && e.key === "/")) {
         e.preventDefault();
@@ -1239,7 +1287,7 @@ export function App(): JSX.Element {
         const target = VIEW_IDS[Number(e.key) - 1];
         if (target) {
           e.preventDefault();
-          setView(target);
+          selectView(target);
         }
       }
     };
@@ -1262,12 +1310,104 @@ export function App(): JSX.Element {
   // what actually gets rendered. Both come from lib/views.ts, which is also
   // where every tab's badge comes from — so a badge and its view cannot
   // disagree (GUI-071).
-  const allViewItems = useMemo(() => viewItemsFor(view, items), [items, view]);
+  // Which of the three surfaces is showing. Standup is a view; everything else
+  // is the Board view under a scope, and `archived` is the scope that renders
+  // the Archived list. One derivation, so the tab strip, the rail, the badges
+  // and the empty states cannot disagree about what is on screen.
+  const activeView: View =
+    view === "standup" ? "standup" : scope === "archived" ? "archived" : "ticket";
+
+  const allViewItems = useMemo(() => {
+    if (view === "standup") return viewItemsFor("standup", items);
+    // The archived scope keeps the Archived view's rule exactly: every archived
+    // item, whatever its type — `plan` and `research` items are archived too,
+    // and the list renders them.
+    if (scope === "archived") return scopeItems(items, "archived");
+    return scopeItems(viewItemsFor("ticket", items), scope);
+  }, [items, view, scope]);
 
   const viewItems = useMemo(
-    () => applyFilters(allViewItems, search, view === "archived" ? EMPTY_FILTERS : filters),
-    [allViewItems, search, filters, view],
+    () => applyFilters(allViewItems, search, activeView === "archived" ? EMPTY_FILTERS : filters),
+    [allViewItems, search, filters, activeView],
   );
+
+  // The rail's badges: what each scope holds, ignoring the active search and
+  // filters (FRD-019 R5a). The board's column counts answer the other question
+  // and do respond to them (R5b), and the pager reports a third number — what
+  // is currently shown. Three numbers, three questions, three sources.
+  const railCounts = useMemo(() => scopeCounts(items), [items]);
+
+  // How many cards each rendered column actually holds after filtering — the
+  // input the stored pages are clamped against.
+  const columnTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const stage of stagesForScope(scope)) {
+      totals[stage] = viewItems.filter((i) => i.status === stage).length;
+    }
+    return totals;
+  }, [viewItems, scope]);
+
+  // Switching view and switching scope are one user action expressed by two
+  // controls (the tab strip and the rail), so they route through one function.
+  const selectView = useCallback((next: View) => {
+    if (next === "standup") {
+      setView("standup");
+      return;
+    }
+    setView("ticket");
+    setScope((current) => {
+      if (next === "archived") return "archived";
+      return current === "archived" ? DEFAULT_SCOPE : current;
+    });
+  }, []);
+
+  const selectScope = useCallback((next: Scope) => {
+    setView("ticket");
+    setScope(next);
+    // A different scope renders a different set of columns, so a page
+    // remembered against the old ones addresses nothing. Clearing is honest;
+    // clamping would silently keep a number that means something else.
+    setColumnPages({});
+  }, []);
+
+  /**
+   * Open an item wherever it lives (FRD-036 R5).
+   *
+   * A search result, an activity entry or a toast can name a ticket outside the
+   * active scope or past the visible page. Selecting it must show it, so this
+   * switches to a scope that contains it and pages its column to where it
+   * actually is — then selects it. Nothing is filtered away to achieve that:
+   * the page is computed against the set the board is about to render.
+   */
+  const revealItem = useCallback(
+    (id: string) => {
+      const item = itemsRef.current.find((i) => i.id === id);
+      if (!item) {
+        setView("ticket");
+        trySelect(id);
+        return;
+      }
+      setView("ticket");
+      const current = scopeRef.current;
+      const target: Scope = item.archived
+        ? "archived"
+        : current !== "archived" && stagesForScope(current).includes(item.status)
+          ? current
+          : "all";
+      setScope(target);
+      if (target !== "archived") {
+        const base = scopeItems(viewItemsFor("ticket", itemsRef.current), target);
+        const visible = applyFilters(base, searchValRef.current, filtersRef.current);
+        const page = pageOf(columnCards(visible, item.status), id);
+        setColumnPages((current2) =>
+          (current2[item.status] ?? 1) === page ? current2 : { ...current2, [item.status]: page },
+        );
+      }
+      trySelect(id);
+    },
+    [trySelect],
+  );
+  revealItemRef.current = revealItem;
 
   // Every tab's badge, recomputed only when the board changes. Deliberately
   // NOT derived from `viewItems`: a badge counts what lives in the view and
@@ -1275,6 +1415,30 @@ export function App(): JSX.Element {
   // respond to them. Two numbers in the same header answering two questions —
   // FRD-019 R5 says which is which.
   const tabCounts = useMemo(() => viewCounts(items), [items]);
+
+  // Persist the rail's state per logical project. Display preferences only:
+  // main keys them by `project_id`, they never touch a ticket, and nothing in
+  // the gate engine can read them (FRD-036 R8).
+  useEffect(() => {
+    if (!root) return;
+    if (restoringPrefs.current) {
+      restoringPrefs.current = false;
+      return;
+    }
+    const prefs: ViewPrefs = {
+      scope,
+      sidebarCollapsed,
+      // Store only pages that still address a card in the column they name.
+      columnPages: clampPages(columnPages, columnTotals),
+    };
+    const timer = setTimeout(() => {
+      void window.kanmer.setViewPrefs(root, prefs).catch(() => {
+        // A preference that cannot be stored is not a reason to interrupt the
+        // board; it simply will not be remembered next time.
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [root, scope, sidebarCollapsed, columnPages, columnTotals]);
 
   const projectName = useMemo(() => projectNameOf(root), [root]);
 
@@ -1285,6 +1449,7 @@ export function App(): JSX.Element {
         label: "New ticket",
         run: () => {
           setView("ticket");
+          setScope((s) => (s === "archived" ? DEFAULT_SCOPE : s));
           setCreateOpen(true);
         },
       },
@@ -1320,9 +1485,9 @@ export function App(): JSX.Element {
             },
           ]
         : []),
-      { id: "view-board", label: "Go to Board", run: () => setView("ticket") },
-      { id: "view-standup", label: "Go to Standup", run: () => setView("standup") },
-      { id: "view-archived", label: "Go to Archived", run: () => setView("archived") },
+      { id: "view-board", label: "Go to Board", run: () => selectView("ticket") },
+      { id: "view-standup", label: "Go to Standup", run: () => selectView("standup") },
+      { id: "view-archived", label: "Go to Archived", run: () => selectView("archived") },
       { id: "activity", label: "Show activity", run: () => setActivityOpen(true) },
       {
         id: "dispatches",
@@ -1372,10 +1537,7 @@ export function App(): JSX.Element {
           key={t.seq}
           className="toast"
           onClick={() => {
-            if (t.id) {
-              setView("ticket");
-              trySelect(t.id);
-            }
+            if (t.id) revealItem(t.id);
             setToasts((list) => list.filter((x) => x.seq !== t.seq));
           }}
         >
@@ -1436,8 +1598,9 @@ export function App(): JSX.Element {
           {VIEW_IDS.map((v) => (
             <button
               key={v}
-              className={v === view ? "tab active" : "tab"}
-              onClick={() => setView(v)}
+              className={v === activeView ? "tab active" : "tab"}
+              aria-current={v === activeView ? "page" : undefined}
+              onClick={() => selectView(v)}
             >
               {VIEWS[v].label}
               {tabCounts[v] !== null && <span className="count">{tabCounts[v]}</span>}
@@ -1508,7 +1671,7 @@ export function App(): JSX.Element {
           the view rule, removed by GUI-071. FilterBar renders only in the
           Board view, where `allViewItems` is exactly the expression it was
           already given, so its facet lists are unchanged. */}
-      {view === "ticket" && (
+      {activeView === "ticket" && (
         <FilterBar
           board={board}
           items={allViewItems}
@@ -1534,8 +1697,21 @@ export function App(): JSX.Element {
       </div>
 
       <div className="main">
+        <Sidebar
+          board={board}
+          projectName={projectName}
+          counts={railCounts}
+          scope={scope}
+          onScope={selectScope}
+          area={filters.area}
+          onArea={(area) => setFilters((f) => ({ ...f, area }))}
+          standupActive={view === "standup"}
+          onStandup={() => selectView("standup")}
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+        />
         <section className="content">
-          {view === "ticket" ? (
+          {activeView === "ticket" ? (
             <Board
               board={board}
               items={viewItems}
@@ -1549,17 +1725,20 @@ export function App(): JSX.Element {
               blocked={blocked}
               dispatching={dispatching}
               density={settings?.cardDensity ?? "comfortable"}
+              scope={scope}
+              pages={columnPages}
+              onPage={(columnId, page) =>
+                setColumnPages((current) => ({ ...current, [columnId]: page }))
+              }
+              onAnnounce={setAnnouncement}
             />
-          ) : view === "standup" ? (
+          ) : activeView === "standup" ? (
             <Standup
               board={board}
               items={items}
               projectName={projectName}
               changeSignal={changeSignal}
-              onSelect={(id) => {
-                setView("ticket");
-                trySelect(id);
-              }}
+              onSelect={revealItem}
             />
           ) : (
             <ArchivedList
@@ -1578,18 +1757,25 @@ export function App(): JSX.Element {
               }}
             />
           )}
-          {view !== "standup" && allViewItems.length === 0 && (
+          {activeView !== "standup" && allViewItems.length === 0 && (
             <div className="content-empty">
               <p>
-                {view === "ticket"
-                  ? "No tickets yet — add a card, or connect an agent in Settings."
-                  : "Nothing archived."}
+                {activeView === "archived"
+                  ? "Nothing archived."
+                  : scope === "active"
+                    ? "No work in flight — Backlog and Completed hold the rest of the board."
+                    : `Nothing in ${scopeLabel(scope)}.`}
               </p>
             </div>
           )}
-          {view !== "standup" && allViewItems.length > 0 && viewItems.length === 0 && (
+          {activeView !== "standup" && allViewItems.length > 0 && viewItems.length === 0 && (
             <div className="content-empty">
-              <p>No matches for the current filters.</p>
+              {/* Truthful about WHICH set is empty: the scope holds tickets, the
+                  filter matched none of them. */}
+              <p>
+                No matches for the current filters in {scopeLabel(scope)} —{" "}
+                {allViewItems.length} ticket{allViewItems.length === 1 ? "" : "s"} hidden.
+              </p>
               <button
                 className="ghost sm"
                 onClick={() => {
@@ -1630,10 +1816,7 @@ export function App(): JSX.Element {
         {activityOpen && (
           <ActivityPanel
             refreshSignal={changeSignal}
-            onSelect={(id) => {
-              setView("ticket");
-              trySelect(id);
-            }}
+            onSelect={revealItem}
             onClose={() => setActivityOpen(false)}
           />
         )}
@@ -1651,7 +1834,7 @@ export function App(): JSX.Element {
             {dispatches.map((d) => (
               <div key={d.dispatchId} className="dispatch-row">
                 <div className="dispatch-head">
-                  <button className="linklike" onClick={() => trySelect(d.ticketId)}>
+                  <button className="linklike" onClick={() => revealItem(d.ticketId)}>
                     {d.ticketId}
                   </button>
                   <span className={`chip dispatch-state ${d.state}`}>{d.state}</span>
@@ -1945,10 +2128,7 @@ export function App(): JSX.Element {
         <CommandPalette
           items={items}
           commands={paletteCommands}
-          onJump={(id) => {
-            setView("ticket");
-            trySelect(id);
-          }}
+          onJump={revealItem}
           onClose={() => setPaletteOpen(false)}
         />
       )}

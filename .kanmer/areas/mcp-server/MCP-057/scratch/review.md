@@ -1,238 +1,242 @@
 ---
 kind: review-attestation
 pr: "325"
-head_sha: "6b7049c735792ad01485dbe74f840733827c1c87"
-verdict: needs-changes
+head_sha: "99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d"
+verdict: pass
 reviewer: "independent-reviewer-mcp-057"
 independent: true
 plan_hash: "5e03efd45aa922cb"
-ticket_updated: "2026-09-05T03:12:17.751Z"
-board_sha: "a28b2c1fa0f900698725e66c94c385dae858d8ce"
+ticket_updated: "2026-09-05T03:37:55.203Z"
+board_sha: "3f498c164591e695f853c763b8eb0ee5a72e38d2"
 expected_reviewers:
   - "independent-reviewer-mcp-057"
 threads_snapshot: []
 findings:
   - id: "F-001"
     severity: major
-    summary: "The skill's \"What is validated by code\" section, FRD-006 and the post-implementation report all state that a receipt is accepted only when its job is named `verify` and that assessReceipt enforces event/job/conclusion mechanically. assessReceipt only checks that `job` is a non-empty string, never that it equals \"verify\"; and no production code path calls assessReceipt at all, so at runtime the only mechanical receipt check today is the head_sha comparison in reconciliation.ts. The section whose whole purpose is to draw the code/human line draws it in the wrong place."
-    disposition: open
+    summary: "Round 1: the skill's \"What is validated by code\" section, FRD-006 and the report claimed assessReceipt enforces job == \"verify\" and that these checks run mechanically, while assessReceipt only checked that `job` was a non-empty string and had no production caller at all."
+    disposition: fixed
   - id: "F-002"
     severity: minor
-    summary: "assessReceipt's run_id check is presence-only (`!== undefined && !== null && !== \"\"`), so run_id: 0, run_id: false and an arbitrary string all pass; `attempt`, `provider`, `repo` and `workflow` are not validated at all even though the skill's satisfied rule requires `workflow == pr.yml`."
+    summary: "assessReceipt's run_id check is presence-only (`!== undefined && !== null && !== \"\"`), so run_id: 0, run_id: false and an arbitrary string all pass; `attempt`, `provider` and `repo` remain unvalidated. `workflow` is no longer in this class — round 2 added an exact `pr.yml` check."
     disposition: deferred-to-ticket
     ticket: "CORE-129"
   - id: "F-003"
     severity: note
-    summary: "The case-sensitivity of head_sha and conclusion is deliberate and load-bearing, but no test pins it: there is no case for an uppercase 40-hex head_sha, an abbreviated 7-char SHA, or conclusion: \"SUCCESS\". A future \"tolerant\" normalisation could be added without any test failing."
-    disposition: accepted-risk
-    reason: "The behaviour is correct as written and documented in the module header; head_sha \"not-a-sha\" covers the non-40-hex branch generically and the reasons are asserted by exact string. The gap is regression protection, not a defect, and it is cheap to close alongside F-001."
+    summary: "Round 1: the deliberate case-sensitivity of head_sha and conclusion was pinned by no test (uppercase 40-hex, 7-char abbreviation, conclusion: \"SUCCESS\")."
+    disposition: fixed
   - id: "F-004"
     severity: note
-    summary: "The receipt guard on the FAIL route is gated on failureClass implementation|plan (correctly mirroring CORE-133), but only the `implementation` half has a test; the `plan` half and the transient/inconclusive pass-through are covered only by inspection."
+    summary: "Both receipt guards on the FAIL route are gated on failureClass implementation|plan (correctly mirroring CORE-133), but only the `implementation` half is tested — for PROOF_RECEIPT_SHA_MISMATCH in round 1 and now for PROOF_RECEIPT_REJECTED too; the `plan` half and the transient/inconclusive pass-through are covered only by inspection."
     disposition: accepted-risk
-    reason: "Both halves are the same single boolean expression evaluated in one `if`, so the untested branch cannot diverge from the tested one; CORE-133's own PROOF_MERGE_SHA_MISMATCH tests have the same shape and the same coverage."
+    reason: "Each guard is one boolean expression in one `if` covering both classes, so the untested class cannot diverge from the tested one; CORE-133's own PROOF_MERGE_SHA_MISMATCH tests have exactly the same shape and coverage. I confirmed by mutation that the tested route really fails when the check is removed."
   - id: "F-005"
     severity: note
     summary: "apps/gui/src/renderer/src/manual/chapters.generated.ts is in the diff although the ticket's files/files.md does not list it and the lane C shared-file owner is apps/gui/src/**."
     disposition: accepted-risk
-    reason: "Verified generated, not hand-edited: after `npm run build && npm run plugin:build` in the ticket worktree `git status --short` is empty, `npm run verify:docs` reports \"generated manual current\" and `npm run check:manual` reports up to date (22 chapters). The single-line change is the mechanical consequence of the docs/manual/proof.md edit that verify:docs requires. Disclosed as a deviation in the post-implementation report."
+    reason: "Verified generated, not hand-edited: after `npm run build && npm run plugin:build` at 99f0cf70 `git status --short` is empty, `verify:docs` reports \"generated manual current\" and `check:manual` reports up to date (22 chapters). Round 2 did not re-edit docs/manual/proof.md, so the file is unchanged since round 1. Disclosed as a deviation in the post-implementation report."
   - id: "F-006"
     severity: note
-    summary: "CI at the reviewed head: kanmer-gate is red and `verify` was still in progress when this record was written; the PR is also BEHIND main after PR #321 (DOC-028) merged at bd36854967b0fa0b68489a4f3db592a59d451696."
+    summary: "CI at the reviewed head: required `verify` is green (9m40s, job 101242176572), but `kanmer-gate` is red for STALE_REVIEW — it read the round-1 attestation, which is bound to the superseded head 6b7049c7."
     disposition: accepted-risk
-    reason: "kanmer-gate's only failing check is NO_REVIEW_RECORD (\"no scratch/review.md review attestation was recorded\"); its other eight checks pass, including WRONG_TARGET, DEPENDENCY_BLOCKED and COMMITS_UNREACHABLE, and it reads boardSha a28b2c1f. It is the expected pre-review state and resolves once this attestation is on the pushed board. The head must move anyway to fix F-001 and to update with main, so a fresh attestation bound to the new head is required regardless; a green required `verify` is a precondition of that record, not of this one."
+    reason: "The gate's sole failing check is self-referential and is discharged by this record: it fails with \"review attestation head 6b7049c7… does not match PR head 99f0cf70…\" and every other check passes. The gate reads the remote board and does not re-run on a board push, so a green kanmer-gate observed at the final merged-forward head remains a merge precondition owned by the merger, not something this record can assert. The PR is also BEHIND main again after CORE-140 merged at 941650317be4cad4f6a86c6ab16362ee5dd8dfdb; the coordinator will update-branch and request one delta re-bind."
+  - id: "F-007"
+    severity: note
+    summary: "receiptAssessmentRejections() separates the SHA class from the rest by string-sniffing the human-readable reason text (`!reason.includes(\"head_sha\")`), so rewording either assessReceipt reason silently changes which finding code fires."
+    disposition: accepted-risk
+    reason: "Contained and fail-safe: both current head_sha reasons contain the literal token, and if the filter ever leaked a SHA reason the outcome would still be an error finding plus `none()` — the same refusal under a different code, never a false Done. A structured reason code is the right eventual shape and belongs with CORE-129's typed receipt validation rather than here."
+  - id: "F-008"
+    severity: note
+    summary: "The FAIL-route call passes `evidence.pullRequest.mergeSha ?? \"\"` although the VERIFYING_WITHOUT_MERGE_SHA guard earlier in the same block already guarantees a truthy mergeSha; the PASS route passes the narrowed value directly. Dead defensive code with an asymmetric shape."
+    disposition: accepted-risk
+    reason: "Unreachable today, and harmless if it ever became reachable: an empty mergedSha only affects head_sha reasons, which this helper discards anyway, so the non-SHA rejections it reports would still be correct. Not worth a round-3 return."
+  - id: "F-009"
+    severity: note
+    summary: "\"Either finding blocks MOVE_TO_DONE and the backward ROUTE_VERIFICATION_FAILURE routes\" means it blocks the reconciliation recommendation: reconcileEvidence is called only from packages/mcp-server/src/reconciliation.ts:471 (reconcile_ticket / apply_reconciliation). The store's own verifying → done transition does not consult it, so a human calling move_item directly is not stopped by a rejected receipt."
+    disposition: accepted-risk
+    reason: "This is exactly the status CORE-133's PROOF_MERGE_SHA_MISMATCH already has, so the new findings are consistent with the established meaning of a reconciliation finding rather than overclaiming a new one. Making proof evidence a hard store-side Done gate is CORE-129's stated scope (\"enter-done requirement under strict board policy\"), not this ticket's."
+  - id: "F-010"
+    severity: note
+    summary: "job === \"verify\" and workflow === \"pr.yml\" are literals inside @kanmer/core, which ships to consumer projects. kanmer-setup does not install pr.yml, so a consumer whose verification workflow or job is named anything else would have every receipt it writes rejected."
+    disposition: deferred-to-ticket
+    ticket: "CORE-129"
+  - id: "F-011"
+    severity: note
+    summary: "plan/plan.md still describes assessReceipt's reasons as \"missing job/run_id/url\" and was not re-versioned for the round-1 contract (job/workflow exact match, PROOF_RECEIPT_REJECTED); the plan now understates the implementation."
+    disposition: accepted-risk
+    reason: "The tightening was directed by this review on the same PR through the skill's remediation lane, which does not require a plan rewrite, and it is recorded in full in the post-implementation report's \"Review round 1 remediation\" section and in this attestation. plan_hash is unchanged at 5e03efd45aa922cb, so the binding is honest about which plan version was reviewed."
 ---
 
-# Review — MCP-057 (round 0, consolidated)
+# Review — MCP-057 (round 1, delta)
 
-Independent review of PR #325 at head `6b7049c735792ad01485dbe74f840733827c1c87`
-(branch `MCP-057-evidence-first-verify`, base `main` at `c088be13`). I did not
-implement this ticket. Verdict: **needs-changes**, on one open major finding
-(F-001). Everything else in the change is sound and I found no other defect
-worth returning it for.
+Delta review of PR #325 at head `99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d`,
+scoped to the lines changed since the previously attested head
+`6b7049c735792ad01485dbe74f840733827c1c87`, their callers and contracts, and
+the relevant tests — plus a rerun of every scoped check. `review_round` is 1;
+the sanctioned return is audited in `scratch/execution.md` at
+2026-09-05T03:26:08.290Z. I did not implement this ticket.
 
-## What the change is
+Verdict: **pass**. F-001 is fixed at the mechanism, not papered over; no
+finding of any severity is open.
 
-Thirteen files. The shape matches `files/files.md` exactly, plus the generated
-manual chapter (F-005):
+## What moved since 6b7049c7
 
-| Action | Path |
-|---|---|
-| Add | `packages/core/src/proof-receipts.ts` |
-| Add | `packages/core/src/proof-receipts.test.ts` |
-| Modify | `packages/core/src/index.ts`, `types.ts`, `reconciliation.ts`, `reconciliation.test.ts` |
-| Modify | `packages/mcp-server/src/reconciliation.ts`, `reconciliation.test.mjs` |
-| Modify | `plugins/kanmer/skills/kanmer-verify/SKILL.md` |
-| Modify | `docs/manual/proof.md`, `docs/functional/frd/FRD-006-typed-proof.md` |
-| Modify | `plugins/kanmer/mcp/kanmer-mcp.cjs` (rebuilt bundle) |
-| Modify | `apps/gui/src/renderer/src/manual/chapters.generated.ts` (generated) |
+Two commits:
 
-Nothing touches `scripts/verify.mjs`, `scripts/agents-block-body.mjs`,
-`.github/workflows/pr.yml`, the verify-rail scripts, or any hand-written GUI
-source. `package.json`/`package-lock.json` are not in the diff, so no
-dependency was added.
+- `b33278f6` — `git merge origin/main`. **It changes nothing in this ticket's
+  files.** I ran a path-filtered diff of `6b7049c7..b33278f6` over all eleven
+  ticket-owned paths plus the bundle: **empty**. The merge brings 23 files —
+  DOC-028 (`bd368549`: AGENTS.md, both `agents-block-body.mjs` copies,
+  `kanmer-setup/SKILL.md`, `verify-agents-block.mjs`,
+  `agents-block-routing.test.mjs`) and GUI-152 (`32aa54fc`: `apps/gui/**`,
+  FRD-036) — both already on `main`. No conflict, no ticket-file drift.
+- `99f0cf70` — the remediation: 8 files, 241 insertions, 22 deletions.
 
-## Commands run by the reviewer
+## Each remediation claim, verified in code
 
-Read-only, in the ticket's own worktree `.worktrees/MCP-057` at
-`6b7049c7`. The full `npm run verify` was deliberately not run — the hosted
-rail owns it.
+**1. `assessReceipt` now checks `job === "verify"` and `workflow === "pr.yml"`.**
+Confirmed in `packages/core/src/proof-receipts.ts`. `job` uses an `else if`
+after the presence check, so a missing job still reports
+`receipt is missing job` and a wrong job reports
+`receipt job must be "verify", got "kanmer-gate"` — two distinct reasons, not
+one merged one. `workflow` is an unconditional `!== "pr.yml"` check, so an
+absent `workflow` is rejected too (`got undefined`). Both reason strings are
+asserted verbatim by tests. The module header documents why, and names
+`kanmer-gate` as the concrete hazard — the job that runs on the same push and
+can be green while `verify` fails.
+
+**Mutation test.** I took a copy of `proof-receipts.ts`, neutralised both new
+checks (`else if (false)` and `if (false)`), and ran
+`vitest run src/proof-receipts.test.ts src/reconciliation.test.ts`: **4 tests
+failed** — the two `assessReceipt` unit cases *and* both `reconcileEvidence`
+route cases, the latter failing on `expect(result.recommendation).toBeNull()`
+with a live `ROUTE_VERIFICATION_FAILURE`/`MOVE_TO_DONE`. The original file was
+restored and `git status --short` is empty. The checks are load-bearing and the
+tests really kill the mutant.
+
+**2. `receiptAssessmentRejections()` wires `assessReceipt` into the classifier.**
+Confirmed in `packages/core/src/reconciliation.ts`: it calls `assessReceipt`
+on every receipt and collects every rejection reason that does not mention
+`head_sha`, returning `[]` for a proof with no receipts. It is called on the
+PASS route and, under the same `implementation || plan` gate CORE-133 uses, on
+the FAIL route — in both cases **after** the existing
+`receiptNamesOtherMerge` / `PROOF_RECEIPT_SHA_MISMATCH` guard, which is
+byte-identical to round 1 (finding code, level and message all unchanged). So
+a receipt with both a wrong SHA and a wrong job reports the SHA finding only,
+which is the right precedence and is documented in the helper's comment.
+
+**3. `PROOF_RECEIPT_REJECTED` really fires end to end, on both routes.**
+Verified twice over. In core, the two new table rows
+(`packages/core/src/reconciliation.test.ts`) drive `reconcileEvidence` with a
+full `validReceipt(sha("a"), { job: "kanmer-gate" })` on the PASS and
+FAIL/implementation routes and assert `recommendation === null` with
+`findings[0].code === "PROOF_RECEIPT_REJECTED"`. In mcp-server, the new test
+goes through the real decoder: `proofEvidence(proof(..., "kanmer-gate"))`
+parses YAML frontmatter, and both routes assert the finding **and** that its
+message contains `receipt job must be "verify"`. That is a genuine end-to-end
+path — YAML → `parseProofReceipts` → evidence → `assessReceipt` → finding —
+not a hand-built evidence object.
+
+**4. Back-compat is unchanged and still asserted.** `receiptAssessmentRejections`
+short-circuits on `!Array.isArray(receipts) || receipts.length === 0` before
+touching `assessReceipt`, so a proof with no receipts takes exactly the round-0
+path. The assertions that pin it are untouched:
+`assert.deepEqual(proofEvidence(proof()), { state: "pass", mergedSha })`, the
+FAIL equivalent, the empty-`receipts:` case, and the unmodified core row
+"moves merged PASS verification to done". `proofEvidence()` itself is
+byte-identical this round — every new check lives in core's classifier.
+
+One deliberate consequence worth naming: the round-1 core fixture
+`{ kind, head_sha }` would now be *rejected*, so it was replaced with a full
+`validReceipt()` helper. A partial receipt therefore blocks Done rather than
+being ignored. That is the intended stricter posture ("reject it explicitly in
+the proof rather than silently falling back"), it can only affect proofs that
+carry a `receipts:` block, and no such proof exists yet.
+
+**5. Skill and FRD-006 reworded to what runs.** The "What is validated by code"
+section now lists `kind`/`job`/`workflow`/`run_id`/`url`, exact `head_sha`,
+`event`, `conclusion`, says `assessReceipt` "is the single function that checks
+every one of these" and that it runs through `reconcileEvidence`, and names
+both finding codes. The `receipts:` example paragraph makes the same
+distinction. FRD-006 adds the module path, the `workflow` and case-sensitivity
+rules, and "This is enforced at verification time, not merely documented",
+naming `packages/core/src/reconciliation.ts`. I re-read both against the code:
+every claim now holds. `docs/manual/proof.md` was correctly left alone — its
+prose named no enforcing function. The two human-judged items (provider
+provenance, "packet ⊆ npm run verify") are unchanged and still honest.
+
+**6. Case-sensitivity cases added (F-003).** Uppercase 40-hex `head_sha`,
+7-character abbreviation, and `conclusion: "SUCCESS"`, each asserting the exact
+reason; the uppercase case even comments *which* reason it pins and why. The
+mis-named round-0 test is now "rejects a receipt missing the job entirely",
+beside a real "rejects a receipt whose job is not verify".
+
+**7. Bundle.** Rebuilt and committed; byte-matches a fresh build (below).
+
+## Scoped checks rerun at 99f0cf70
+
+In `.worktrees/MCP-057`, read-only apart from the restored mutation copy. Full
+`npm run verify` deliberately not run — the hosted rail owns it and it is green
+at this head.
 
 | Command | Exit | Result |
 |---|---|---|
-| `npm run test -w @kanmer/core` | 0 | 894/894, 25 files; `proof-receipts.test.ts` 15 tests |
-| `node packages/core/scripts/check-browser.mjs` | 0 | clean |
-| `node --test packages/mcp-server/src/reconciliation.test.mjs packages/mcp-server/src/step-reconciliation.test.mjs` | 0 | tests 100, pass 99, skipped 1 (platform), fail 0 |
-| `npm run verify:skills` | 0 | ALL CHECKS PASSED (21 checks) |
+| `npm run test -w @kanmer/core` | 0 | **901/901**, 25 files (894 → 901: +5 receipt cases, +2 reconciliation rows) |
+| `node packages/core/scripts/check-browser.mjs` | 0 | clean; `proof-receipts` still absent from `browser.ts` |
+| `npm run typecheck` | 0 | core, mcp-server, ui, gui |
+| `node --test packages/mcp-server/src/reconciliation.test.mjs packages/mcp-server/src/step-reconciliation.test.mjs` | 0 | tests 101, pass 100, skipped 1 (platform), fail 0 |
+| `npm run verify:skills` | 0 | ALL CHECKS PASSED |
 | `npm run verify:docs` | 0 | PASS — generated manual current |
 | `npm run check:manual` | 0 | up to date, 22 chapters |
-| `npm run build && npm run plugin:build` then `git status --short` | 0 | **empty** — the committed bundle byte-matches a fresh build |
+| `npm run build && npm run plugin:build` then `git status --short` | 0 | **empty** — committed bundle byte-matches a fresh build |
 | `npm run plugin:check` | 0 | 41 tools match, bundle bytes match, 12 skill frontmatters parse, isolated handshake lists 41 tools |
+| mutation: both new checks neutralised, then restored | — | 4 tests failed; worktree clean afterwards |
 
-## Acceptance, item by item
+## Scope
 
-- **`proof-receipts.ts` is pure.** No `node:` import, no IO, no `fs`. Not in
-  `browser.ts` (grep confirms), and `check-browser.mjs` passes. **Met.**
-- **`parseProofReceipts` is tolerant.** Absent `receipts` → `[]`; a null,
-  string or array frontmatter → `[]`; unknown fields survive via
-  `{ ...record }` and are asserted by the `future_field` test. A non-array
-  `receipts`, a non-object entry and an entry without a non-empty `kind` are
-  reported in `invalid` rather than dropped. **Met.**
-- **`assessReceipt` rejects the bad cases.** Wrong SHA, non-`push` event,
-  non-`success` conclusion, missing `run_id`/`url`/`job`, unknown `kind`, and
-  a `head_sha` that is not full 40-hex, each with its own distinct reason
-  string; every one has a test. I tried to break it: an uppercase 40-hex SHA
-  is rejected (regex is `/^[0-9a-f]{40}$/`, no `i` flag) with the "must be a
-  full 40-hex" reason rather than the mismatch reason, which is the right
-  outcome for the wrong-sounding reason; a 7-char SHA is rejected; `conclusion:
-  "SUCCESS"` is rejected; `event: "pull_request"` is rejected; `run_id` as a
-  string passes and as `0`/`false` also passes (F-002). **Met except for the
-  `verify` job-name claim — see F-001.**
-- **Core reconciliation adds a distinct finding on both routes without
-  changing CORE-133.** `receiptNamesOtherMerge()` is a new helper; both call
-  sites are placed *after* the existing `proofNamesCurrentMerge` guards, in
-  the PASS route and in the FAIL route under the same
-  `implementation|plan` gate CORE-133 uses. No existing branch, message or
-  finding code is altered. The code is `PROOF_RECEIPT_SHA_MISMATCH`, distinct
-  from `PROOF_MERGE_SHA_MISMATCH`. A proof with no `receipts` short-circuits on
-  `!Array.isArray || length === 0` and reaches exactly today's behaviour; the
-  back-compat case is asserted twice (core: "moves merged PASS verification to
-  done" unchanged plus a new matching-receipt positive; mcp-server:
-  `assert.deepEqual(proofEvidence(proof()), { state: "pass", mergedSha })`).
-  **Met.**
-- **`proofEvidence()` shape is unchanged for existing callers.** `receipts` is
-  spread in only when the parsed list is a non-empty array; `{ invalid }` and
-  `[]` both omit the key, so the returned object is `deepEqual` to the old one.
-  A malformed `receipts` block never fails the base PASS/FAIL/mergedSha
-  reading, which is the right call and is documented at the call site.
-  **Met.**
-- **`ReconciliationEvidence` change is additive and optional.**
-  `receipts?: ProofReceipt[]` under `proof`, `import type` only. **Met.**
-- **Skill step order.** 1 read/reconcile → 2 `gh pr view` MERGED → 3 look up
-  the bound receipt *before any Git operation* → 4 classify obligations → 5
-  worktree only if something is missing → 6 run only the missing checks → 7
-  proof + Done gate. The satisfied rule is the correct one (push event,
-  `pr.yml`, `verify` job completed + success, `headSha` string-equal to the
-  full merge SHA); PR-head and synthetic-merge runs are explicitly rejected as
-  never interchangeable; an in-progress run is waited on once with
-  `gh run watch --exit-status` with an explicit "do not poll, do not start a
-  competing local rail". Manual GUI / installed-host / Windows-lock / provider
-  checks stay `missing` regardless of the receipt. The `receipts:` YAML example
-  uses exactly the field names `parseProofReceipts` reads
-  (`kind, provider, repo, workflow, event, run_id, attempt, head_sha, job,
-  conclusion, url, covers, observed_by`) — I diffed them against the interface
-  field by field. The code-validated vs human-judged section is present.
-  **Met except for that section's content — F-001.**
-- **Docs.** `docs/manual/proof.md` and FRD-006 describe receipts as additive
-  beside `attempts[]`, name the acceptance rule, say no existing proof is
-  rewritten, and both point forward to CORE-129's typed `attempts[]` record
-  without claiming it exists. They are consistent with CORE-129's Verification
-  item 4 ("a `receipts[]` list from MCP-057 is validated by the same
-  parser… a proof without `receipts` is unaffected"), which this shape
-  satisfies. Neither doc claims automated provenance; both defer it. FRD-006
-  does repeat the `job: verify` acceptance rule — which is the *intended*
-  contract and is why F-001 is a code fix, not a docs-only fix. **Met.**
-- **Bundle, roster, dependencies.** Rebuilt bundle byte-matches; 41 tools; no
-  new dependency. **Met.**
-
-## F-001 in detail
-
-`plugins/kanmer/skills/kanmer-verify/SKILL.md` §"What is validated by code and
-what is human judgement in this release" says:
-
-> Code validates: receipt shape (`kind`, `job`, `run_id`, `url` present),
-> `head_sha` exactly matching the PR's merge SHA, `event == push`, **the job
-> named `verify`**, and `conclusion == success`. `assessReceipt` and the
-> reconciliation classifier's `PROOF_RECEIPT_SHA_MISMATCH` finding enforce
-> these mechanically.
-
-Two things are untrue of the code as written:
-
-1. `assessReceipt` checks `nonEmptyString(receipt.job)` and nothing more. A
-   receipt carrying `job: "kanmer-gate"` — or any other non-empty string — on a
-   successful push run at the right SHA assesses `satisfied`. FRD-006 and the
-   post-implementation report make the same `job` is `verify` claim, and the
-   ticket's own acceptance says a "missing `verify` job … is rejected by
-   `assessReceipt`". The test named "rejects a receipt missing the verify job"
-   passes `job: undefined`, so it does not catch this either.
-2. `assessReceipt` has **no production caller**: grep across `packages/` finds
-   it only in its own test and in the two documents. `proofEvidence()` calls
-   `parseProofReceipts` only, and the classifier compares `head_sha` alone. So
-   `event`, `conclusion`, `job` and `kind` are enforced by nothing that runs
-   today; they are a library available to a verifier and to CORE-129.
-
-The consequence is the one this ticket exists to prevent: a verifier who
-trusts that section can record a receipt that the hosted `verify` job never
-produced, and no mechanical check contradicts it. This is one root-cause class
-— *documented mechanical enforcement that the code does not perform* — and it
-takes one remedy, not two patches:
-
-- add the `verify` job-name check (and, if you want the skill's satisfied rule
-  fully mirrored, `workflow`) to `assessReceipt` with a table case for a
-  wrong-named job; **and**
-- reword that section (and the FRD/report sentence, and the mis-named test) so
-  it states precisely what runs today: `PROOF_RECEIPT_SHA_MISMATCH` in
-  `reconcileEvidence` is the enforced runtime check; `assessReceipt` is the
-  verifier-side and CORE-129-facing assessor.
-
-That is the whole blocking change list. I would take F-003's uppercase /
-abbreviated-SHA / `"SUCCESS"` cases in the same pass, since the edit is in the
-same table.
-
-## Scope, plan and report fidelity
-
-The diff is exactly the plan's five ordered steps and nothing else. The
-"Do not modify" list is honoured: no receipt store, no reuse key, no ancestry
-reuse, no new MCP tool, no process spawning in core, nothing in
-`agents-block-body.mjs`/`kanmer-setup` (PR #321) or the verify-rail scripts
-(PR #322), and `step-reconciliation.ts` is untouched. The three declared
-deviations are accurate. Every exit code the report claims, I reproduced.
+Still exactly the ticket's files. Round 2 touched no new path, added no
+dependency (`package.json`/`package-lock.json` absent from the diff), and left
+`scripts/verify.mjs`, `.github/workflows/pr.yml`, `agents-block-body.mjs`, the
+verify-rail scripts and `step-reconciliation.ts` untouched — the DOC-028 and
+CORE-140 files that appear in the branch arrived only through the `origin/main`
+merge and are byte-identical to `main`.
 
 ## Threads
 
-No review threads, review comments or reviews exist on this PR at
-`6b7049c735792ad01485dbe74f840733827c1c87` — confirmed via the GitHub GraphQL
-`reviewThreads` surface (0 nodes) and `comments`/`reviews` (0 each).
-`threads_snapshot` is therefore an empty list, which is the truthful value. No
-`chatgpt-codex-connector` thread was posted; the bot is never a gate and its
-absence blocks nothing.
+No review threads, review comments or reviews exist on PR #325 at
+`99f0cf70689c8cfa804823f5c0b0636fa7ca0a4d` — GitHub GraphQL `reviewThreads`
+0 nodes, `comments` 0, `reviews` 0. `threads_snapshot: []` is the truthful
+value. No `chatgpt-codex-connector` thread was posted; the bot is never a gate.
 
-## CI at this head (run 33941205872)
+## CI at this head (run 33942377774)
 
 | Job | Id | State |
 |---|---|---|
-| `kanmer-gate` | 101238895114 | failure — `NO_REVIEW_RECORD` only (see F-006) |
-| `verify` | 101238895288 | in_progress at the time of writing |
-| `regate` | 101238895643 | skipped |
+| `verify` | 101242176572 | **pass** (9m40s) |
+| `kanmer-gate` | 101242176470 | failure — `STALE_REVIEW` only, discharged by this record (F-006) |
+| `regate` | 101242176885 | skipped (PR event) |
+
+The previous run 33941205872 at `6b7049c7` is now marked cancelled overall
+because the new push superseded it; its `verify` job had passed (7m41s) before
+that.
 
 ## Residual risk
 
-F-002 (loose `run_id`/`attempt`/`workflow` typing) is deliberately handed to
-CORE-129, which already owns typed validation of `receipts[]` and is
-sequenced immediately after this ticket. F-003–F-006 are recorded for the
-trail. The substantive residual risk once F-001 is fixed is the one the change
-names itself: "packet ⊆ npm run verify" remains a human judgement, so a
-verifier who marks an obligation satisfied that the `verify` job does not
-actually run produces a truthful-looking proof for work nobody did. That is
-correctly disclosed rather than hidden, and it is the right boundary for this
-release.
+F-002 and F-010 are handed to CORE-129, which already owns typed validation of
+`receipts[]`; F-010 in particular — this repository's workflow and job names
+baked into `@kanmer/core` — should become board configuration before any
+consumer project writes a receipt. F-007, F-008, F-009 and F-011 are recorded
+notes. The unchanged substantive residual risk is the one the change names
+itself and now states accurately: "packet ⊆ npm run verify" is a human
+judgement, so a verifier who marks an obligation satisfied that the `verify`
+job does not actually run still produces a truthful-looking proof for work
+nobody did. Provider provenance is likewise unautomated. Both are disclosed
+rather than hidden, which is the right boundary for this release.
+
+## Merge preconditions the merger still owns
+
+This is a `pass` on the change, not a merge authorisation. Before merging:
+bring the branch up to date (`main` moved again — CORE-140 at
+`941650317be4cad4f6a86c6ab16362ee5dd8dfdb`), obtain one delta re-bind of this
+attestation to the new head, and observe `kanmer-gate` **green** at that head
+against a pushed board. I did not merge and did not move the ticket.

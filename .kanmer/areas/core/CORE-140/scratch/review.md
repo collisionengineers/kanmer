@@ -7,7 +7,7 @@ reviewer: "independent-reviewer-subagent"
 independent: true
 plan_hash: "2e5378469583cdaf"
 ticket_updated: "2026-09-05T02:41:24.782Z"
-board_sha: "fa76fbb6a46528180e64fdfcbc168bfe7572d517"
+board_sha: "902aa547830f3393d844a990f88c1fa07c72aa5e"
 expected_reviewers:
   - "independent-reviewer-subagent"
 threads_snapshot: []
@@ -39,9 +39,8 @@ findings:
     reason: "The ticket's declared technical seam specifies assertBuilt(['server']) for this step, and inside the rail core is produced by the same single root build in the immediately preceding step, so a divergent core dist is not reachable without also failing the HEAD / dirty-digest / lockHash checks."
   - id: F-006
     severity: note
-    summary: "The required kanmer-gate check is red on this head with the single finding NO_REVIEW_RECORD; every other gate check passed."
-    disposition: obsolete-after-change
-    reason: "superseded by fa76fbb6a46528180e64fdfcbc168bfe7572d517 — the gate failed only because this attestation did not yet exist on the remote board when it ran; that board commit is now pushed. The gate must be re-run before merge (it does not re-run on a board push)."
+    summary: "The required kanmer-gate check was red on this head with the single finding NO_REVIEW_RECORD; every other gate check passed. Fixed by this attestation itself, which is the missing record; the gate must be re-run because it does not re-trigger on a board push."
+    disposition: fixed
 ---
 
 # Independent review — CORE-140, PR #322
@@ -156,8 +155,14 @@ are built with `node:path` `join`. Verified empirically on this Windows host.
   unchanged" contract — the public path is exactly as broken, and exactly as
   working, as it was on `main`.
 - **F-004, F-005 (notes, accepted risk).** Reasons in the frontmatter.
-- **F-006 (note, obsolete after the board push).** The gate's failure is the
-  designed pre-review state, not a code defect.
+- **F-006 (note, fixed).** The `kanmer-gate` failure on run 33939788978 was
+  `NO_REVIEW_RECORD` alone — the gate reads the remote board and no review
+  attestation existed there when it ran. This attestation is that record, so
+  the finding is fixed by the document you are reading rather than by any
+  change to the reviewed tree (no repo commit supersedes it, which is why the
+  disposition is `fixed` and not `obsolete-after-change`). The gate does not
+  re-trigger on a board push, so it must be re-run before merge; that is a
+  merge-time action for the merger, recorded below, not an open code finding.
 
 No finding is `open`. No blocker or major finding was raised.
 
@@ -176,10 +181,9 @@ control is unproven rather than that a control is missing.
 This attestation is a `pass`, but merge authority is not the reviewer's and two
 mechanical preconditions remain:
 
-1. `kanmer-gate` is currently red on this head and **does not re-run on a board
-   push**. Re-run the `kanmer-gate` job (or push an empty re-trigger) now that
-   board `fa76fbb6a46528180e64fdfcbc168bfe7572d517` — which carries this
-   attestation — is on the remote, and require it green.
+1. `kanmer-gate` is red on the run above and **does not re-run on a board
+   push**. Re-run the `kanmer-gate` job now that the board commit carrying this
+   attestation is on the remote, and require it green.
 2. Re-check that the board branch tip is still pushed immediately before
    `gh pr merge`.
 

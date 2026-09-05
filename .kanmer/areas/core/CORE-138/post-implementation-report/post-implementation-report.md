@@ -118,29 +118,52 @@ npm run check:manual                                                        exit
 
 ## Mapping to acceptance criteria
 
-- AT-19 (draft advisory, ready strict/warn): `check-pr.test.mjs` new cases;
-  live observation pending (see below).
+- AT-19 (draft advisory, ready strict/warn): `check-pr.test.mjs` new cases,
+  confirmed live (see below).
 - AT-20 / AT-23 (regate waits then retries once): `pr-workflow.test.mjs`
-  assertions on the `regate` job block.
+  assertions on the `regate` job block. Not exercised live in this PR (no
+  in-progress run existed for `regate` to wait on during this observation
+  window); code path verified by unit test and manual reading.
 - AT-21 (edited doesn't cancel verify): `pr-workflow.test.mjs` concurrency
-  assertion; live observation pending (see below).
+  assertion, confirmed live (see below).
 - AT-22 (skills document draft handoff + current-head binding):
   `kanmer-execute`/`kanmer-review` SKILL.md edits, `npm run verify:skills`
   green.
 
-## Live observation (AT-19 / AT-21)
+## Live observation (AT-19 / AT-21) — confirmed
 
-PR #324 was opened as a draft
-(`https://github.com/collisionengineers/kanmer/pull/324`) against `main` from
-`CORE-138-gate-handoff`. This report is written before the workflow run(s)
-against that PR have been observed on GitHub — the ticket instructions ask
-for confirmation that `kanmer-gate` reports advisory (green) on the draft, and
-that a subsequent `gh pr edit --body` does not cancel a running `verify`. The
-run ids and outcomes of that observation, once available, belong in a scratch
-note; `kanmer-review` should re-confirm this on the current head before
-approving, since this workflow-file behaviour only takes effect for
-`pull_request` events using the workflow file that is actually on the PR
-branch (already true here since `pr.yml` is edited on this branch).
+PR #324 (draft): https://github.com/collisionengineers/kanmer/pull/324,
+branch `CORE-138-gate-handoff`, head `93e59f938b3f3a52a5c17e11c6cccb1e0d2e0f6a`.
+
+- **Run 33941013906** (`pull_request`, opened as draft): `kanmer-gate` job
+  completed `conclusion: success` (green) even though the underlying
+  evaluation had real findings (`WRONG_STAGE`, `NO_REVIEW_RECORD`,
+  `COMMITS_UNREACHABLE` — expected, since this run fired while the ticket was
+  still `implementing`), because `--draft` was passed and the job forces exit
+  0. Job log confirms `ADVISORY (draft): [...]` lines on stdout and
+  `::notice` commands on stderr for each finding. **Confirms AT-19**: draft
+  PR gate reports advisory/green, not red.
+- Edited the PR body via `gh pr edit --body-file` with an actual content
+  change (a byte-identical first edit did not trigger a new GitHub webhook —
+  noted for reproducers). This fired a new `pull_request` (`action: edited`)
+  run: **33941099168**.
+- In run 33941099168: `verify` job `status: completed`,
+  `conclusion: skipped` (expected — `verify.if` still excludes `edited`);
+  `kanmer-gate` ran and the run finished `conclusion: success`.
+- **Critically**: run 33941013906's `verify` job stayed `status: in_progress`
+  throughout and after run 33941099168 completed — it was never cancelled.
+  Confirmed via `gh run list --workflow pr.yml --branch CORE-138-gate-handoff`
+  showing both runs simultaneously (one in_progress, one completed) and via
+  `gh api .../actions/runs/33941013906/jobs` repeatedly reporting `verify` as
+  `in_progress`. **Confirms AT-21**: the `meta-`-prefixed concurrency group
+  for `edited` events kept the original run's `verify` job alive across a
+  body edit.
+- Board push: the GUI's auto-sync had already pushed `kanmer-board` to
+  `58386cb563a9cc7d9f724aae3d8687bcd64ad04c` before this observation; local
+  and `origin/kanmer-board` matched throughout.
+
+Full detail (exact job JSON, timestamps) is recorded in this ticket's
+`scratch/notes.md`.
 
 ## Deviations from the plan
 

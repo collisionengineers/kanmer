@@ -137,3 +137,17 @@ The two `invalid` entries are confirmed by id: **GUI-133** and **GUI-135** — e
 Copy deleted after both runs: `rm -rf "$TMP/core141-census"`. Live board confirmed untouched throughout (`git -C .worktrees/kanmer status --short` shows only the ongoing scratch-file edits from this ticket's own `append_scratch` calls; no other change).
 
 **Decision per plan: the LIVE board stays in `report` (non-strict) proof-validation policy for 0.4.2 — no real cutover run.** This matches the ticket body's explicit instruction ("decide the live strict cutover and record it either way") — decision recorded here: **not cut over this release.** Rationale: 2 invalid legacy proof records (GUI-133, GUI-135) would need hand-repair before a strict-mode cutover could pass without failing/blocking those two Done tickets' proof gate retroactively, and that repair is out of scope for this release's roster (HZN-009 R1 packages). Left for a future ticket/horizon.
+
+## Step 6: release.mjs --dry-run — PASS
+
+`node scripts/release.mjs 0.4.2 --ticket CORE-141 --dry-run` from clean root main (HEAD `8c515c4a`, no working-tree changes). Exit 0. It re-ran the full verify rail internally (VERIFY_STEPS, including managed-AGENTS-block 35/35 and `plugin:check` — `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.1, isolated MCP handshake lists 41 tools`) and it passed clean — **no GUI-154 crash signature this time** (temp cleanup + coordinator's exclude-list fix held). Dry-run output:
+```
+--- dry run: the verification gate passed ---
+Would create release/v0.4.2 from main (without switching in dry-run)
+Would write 0.4.2 into all release manifests, lockfile, and deterministic artifacts
+Would build the GUI, commit the release change, push only the release branch, and open a PR targeting main
+Would stop before creating a tag or publishing any release asset
+After the PR merges, rerun: npm run release -- 0.4.2 --publish --release-commit <full-sha>
+No Git or remote release state was written. Verification may have created local build outputs; release manifests and the Git tree remain untouched.
+```
+Confirmed after: `git status --short` empty, on `main`, no `v0.4.2` tag, no `release/v0.4.2` branch. Proceeding to step 7 (real prepare).

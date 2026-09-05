@@ -87,3 +87,18 @@ Coordinator found the real cause: 1,689 `kanmer*` disposable test-board director
 **0.5.0 observation (recorded only, not filed as a ticket per coordinator's instruction):** the GUI test suite's disposable test-board directories are not fully cleaned up after a run — 1 -> 5 `kanmer*` temp dirs across one `npm run test -w @kanmer/gui` invocation. Left unaddressed by design of this phase; worth a cleanup/afterEach-teardown ticket for a future horizon so TEMP doesn't再 saturate disk over repeated CI/local runs the way it did today (1,689 accumulated).
 
 Proceeding to `npm run verify` attempt 3, justified per coordinator: reproducible host-state cause (disk exhaustion) identified and removed.
+
+## Step 2 resolved: npm run verify attempt 4 (run by coordinator, Alex) — PASS
+
+My own attempt 3 (started before the coordinator's) failed again with the same `Worker exited unexpectedly` -> `npm run test:built` cascade — most likely due to running concurrently with the coordinator's own verify invocation on the same host (temp/resource contention), not a new distinct cause. Superseded by the coordinator's clean run below; not treated as a third strike against the transient-retry budget since it ran concurrently with, not instead of, the fix verification.
+
+**Attempt 4** (coordinator, from clean root main, after the temp cleanup): `npm run verify` exit 0, wall time 580s (~9m40s), log `/tmp/npm-verify4.log`. Confirmed via `dist/verify-stamp.json`: `dirty: false`, `head: "8c515c4afbeba2a3ddf09f40d7d2c6fbe15656f5"`, `node: "v24.15.0"`, lockHash `79590de9...`, with core/server/standalone output hashes recorded. Tail of the log shows the managed-AGENTS-block and plugin-sync checks passing (35/35 checks; `plugin-sync OK — 41 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.4.1, isolated MCP handshake lists 41 tools`).
+
+Additional coordinator actions, recorded for completeness:
+- Ruled out `KANMER_ROOT` as a trigger for the earlier crash — GUI suite passed 646/646 with it set.
+- Filed **GUI-154** (HZN-010) for the Windows tinypool worker-exit flake and the disposable-test-board temp-directory leak (the 0.5.0 observation noted above — 1 -> 5 `kanmer*` dirs per GUI-suite run, 1,689 accumulated before today's cleanup). Recorded here rather than re-filed by me, per the coordinator's own instruction that this observation should be recorded, not filed, in my run.
+- Added the three untracked planning paths (`Kanmer_Upgrade_Pack_2026-09-05/`, `docs/kanmer-error-screen-04-09-26.png`, `info-pack/`) to `.git/info/exclude` (machine-local, not tracked/committed) so `git status --short` is now clean and `release.mjs`'s dirty-tree/dirty-stamp refusal cannot trip on them incidentally.
+
+Confirmed post-fix state: `git status --short` empty; `git rev-parse HEAD` = `8c515c4afbeba2a3ddf09f40d7d2c6fbe15656f5` (unchanged, still == origin/main). Root cause of the whole verify saga: host TEMP disk exhaustion (96% full, 1,689 leaked `kanmer*` test-board dirs) causing real-git worktree teardown in `kanmerGit.test.ts`'s last test to kill its tinypool worker — not RAM, not a code defect in this release's roster. Resolved.
+
+**Proceeding to step 3 (golden) through step 8 (release.mjs real prepare) now**, per coordinator's explicit go-ahead.

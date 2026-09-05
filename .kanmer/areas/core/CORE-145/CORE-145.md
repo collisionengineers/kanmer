@@ -33,11 +33,12 @@ docs_todo: true
 commits:
   - a3742f79
   - ce4587af
+  - 3ebb7123
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/328'
 archived: false
 created: '2026-09-05T03:03:02.310Z'
-updated: '2026-09-05T04:21:49.616Z'
+updated: '2026-09-05T13:26:20.387Z'
 ---
 
 Filed by the independent review of CORE-140 (PR #322). **Pre-existing on `main` at `c088be1391a1198c914fc3ef247103fd52c277c5`; not introduced by CORE-140.**

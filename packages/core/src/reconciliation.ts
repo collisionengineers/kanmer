@@ -19,6 +19,22 @@ function finding(code: string, level: ReconciliationFinding["level"], message: s
   return { code, level, message };
 }
 
+/**
+ * Whether the proof carries a receipt (MCP-057) whose `head_sha` disagrees
+ * with the exact PR merge SHA. This is a distinct check from
+ * `proofNamesCurrentMerge` below: a proof's own `merged_sha` could name the
+ * current merge while a receipt embedded in it names a different commit —
+ * for example a stale receipt carried over from an earlier verification
+ * round. A proof with no `receipts` (every proof before MCP-057, and any
+ * proof whose `receipts` failed to parse) never triggers this check.
+ */
+function receiptNamesOtherMerge(evidence: ReconciliationEvidence): boolean {
+  const receipts = evidence.proof.receipts;
+  const mergeSha = evidence.pullRequest.mergeSha;
+  if (!Array.isArray(receipts) || receipts.length === 0 || !mergeSha) return false;
+  return receipts.some((receipt) => typeof receipt.head_sha === "string" && receipt.head_sha.length > 0 && receipt.head_sha !== mergeSha);
+}
+
 function stableEvidence(evidence: ReconciliationEvidence): ReconciliationEvidence {
   return {
     ticket: { ...evidence.ticket },
@@ -215,6 +231,10 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the PASS proof does not name the current merged pull-request SHA; reconciliation does not recommend Done"));
         return none();
       }
+      if (receiptNamesOtherMerge(evidence)) {
+        findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the PASS proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not recommend Done"));
+        return none();
+      }
       findings.push(finding("PASS_PROOF_STILL_VERIFYING", "info", "a PASS proof is present for the merged pull request while the ticket remains Verifying"));
       return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_DONE", "done") };
     }
@@ -231,6 +251,10 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
       // Implementing or Preparing on stale evidence.
       if ((failureClass === "implementation" || failureClass === "plan") && !proofNamesCurrentMerge) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the FAIL proof does not name the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
+        return none();
+      }
+      if ((failureClass === "implementation" || failureClass === "plan") && receiptNamesOtherMerge(evidence)) {
+        findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the FAIL proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
         return none();
       }
       switch (failureClass) {

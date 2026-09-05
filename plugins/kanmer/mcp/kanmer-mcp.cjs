@@ -47582,8 +47582,36 @@ function pruneUndefined(obj) {
   }
   return out;
 }
+function parseProofReceipts(frontmatter) {
+  if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return [];
+  const raw = frontmatter.receipts;
+  if (raw === void 0) return [];
+  if (!Array.isArray(raw)) return { invalid: ["receipts must be an array when present"] };
+  const receipts = [];
+  const invalid = [];
+  raw.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      invalid.push(`receipts[${index}] must be an object`);
+      return;
+    }
+    const record22 = entry;
+    if (typeof record22.kind !== "string" || record22.kind.trim().length === 0) {
+      invalid.push(`receipts[${index}].kind must be a non-empty string`);
+      return;
+    }
+    receipts.push({ ...record22, kind: record22.kind });
+  });
+  if (invalid.length > 0) return { invalid };
+  return receipts;
+}
 function finding(code, level, message) {
   return { code, level, message };
+}
+function receiptNamesOtherMerge(evidence) {
+  const receipts = evidence.proof.receipts;
+  const mergeSha = evidence.pullRequest.mergeSha;
+  if (!Array.isArray(receipts) || receipts.length === 0 || !mergeSha) return false;
+  return receipts.some((receipt) => typeof receipt.head_sha === "string" && receipt.head_sha.length > 0 && receipt.head_sha !== mergeSha);
 }
 function stableEvidence(evidence) {
   return {
@@ -47697,6 +47725,10 @@ function reconcileEvidence(input) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the PASS proof does not name the current merged pull-request SHA; reconciliation does not recommend Done"));
         return none();
       }
+      if (receiptNamesOtherMerge(evidence)) {
+        findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the PASS proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not recommend Done"));
+        return none();
+      }
       findings.push(finding("PASS_PROOF_STILL_VERIFYING", "info", "a PASS proof is present for the merged pull request while the ticket remains Verifying"));
       return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_DONE", "done") };
     }
@@ -47704,6 +47736,10 @@ function reconcileEvidence(input) {
       const failureClass = evidence.proof.failureClass ?? "inconclusive";
       if ((failureClass === "implementation" || failureClass === "plan") && !proofNamesCurrentMerge) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the FAIL proof does not name the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
+        return none();
+      }
+      if ((failureClass === "implementation" || failureClass === "plan") && receiptNamesOtherMerge(evidence)) {
+        findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the FAIL proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
         return none();
       }
       switch (failureClass) {
@@ -50068,8 +50104,10 @@ function proofEvidence(raw) {
     if (parsed.kind !== "proof-record" || typeof parsed.result !== "string" || typeof parsed.merged_sha !== "string" || !parsed.merged_sha.trim() || typeof parsed.environment !== "string" || !parsed.environment.trim() || !validTimestamp(parsed.verified_at) || !Array.isArray(parsed.attempts)) return { state: "invalid" };
     const result = parsed.result.trim().toUpperCase();
     const mergedSha = parsed.merged_sha.trim();
-    if (result === "PASS") return { state: "pass", mergedSha };
-    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class) };
+    const parsedReceipts = parseProofReceipts(parsed);
+    const receipts = Array.isArray(parsedReceipts) && parsedReceipts.length > 0 ? parsedReceipts : void 0;
+    if (result === "PASS") return { state: "pass", mergedSha, ...receipts ? { receipts } : {} };
+    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class), ...receipts ? { receipts } : {} };
     return { state: "invalid" };
   } catch {
     return { state: "invalid" };

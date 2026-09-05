@@ -31,3 +31,27 @@ ADR-0005 · D31/D32/D34 · FRD-002 · FRD-014 · kanmer-verify.
 ## Compiled-workflow end state (ADR-0016)
 
 `proof/proof.md` is a whole-file, expected-version record with top-level ticket, merged SHA, outcome, and typed chronological attempts. An attempt records its type, command or procedure, result, timestamps, and retained output/evidence. Verification occurs in a detached worktree at the exact merged SHA, never against a moving `main`. `PASS`, `FAIL`, and other typed outcomes remain retained; a FAIL document satisfies the structural proof-exists gate, while skill/check choreography prevents completion from treating it as success. Review attestations may reference this evidence but are canonical in `scratch/review.md`.
+
+### Receipts (MCP-057)
+
+The proof frontmatter carries an optional `receipts[]` list beside
+`attempts[]`. A receipt is typed evidence that a hosted CI run — the exact
+push-to-`main` `verify` job `pr.yml` already ran for this ticket's PR merge
+SHA — discharged one or more of the verification packet's obligations, so
+`kanmer-verify` does not re-run them in a fresh detached worktree. A receipt
+is accepted (`assessReceipt`) only when its `head_sha` exactly matches the
+proof's `merged_sha`, its `event` is `push`, its `job` is `verify`, and its
+`conclusion` is `success`; a wrong SHA, a `pull_request`-event run, a
+cancelled/skipped/timed-out run, a missing `verify` job, or an unrecognised
+`kind` is rejected with a reason. `receipts` is purely additive: it is
+absent from every proof written before MCP-057, an absent or empty list
+leaves reconciliation and the Done gate exactly as they were, and no
+existing proof is rewritten to add one. Manual GUI, installed-host,
+Windows-lock, and provider/deployment obligations are never discharged by a
+receipt — they remain the verifier's own detached-worktree evidence.
+
+This is the typed-evidence foundation the coming validated `attempts[]`
+schema (typed proof-record validation, tracked separately) builds on:
+`receipts[]` sits beside that ledger as its own typed list, not inside it,
+and the same parser that reads `attempts[]` is expected to read `receipts[]`
+without change to either's meaning.

@@ -39,6 +39,7 @@ describe("reconcileEvidence", () => {
     ["returns closed unmerged review to implementing", evidence({ pullRequest: { state: "closed-unmerged", requiredChecks: "pass" } }), "MOVE_TO_IMPLEMENTING"],
     ["returns review without PR or worker to implementing", evidence({ pullRequest: { state: "absent", requiredChecks: "not-applicable" } }), "MOVE_TO_IMPLEMENTING"],
     ["moves merged PASS verification to done", evidence({ ticket: ticket("verifying"), pullRequest: { ...merged, mergeSha: sha("b") }, proof: { state: "pass", mergedSha: sha("b") } }), "MOVE_TO_DONE"],
+    ["moves merged PASS verification to done with a matching receipt (MCP-057)", evidence({ ticket: ticket("verifying"), pullRequest: { ...merged, mergeSha: sha("b") }, proof: { state: "pass", mergedSha: sha("b"), receipts: [{ kind: "github-actions-run", head_sha: sha("b") }] } }), "MOVE_TO_DONE"],
     ["releases only an identity-matched clean terminal claim", evidence({ ticket: ticket("done", true), workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "matches-claim" } }), "RELEASE_CLEAN_TERMINAL_CLAIM"],
   ])("%s", (_name, input, action) => {
     const before = JSON.stringify(input);
@@ -70,6 +71,8 @@ describe("reconcileEvidence", () => {
     ["keeps a transient verification failure in Verifying", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", failureClass: "transient" } }), "VERIFICATION_TRANSIENT_RETRY"],
     ["keeps an inconclusive verification failure in Verifying", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", failureClass: "inconclusive" } }), "VERIFICATION_INCONCLUSIVE"],
     ["rejects a stale PASS proof for a different merge", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "pass", mergedSha: sha("b") } }), "PROOF_MERGE_SHA_MISMATCH"],
+    ["rejects a PASS proof whose receipt names a different merge (MCP-057)", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "pass", mergedSha: sha("a"), receipts: [{ kind: "github-actions-run", head_sha: sha("c") }] } }), "PROOF_RECEIPT_SHA_MISMATCH"],
+    ["rejects a FAIL/implementation proof whose receipt names a different merge (MCP-057)", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", mergedSha: sha("a"), failureClass: "implementation", receipts: [{ kind: "github-actions-run", head_sha: sha("c") }] } }), "PROOF_RECEIPT_SHA_MISMATCH"],
     ["preserves an incomplete legacy claim", evidence({ ticket: ticket("implementing", true), claim: { state: "current", controller: null, worker: "worker", takenAt: at, expiresAt: null, branch: "core-113", worktree: null, reviewRound: 0, remediationBudget: 1 } }), "CLAIM_WITHOUT_RECORDED_WORKSPACE"],
     ["preserves a clean terminal claim without matching identity", evidence({ ticket: ticket("done", true), workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "branch-mismatch" } }), "TERMINAL_CLAIM_IDENTITY_UNVERIFIED"],
     ["does not recover an expired claim whose worktree belongs to another repository", evidence({ ticket: ticket("implementing", true), claim: expiredClaim, workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "foreign-repository" } }), "CLAIM_EXPIRED"],

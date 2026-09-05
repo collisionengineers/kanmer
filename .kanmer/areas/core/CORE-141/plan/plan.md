@@ -1,6 +1,6 @@
 ## Cut sequence
 
-1. Clean `main` at `410bfd22` (== `origin/main`): `git fetch origin && git status --porcelain` empty, `git rev-parse HEAD` == `git rev-parse origin/main`.
+1. Clean `main` at `4a1c3a23` (== `origin/main`): `git fetch origin && git status --porcelain` empty, `git rev-parse HEAD` == `git rev-parse origin/main`.
 2. `npm ci && npm run verify` — one local rail on clean main.
 3. `npm run golden` then `npm run golden:promotion -- --candidate 0.4.2 --dry-run`; if clean, the real rehearsal on a **copied** board (never the live one).
 4. CORE-129 proof census (report/strict decision, see below) via `migrate_board` dry run on a **copy** of the live board.
@@ -16,7 +16,7 @@
 
 If step 10, 11 or 12 fails: **keep 0.4.1 as the live control plane**, do not flip `--latest` (or revert it if already flipped is not possible — pull the release from `latest` manually), and record M5 truthfully as FAIL/INCONCLUSIVE, not PASS.
 
-## Merged roster for 0.4.2 (source `c088be13..origin/main`, HEAD `410bfd22`)
+## Merged roster for 0.4.2 (source `c088be13..origin/main`, HEAD `4a1c3a23`)
 
 | Ticket | Title | Merge SHA | PR |
 |---|---|---|---|
@@ -29,8 +29,9 @@ If step 10, 11 or 12 fails: **keep 0.4.1 as the live control plane**, do not fli
 | CORE-144 | Make the build-once guard see through the runner scripts; harden the dirty digest | `de5bace9` | #327 |
 | CORE-145 | Build core before the standalone HTTP tests on a fresh checkout | `58718455` | #328 |
 | CORE-129 | Validate typed proof records; add a report/strict board proof policy with a census-bound cutover | `410bfd22` | #329 |
+| CORE-147 | Declare the verification contract on the board (`delivery.verification`); drive receipt validation and the verify skill from it | `4a1c3a23` | #330 |
 
-CORE-129's PR is merged (`410bfd22`) but the ticket is still in **Review** on the live board (verify/closeout has not run against it yet) — treat it as merged code, not yet Done, in the closeout report.
+CORE-129's PR is merged (`410bfd22`) but the ticket is still in **Review** on the live board (verify/closeout has not run against it yet) — treat it as merged code, not yet Done, in the closeout report. CORE-147 was pulled into 0.4.2 after the initial preparation pass (2026-09-05) and is Done.
 
 ## Strict-cutover decision rule (CORE-129 report/strict proof policy)
 

@@ -33,9 +33,10 @@ commits:
   - 415aeb692242547bd394af0e7376e5dbc94db111
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/331'
+  - 'https://github.com/collisionengineers/kanmer/pull/332'
 archived: false
 created: '2026-09-05T02:13:04.749Z'
-updated: '2026-09-05T16:06:24.628Z'
+updated: '2026-09-05T17:39:15.560Z'
 ---
 
 ## Why

@@ -151,3 +151,32 @@ After the PR merges, rerun: npm run release -- 0.4.2 --publish --release-commit 
 No Git or remote release state was written. Verification may have created local build outputs; release manifests and the Git tree remain untouched.
 ```
 Confirmed after: `git status --short` empty, on `main`, no `v0.4.2` tag, no `release/v0.4.2` branch. Proceeding to step 7 (real prepare).
+
+## Step 7: release.mjs real prepare — PASS, PR #332 opened (NOT merged)
+
+`node scripts/release.mjs 0.4.2 --ticket CORE-141` from clean root main (HEAD `8c515c4a` before). Exit 0. Re-ran the full verify rail internally (passed clean, no GUI-154 crash), then bumped `apps/gui/package.json`, root `package.json`, all three plugin manifests (`plugins/kanmer/.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `plugin.json`) and `mcpb/manifest.json` to `0.4.2`, ran `npm install --package-lock-only`, rebuilt the MCP bundle (`npm run build`, `node scripts/build-plugin.mjs`, `node scripts/build-mcpb.mjs`), re-verified with `npm run plugin:check` (green), built the GUI source (`npm run build -w @kanmer/gui`), staged everything (`git add -A`), committed `release: v0.4.2` (8 files changed, 10 insertions/10 deletions) as `bc97f5799f7d794c1db9f380fad00cce4b0a9fa4` on `release/v0.4.2`, pushed the branch, and opened the PR via `gh pr create`.
+
+**Release PR:** https://github.com/collisionengineers/kanmer/pull/332 — title "release: v0.4.2", base `main`, head `release/v0.4.2` @ `bc97f5799f7d794c1db9f380fad00cce4b0a9fa4`, body "Kanmer: CORE-141". Confirmed via `gh pr view 332`: `state: OPEN`, `isDraft: false` — **not merged, not draft**, left exactly as opened per instructions.
+
+**Artifacts produced:**
+- `dist/mcpb/kanmer-0.4.2.mcpb` (1,796,819 bytes) — new for this release
+- `apps/gui/release/` — unchanged from before this run (still holds only the retained 0.1.0/0.2.0/0.3.3 installers + `win-unpacked`); **no 0.4.2 installer .exe was produced in this phase**, which is correct: `release.mjs`'s non-publish/prepare branch only runs `npm run build -w @kanmer/gui` (source build), not `electron-builder --win --publish never` — the packaged Windows installer is only built in `--publish` mode (step 8, phase B, after this PR merges and the operator runs `release.mjs 0.4.2 --publish --release-commit <merged-sha>`)
+- Version-bumped and committed on `release/v0.4.2`: `apps/gui/package.json`, root `package.json`, `plugins/kanmer/.claude-plugin/plugin.json`, `plugins/kanmer/.codex-plugin/plugin.json`, `plugins/kanmer/plugin.json`, `mcpb/manifest.json`, `package-lock.json`, and the regenerated `plugins/kanmer/mcp/kanmer-mcp.cjs` bundle (compiled version define now reads 0.4.2)
+
+## update_item CORE-141
+
+`update_item CORE-141 prs: ["https://github.com/collisionengineers/kanmer/pull/331", "https://github.com/collisionengineers/kanmer/pull/332"]` with `expected_revision: rev1:355ff5e8c8fe5c3e` — succeeded, ticket `updated` now `2026-09-05T17:39:15.560Z`, `prs` field now carries both PRs. Stage left unchanged at `review` (not mine to move — phase B review/merge is separate).
+
+## Phase A: COMPLETE
+
+All 8 steps of the briefed sequence ran to completion:
+1. `npm ci` — PASS
+2. `npm run verify` — required 4 attempts total (2 by me that hit the GUI-154 disk-exhaustion signature, 1 concurrent stray failure, 1 clean PASS by the coordinator after the TEMP cleanup) before the tree was provably clean (`dist/verify-stamp.json` dirty:false at `8c515c4a`)
+3. `npm run golden` standalone — PASS, 20/20 in 17343ms, transcript at `dist/golden/golden-core141-standalone.json`
+4. `golden:promotion --dry-run` then real — both ran correctly per ADR-0021 (dry-run: contract shape INCOMPLETE as expected; real: all 10 steps UNAVAILABLE as expected, no packaged candidate exists yet); live board proven untouched both times
+5. CORE-129 proof census, twice, on a deleted copy — deterministic: valid 2 / legacy 319 / invalid 2 (GUI-133, GUI-135) / absent 105 / total 428, digest `proof-census-v1:59830aa1862824e92b79e670dd81b8fd21be11ad7573e99b3dd4028ac5afe818`; **decision: live board stays in `report` policy for 0.4.2, no strict cutover**
+6. `release.mjs --dry-run` — PASS
+7. `release.mjs` real prepare — PASS, **PR #332 opened, not merged**
+8. This report
+
+Phase B (independent review/merge of PR #332, `release.mjs --publish`, host adoption, M5, rollback drill, closeout, HZN-009 closeout.md) is out of scope here and not started.

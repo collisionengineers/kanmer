@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Build each rail artifact once and refuse an already-built step whose stamp
   does not match
-status: verifying
+status: done
 area: core
 assignee: claude-code
 profile: fix
@@ -12,6 +12,7 @@ stageEntered:
   preparing: '2026-09-05T02:17:42.836Z'
   review: '2026-09-05T02:41:24.782Z'
   verifying: '2026-09-05T03:41:13.180Z'
+  done: '2026-09-05T03:52:38.349Z'
 taken_at: '2026-09-05T02:18:41.901Z'
 branch: CORE-140-rail-build-once
 worktree: .worktrees/CORE-140
@@ -32,9 +33,13 @@ links:
   - CORE-139
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/322'
+delivery_state: integrated
+delivery_branch: main
+delivery_sha: 941650317be4cad4f6a86c6ab16362ee5dd8dfdb
+delivery_recorded_at: '2026-09-05T03:52:42.259Z'
 archived: false
 created: '2026-09-05T02:12:03.055Z'
-updated: '2026-09-05T03:41:13.180Z'
+updated: '2026-09-05T03:52:42.259Z'
 ---
 
 ## Problem

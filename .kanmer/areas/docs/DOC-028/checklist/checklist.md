@@ -15,3 +15,5 @@
 - [x] `git fetch --prune` + `git worktree prune` — exit 0
 - [x] `git push origin --delete DOC-028-managed-block-routing` — remote branch was not auto-deleted by host; deleted manually
 - [ ] `take_ticket action: "release"`
+
+- [x] `take_ticket action: "release"` — done; taken/lease fields cleared, status remains Done

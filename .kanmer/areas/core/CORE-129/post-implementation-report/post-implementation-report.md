@@ -269,3 +269,176 @@ contributing nothing to the diff: `git diff --name-only main...HEAD` is 35 files
 and contains no `proof-receipts.*`, which is the "identical to main" signal. The
 diff is CORE-129 only; the double-merge is visible in the commit list alone, and
 is also flagged as a comment on the PR.
+
+---
+
+# Review round 1 remediation
+
+Independent review returned **needs-changes** (attestation `25c1f0e44248cff2`).
+Head after remediation: **`e36a0db26228e553588c52c6bc83aeaa31fcc5ee`**
+(`origin/main` `58718455` — CORE-144/CORE-145 — merged first).
+
+## F-001 (blocker) — the parser was not a function of its input
+
+**Confirmed and reproduced.** `gray-matter` memoises parsed files in a
+module-global keyed on the input string, and writes that entry **before**
+parsing:
+
+```js
+matter.cache[file.content] = file;   // file.data is still {}
+return parseMatter(file, options);   // ← this is what throws
+```
+
+So a document whose YAML throws leaves `{ data: {} }` cached under its own
+bytes, and every later read of those bytes returns empty frontmatter instead of
+throwing — `invalid` once, `legacy` (no `schema`) for the rest of the process.
+A three-call reproduction printed `THREW`, `{}`, `{}`.
+
+That is why the reviewer saw a dry-run digest (`0e5e6606…`, 2 invalid) differ
+from the locked re-read (`ffcc83ee…`, 0 invalid) over identical bytes and
+sha256s: the cutover was refused, and a *second* attempt would have succeeded
+bound to a census that had silently lost every invalid record.
+
+**Fix.** Every `gray-matter` call in `proof-record.ts` now passes a
+module-level `PARSE_OPTIONS`. The mechanism is the `if (!options)` guard around
+both the cache read and the cache write — `gray-matter` bypasses the cache
+entirely for any call that supplies options, because it would otherwise have to
+key on the options too. `PARSE_OPTIONS` is therefore deliberately inert
+(`language: "yaml"` is the library's own default for a `---` fence); the point
+is that it *exists*, and the doc comment says so at length so nobody
+"simplifies" it away.
+
+Two corrections to my own first attempt, worth recording:
+
+- I first wrote `{ cache: false }`. It worked, but for the wrong reason — there
+  is no `cache` option in `gray-matter`; *any* options object suppresses the
+  cache. The name would have taught a future reader something false, and it also
+  failed the `dts` build (`cache` is not in `GrayMatterOption`), which is how I
+  noticed. `npx vitest` alone did not catch it because esbuild strips types.
+- `matter.clearCache()` was rejected as the fix: it mutates a global every
+  caller shares and only helps the reader that remembers to call it — the next
+  reader of the same bytes is corrupted again. Not writing the entry at all is
+  the property worth having.
+
+**Regression tests — all four verified to fail without the fix** (reverted the
+one-line change, re-ran, saw 4 red; restored, saw 83 green):
+
+| Test | File |
+|---|---|
+| the same malformed bytes parse `invalid` on every call in one process, and a valid record read between them disturbs neither answer | `proof-record.test.ts` |
+| two dry-run censuses over an unchanged board return the same digest and the same buckets | `migrate.test.ts` |
+| a dry run's digest still authorises the real cutover, which writes only the board policy and leaves every proof byte-identical | `migrate.test.ts` |
+| repeated censuses keep reporting the malformed record as invalid | `migrate.test.ts` |
+
+The malformed fixture is **unique per test** (a counter in `beforeEach`). A
+shared constant would have let the first test poison the module cache and the
+rest would then have passed under a broken parser — which is exactly what
+happened on my first pass: the cutover test passed even with the defect present
+until the fixtures were made distinct.
+
+### F-001 acceptance: the census, twice, on a fresh copy of the live board
+
+`cp -r .worktrees/kanmer/.kanmer "$TMP/kanmer-board-copy2/.kanmer"`, then two
+`migrate_board` dry runs plus a direct `auditProofRecords`, **all in one
+process**. The live board was not touched.
+
+| Reading | complete | counts | digest |
+|---|---|---|---|
+| dry run 1 | true | valid 0 / legacy 319 / invalid 2 / absent 105 / total 426 | `proof-census-v1:292605b3db6f563df8bc234e0de367ecd958bc8f8375eacccc5824cf6459ac0d` |
+| dry run 2 | true | *identical* | *identical* |
+| direct audit | true | *identical* | *identical* |
+
+**All three digests match.** The two invalid records are **GUI-133** and
+**GUI-135** (both Done, both unparseable YAML frontmatter) and they survive
+every reading — under the old code the second reading lost them. **CORE-042**
+and **GUI-141** both still read `legacy`. `problems: 0`, and the mode before the
+run is `report` with `changed: false`, so nothing was written.
+
+Counts moved from round 1 (318 legacy / 425 total) only because CORE-147 was
+filed in between; the delta is one new ticket with no proof.
+
+## F-002 (major) — waiver semantics decided and pinned
+
+**Decision: keep the behaviour.** A well-formed `WAIVED_BY_OPERATOR` record
+parses to `valid-pass` and therefore satisfies the strict gate. It is a named
+human's explicit disposition, `kanmer-verify` has always said "only `PASS`, or
+an operator's `WAIVED_BY_OPERATOR`, permits the final move", and FRD-006 R7
+already described it that way. The asymmetry that keeps it honest is unchanged:
+reconciliation never recommends Done from a waiver, because deciding to ship
+despite the evidence is not a machine's call.
+
+What was wrong was that nothing pinned the reading and two documents asserted
+its opposite:
+
+- `checklist/checklist.md` line 18 said waived records block Done — **corrected**
+  (checklist version 3), and a dedicated line now states the accepted reading
+  plus the reconciliation asymmetry.
+- `plan/plan.md` Step 2's negative-case list said the same — **corrected**
+  (versioned plan correction, version 3, with the reasoning recorded in the
+  banner rather than silently edited).
+- `docs/functional/frd/FRD-006-typed-proof.md` now states it explicitly in the
+  "Report and strict" section, so a governing document carries the rule.
+- Three new tests in `docs.test.ts`, through a real store on a strict board:
+  a waiver naming the operator and the reason is admitted to Done; one missing
+  `waived_by` is refused; one missing `waiver_reason` is refused.
+
+## F-003 (minor) — MCP-057 deferrals
+
+`[[CORE-147]]` is now linked from CORE-129. The two findings deferred from the
+MCP-057 review — F-002 (accepted workflow/job names are literals in
+`@kanmer/core`, so a consumer whose CI differs would have every receipt
+rejected) and F-010 (`run_id` validated by presence only) — are carried there,
+not by this ticket.
+
+## F-007 — CI facts, corrected from `gh run list` / `gh run view` JSON
+
+My round-1 report had the two run ids **inverted** and blamed `regate`. Both are
+wrong. The record, from the API:
+
+| Run | Event | Created | Outcome |
+|---|---|---|---|
+| `33969406401` | `pull_request` (draft PR opened) | 2026-09-05T13:36:51Z | **cancelled** — its `verify` started 13:36:54Z and was cancelled; `kanmer-gate` likewise |
+| `33969786183` | `pull_request` (`ready_for_review`) | 2026-09-05T13:44:52Z | superseded it; after I re-dispatched, `verify` ran 13:49:11Z → 13:57:22Z and **passed** (8m11s) |
+
+The cancellation annotation reads *"Canceling since a higher priority waiting
+request for `Pull request verification-pull_request-329` exists"* — a
+concurrency group keyed on the `pull_request` event for this PR. The cause is
+successive `pull_request` events on #329 superseding one another in that group,
+not `regate`: **`regate` was `skipped` in both runs**, so it never executed and
+could not have cancelled anything. It only ever re-runs an existing run's gate
+job. My earlier attribution was a guess presented as a finding, and the JSON
+contradicts it.
+
+`kanmer-gate` failed on `NO_REVIEW_RECORD` alone — correct and expected, since
+an author must not write `scratch/review.md`. Every other gate check passed.
+
+## Also fixed while here: a stale build stamp of my own making
+
+The first `test:built` after remediation exited 1 with *"build-stamp: refusing —
+working tree changed since the stamp was written (dirty digest mismatch)"*. Not
+a test failure: I had written the stamp mid-edit and then regenerated the plugin
+bundle. CORE-140's guard was doing exactly its job. Re-run in the correct order
+— `npm run build` → `npm run plugin:build` → `build-stamp --write` →
+`test:built` — and it is green.
+
+## Commands after remediation (exit codes)
+
+| Command | Exit |
+|---|---|
+| `git merge origin/main` (`58718455`) | 0 — `scripts/` and `packages/mcp-server/scripts/` only, no conflicts |
+| `npm run build` | 0 |
+| `npm run plugin:build` | 0 |
+| `node scripts/build-stamp.mjs --write` | 0 |
+| `npm run test:built` | **0** — core 26 files / **1002** tests, GUI 57 / **646**, MCP HTTP **248 pass / 0 fail**, scripts **196 pass / 0 fail** |
+| `npm run typecheck` | 0 |
+| `node packages/core/scripts/check-browser.mjs` | 0 |
+| `node packages/mcp-server/src/smoke.mjs` | 0 |
+| `npm run golden` | 0 (20/20 scenarios) |
+| `npm run verify:skills` | 0 |
+| `npm run verify:docs` | 0 |
+| `npm run check:manual` | 0 (22 chapters) |
+| `npm run plugin:check` | 0 (41 tools, bundle bytes match) |
+| `git status --short` after the final build | empty |
+
+Core test count moved 995 → 1002: +1 parser purity, +3 census stability, +3
+waiver gate tests.

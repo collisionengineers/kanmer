@@ -44,7 +44,7 @@ delivery_sha: 58718455ffc2174e2cc34cccf72d5f0158fc876b
 delivery_recorded_at: '2026-09-05T13:49:33.899Z'
 archived: false
 created: '2026-09-05T03:03:02.310Z'
-updated: '2026-09-05T13:49:33.899Z'
+updated: '2026-09-05T13:50:47.695Z'
 ---
 
 Filed by the independent review of CORE-140 (PR #322). **Pre-existing on `main` at `c088be1391a1198c914fc3ef247103fd52c277c5`; not introduced by CORE-140.**
@@ -62,3 +62,7 @@ Either make `packages/mcp-server`'s `build` depend on `@kanmer/core`'s build (e.
 ## Note
 
 AGENTS.md §6 currently documents `npm test` as building `@kanmer/mcp-server` itself before testing it, which is true but incomplete for a cold checkout. Whatever remedy is chosen should leave §6 accurate (conduct rule 24).
+
+## Outcome
+
+Shipped: `packages/mcp-server/scripts/run-http-tests.mjs`'s non-assume-built (default) branch now checks `existsSync(packages/core/dist/index.js)` before its existing build call and runs `npm run build:core` at the repo root first only when that file is missing; the rail's `--assume-built` branch is untouched. AGENTS.md §6 updated to document the cold-checkout core build. Merged via PR #328 (squash commit `58718455ffc2174e2cc34cccf72d5f0158fc876b`) on 2026-09-05. Verified PASS: fresh-clone `npm run test:http -w @kanmer/mcp-server` with no prior build (248/249 pass, 1 skip), `verify-steps.test.mjs` 12/12, `test:scripts` 196/196 (after a root build), and the hosted `pr.yml` `verify` job green at the exact merge SHA (run 33969450026). No follow-up ticket required; the ticket's own suggested remedy was implemented as designed, conflict-resolved against sibling PR #327 (CORE-144) per the coordinator's explicit instructions recorded in the post-implementation report.

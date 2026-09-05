@@ -59,6 +59,12 @@ attempts:
     exit_code: 0
     result: PASS
     summary: "github-actions-run receipt — provider github, repo collisionengineers/kanmer, workflow pr.yml, event push, run_id 33969450026, attempt 1, head_sha 58718455ffc2174e2cc34cccf72d5f0158fc876b (== merged_sha), job 'verify' (databaseId 101315246910) conclusion success, started 2026-09-05T13:37:46Z, completed 2026-09-05T13:47:17Z, url https://github.com/collisionengineers/kanmer/actions/runs/33969450026/job/101315246910. Sibling job 'regate' also completed success (101315247143); 'kanmer-gate' completed skipped (not a PR-event job on a push trigger), as expected per the workflow's own gating. Covers [\"npm run verify\"]. observed_by \"claude-code verifier (HZN-009)\"."
+  - attempted_at: "2026-09-05T13:58:00Z"
+    command: "gh pr view 328 --json state,mergedAt,url (closeout finalisation)"
+    cwd: "C:/Users/Alex/Documents/GitHub/kanmer"
+    exit_code: 0
+    result: PASS
+    summary: "Closeout confirmation: state=MERGED, mergedAt=2026-09-05T13:37:39Z, url=https://github.com/collisionengineers/kanmer/pull/328."
 ---
 
 # Proof — CORE-145, PR #328, merge SHA `58718455ffc2174e2cc34cccf72d5f0158fc876b`
@@ -114,3 +120,10 @@ Per policy, the full `npm run verify` was not re-run locally in the detached
 worktree; the hosted `pr.yml` run's `verify` job is the authoritative rail
 execution of `npm run verify` and is cited above by run/job id, conclusion,
 and exact head SHA match.
+
+## Closeout finalisation
+
+PR: https://github.com/collisionengineers/kanmer/pull/328 (merged
+2026-09-05T13:37:39Z). Ticket moved Verifying → Done at 2026-09-05T13:49:25Z.
+delivery_state=integrated, delivery_branch=main,
+delivery_sha=58718455ffc2174e2cc34cccf72d5f0158fc876b.

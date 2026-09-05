@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Make the build-once static guard see through the rail's runner scripts and
   hash untracked directories in the dirty digest
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-09-05T04:04:56.296Z'
 labels:
   - rail
   - build
@@ -20,7 +22,7 @@ links:
 docs_todo: true
 archived: false
 created: '2026-09-05T03:02:51.010Z'
-updated: '2026-09-05T03:02:51.010Z'
+updated: '2026-09-05T04:04:56.296Z'
 ---
 
 Filed by the independent review of CORE-140 (PR #322, head `8ce4dc6ab8329a5b57947c7e79c728d1ca2cbd6b`). Neither item is a defect in the merged behaviour of CORE-140 — the rail is correct and CI-green — both are fidelity gaps in the guards CORE-140 introduced.

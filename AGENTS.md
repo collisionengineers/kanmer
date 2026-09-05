@@ -97,6 +97,22 @@ For end-user install/usage, see [README.md](README.md). This file is about *buil
 
 ---
 
+## 0.1 Operating index and historical documents
+
+- **Named heavy verifier:** Alex (the repository owner) is the named heavy
+  verification owner for this host; full `npm run verify` rails, packaging
+  and installer builds serialize behind that role; implementers run scoped
+  checks and let CI own the rail. This is what the managed block's "the named
+  verifier recorded in the repo's operating index" points at.
+- `CLOSEOUT_PLAN.md` — retired 2026-09-05 (DOC-026); superseded by
+  `apps/gui/release-notes.md` and the HZN-008 group closeout on the board
+  (`.kanmer/groups/HZN-008/closeout.md` on the board branch).
+- `MASTERPLAN.md` — historical programme plan (2026-08-20), kept, not current
+  operating authority.
+- `goal.md` — historical owner brief, kept.
+
+---
+
 ## 0. The operating rule
 
 **Kanmer's own work goes through Kanmer.** Not as a demonstration — as the way
@@ -227,12 +243,11 @@ kanmer/
         kanmer-plan/      # plan.md + checklist.md phase (+ their templates)
         kanmer-execute/   # worktree/branch, checklist, post-implementation-report.md, PR
         kanmer-review/    # 4-doc PR review, PR feedback → tickets, then merge → Verifying
-        kanmer-verify/    # Verifying stage: validate on merged main, write proof.md → Done
+        kanmer-verify/    # Verifying stage: validate at the exact merge SHA on the configured integration branch, write proof.md → Done
         kanmer-closeout/  # post-merge: proof finalized, commits/prs/deployment, cleanup
         kanmer-auto/      # schema-3 /goal controller: dependency-safe roster, bounded lanes/retries, review+verify
         kanmer-report/    # board report: standup ("now") or retro ("since <period>")
         kanmer-groom/     # board-editing triage: dedupe, split, archive, doc-gate debt
-        kanmer-import/    # GitHub issues → tickets, idempotent (PR feedback → kanmer-review)
         kanmer-setup/     # greenfield/brownfield/upgrade setup + AGENTS.md block
   .claude-plugin/marketplace.json  # Claude marketplace entry (repo-hosted)
   .agents/plugins/marketplace.json # codex marketplace entry (repo-hosted)

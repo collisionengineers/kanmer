@@ -34,9 +34,11 @@ links:
 refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
+commits:
+  - 93e59f938b3f3a52a5c17e11c6cccb1e0d2e0f6a
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T02:58:13.328Z'
+updated: '2026-09-05T03:07:48.878Z'
 ---
 
 ## Problem

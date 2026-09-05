@@ -50,3 +50,5 @@ ticket's own acceptance bullets.
 - [x] Live-board pass: Active shows 4 columns; Backlog/Completed/Archived counts equal `get_status.counts`; Done (373) pages across all 94 pages with no empty page; an empty filtered scope shows blank counts and no pager; all 14 rail controls are focusable buttons. Pixel comparison against the previews and real-pointer interaction are UI-D / GUI-153 and are named as uncovered in the report
 - [x] `post-implementation-report` written with the parity checklist ticked item by item
 - [ ] Draft PR opened, `prs` recorded, ticket moved to Review, PR marked ready
+
+- [x] Draft PR opened (#323), `prs` and `commits` recorded, ticket moved to Review, PR marked ready. Head `8ef01486d6ff4605b1b3e876550e325c671f9afa`.

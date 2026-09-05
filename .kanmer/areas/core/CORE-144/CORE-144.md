@@ -34,7 +34,7 @@ links:
   - CORE-140
 docs_todo: true
 commits:
-  - 8ba0cc86
+  - de5bace9245f7ad1f84f885eaa1cbcd55099607e
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/327'
 delivery_state: integrated
@@ -43,7 +43,7 @@ delivery_sha: de5bace9245f7ad1f84f885eaa1cbcd55099607e
 delivery_recorded_at: '2026-09-05T13:28:58.906Z'
 archived: false
 created: '2026-09-05T03:02:51.010Z'
-updated: '2026-09-05T13:28:58.906Z'
+updated: '2026-09-05T13:36:39.797Z'
 ---
 
 Filed by the independent review of CORE-140 (PR #322, head `8ce4dc6ab8329a5b57947c7e79c728d1ca2cbd6b`). Neither item is a defect in the merged behaviour of CORE-140 — the rail is correct and CI-green — both are fidelity gaps in the guards CORE-140 introduced.
@@ -67,3 +67,19 @@ Suggested remedy: pass `-uall` to the porcelain call so every untracked file is 
 ## Out of scope
 
 Any change to which assertions run, to `VERIFY_STEPS`' ordering, or to the public `test` / `mcpb:check` commands.
+
+## Outcome
+
+Shipped as implemented (deviated from the ticket's suggested remedy for
+item 1 — see post-implementation-report.md): `scripts/run-tests.mjs` and
+`packages/mcp-server/scripts/run-http-tests.mjs` now export their command
+lists as pure data (`COMMANDS`), and `verify-steps.test.mjs`'s resolver
+expands those two literal leaves through it instead of stopping, rather than
+asserting the runner scripts' `--assume-built` contract by text. Item 2 was
+fixed as suggested (`-uall` on the porcelain call), plus an incidental
+F-004 rename/copy parsing fix in the same function. Merged via PR #327
+(squash merge, `de5bace9245f7ad1f84f885eaa1cbcd55099607e`) on 2026-09-05;
+verified PASS the same day. `reconcile_ticket`'s `RECORDED_COMMIT_UNREACHABLE`
+finding on this ticket (squash-merge commit has no ancestry edge back to the
+branch head) is a known false positive tracked by follow-up ticket CORE-146,
+not a defect in this ticket's history.

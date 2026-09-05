@@ -43,6 +43,7 @@ import {
 } from "./verify-release-assets.mjs";
 import { exactUploadSpecs } from "./release-publish.mjs";
 import { VERIFY_STEPS } from "./verify.mjs";
+import { readStamp } from "./build-stamp.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guiDir = join(root, "apps", "gui");
@@ -306,6 +307,18 @@ console.log(`notes: ${notesPath}`);
 // every step exits 0. `npm test` already runs check:manual, so it appears once.
 // ---------------------------------------------------------------------------
 for (const step of VERIFY_STEPS) run(step);
+
+// The rail's own build-once stamp (written mid-VERIFY_STEPS by
+// `build-stamp.mjs --write`) is the one place that knows whether the tree was
+// dirty at build time. A dirty build is not reproducible evidence for a
+// release: refuse rather than package it (CORE-140).
+const verifyStamp = readStamp();
+if (verifyStamp?.dirty) {
+  refuse(
+    "the verification rail's build stamp reports a dirty working tree",
+    "commit or stash outstanding changes, then rerun so the packaged build matches a clean, provable tree",
+  );
+}
 
 if (dryRun) {
   console.log("\n--- dry run: the verification gate passed ---");

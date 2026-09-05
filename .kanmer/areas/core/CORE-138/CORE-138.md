@@ -4,13 +4,14 @@ type: ticket
 title: >-
   Stop a PR body edit from cancelling verify, keep the merge gate advisory on
   drafts, and make regate re-evaluate an in-progress run
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-09-05T02:57:08.520Z'
   review: '2026-09-05T03:09:05.355Z'
+  verifying: '2026-09-05T04:21:00.958Z'
 taken_at: '2026-09-05T02:58:13.328Z'
 branch: CORE-138-gate-handoff
 worktree: .worktrees/core-138
@@ -42,7 +43,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/324'
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T03:30:59.587Z'
+updated: '2026-09-05T04:21:00.958Z'
 ---
 
 ## Problem

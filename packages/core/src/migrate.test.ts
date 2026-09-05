@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { removeTreeWithRetry } from "./io.js";
 import { KanmerStore } from "./store.js";
-import { migrateBoard, migrateToV2, migrateToV3 } from "./migrate.js";
+import { auditProofRecords, migrateBoard, migrateProofValidation, migrateToV2, migrateToV3 } from "./migrate.js";
 import { repoDocKindOf } from "./docs.js";
 
 let root: string;
@@ -533,5 +533,284 @@ describe("migration: repoDocs survives", () => {
     const store = new KanmerStore(root);
     await migrateToV3(store);
     expect((await store.getBoard()).repoDocs).toBeUndefined();
+  });
+});
+
+describe("proof census and the strict cutover (CORE-129)", () => {
+  const SHA = "d".repeat(40);
+  let store: KanmerStore;
+  let boardRoot: string;
+
+  /** A valid `proof-record/2` PASS document. */
+  const typedProof = [
+    "---",
+    "kind: proof-record",
+    "schema: 2",
+    `merged_sha: "${SHA}"`,
+    'environment: "detached worktree"',
+    'verified_at: "2026-09-05T04:00:00.000Z"',
+    "result: PASS",
+    "attempts:",
+    '  - attempted_at: "2026-09-05T04:00:00.000Z"',
+    '    command: "npm run verify"',
+    '    cwd: "/tmp/verify"',
+    "    exit_code: 0",
+    "    result: PASS",
+    "    authority: authoritative",
+    '    summary: "the rail ran"',
+    "---",
+    "",
+    "Evidence.",
+  ].join("\n");
+
+  beforeEach(async () => {
+    boardRoot = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-census-"));
+    store = new KanmerStore(boardRoot);
+    await store.init();
+    // A fresh board is strict; these census tests are about an *existing*
+    // board, which is the only kind that ever needs a cutover.
+    await store.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
+  });
+
+  afterEach(async () => {
+    await removeTreeWithRetry(boardRoot);
+  });
+
+  async function ticketWithProof(title: string, proof: string | null): Promise<string> {
+    const item = await store.createItem({ type: "ticket", title });
+    if (proof !== null) await store.setDoc(item.id, "proof", proof);
+    return item.id;
+  }
+
+  it("buckets valid, legacy, invalid and absent deterministically", async () => {
+    await ticketWithProof("valid", typedProof);
+    await ticketWithProof("legacy", "# Proof\n\nIt worked.\n");
+    await ticketWithProof("invalid", typedProof.replace("schema: 2", "schema: 9"));
+    await ticketWithProof("absent", null);
+
+    const census = await auditProofRecords(store);
+    expect(census.complete).toBe(true);
+    expect(census.counts).toEqual({ valid: 1, legacy: 1, invalid: 1, absent: 1, total: 4 });
+    expect(census.parserVersion).toBe("proof-record/2#1");
+    // Every entry carries its own diagnosis, which is what makes the census
+    // usable as a work list rather than four numbers.
+    const invalid = census.entries.find((entry) => entry.bucket === "invalid")!;
+    expect(invalid.diagnostics).toEqual(["schema must be 2, got 9"]);
+  });
+
+  it("fingerprints raw bytes and is stable across repeated readings", async () => {
+    const id = await ticketWithProof("valid", typedProof);
+    const first = await auditProofRecords(store);
+    const second = await auditProofRecords(store);
+    expect(second.digest).toBe(first.digest);
+    expect(first.entries[0].bytes).toBe(Buffer.byteLength((await store.getDoc(id, "proof"))!, "utf8"));
+    expect(first.entries[0].sha256).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("changes the digest when a proof, a stage or the roster changes", async () => {
+    const id = await ticketWithProof("valid", typedProof);
+    const base = (await auditProofRecords(store)).digest;
+
+    await store.setDoc(id, "proof", `${typedProof}\n\nOne more paragraph.\n`);
+    const afterEdit = (await auditProofRecords(store)).digest;
+    expect(afterEdit).not.toBe(base);
+
+    await store.createItem({ type: "ticket", title: "another" });
+    expect((await auditProofRecords(store)).digest).not.toBe(afterEdit);
+  });
+
+  it("dry run censuses and writes nothing, digest or no digest", async () => {
+    await ticketWithProof("legacy", "# Proof\n");
+    const preview = await migrateProofValidation(store, { dryRun: true });
+    expect(preview.from).toBe("report");
+    expect(preview.changed).toBe(false);
+    expect(preview.census.counts.legacy).toBe(1);
+
+    const refused = await migrateProofValidation(store, { dryRun: true, censusDigest: preview.census.digest });
+    expect(refused.changed).toBe(false);
+    expect(refused.refused).toMatch(/dry_run does not apply a cutover/);
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("never enables strict without a digest, however many times it is called", async () => {
+    await ticketWithProof("legacy", "# Proof\n");
+    await migrateProofValidation(store, {});
+    await migrateProofValidation(store, {});
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("refuses a stale digest without writing", async () => {
+    const id = await ticketWithProof("legacy", "# Proof\n");
+    const stale = (await auditProofRecords(store)).digest;
+    await store.setDoc(id, "proof", "# Proof\n\nAmended after the census was taken.\n");
+
+    const result = await migrateProofValidation(store, { censusDigest: stale });
+    expect(result.changed).toBe(false);
+    expect(result.refused).toMatch(/census digest mismatch/);
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("applies an exact digest, writing only the policy and leaving proof bytes alone", async () => {
+    const legacyId = await ticketWithProof("legacy", "# Proof\n\nIt worked.\n");
+    const before = await store.getDoc(legacyId, "proof");
+    const boardBefore = await store.getBoard();
+
+    const census = await auditProofRecords(store);
+    const result = await migrateProofValidation(store, { censusDigest: census.digest });
+    expect(result.refused).toBeNull();
+    expect(result.changed).toBe(true);
+    expect(result.to).toBe("strict");
+
+    const boardAfter = await store.getBoard();
+    expect(boardAfter.proofValidation).toEqual({ mode: "strict" });
+    expect({ ...boardAfter, proofValidation: undefined }).toEqual({ ...boardBefore, proofValidation: undefined });
+    // The point of the whole design: history is described, never rewritten.
+    expect(await store.getDoc(legacyId, "proof")).toBe(before);
+  });
+
+  it("is idempotent once strict, and re-censuses without asking for a digest again", async () => {
+    await ticketWithProof("legacy", "# Proof\n");
+    const census = await auditProofRecords(store);
+    await migrateProofValidation(store, { censusDigest: census.digest });
+
+    const again = await migrateProofValidation(store, {});
+    expect(again.from).toBe("strict");
+    expect(again.to).toBe("strict");
+    expect(again.changed).toBe(false);
+    expect(again.refused).toBeNull();
+    expect(again.census.counts.total).toBe(1);
+  });
+
+  it("migrate_board's umbrella carries the census and enables nothing on its own", async () => {
+    await ticketWithProof("legacy", "# Proof\n");
+    const report = await migrateBoard(store, { dryRun: true });
+    expect(report.proofValidation.census.counts.legacy).toBe(1);
+    expect(report.proofValidation.changed).toBe(false);
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("refuses the cutover on a board that has not been format-migrated yet", async () => {
+    // A format-1 board keeps its tickets somewhere this census does not look,
+    // so a digest taken here would describe a board that stops existing the
+    // moment the format migration runs.
+    const legacyRoot = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-census-v1-"));
+    try {
+      await fs.mkdir(path.join(legacyRoot, ".kanmer", "data"), { recursive: true });
+      // A legacy `tickets/` folder is what makes this a format-1 board.
+      await fs.mkdir(path.join(legacyRoot, ".kanmer", "tickets"), { recursive: true });
+      await fs.writeFile(
+        path.join(legacyRoot, ".kanmer", "data", "board.yml"),
+        ["statuses:", "  - { id: todo, name: Todo }", "areas: []", "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }", ""].join("\n"),
+        "utf8",
+      );
+      const legacyStore = new KanmerStore(legacyRoot);
+      expect(await legacyStore.detectFormat()).toBeLessThan(3);
+      const census = await auditProofRecords(legacyStore);
+      const result = await migrateProofValidation(legacyStore, { censusDigest: census.digest });
+      expect(result.changed).toBe(false);
+      expect(result.refused).toMatch(/migrate the format first/);
+    } finally {
+      await removeTreeWithRetry(legacyRoot);
+    }
+  });
+});
+
+describe("the census is stable over identical bytes (review round 1, F-001)", () => {
+  let store: KanmerStore;
+  let boardRoot: string;
+
+  /** Frontmatter `gray-matter` cannot parse — the case the cache corrupted. */
+  // Deliberately unique per test. `gray-matter`'s cache is keyed on the input
+  // string and lives for the whole module, so a shared constant would let the
+  // FIRST test in this block poison it and every later one would then pass
+  // under a broken parser without ever exercising the defect. Each test gets
+  // bytes no previous test has read.
+  let malformedProof = "";
+  let malformedCounter = 0;
+
+  const validProof = [
+    "---",
+    "kind: proof-record",
+    "schema: 2",
+    `merged_sha: "${"d".repeat(40)}"`,
+    'environment: "detached worktree"',
+    'verified_at: "2026-09-05T04:00:00.000Z"',
+    "result: PASS",
+    "attempts:",
+    '  - attempted_at: "2026-09-05T04:00:00.000Z"',
+    '    command: "npm run verify"',
+    '    cwd: "/tmp/verify"',
+    "    exit_code: 0",
+    "    result: PASS",
+    "    authority: authoritative",
+    '    summary: "the rail ran"',
+    "---",
+    "",
+    "Evidence.",
+  ].join("\n");
+
+  beforeEach(async () => {
+    malformedCounter += 1;
+    malformedProof = `---\nkind: proof-record\nschema: 2\nround: ${malformedCounter}\nbroken: [unclosed\n---\n\nA real historical record with unparseable YAML.\n`;
+    boardRoot = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-census-pure-"));
+    store = new KanmerStore(boardRoot);
+    await store.init();
+    await store.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
+    const bad = await store.createItem({ type: "ticket", title: "unparseable" });
+    await store.setDoc(bad.id, "proof", malformedProof);
+    const good = await store.createItem({ type: "ticket", title: "valid" });
+    await store.setDoc(good.id, "proof", validProof);
+    const legacy = await store.createItem({ type: "ticket", title: "legacy" });
+    await store.setDoc(legacy.id, "proof", "# Proof\n\nIt worked.\n");
+  });
+
+  afterEach(async () => {
+    await removeTreeWithRetry(boardRoot);
+  });
+
+  it("two dry runs over the same board produce the same digest and the same buckets", async () => {
+    // The exact sequence that failed review: the first reading saw the
+    // malformed record as `invalid`, and every later one saw the cached empty
+    // frontmatter as `legacy`. Byte-identical board, two different censuses.
+    const first = await migrateProofValidation(store, { dryRun: true });
+    const second = await migrateProofValidation(store, { dryRun: true });
+    expect(second.census.digest).toBe(first.census.digest);
+    expect(second.census.counts).toEqual(first.census.counts);
+    expect(first.census.counts.invalid).toBe(1);
+    expect(second.census.counts.invalid).toBe(1);
+    expect(first.census.complete).toBe(true);
+  });
+
+  it("a dry run's digest still authorises the cutover on an unchanged board, and writes only the policy", async () => {
+    // The cutover re-runs the census under the board write lock and compares.
+    // Before the fix this refused on a board nothing had touched, and a second
+    // attempt would then have succeeded — bound to a census that had lost the
+    // invalid records entirely.
+    const preview = await migrateProofValidation(store, { dryRun: true });
+    const boardBefore = await store.getBoard();
+    const proofsBefore = await Promise.all(
+      (await store.listItems()).map(async (item) => [item.id, await store.getDoc(item.id, "proof")] as const),
+    );
+
+    const applied = await migrateProofValidation(store, { censusDigest: preview.census.digest });
+    expect(applied.refused).toBeNull();
+    expect(applied.changed).toBe(true);
+    expect(applied.to).toBe("strict");
+
+    const boardAfter = await store.getBoard();
+    expect(boardAfter.proofValidation).toEqual({ mode: "strict" });
+    expect({ ...boardAfter, proofValidation: undefined }).toEqual({ ...boardBefore, proofValidation: undefined });
+    for (const [id, before] of proofsBefore) {
+      expect(await store.getDoc(id, "proof"), id).toBe(before);
+    }
+  });
+
+  it("keeps reporting the malformed record as invalid after the census has read it repeatedly", async () => {
+    for (let round = 0; round < 3; round += 1) {
+      const census = await auditProofRecords(store);
+      expect(census.counts.invalid, `round ${round}`).toBe(1);
+      expect(census.counts.legacy, `round ${round}`).toBe(1);
+      expect(census.counts.valid, `round ${round}`).toBe(1);
+    }
   });
 });

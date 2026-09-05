@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ProofReceipt } from "./proof-receipts.js";
+import type { ProofRecordState } from "./proof-record.js";
 
 /** The three kinds of item Kanmer stores, each in its own subfolder. */
 export const ItemTypeSchema = z.enum(["ticket", "plan", "research"]);
@@ -381,6 +382,31 @@ export const GroupKindSchema = z.object({
 export type GroupKind = z.infer<typeof GroupKindSchema>;
 
 /**
+ * How the proof requirement is enforced on this board (CORE-129, FRD-006).
+ *
+ * `report` is the compatibility mode and the resolved default for every board
+ * that does not say: the proof requirement is satisfied by existence exactly as
+ * it always was, and the typed record's parsed state is surfaced as a
+ * `get_doc_gates` warning instead of a block. `strict` makes a valid `PASS`
+ * record the only thing that satisfies it.
+ *
+ * The mode lives in `board.yml` rather than an environment variable on purpose:
+ * a host-local switch would let the GUI and an MCP client disagree about
+ * whether a ticket may move, which is the one thing a central gate exists to
+ * prevent.
+ */
+export const ProofValidationConfigSchema = z.object({
+  mode: z.enum(["report", "strict"]),
+});
+export type ProofValidationConfig = z.infer<typeof ProofValidationConfigSchema>;
+
+/** The resolved policy, and whether the board said so or it was defaulted. */
+export interface ProofValidationPolicy {
+  mode: "report" | "strict";
+  source: "board" | "default";
+}
+
+/**
  * board.yml.
  *
  * Format 3 removes `statuses` (stages are constants — ADR-0002) and
@@ -403,6 +429,13 @@ export const BoardConfigSchema = z.object({
   repoDocs: z.record(z.string()).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
+  /**
+   * How hard the proof requirement is enforced (CORE-129). Absent ⇒ `report`,
+   * which is exactly today's existence-only behaviour, so every board written
+   * before this field keeps working unchanged and a Kanmer that predates it
+   * still reads the file. See `resolveProofValidation`.
+   */
+  proofValidation: ProofValidationConfigSchema.optional(),
   /** Git delivery policy (FRD-031). Absent ⇒ main-only; see `resolveDelivery`. */
   delivery: DeliveryConfigSchema.optional(),
   /** Project-declared research sources (FRD-027 / ADR-0020). */
@@ -1116,6 +1149,15 @@ export interface ReconciliationEvidence {
      * PASS/FAIL/mergedSha reading is unaffected.
      */
     receipts?: ProofReceipt[];
+    /**
+     * The typed proof record's parsed state and diagnostics (CORE-129), when
+     * the host boundary had a document to parse. Additive and purely
+     * explanatory: `state` above still decides every route. This exists so the
+     * read-only inspector can say *why* a proof carries no authority — "legacy,
+     * predates the typed contract" and "declares schema 2 and contradicts
+     * itself" are very different situations that both arrive as `invalid`.
+     */
+    record?: { state: ProofRecordState; diagnostics: string[] };
   };
   workspace: {
     state: "not-recorded" | "clean" | "dirty" | "missing" | "unavailable";

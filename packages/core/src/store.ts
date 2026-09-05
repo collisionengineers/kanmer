@@ -45,6 +45,7 @@ import {
   resolveEnvironments,
   resolveProfiles,
   resolveProofTypes,
+  resolveProofValidation,
   writeBoard,
 } from "./board.js";
 import { FIRST_STAGE, STAGE_IDS, isStageId, stageIndex } from "./stages.js";
@@ -60,11 +61,13 @@ import {
   validateProfileMap,
   type ProfileMap,
 } from "./profiles.js";
+import { parseProofDocument } from "./proof-record.js";
 import {
   collapsesPipeline,
   evaluateGateReport as evaluateProfileGates,
   firstBlocking,
   type GateReport,
+  type ProofGateEvidence,
 } from "./gates.js";
 import {
   countCheckboxes,
@@ -1277,7 +1280,17 @@ export class KanmerStore {
       profileId,
       inlineRequires: item.requires,
       stage: item.status,
+      proofValidation: resolveProofValidation(board).mode,
       evidence: {
+        // Read from the packet's own inventory rather than re-reading disk, so
+        // the packet's gate answer is computed from exactly the bytes the
+        // packet reports (CORE-129).
+        proofState: async () => {
+          const document = inventory.find((candidate) => candidate.doc === "proof/proof.md");
+          if (!document || document.content === undefined || document.content === null) return null;
+          const parsed = parseProofDocument(document.content);
+          return { state: parsed.state, diagnostics: parsed.diagnostics };
+        },
         hasType: async (type) => !isGateExempt(type) && documentsOfType(type).length > 0,
         hasNamed: async (type, named) => {
           if (isGateExempt(type)) return false;
@@ -1394,7 +1407,43 @@ export class KanmerStore {
         // protection removeColumn has, so no GUI/agent setBoard path can silently
         // drop a stage/area/priority that items still reference (audit A3).
         await this.assertNoStrandedColumns(previous, board);
+        assertNoProofValidationEscalation(previous, board);
         await writeBoard(this.paths, board);
+      }),
+    );
+  }
+
+  /**
+   * Turn on strict proof validation, bound to a census the caller has already
+   * seen (CORE-129 change 3).
+   *
+   * This exists as its own method — rather than "just set the field with
+   * `updateBoard`" — because turning strict on is the one board edit that can
+   * change what an *existing* ticket owes. Every historical proof on a board of
+   * any age is `legacy` under the typed parser, so the cutover is only safe
+   * once someone has read the census and accepted what it says. `assertCurrent`
+   * re-runs that census while this method holds the board write lock and
+   * refuses on any drift, so the thing authorised is the thing applied and not
+   * merely something that looked the same a moment earlier.
+   *
+   * It writes the policy and nothing else: no proof, ticket, stage or activity
+   * record is touched, which is what makes the cutover reversible by hand.
+   */
+  async activateStrictProofValidation(
+    assertCurrent: () => Promise<void>,
+  ): Promise<{ board: BoardConfig; changed: boolean }> {
+    return this.withLeaseLock(() =>
+      withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+        const previous = await this.getBoard();
+        if (previous.proofValidation?.mode === "strict") {
+          // Idempotent: a repeat call reports "nothing to do" rather than
+          // re-verifying a digest the board has already acted on.
+          return { board: previous, changed: false };
+        }
+        await assertCurrent();
+        const next: BoardConfig = { ...structuredClone(previous), proofValidation: { mode: "strict" } };
+        await writeBoard(this.paths, next);
+        return { board: next, changed: true };
       }),
     );
   }
@@ -1406,6 +1455,7 @@ export class KanmerStore {
         const previous = await this.getBoard();
         const next = await mutator(structuredClone(previous));
         await this.assertNoStrandedColumns(previous, next);
+        assertNoProofValidationEscalation(previous, next);
         await writeBoard(this.paths, next);
         return next;
       }),
@@ -5057,11 +5107,19 @@ export class KanmerStore {
     const blocking = firstBlocking(report, fromStatus, toStatus);
     if (!blocking) return;
 
-    const missing = blocking.requirements.filter((r) => !r.satisfied).map((r) => r.requirement);
+    const unmet = blocking.requirements.filter((r) => !r.satisfied);
+    const missing = unmet.map((r) => r.requirement);
+    // CORE-129: a requirement whose *name* does not explain the refusal — a
+    // proof that exists but is legacy or self-contradicting under strict policy
+    // — carries its reason in `detail`. Without this the message would read
+    // "needs proof" about a file the agent can see, and it would go and write
+    // another one.
+    const details = unmet.map((r) => r.detail).filter((detail): detail is string => Boolean(detail));
     throw new Error(
       `${item.id} cannot move from "${fromStatus}" to "${toStatus}": ` +
         `${blocking.label} requires ${missing.join(", ")} ` +
         `(profile "${report.profile}"). ` +
+        (details.length > 0 ? `${details.join(" ")} ` : "") +
         `Write the missing document(s) with set_ticket_doc` +
         (missing.includes(GOVERNING_DOC)
           ? `, or link a governing doc via refs / set docs_todo`
@@ -5088,14 +5146,37 @@ export class KanmerStore {
       board.defaultProfile,
     );
 
+    // Read once, per report, and memoise: a profile may name `proof` at more
+    // than one boundary, and re-reading (and re-parsing) the same document for
+    // each of them would make the gate's cost a function of the profile table.
+    let proofProbe: Promise<ProofGateEvidence | null> | null = null;
+
     return evaluateProfileGates({
       profiles: resolveProfiles(board),
       profileId,
       inlineRequires: item.requires,
       stage: item.status,
+      proofValidation: resolveProofValidation(board).mode,
       evidence: {
         hasType: (type) => typeSatisfied(ticketDir, type),
         hasNamed: (type, named) => namedSatisfied(ticketDir, type, named),
+        proofState: () => {
+          proofProbe ??= (async (): Promise<ProofGateEvidence | null> => {
+            // Canonical path only (CORE-129). A ticket with no `proof/proof.md`
+            // is the ordinary case — including one whose proof lives at another
+            // path under `proof/` and satisfies the existence gate — so the
+            // absence is caught rather than thrown.
+            let raw: string;
+            try {
+              raw = await readText(docPathIn(ticketDir, "proof"));
+            } catch {
+              return null;
+            }
+            const parsed = parseProofDocument(raw);
+            return { state: parsed.state, diagnostics: parsed.diagnostics };
+          })();
+          return proofProbe;
+        },
         hasGoverningDoc: () => {
           if (item.docs_todo === true) return true;
           return (item.refs ?? []).some((rel) => repoDocKindOf(board, rel) !== null);
@@ -5590,4 +5671,32 @@ function pruneUndefined<T extends object>(obj: T): Partial<T> {
     if (v !== undefined) (out as Record<string, unknown>)[k] = v;
   }
   return out;
+}
+
+/**
+ * Refuse a generic board write that turns strict proof validation on
+ * (CORE-129 change 2).
+ *
+ * `setBoard` and `updateBoard` are the paths the GUI's Settings save, the MCP
+ * column verbs and migration's prefix pinning all funnel through. Any of them
+ * could carry `proofValidation: { mode: "strict" }` as a side effect of an
+ * edit that was about something else entirely — a renamed area, a new proof
+ * type — and the operator would have escalated the Done gate for every ticket
+ * on the board without ever being shown the census that says what that costs.
+ *
+ * Turning it *off* is deliberately allowed: relaxing a gate strands nobody, and
+ * an operator who needs to undo a cutover must not have to hand-edit YAML.
+ * Keeping strict once it is set is likewise fine. Only the escalation is
+ * refused, and it has exactly one legitimate route:
+ * `activateStrictProofValidation`.
+ */
+function assertNoProofValidationEscalation(previous: BoardConfig, next: BoardConfig): void {
+  if (next.proofValidation?.mode !== "strict") return;
+  if (previous.proofValidation?.mode === "strict") return;
+  throw new Error(
+    `PROOF_VALIDATION_ESCALATION_REFUSED: enabling strict proof validation changes what every ` +
+      `ticket on this board owes at the Done gate, so it cannot be set by an ordinary board ` +
+      `write. Run migrate_board with dry_run: true to census the existing proof records, then ` +
+      `pass that census digest back to migrate_board to enable it deliberately.`,
+  );
 }

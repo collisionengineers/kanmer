@@ -105,4 +105,61 @@ The two injections are kept as **separate functions with separate rules** in
 helper would erase the difference between a pass that may not change the boundary
 count and one that exists to.
 
-Related: ADR-0003 (requirement profiles) · ADR-0009 (skills are not the contract) · ADR-0014 (`fix` gains a gated `enter-review`) · FRD-002 · FRD-009 · FRD-023 · CORE-011 · SKILL-012 · SKILL-013.
+## Amendment: a second bounded content reader, for the typed proof record (CORE-129)
+
+The decision above says the engine gains **one** content-reading path and that
+"any future requirement proposing to read inside a document must clear the three
+properties above and amend this ADR." This is that amendment. It authorises a
+second reader, for the `proof` requirement, and it is deliberately written as an
+exception rather than a relaxation: the default remains existence, and a third
+reader needs a third amendment.
+
+**What is read.** Only the canonical `proof/proof.md`, and only through the one
+parser in `packages/core/src/proof-record.ts`. Other markdown under `proof/`
+satisfies the existence gate exactly as it always has and supplies no machine
+authority, so "which file is the proof?" is never a question the gate guesses at.
+
+**Why the default was not enough.** [[CORE-042]] sat looking finished for five
+days with `result: PASS` in its frontmatter and, further down the *same*
+document, a later independent rerun recording `npm run verify` FAIL on five
+tests and the sentence "CORE-042 stays Verifying and is not moved or closed."
+[[GUI-141]] was actually moved to Done on the same shape of evidence and had to
+be reverted. Existence gating cannot see any of that, and neither can a reader
+that trusts one frontmatter field: the failure is *inside* the document.
+
+**The three properties, against this reader.**
+
+1. **The convention is already shipped and already written.** `kanmer-verify`
+   has written `kind: proof-record` frontmatter with an `attempts[]` ledger since
+   ADR-0016. This types what was already there — it does not ask authors to learn
+   a new document.
+2. **The parser judges structure, not merit.** It checks that the top-level
+   verdict restates the final authoritative attempt, that timestamps increase,
+   that a PASS carries exit 0 and no failure class. It never decides whether the
+   evidence is *good*, or reads a word of the prose below the frontmatter — that
+   is the class of judgement this ADR reserves for warnings, and it stays there
+   (the visual-proof image advisory is untouched).
+3. **The failure mode is a stuck ticket.** A refused proof is visible in
+   `get_doc_gates`, names its own diagnosis, and clears by rewriting one
+   document. The failure it replaces was invisible and shipped a false Done.
+
+**Two limits this reader accepts, mirroring the two on the injection above.**
+
+1. **It never invents authority.** A record without `schema: 2` — which is every
+   proof written before CORE-129 — is reported `legacy` and is never parsed for
+   meaning, never heuristically upgraded and never rewritten. History is
+   described, not reinterpreted; the free-prose contradiction that motivated this
+   amendment is reported as *unvalidated*, not as a FAIL the parser inferred.
+2. **It is off unless a board turns it on.** `board.yml`'s `proofValidation.mode`
+   gates the whole reader: absent resolves to `report`, where the parsed state is
+   a warning and the historical existence gate still decides. Only `strict` makes
+   it block, only `migrate_board`'s census-bound cutover can reach `strict` on an
+   existing board, and an ordinary `setBoard`/`updateBoard` is refused. A board
+   created after CORE-129 starts `strict` because it has no history to strand.
+
+The cost, stated because it is real: `EvidenceProbe` gains a second method, and
+the movement gate now performs one file read it did not before. The read is
+memoised per report, so a profile naming `proof` at several boundaries still
+costs one.
+
+Related: ADR-0003 (requirement profiles) · ADR-0009 (skills are not the contract) · ADR-0014 (`fix` gains a gated `enter-review`) · ADR-0016 (compiled workflow) · FRD-002 · FRD-006 · FRD-009 · FRD-023 · CORE-011 · CORE-129 · SKILL-012 · SKILL-013.

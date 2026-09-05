@@ -17,6 +17,11 @@ beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-delivery-"));
   store = new KanmerStore(root, { actor: "test-actor" });
   await store.init();
+  // These fixtures model a board that predates CORE-129's typed proof record:
+  // their proofs are free text, which is exactly what `report` mode is for. The
+  // strict path has its own tests rather than being retrofitted onto every
+  // existence-gate case here.
+  await store.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
 });
 
 afterEach(async () => {

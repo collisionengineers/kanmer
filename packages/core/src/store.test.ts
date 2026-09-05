@@ -35,6 +35,11 @@ beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-test-"));
   store = new KanmerStore(root);
   await store.init();
+  // These fixtures model a board that predates CORE-129's typed proof record:
+  // their proofs are free text, which is exactly what `report` mode is for. The
+  // strict path has its own tests rather than being retrofitted onto every
+  // existence-gate case here.
+  await store.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
 });
 
 afterEach(async () => {
@@ -1935,5 +1940,66 @@ describe("reference files", () => {
 
   it("errors on an unknown ticket", async () => {
     await expect(store.addReference("NOPE-001", src)).rejects.toThrow(/No item with id/);
+  });
+});
+
+describe("strict proof validation is a deliberate cutover (CORE-129)", () => {
+  it("refuses a setBoard that escalates report to strict", async () => {
+    const board = await store.getBoard();
+    await expect(store.setBoard({ ...board, proofValidation: { mode: "strict" } })).rejects.toThrow(
+      /PROOF_VALIDATION_ESCALATION_REFUSED/,
+    );
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("refuses an updateBoard that escalates, however incidental the edit", async () => {
+    await expect(
+      store.updateBoard((board) => ({
+        ...board,
+        proofTypes: [...(board.proofTypes ?? []), "screenshot"],
+        proofValidation: { mode: "strict" },
+      })),
+    ).rejects.toThrow(/PROOF_VALIDATION_ESCALATION_REFUSED/);
+    // The whole write is refused, so the unrelated edit does not land either.
+    expect((await store.getBoard()).proofTypes).not.toContain("screenshot");
+  });
+
+  it("allows relaxing strict back to report without ceremony", async () => {
+    await store.activateStrictProofValidation(async () => {});
+    await store.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("writes only the policy through the dedicated cutover, and re-asserts under the lock", async () => {
+    const before = await store.getBoard();
+    let asserted = 0;
+    const result = await store.activateStrictProofValidation(async () => {
+      asserted += 1;
+    });
+    expect(asserted).toBe(1);
+    expect(result.changed).toBe(true);
+    const after = await store.getBoard();
+    expect(after.proofValidation).toEqual({ mode: "strict" });
+    expect({ ...after, proofValidation: undefined }).toEqual({ ...before, proofValidation: undefined });
+  });
+
+  it("writes nothing when the caller's assertion refuses", async () => {
+    await expect(
+      store.activateStrictProofValidation(async () => {
+        throw new Error("PROOF_CENSUS_DIGEST_MISMATCH");
+      }),
+    ).rejects.toThrow(/PROOF_CENSUS_DIGEST_MISMATCH/);
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("is idempotent, and does not re-run the assertion on an already-strict board", async () => {
+    await store.activateStrictProofValidation(async () => {});
+    let asserted = 0;
+    const again = await store.activateStrictProofValidation(async () => {
+      asserted += 1;
+    });
+    expect(again.changed).toBe(false);
+    expect(asserted).toBe(0);
+    expect((await store.getBoard()).proofValidation).toEqual({ mode: "strict" });
   });
 });

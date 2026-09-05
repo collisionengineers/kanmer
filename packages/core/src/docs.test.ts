@@ -17,6 +17,11 @@ beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-docs-"));
   store = new KanmerStore(root);
   await store.init();
+  // These fixtures model a board that predates CORE-129's typed proof record:
+  // their proofs are free text, which is exactly what `report` mode is for. The
+  // strict path has its own tests rather than being retrofitted onto every
+  // existence-gate case here.
+  await store.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
 });
 
 afterEach(async () => {
@@ -610,5 +615,226 @@ describe("countCheckboxes", () => {
     const dir = await write(id, "Some prose. Nothing to decide.\n");
     expect(await countCheckboxes(dir, "open-questions")).toEqual({ checked: 0, total: 0 });
     expect(await countCheckboxes(dir, "research")).toEqual({ checked: 0, total: 0 });
+  });
+});
+
+/**
+ * CORE-129. These build their own store rather than using the shared one above,
+ * because the shared fixture deliberately runs in `report` mode and these are
+ * about the difference between the two.
+ */
+describe("typed proof validation (CORE-129)", () => {
+  const SHA = "c".repeat(40);
+
+  /** A valid `proof-record/2` document with one authoritative attempt. */
+  function typedProof(over: { result?: string; failureClass?: string; exitCode?: number } = {}): string {
+    const result = over.result ?? "PASS";
+    return [
+      "---",
+      "kind: proof-record",
+      "schema: 2",
+      `merged_sha: "${SHA}"`,
+      'environment: "detached worktree, Node 24"',
+      'verified_at: "2026-09-05T04:00:00.000Z"',
+      `result: ${result}`,
+      ...(over.failureClass ? [`failure_class: ${over.failureClass}`] : []),
+      "attempts:",
+      '  - attempted_at: "2026-09-05T04:00:00.000Z"',
+      '    command: "npm run verify"',
+      '    cwd: "/tmp/verify"',
+      `    exit_code: ${over.exitCode ?? 0}`,
+      `    result: ${result}`,
+      "    authority: authoritative",
+      '    summary: "the rail ran"',
+      ...(over.failureClass ? [`    failure_class: ${over.failureClass}`] : []),
+      "---",
+      "",
+      "Evidence.",
+    ].join("\n");
+  }
+
+  async function strictTicket(): Promise<{ store: KanmerStore; root: string; id: string }> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-strict-"));
+    const s = new KanmerStore(dir);
+    await s.init();
+    // A fresh board is strict by construction — no fixture setup required.
+    const item = await s.createItem({ type: "ticket", title: "Strict", profile: "chore" });
+    await s.setDoc(item.id, "plan", "# Plan");
+    await s.moveItem(item.id, { status: "implementing" });
+    await s.moveItem(item.id, { status: "verifying" });
+    return { store: s, root: dir, id: item.id };
+  }
+
+  it("refuses Done on a free-text proof and says the proof is legacy, not missing", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", "# Proof\n\nIt worked, honest.\n");
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(
+        /predates the typed `proof-record\/2` contract/,
+      );
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("admits a valid schema-2 PASS record", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", typedProof());
+      expect((await s.moveItem(id, { status: "done" })).status).toBe("done");
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("refuses a schema-2 record whose top-level PASS is contradicted by its own final attempt", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(
+        id,
+        "proof",
+        typedProof().replace("result: PASS\nattempts:", "result: PASS\nattempts:").replace(
+          "    result: PASS\n    authority: authoritative",
+          "    result: FAIL\n    authority: authoritative\n    failure_class: implementation",
+        ).replace("    exit_code: 0", "    exit_code: 1"),
+      );
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(
+        /declares the typed proof contract and breaks it/,
+      );
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("refuses a valid FAIL record: strict Done is PASS or nothing", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", typedProof({ result: "FAIL", failureClass: "implementation", exitCode: 1 }));
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(/is a valid FAIL record/);
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("refuses authority from a non-canonical markdown under proof/", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      // Satisfies the existence gate exactly as it always has, and supplies no
+      // machine authority: only `proof/proof.md` does that.
+      await s.setDoc(id, "proof/after.md", typedProof());
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(
+        /there is no canonical `proof\/proof\.md`/,
+      );
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("in report mode allows the move and surfaces the parsed state as a warning", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
+      await s.setDoc(id, "proof", "# Proof\n\nIt worked, honest.\n");
+      const gates = (await s.getDocGates(id))!;
+      expect(gates.warnings.join(" ")).toMatch(/has never been validated/);
+      expect(gates.warnings.join(" ")).toMatch(/policy is "report"/);
+      expect((await s.moveItem(id, { status: "done" })).status).toBe("done");
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("in report mode says nothing about a valid PASS record", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.updateBoard((board) => ({ ...board, proofValidation: { mode: "report" } }));
+      await s.setDoc(id, "proof", typedProof());
+      expect((await s.getDocGates(id))!.warnings).toEqual([]);
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+});
+
+/**
+ * Review round 1, F-002. The behaviour was implemented but nothing pinned it,
+ * and the checklist and plan asserted the opposite. The decision, now recorded
+ * here as well as in FRD-006 R7 and `kanmer-verify`: an operator waiver is an
+ * explicit human disposition and it DOES satisfy the strict gate — the verify
+ * skill has always said "only `PASS`, or an operator's `WAIVED_BY_OPERATOR`,
+ * permits the final move". What it must never be is anonymous, and what it
+ * must never do is authorise an *automated* move (reconciliation declines it
+ * separately, in `proofEvidence`).
+ */
+describe("operator waivers under strict proof validation (CORE-129, F-002)", () => {
+  const SHA = "c".repeat(40);
+
+  function waivedProof(over: { waivedBy?: string | null; reason?: string | null } = {}): string {
+    const lines = [
+      "---",
+      "kind: proof-record",
+      "schema: 2",
+      `merged_sha: "${SHA}"`,
+      'environment: "detached worktree, Node 24"',
+      'verified_at: "2026-09-05T04:00:00.000Z"',
+      "result: WAIVED_BY_OPERATOR",
+      "failure_class: inconclusive",
+    ];
+    if (over.waivedBy !== null) lines.push(`waived_by: "${over.waivedBy ?? "Alex"}"`);
+    if (over.reason !== null) lines.push(`waiver_reason: "${over.reason ?? "the installed-host check cannot run on this machine"}"`);
+    lines.push(
+      "attempts:",
+      '  - attempted_at: "2026-09-05T04:00:00.000Z"',
+      "    exit_code: null",
+      "    result: INCONCLUSIVE",
+      "    authority: authoritative",
+      "    failure_class: inconclusive",
+      '    summary: "no packaged build available on this host"',
+      "---",
+      "",
+      "Waived by Alex: the installed-host check cannot run here.",
+    );
+    return lines.join("\n");
+  }
+
+  async function strictTicket(): Promise<{ store: KanmerStore; root: string; id: string }> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-waiver-"));
+    const s = new KanmerStore(dir);
+    await s.init();
+    const item = await s.createItem({ type: "ticket", title: "Waived", profile: "chore" });
+    await s.setDoc(item.id, "plan", "# Plan");
+    await s.moveItem(item.id, { status: "implementing" });
+    await s.moveItem(item.id, { status: "verifying" });
+    return { store: s, root: dir, id: item.id };
+  }
+
+  it("admits a well-formed waiver naming the operator and the reason", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", waivedProof());
+      expect((await s.moveItem(id, { status: "done" })).status).toBe("done");
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("refuses a waiver that names no operator", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", waivedProof({ waivedBy: null }));
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(/waived_by naming the operator/);
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
+  });
+
+  it("refuses a waiver that gives no reason", async () => {
+    const { store: s, root: dir, id } = await strictTicket();
+    try {
+      await s.setDoc(id, "proof", waivedProof({ reason: null }));
+      await expect(s.moveItem(id, { status: "done" })).rejects.toThrow(/requires waiver_reason/);
+    } finally {
+      await removeTreeWithRetry(dir);
+    }
   });
 });

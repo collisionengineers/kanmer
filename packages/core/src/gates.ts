@@ -23,6 +23,7 @@ import {
   type Requirement,
   requirementsFor,
 } from "./profiles.js";
+import type { ProofRecordState } from "./proof-record.js";
 
 /** One requirement and whether it is currently met. */
 export interface RequirementStatus {
@@ -31,6 +32,15 @@ export interface RequirementStatus {
   satisfied: boolean;
   /** Soft advice — a declared proof type whose evidence looks absent. */
   warning?: string;
+  /**
+   * Why a requirement stands where it does, when the requirement's own name
+   * does not say (CORE-129). Deliberately not `warning`: warnings are the
+   * report's *non-blocking* channel, and a strict proof refusal is a block —
+   * putting its explanation there would make "warnings" mean two things. The
+   * move refusal quotes this so an agent is told "the proof is legacy", not
+   * merely "needs proof" about a file it can see on disk.
+   */
+  detail?: string;
 }
 
 /** One boundary's requirements. */
@@ -72,6 +82,27 @@ export interface EvidenceProbe {
    * *content* rather than its existence.
    */
   unresolvedQuestions(): Promise<number>;
+  /**
+   * The parsed state of the canonical `proof/proof.md`, or `null` when that
+   * exact document does not exist (CORE-129). The *second* content reader in
+   * this interface, and the last: ADR-0011 bounds it explicitly.
+   *
+   * Only the canonical path counts. A ticket may keep any number of markdown
+   * files under `proof/` and they satisfy the existence gate as they always
+   * have, but machine authority comes from one document at one path — otherwise
+   * "which file is the proof?" becomes a question the gate has to guess at.
+   *
+   * Optional so that an older `EvidenceProbe` implementation still compiles;
+   * an absent probe behaves as `report` mode, which is what it always did.
+   */
+  proofState?(): Promise<ProofGateEvidence | null>;
+}
+
+/** What the gate engine is told about the canonical proof document. */
+export interface ProofGateEvidence {
+  state: ProofRecordState;
+  /** Deterministic parser diagnostics, surfaced verbatim. */
+  diagnostics: string[];
 }
 
 export interface EvaluateInput {
@@ -81,9 +112,36 @@ export interface EvaluateInput {
   inlineRequires?: ProfileMap;
   stage: string;
   evidence: EvidenceProbe;
+  /**
+   * The board's proof-validation policy (CORE-129). Absent ⇒ `report`, which
+   * is the historical existence-only behaviour, so every caller that has not
+   * been taught about the policy keeps the semantics it had.
+   */
+  proofValidation?: "report" | "strict";
 }
 
-async function statusOf(req: Requirement, ev: EvidenceProbe): Promise<RequirementStatus> {
+/** Human phrasing for a parsed proof state, used in both channels. */
+function describeProofState(proof: ProofGateEvidence | null): string {
+  if (!proof) return "there is no canonical `proof/proof.md`";
+  switch (proof.state) {
+    case "valid-pass":
+      return "`proof/proof.md` is a valid PASS record";
+    case "valid-fail":
+      return "`proof/proof.md` is a valid FAIL record";
+    case "valid-inconclusive":
+      return "`proof/proof.md` is a valid INCONCLUSIVE record";
+    case "legacy":
+      return "`proof/proof.md` predates the typed `proof-record/2` contract and has never been validated";
+    default:
+      return "`proof/proof.md` declares the typed proof contract and breaks it";
+  }
+}
+
+async function statusOf(
+  req: Requirement,
+  ev: EvidenceProbe,
+  proofValidation: "report" | "strict",
+): Promise<RequirementStatus> {
   if (req.type === GOVERNING_DOC) {
     return { requirement: req.raw, type: req.type, satisfied: ev.hasGoverningDoc() };
   }
@@ -111,13 +169,46 @@ async function statusOf(req: Requirement, ev: EvidenceProbe): Promise<Requiremen
 
   const out: RequirementStatus = { requirement: req.raw, type: req.type, satisfied };
 
+  // Typed proof authority (CORE-129, FRD-006). Only reached once existence is
+  // satisfied, so an absent proof still fails for the reason it always did.
+  //
+  // `report` and `strict` deliberately use different channels rather than
+  // different severities of the same one. In `report` the move is allowed and
+  // the finding is advice, which is a warning by this module's own definition.
+  // In `strict` the move is refused and the finding is the *reason* for the
+  // refusal, which is `detail`. Collapsing them would either turn today's
+  // boards into stuck ones or turn a hard gate into text nobody has to read.
+  if (satisfied && req.type === "proof") {
+    const proof = ev.proofState ? await ev.proofState() : null;
+    if (proofValidation === "strict") {
+      if (!proof || proof.state !== "valid-pass") {
+        out.satisfied = false;
+        out.detail =
+          `${describeProofState(proof)}. This board's proof policy is "strict", so entering Done ` +
+          `needs a valid \`proof-record/2\` PASS at the exact merge SHA` +
+          (proof && proof.diagnostics.length > 0 ? ` — ${proof.diagnostics.join("; ")}` : "") +
+          `.`;
+      }
+    } else if (proof && proof.state !== "valid-pass") {
+      out.warning =
+        `${describeProofState(proof)}. This board's proof policy is "report", so the move is ` +
+        `allowed — read the whole document yourself` +
+        (proof.diagnostics.length > 0 ? ` (${proof.diagnostics.join("; ")})` : "") +
+        `.`;
+    }
+  }
+
   // Soft validation (FRD-006 R4): a declared flavour of proof whose evidence
   // looks missing is a warning, never a block. Warnings keep the human judging
   // what machines judge badly — an "image" check cannot tell a screenshot from
   // a decorative logo, so it must not be allowed to stop a move.
   if (satisfied && req.type === "proof" && req.proofType === "visual") {
     if (!(await ev.hasProofImages())) {
-      out.warning = `\`${req.raw}\` expects a screenshot, but no image files were found under proof/. Move allowed — check this yourself.`;
+      const advisory = `\`${req.raw}\` expects a screenshot, but no image files were found under proof/. Move allowed — check this yourself.`;
+      // Appended, never assigned: the typed-proof reading above may already
+      // have written here, and one warning silently replacing another is how a
+      // finding goes missing.
+      out.warning = out.warning ? `${out.warning} ${advisory}` : advisory;
     }
   }
   return out;
@@ -126,6 +217,7 @@ async function statusOf(req: Requirement, ev: EvidenceProbe): Promise<Requiremen
 /** Evaluate every boundary for a ticket, plus which stages it can reach. */
 export async function evaluateGateReport(input: EvaluateInput): Promise<GateReport> {
   const { profiles, profileId, inlineRequires, stage, evidence } = input;
+  const proofValidation = input.proofValidation ?? "report";
   const from = stageIndex(stage);
 
   const boundaries: BoundaryStatus[] = [];
@@ -135,7 +227,7 @@ export async function evaluateGateReport(input: EvaluateInput): Promise<GateRepo
     const reqs = requirementsFor(profiles, profileId, boundary, inlineRequires);
     if (!reqs.length) continue;
 
-    const requirements = await Promise.all(reqs.map((r) => statusOf(r, evidence)));
+    const requirements = await Promise.all(reqs.map((r) => statusOf(r, evidence, proofValidation)));
     for (const r of requirements) if (r.warning) warnings.push(r.warning);
 
     boundaries.push({

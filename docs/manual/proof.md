@@ -79,6 +79,45 @@ event, a completed `verify` job, and a `success` conclusion; anything else
 is rejected and the obligation is verified the old way, in the worktree.
 `receipts` is optional: a proof with none of them behaves exactly as it did
 before this list existed, and no existing proof is rewritten to add one.
-This is foundational plumbing for the typed, versioned `attempts[]` record
-that a later release validates for internal consistency — receipts sit
-beside that ledger, not inside it.
+Receipts sit beside the attempt ledger, not inside it, and the same reader
+validates both. It adds one rule about the document itself: a receipt naming a
+different commit from the proof's own `merged_sha` makes the whole record
+invalid, because a proof cannot claim to have verified one commit while
+carrying evidence about another.
+
+## When the proof itself is checked
+
+`proof/proof.md` is a record, not an essay with a verdict stapled to the top.
+A current record says `schema: 2` and carries an `attempts:` ledger where every
+rerun is its own entry, with its own timestamp, result and exit code. Two rules
+give the record its meaning:
+
+- **The last attempt is the verdict.** The final entry must be marked
+  `authority: authoritative`, and the top-level `result` has to agree with it.
+  A rerun that failed cannot be filed as a supporting note underneath an earlier
+  PASS — it has to become the verdict, or the record is refused.
+- **The parts have to agree.** A PASS with a non-zero exit code, a FAIL with no
+  failure class, attempts out of chronological order, a `verified_at` that does
+  not match the last attempt: each of these is a contradiction the record cannot
+  hold, and each is reported by name.
+
+This exists because a proof that said PASS while its own body recorded a later
+failing rerun once left a ticket looking finished for five days, and another
+ticket was closed on the same shape of evidence and had to be reopened.
+
+Whether that check *blocks* anything is your board's decision, in
+`board.yml`:
+
+- **`report`** — the reading appears as a warning and nothing is refused. Every
+  board that predates this check starts here, because every proof written before
+  it is, by definition, not a schema-2 record. Those older proofs are reported as
+  *legacy*: described, never rewritten, and never quietly reinterpreted.
+- **`strict`** — entering Done needs a valid PASS record at the exact merge SHA.
+  Boards created from now on start here.
+
+To move an existing board to strict, ask `migrate_board` for a dry run first. It
+reads every ticket's proof and tells you how many are valid, legacy or
+self-contradicting, with the diagnosis per ticket, and it changes nothing. If you
+want to go ahead, hand the digest it gave you back to the same tool; anything
+else — no digest, a stale one, a board that has changed since — is refused
+without writing. Turning strict on never edits a single proof.

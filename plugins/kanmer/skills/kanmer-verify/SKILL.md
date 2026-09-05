@@ -149,16 +149,43 @@ or Windows-lock check that is unavailable. Record that attempt as
 `FAIL` with its exact non-zero exit; if a later retry passes, retain both
 attempts in chronological order.
 
-For each attempt record:
+Every rerun that can change the verdict is its own typed attempt. Never record
+a rerun as prose appended below the frontmatter: prose is not read by anything,
+and a proof whose body contradicted its own verdict is the defect this record
+exists to make impossible.
+
+For each attempt record, one of exactly two shapes. A command that ran:
 
 ```yaml
 - attempted_at: "<ISO-8601 timestamp>"
-  command: "<exact command or manual check>"
+  command: "<exact command>"
   cwd: "<repo-relative or injected detached path>"
-  exit_code: 0 # integer, or null for manual/inconclusive
-  result: PASS # PASS | FAIL | INCONCLUSIVE | NOT_APPLICABLE
+  exit_code: 0 # integer; 0 for PASS, non-zero for FAIL
+  result: PASS # PASS | FAIL | INCONCLUSIVE
+  authority: authoritative # authoritative | supporting
   summary: "<observed output/result synopsis>"
 ```
+
+A manual or unavailable check, where no process ran — omit `command` and `cwd`
+entirely and describe the procedure in `summary`:
+
+```yaml
+- attempted_at: "<ISO-8601 timestamp>"
+  exit_code: null
+  result: INCONCLUSIVE
+  authority: authoritative
+  failure_class: inconclusive
+  summary: "<what could not be run, and what would make it conclusive>"
+```
+
+`authority` is the field that makes the ledger mean something. **The final
+entry must be `authoritative`**, and everything before it may be `supporting`.
+So a rerun that fails after an earlier pass cannot be filed as a supporting
+note: it becomes the final authoritative entry, and the top-level `result`
+follows it. Attempt timestamps strictly increase; two attempts may not share
+one. A `FAIL` attempt carries `failure_class: implementation | plan |
+transient`; an `INCONCLUSIVE` attempt carries `failure_class: inconclusive`; a
+`PASS` attempt carries none.
 
 ## Whole-file proof record and Done gate
 
@@ -168,18 +195,31 @@ append a proof frontmatter record. The frontmatter is exactly:
 
 ```yaml
 kind: proof-record
+schema: 2
 merged_sha: "<full merge commit SHA>"
 environment: "<detached verification worktree and runtime>"
-verified_at: "<ISO-8601 timestamp>"
+verified_at: "<ISO-8601 timestamp, equal to the final attempt's attempted_at>"
 result: PASS
-attempts: []
+attempts:
+  - # at least one; see the attempt shapes above
 ```
 
-`merged_sha`, environment, and timestamp are non-empty. The top-level result
-is exactly `PASS | FAIL | INCONCLUSIVE | NOT_APPLICABLE | WAIVED_BY_OPERATOR`.
-`WAIVED_BY_OPERATOR` is a human disposition only and requires the operator
-identity and reason in the body; it is not a normal attempt result and the
-verifier never writes it on its own authority. Keep every failed or
+`schema: 2` is what declares the validated record. Write it on every proof you
+write. Omit it and the record is reported `legacy` — never rewritten, never
+reinterpreted, and no authority for Done on a board with strict proof
+validation.
+
+`merged_sha` is a full 40-hex object id; `environment` and `verified_at` are
+non-empty, and `verified_at` equals the final authoritative attempt's
+`attempted_at`. The top-level result is exactly
+`PASS | FAIL | INCONCLUSIVE | WAIVED_BY_OPERATOR`, and — apart from a waiver —
+it must equal the final authoritative attempt's result. A non-PASS record also
+carries a top-level `failure_class` equal to that attempt's.
+
+`WAIVED_BY_OPERATOR` is a human disposition only. It requires `waived_by` and
+`waiver_reason` in the frontmatter naming the operator and the reason; it is
+not an attempt result, the verifier never writes it on its own authority, and
+reconciliation never recommends a move from one. Keep every failed or
 inconclusive attempt when a later run passes.
 
 When step 3 found a satisfied receipt, add it beside `attempts:` as one

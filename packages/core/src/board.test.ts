@@ -3,9 +3,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { removeTreeWithRetry } from "./io.js";
-import { defaultBoardConfig, lastStageId, resolveProfiles, writeBoard } from "./board.js";
+import { defaultBoardConfig, lastStageId, readBoard, resolveProfiles, resolveProofValidation, writeBoard } from "./board.js";
 import { QUESTIONS_RESOLVED } from "./profiles.js";
 import { resolvePaths, type KanmerPaths } from "./paths.js";
+import { BoardConfigSchema, type BoardConfig } from "./types.js";
 
 let root: string;
 let paths: KanmerPaths;
@@ -188,5 +189,39 @@ describe("resolveProfiles gives fix an enter-review (ADR-0014)", () => {
   it("does not invent the profile back on a board that removed fix", () => {
     const board = { profiles: { chore: { "enter-done": ["proof"] } } } as never;
     expect(resolveProfiles(board).fix).toBeUndefined();
+  });
+});
+
+describe("proof-validation policy (CORE-129)", () => {
+  it("resolves an absent policy to report, and says the board did not choose it", () => {
+    // The compatibility guarantee, asserted directly: every board written
+    // before this field exists must keep behaving exactly as it did.
+    expect(resolveProofValidation({ areas: [], idPrefixes: {} } as unknown as BoardConfig)).toEqual({
+      mode: "report",
+      source: "default",
+    });
+  });
+
+  it("reports an explicit policy as the board's own, in either mode", () => {
+    const board = (mode: "report" | "strict") =>
+      ({ areas: [], idPrefixes: {}, proofValidation: { mode } }) as unknown as BoardConfig;
+    expect(resolveProofValidation(board("report"))).toEqual({ mode: "report", source: "board" });
+    expect(resolveProofValidation(board("strict"))).toEqual({ mode: "strict", source: "board" });
+  });
+
+  it("gives a fresh board strict, because it has no unvalidated history to protect", () => {
+    expect(defaultBoardConfig().proofValidation).toEqual({ mode: "strict" });
+    expect(resolveProofValidation(defaultBoardConfig())).toEqual({ mode: "strict", source: "board" });
+  });
+
+  it("round-trips the policy through board.yml", async () => {
+    await writeBoard(paths, { ...defaultBoardConfig(), proofValidation: { mode: "report" } });
+    expect((await readBoard(paths)).proofValidation).toEqual({ mode: "report" });
+  });
+
+  it("refuses a mode this build does not know rather than silently dropping it", () => {
+    expect(() =>
+      BoardConfigSchema.parse({ areas: [], idPrefixes: {}, proofValidation: { mode: "paranoid" } }),
+    ).toThrow();
   });
 });

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { ensureDir, pathExists, readText, writeFileAtomic, TMP_FILE_RE } from "./io.js";
 import {
   areaFolderName,
@@ -9,6 +10,12 @@ import {
   type KanmerPaths,
 } from "./paths.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
+import {
+  PROOF_RECORD_PARSER_VERSION,
+  parseProofDocument,
+  proofCensusBucket,
+  type ProofRecordState,
+} from "./proof-record.js";
 import { parseWikiLinks } from "./links.js";
 import { areaPrefix, DEFAULT_GROUP_KINDS } from "./board.js";
 import { isStageId, type StageId } from "./stages.js";
@@ -798,14 +805,25 @@ async function listDirSafe(dir: string): Promise<string[]> {
  */
 export async function migrateBoard(
   store: KanmerStore,
-  opts: { dryRun?: boolean; fallbackFingerprint?: string } = {},
-): Promise<{ v2: MigrationReport; backfill: BackfillReport; v3: V3Report; identity: IdentityReport }> {
+  opts: { dryRun?: boolean; fallbackFingerprint?: string; proofCensusDigest?: string } = {},
+): Promise<{
+  v2: MigrationReport;
+  backfill: BackfillReport;
+  v3: V3Report;
+  identity: IdentityReport;
+  proofValidation: ProofValidationReport;
+}> {
   const dryRun = opts.dryRun ?? false;
   const v2 = await migrateToV2(store, { dryRun });
   const backfill = await backfillStages(store, { dryRun });
   const v3 = await migrateToV3(store, { dryRun });
   const identity = await migrateIdentity(store, { dryRun, fallbackFingerprint: opts.fallbackFingerprint });
-  return { v2, backfill, v3, identity };
+  // Last, and deliberately after the format steps: the census reads
+  // `areas/<area>/<id>/proof/proof.md`, which is only where proofs live once
+  // the board is format 3 (CORE-129). Its own format check refuses the cutover
+  // on anything older rather than censusing a layout it cannot see.
+  const proofValidation = await migrateProofValidation(store, { dryRun, censusDigest: opts.proofCensusDigest });
+  return { v2, backfill, v3, identity, proofValidation };
 }
 
 /** What the one-time logical-identity migration did (or would do) — FRD-029. */
@@ -837,4 +855,198 @@ export async function migrateIdentity(
     fallbackFingerprint: opts.fallbackFingerprint,
   });
   return { allocated, wouldAllocate: false, project_id: record.project_id, origin: record.origin };
+}
+
+// ---------------------------------------------------------------------------
+// Proof-record census and the strict-validation cutover (CORE-129)
+// ---------------------------------------------------------------------------
+
+/** One ticket's canonical proof, as the census read it. */
+export interface ProofCensusEntry {
+  id: string;
+  stage: string;
+  archived: boolean;
+  /** `null` when the ticket has no `proof/proof.md` at all. */
+  state: ProofRecordState | null;
+  bucket: "valid" | "legacy" | "invalid" | "absent";
+  /** Raw document size in bytes, before parsing. */
+  bytes: number;
+  /** SHA-256 of the raw bytes — the census never rewrites, only fingerprints. */
+  sha256: string;
+  diagnostics: string[];
+}
+
+/** The read-only census `migrate_board`'s dry run returns. */
+export interface ProofCensus {
+  parserVersion: string;
+  /**
+   * False when anything could not be listed or read. A census that cannot see
+   * the whole board is not evidence about the whole board, and an incomplete
+   * one may never authorise the cutover.
+   */
+  complete: boolean;
+  /** Why the census is incomplete, if it is. */
+  problems: string[];
+  counts: { valid: number; legacy: number; invalid: number; absent: number; total: number };
+  entries: ProofCensusEntry[];
+  /**
+   * Binds this exact reading. Covers the parser version, and every ticket's
+   * identity, stage, raw proof size, raw proof SHA-256 and parsed state, in a
+   * deterministic order. A caller passes it back to authorise the cutover, and
+   * the cutover recomputes it under the write lock — so authorising one census
+   * and applying a different one is not possible.
+   */
+  digest: string;
+}
+
+/**
+ * Census every ticket's canonical `proof/proof.md`. Read-only in the strongest
+ * sense available: it opens documents and hashes bytes, and writes nothing at
+ * all — not the proofs, not the tickets, not the activity log.
+ *
+ * Only `proof/proof.md` is read. A ticket may hold other markdown under
+ * `proof/`, and those satisfy the existence gate as they always have; they are
+ * simply not the document machine authority is read from, so counting them here
+ * would report a stricter board than the one that would actually be enforced.
+ */
+export async function auditProofRecords(store: KanmerStore): Promise<ProofCensus> {
+  const problems: string[] = [];
+  const entries: ProofCensusEntry[] = [];
+
+  const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
+  for (const warning of warnings) {
+    problems.push(`${warning.file}: ${warning.message}`);
+  }
+
+  // Sorted by id so the digest is a function of board content, never of
+  // directory-read order (which differs between filesystems).
+  const tickets = items
+    .filter((item) => item.type === "ticket")
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  for (const item of tickets) {
+    const file = path.join(ticketDirIn(store.paths, item.area || NO_AREA_DIR, item.id), "proof", "proof.md");
+    let raw: string | null = null;
+    try {
+      raw = (await pathExists(file)) ? await readText(file) : null;
+    } catch (error) {
+      problems.push(`${item.id}: proof/proof.md could not be read (${String(error instanceof Error ? error.message : error)})`);
+      continue;
+    }
+
+    if (raw === null) {
+      entries.push({ id: item.id, stage: item.status, archived: item.archived === true, state: null, bucket: "absent", bytes: 0, sha256: "", diagnostics: [] });
+      continue;
+    }
+
+    const parsed = parseProofDocument(raw);
+    entries.push({
+      id: item.id,
+      stage: item.status,
+      archived: item.archived === true,
+      state: parsed.state,
+      bucket: proofCensusBucket(parsed.state),
+      bytes: Buffer.byteLength(raw, "utf8"),
+      sha256: createHash("sha256").update(raw, "utf8").digest("hex"),
+      diagnostics: parsed.diagnostics,
+    });
+  }
+
+  const counts = { valid: 0, legacy: 0, invalid: 0, absent: 0, total: entries.length };
+  for (const entry of entries) counts[entry.bucket] += 1;
+
+  const digest = createHash("sha256")
+    .update(PROOF_RECORD_PARSER_VERSION)
+    .update("-")
+    .update(
+      entries
+        .map((entry) => [entry.id, entry.stage, entry.archived ? "1" : "0", String(entry.bytes), entry.sha256, entry.state ?? "absent"].join(" | "))
+        .join("\n"),
+    )
+    .digest("hex");
+
+  return {
+    parserVersion: PROOF_RECORD_PARSER_VERSION,
+    complete: problems.length === 0,
+    problems,
+    counts,
+    entries,
+    digest: `proof-census-v1:${digest}`,
+  };
+}
+
+/** What the proof-policy step of `migrate_board` did, or would do. */
+export interface ProofValidationReport {
+  dryRun: boolean;
+  /** The mode in force before this call. */
+  from: "report" | "strict";
+  /** The mode in force after it. */
+  to: "report" | "strict";
+  changed: boolean;
+  census: ProofCensus;
+  /** Set when a cutover was asked for and refused; the census is still returned. */
+  refused: string | null;
+}
+
+/**
+ * The proof-policy step of `migrate_board` (CORE-129 change 3).
+ *
+ * Always censuses; only ever *writes* when the caller passes the exact digest
+ * of a census they have already seen. That is the whole safety property: a
+ * board's proof history is hundreds of documents long and every one of them is
+ * `legacy` under the typed parser, so "turn strict on" is a decision that has
+ * to be taken against a specific, complete reading of what is there — not
+ * against a flag someone set because the tool offered it.
+ *
+ * Format comes first and separately. A board that still needs the v1→v3
+ * migration has tickets in places this census does not look, so combining the
+ * two would produce a census of a board that no longer exists a moment later.
+ */
+export async function migrateProofValidation(
+  store: KanmerStore,
+  opts: { dryRun?: boolean; censusDigest?: string } = {},
+): Promise<ProofValidationReport> {
+  const dryRun = opts.dryRun ?? false;
+  const board = await store.getBoard();
+  const from = board.proofValidation?.mode === "strict" ? "strict" : "report";
+  const census = await auditProofRecords(store);
+  const base: ProofValidationReport = { dryRun, from, to: from, changed: false, census, refused: null };
+
+  if (!opts.censusDigest) return base;
+  if (dryRun) {
+    // A dry run never writes, digest or no digest: the preview is the whole
+    // point of the flag, and a preview that mutated would make it a trap.
+    return { ...base, refused: "dry_run does not apply a cutover; re-run without dry_run to apply this digest" };
+  }
+  // Already strict: report the census and nothing else, so a repeated call is
+  // idempotent rather than an error.
+  if (from === "strict") return base;
+
+  const format = await store.detectFormat();
+  if (format < 3) {
+    return { ...base, refused: `the board is still format ${format}; migrate the format first, then run the proof-validation cutover on a current-format board` };
+  }
+  if (!census.complete) {
+    return { ...base, refused: `the census is incomplete, so it is not evidence about this whole board: ${census.problems.join("; ")}` };
+  }
+  if (opts.censusDigest !== census.digest) {
+    return { ...base, refused: `census digest mismatch: this board now reads as ${census.digest}` };
+  }
+
+  try {
+    const result = await store.activateStrictProofValidation(async () => {
+      // Re-read under the board write lock. Between the caller reading a
+      // census and this line a proof could have been written; applying the
+      // authorisation to a different board than the one authorised is exactly
+      // the failure this re-read exists to catch.
+      const current = await auditProofRecords(store);
+      if (!current.complete) throw new Error(`PROOF_CENSUS_INCOMPLETE: ${current.problems.join("; ")}`);
+      if (current.digest !== opts.censusDigest) {
+        throw new Error(`PROOF_CENSUS_DIGEST_MISMATCH: the board changed while the cutover was being applied; it now reads as ${current.digest}`);
+      }
+    });
+    return { ...base, to: "strict", changed: result.changed, refused: null };
+  } catch (error) {
+    return { ...base, refused: String(error instanceof Error ? error.message : error) };
+  }
 }

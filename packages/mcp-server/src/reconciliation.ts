@@ -2,12 +2,11 @@ import { execFile as execFileCallback } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import matter from "gray-matter";
 import {
   classifyReleaseEvidence,
   leaseConfig,
   leaseState,
-  parseProofReceipts,
+  parseProofDocument,
   reconcileEvidence,
   reconcileStepPacket,
   revisionCountsDocument,
@@ -102,11 +101,6 @@ function errorStdout(error: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
-function validTimestamp(value: unknown): boolean {
-  const text = value instanceof Date ? value.toISOString() : value;
-  return typeof text === "string" && text.trim().length > 0 && !Number.isNaN(Date.parse(text));
-}
-
 const FAILURE_CLASSES: readonly ReconciliationFailureClass[] = ["implementation", "plan", "transient", "inconclusive"];
 
 /**
@@ -122,35 +116,65 @@ function failureClassOf(raw: unknown): ReconciliationFailureClass {
     : "inconclusive";
 }
 
-/** Decode a complete proof record; an existence-only proof gate is not PASS evidence. */
+/**
+ * Decode a complete proof record for the reconciliation classifier.
+ *
+ * CORE-129 replaced this function's own frontmatter decoder with the shared
+ * core parser (`parseProofDocument`). The point is not deduplication for its
+ * own sake: while there were two decoders, the movement gate and this inspector
+ * could — and did — disagree about whether the very same document was
+ * acceptable, and disagreement between two readers of one document is exactly
+ * the failure mode a single authority exists to remove.
+ *
+ * `legacy` maps to `invalid` here **regardless of the board's report/strict
+ * policy**, and that is deliberate: this function feeds a *recommendation to
+ * move a ticket to Done*, and a proof nothing has ever validated is not a basis
+ * for a machine to recommend that. Report mode still lets a human make the move
+ * themselves — it relaxes the gate, not the advice. The parsed state travels
+ * along in `record` so the read-only inspector can say which kind of "no" it is.
+ */
 export function proofEvidence(raw: string | null): ReconciliationEvidence["proof"] {
   if (!raw) return { state: "absent" };
-  try {
-    const parsed = matter(raw).data;
-    if (
-      parsed.kind !== "proof-record" ||
-      typeof parsed.result !== "string" ||
-      typeof parsed.merged_sha !== "string" || !parsed.merged_sha.trim() ||
-      typeof parsed.environment !== "string" || !parsed.environment.trim() ||
-      !validTimestamp(parsed.verified_at) ||
-      !Array.isArray(parsed.attempts)
-    ) return { state: "invalid" };
-    const result = parsed.result.trim().toUpperCase();
-    const mergedSha = parsed.merged_sha.trim();
-    // Decode `receipts[]` (MCP-057) beside the base fields. A malformed
-    // `receipts` list is reported by the parser but never fails the whole
-    // proof: the base PASS/FAIL/mergedSha reading this function has always
-    // provided is unaffected, and `receipts` is simply omitted. An empty
-    // list is also omitted, matching every proof written before MCP-057.
-    const parsedReceipts = parseProofReceipts(parsed);
-    const receipts = Array.isArray(parsedReceipts) && parsedReceipts.length > 0 ? parsedReceipts : undefined;
-    // A PASS record carries no class; only a failure is routed by one.
-    if (result === "PASS") return { state: "pass", mergedSha, ...(receipts ? { receipts } : {}) };
-    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class), ...(receipts ? { receipts } : {}) };
-    return { state: "invalid" };
-  } catch {
-    return { state: "invalid" };
+  const record = parseProofDocument(raw);
+  const summary = { record: { state: record.state, diagnostics: record.diagnostics } };
+  if (record.state === "legacy" || record.state === "invalid") return { state: "invalid", ...summary };
+
+  // Receipts (MCP-057) travel with the evidence exactly as before. An empty
+  // list is omitted, matching every proof written before MCP-057.
+  const receipts = record.receipts.length > 0 ? record.receipts : undefined;
+
+  // An operator waiver satisfies the *gate* — kanmer-verify has always said a
+  // waiver permits the final move — but it is a decision a person took, so
+  // reconciliation declines to recommend it on their behalf.
+  if (record.waived) return { state: "invalid", ...summary };
+
+  if (record.state === "valid-pass") {
+    return { state: "pass", mergedSha: record.mergedSha, ...(receipts ? { receipts } : {}), ...summary };
   }
+  if (record.state === "valid-fail") {
+    // A PASS record carries no class; only a failure is routed by one, and the
+    // parser has already refused any FAIL that names none.
+    return {
+      state: "fail",
+      mergedSha: record.mergedSha,
+      failureClass: failureClassOf(record.failureClass),
+      ...(receipts ? { receipts } : {}),
+      ...summary,
+    };
+  }
+  // valid-inconclusive: a truthful record, and not a route. It is reported as
+  // a `fail`/`inconclusive` pair rather than `invalid` so the classifier
+  // reaches its existing `VERIFICATION_INCONCLUSIVE` finding — "the ticket
+  // stays in Verifying until the proof names a class" — which says something
+  // useful, where `invalid` would say only that the document is unreadable.
+  // It still recommends no move, exactly as before.
+  return {
+    state: "fail",
+    mergedSha: record.mergedSha,
+    failureClass: "inconclusive",
+    ...(receipts ? { receipts } : {}),
+    ...summary,
+  };
 }
 
 /** Interpret only `gh pr checks --required`; rollup checks can be unrelated. */

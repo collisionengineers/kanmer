@@ -7,6 +7,7 @@ import {
   type BoardSource,
   type DeliveryPolicy,
   type DeliveryPolicySource,
+  type ProofValidationPolicy,
 } from "./types.js";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
@@ -50,6 +51,10 @@ export function defaultBoardConfig(): BoardConfig {
     defaultProfile: DEFAULT_PROFILE_ID,
     groupKinds: structuredClone(DEFAULT_GROUP_KINDS),
     proofTypes: [...DEFAULT_PROOF_TYPES],
+    // A board created today has no unvalidated history to protect, so it opts
+    // into the strict typed-proof contract from its first ticket (CORE-129).
+    // Existing boards resolve to `report` instead — see `resolveProofValidation`.
+    proofValidation: { mode: "strict" },
   };
 }
 
@@ -205,6 +210,27 @@ export function resolveProfiles(board: BoardConfig): Record<string, ProfileMap> 
 /** Proof flavours in force. */
 export function resolveProofTypes(board: BoardConfig): readonly string[] {
   return board.proofTypes ?? DEFAULT_PROOF_TYPES;
+}
+
+/**
+ * The board's proof-validation policy, and where it came from (CORE-129).
+ *
+ * Absence resolves to `report`, never to the fresh-board default. That
+ * asymmetry is the whole compatibility guarantee: a board written before this
+ * field existed carries hundreds of proofs nothing has ever validated, and
+ * silently promoting it to `strict` would strand every in-flight ticket on
+ * evidence that was legal when it was written. A new board has no such history,
+ * so `defaultBoardConfig` writes `strict` explicitly and an existing board only
+ * reaches it through the deliberate, census-bound cutover in `migrate.ts`.
+ *
+ * `source` is reported so the difference is *observable*: an operator looking
+ * at `get_status` can tell "the board says report" from "the board says
+ * nothing, or an older server stripped the key on write".
+ */
+export function resolveProofValidation(board: BoardConfig): ProofValidationPolicy {
+  const mode = board.proofValidation?.mode;
+  if (mode === "report" || mode === "strict") return { mode, source: "board" };
+  return { mode: "report", source: "default" };
 }
 
 /** Group kinds in force. */

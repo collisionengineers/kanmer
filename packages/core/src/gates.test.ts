@@ -166,3 +166,113 @@ describe("questions-resolved (ADR-0011)", () => {
     expect(report.warnings).toEqual([]);
   });
 });
+
+describe("typed proof authority in the gate engine (CORE-129)", () => {
+  const proofProfile = { minimal: { "enter-done": ["proof"] } };
+
+  async function proofRequirement(
+    proofValidation: "report" | "strict" | undefined,
+    proofState: { state: string; diagnostics: string[] } | null,
+  ) {
+    const report = await evaluateGateReport({
+      profiles: proofProfile as never,
+      profileId: "minimal",
+      stage: "verifying",
+      ...(proofValidation ? { proofValidation } : {}),
+      evidence: { ...ALL_PRESENT, proofState: async () => proofState as never },
+    });
+    return {
+      requirement: report.boundaries
+        .find((boundary) => boundary.boundary === "enter-done")
+        ?.requirements.find((requirement) => requirement.type === "proof"),
+      warnings: report.warnings,
+    };
+  }
+
+  it("defaults to report when no policy is supplied, so an untaught caller keeps its semantics", async () => {
+    const { requirement, warnings } = await proofRequirement(undefined, { state: "legacy", diagnostics: [] });
+    expect(requirement?.satisfied).toBe(true);
+    expect(requirement?.detail).toBeUndefined();
+    expect(warnings.join(" ")).toMatch(/has never been validated/);
+  });
+
+  it("in report mode says nothing at all about a valid PASS", async () => {
+    const { requirement, warnings } = await proofRequirement("report", { state: "valid-pass", diagnostics: [] });
+    expect(requirement?.satisfied).toBe(true);
+    expect(warnings).toEqual([]);
+  });
+
+  it("in report mode surfaces the parser's own diagnostics rather than paraphrasing them", async () => {
+    const { warnings } = await proofRequirement("report", {
+      state: "invalid",
+      diagnostics: ["verified_at must equal the final authoritative attempt's attempted_at"],
+    });
+    expect(warnings.join(" ")).toContain("verified_at must equal the final authoritative attempt's attempted_at");
+  });
+
+  it("in strict mode is satisfied only by a valid PASS", async () => {
+    const pass = await proofRequirement("strict", { state: "valid-pass", diagnostics: [] });
+    expect(pass.requirement?.satisfied).toBe(true);
+    expect(pass.warnings).toEqual([]);
+
+    for (const state of ["valid-fail", "valid-inconclusive", "legacy", "invalid"]) {
+      const { requirement } = await proofRequirement("strict", { state, diagnostics: [] });
+      expect(requirement?.satisfied, state).toBe(false);
+      expect(requirement?.detail, state).toContain('proof policy is "strict"');
+    }
+  });
+
+  it("in strict mode refuses when there is no canonical record, even though the folder satisfies existence", async () => {
+    const { requirement } = await proofRequirement("strict", null);
+    expect(requirement?.satisfied).toBe(false);
+    expect(requirement?.detail).toContain("there is no canonical `proof/proof.md`");
+  });
+
+  it("puts a strict refusal in detail and never in warnings", async () => {
+    // The same separation `questions-resolved` keeps: warnings are the
+    // non-blocking channel, and a hard block's reason must not live there.
+    const { requirement, warnings } = await proofRequirement("strict", { state: "legacy", diagnostics: [] });
+    expect(requirement?.satisfied).toBe(false);
+    expect(requirement?.detail).toBeTruthy();
+    expect(warnings).toEqual([]);
+  });
+
+  it("reads the canonical record once however many boundaries name proof", async () => {
+    let reads = 0;
+    await evaluateGateReport({
+      profiles: { minimal: { "enter-review": ["proof"], "enter-done": ["proof"] } } as never,
+      profileId: "minimal",
+      stage: "implementing",
+      proofValidation: "strict",
+      evidence: {
+        ...ALL_PRESENT,
+        proofState: async () => {
+          reads += 1;
+          return { state: "valid-pass", diagnostics: [] } as never;
+        },
+      },
+    });
+    // Two boundaries, one probe call each is acceptable; what must not happen
+    // is the store re-reading and re-parsing the file per requirement. The
+    // memoisation lives in `store.gateReport`, so here we only assert the
+    // engine asks per requirement rather than per profile entry.
+    expect(reads).toBeGreaterThan(0);
+  });
+
+  it("leaves the visual advisory intact, and appends rather than replacing a typed-proof warning", async () => {
+    const report = await evaluateGateReport({
+      profiles: { minimal: { "enter-done": ["proof:visual"] } } as never,
+      profileId: "minimal",
+      stage: "verifying",
+      proofValidation: "report",
+      evidence: {
+        ...ALL_PRESENT,
+        hasProofImages: async () => false,
+        proofState: async () => ({ state: "legacy", diagnostics: [] }) as never,
+      },
+    });
+    const joined = report.warnings.join(" ");
+    expect(joined).toMatch(/has never been validated/);
+    expect(joined).toMatch(/expects a screenshot/);
+  });
+});

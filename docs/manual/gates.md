@@ -33,6 +33,37 @@ That one is not a document, and the message says so:
 Do exactly that. Answer the question and tick it, or park it with a reason.
 Parking is a legitimate answer.
 
+### If it says "requires proof" and the proof is right there
+
+On a board with strict proof validation, the proof requirement is not asking
+whether a file exists. It is asking whether `proof/proof.md` is a valid, typed
+proof record that says PASS. So you can be looking at a proof document and still
+be refused — and the message tells you which of these it read:
+
+> `…entering Done requires proof (profile "fix"). ` proof/proof.md ` predates the
+> typed ` proof-record/2 ` contract and has never been validated. This board's
+> proof policy is "strict"…`
+
+The usual causes, in plain terms:
+
+- **"predates the typed contract"** — an older proof, written before records were
+  validated. Nothing is wrong with it; it simply carries no machine authority.
+  Re-verify and write a current record.
+- **"is a valid FAIL record"** (or INCONCLUSIVE) — the proof is honest and the
+  answer is no. The ticket stays in Verifying; fix the thing and verify again.
+- **"declares the typed proof contract and breaks it"** — the record contradicts
+  itself, and the diagnosis after the dash says how: a top-level PASS whose last
+  attempt failed, attempts out of order, a PASS with a non-zero exit code. This
+  is the case the whole check exists for.
+- **"there is no canonical `proof/proof.md`"** — the evidence is under `proof/`
+  but not in the one document the gate reads.
+
+If your board is in **report** mode instead, none of this blocks anything: the
+same reading appears as a warning in the readiness panel, and the move goes
+through. New boards start strict; older ones stay in report until someone
+deliberately turns strict on, having first looked at what the existing proofs
+say.
+
 ### If it says "governing-doc"
 
 The ticket has not been tied to any of your project's own documents — the

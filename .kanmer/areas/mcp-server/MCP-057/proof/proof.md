@@ -53,6 +53,12 @@ attempts:
     exit_code: 0
     result: PASS
     summary: "decisive check of this ticket's own contract, run twice over: (1) assessReceipt(receipt with job: \"kanmer-gate\", otherwise fully valid for merged_sha) returns {kind: \"rejected\", reasons: ['receipt job must be \"verify\", got \"kanmer-gate\"']}; (2) reconcileEvidence on a full PASS-proof evidence object carrying that receipt for a Verifying MCP-057 against the merged PR returns findings [{code: PROOF_RECEIPT_REJECTED, level: error}] and recommendation: null -- not PROOF_RECEIPT_SHA_MISMATCH (the head_sha was correct) and no MOVE_TO_DONE. Script preserved at .worktrees/verify-mcp-057-e474f317eaf7d7989667d8b44442d7845953956d/mcp057-demo-rejected.mjs"
+  - attempted_at: "2026-09-05T04:23:00Z"
+    command: "reconcile_ticket id: MCP-057 (with this proof.md written and a valid receipts entry, run after apply_reconciliation RECOVER_EXPIRED_CLAIM cleared an unrelated expired lease)"
+    cwd: "mcp__kanmer (board tool call)"
+    exit_code: 0
+    result: PASS
+    summary: "evidence.proof == {state: pass, mergedSha: e474f317...}, matching the PR's mergeSha; findings contained no PROOF_RECEIPT_SHA_MISMATCH and no PROOF_RECEIPT_REJECTED -- the receipt above is accepted as consistent by the same reconcileEvidence code path exercised in the mcp057-demo-rejected.mjs attempt. The sole finding was RECORDED_COMMIT_UNREACHABLE (recommendation: null), a pre-existing, unrelated repo characteristic: this ticket's recorded commits[] (6b7049c7, 99f0cf70) are pre-squash branch commits and are therefore never reachable from the squash-merge SHA by construction. Confirmed not a regression: CORE-133 (already Done, merge c973f94a) has the identical property -- `git merge-base --is-ancestor 3a8341de <CORE-133-recorded-commit> c973f94a` also fails -- so this check blocks reconcile_ticket's MOVE_TO_DONE recommendation for essentially every squash-merged Verifying ticket in this repo, independent of MCP-057's diff. Recorded here rather than fixed: fixing the commit-reachability check for squash-merge repos is out of this ticket's scope."
 receipts:
   - kind: github-actions-run
     provider: github
@@ -154,10 +160,31 @@ than mechanised:
   confirming every packet command is a literal subset of `VERIFY_STEPS`, not
   assumed from the ticket title.
 
+## reconcile_ticket confirmation of this proof's own receipt
+
+After writing this proof with its `receipts:` entry, `reconcile_ticket
+id: MCP-057` was called again. It accepted the receipt as consistent —
+`evidence.proof` reported `{state: "pass", mergedSha: "e474f317..."}`
+matching the PR's `mergeSha`, and no `PROOF_RECEIPT_SHA_MISMATCH` or
+`PROOF_RECEIPT_REJECTED` finding was raised. It did **not** recommend
+`MOVE_TO_DONE`; its sole finding was `RECORDED_COMMIT_UNREACHABLE`. This is a
+pre-existing, unrelated repo characteristic, not a defect in MCP-057 or in
+this proof: this ticket's `commits[]` field holds the pre-squash PR branch
+commits (`6b7049c7`, `99f0cf70`), which by construction are never reachable
+from the squash-merge commit that actually lands on `main`. The identical
+condition holds for CORE-133, already Done and squash-merged at `c973f94a`
+(`git merge-base --is-ancestor` on its recorded commit against its own merge
+SHA also fails) — confirming this blocks `reconcile_ticket`'s advisory
+`MOVE_TO_DONE` recommendation for squash-merged Verifying tickets generally
+in this repo, independent of anything this ticket changed. `reconcile_ticket`
+is advisory only; the actual Done gate is `move_item`'s own structural gates
+(checked via `get_doc_gates` below), which this finding does not affect.
+
 ## Result
 
 **PASS.** Every packet obligation is `satisfied` by the bound post-merge
 receipt above; the ticket's own new contract (`PROOF_RECEIPT_REJECTED` for a
 non-`verify` job) was independently exercised end-to-end against the built
-code and behaved exactly as MCP-057 specifies. No obligation is `missing` or
-`rejected`.
+code and behaved exactly as MCP-057 specifies, and `reconcile_ticket`
+independently confirmed the receipt itself is accepted as consistent. No
+obligation is `missing` or `rejected`.

@@ -14,14 +14,14 @@ stageEntered:
 taken_at: '2026-09-05T15:03:14.642Z'
 branch: CORE-147-verification-contract
 worktree: .worktrees/CORE-147
-claim_expires_at: '2026-09-05T15:42:43.103Z'
+claim_expires_at: '2026-09-05T16:01:15.154Z'
 claim_controller: claude-code
 lease_id: 4bc5a7f2-3931-42a3-bdd8-f7f34f072145
-lease_revision: 3
+lease_revision: 4
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-147'
 lease_provider: claude-code
 lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T15:12:43.103Z'
+lease_heartbeat_at: '2026-09-05T15:31:15.154Z'
 labels:
   - evidence
   - receipts
@@ -37,7 +37,7 @@ refs:
   - docs/functional/frd/FRD-006-typed-proof.md
 archived: false
 created: '2026-09-05T14:03:46.047Z'
-updated: '2026-09-05T15:12:43.103Z'
+updated: '2026-09-05T15:31:15.154Z'
 ---
 
 ## Problem

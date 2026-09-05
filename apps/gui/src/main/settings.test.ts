@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +15,9 @@ const {
   resolveDispatchSettings,
   observeKanmerBoardBranch,
   clearNativeReconnectRequired,
+  readViewPrefs,
+  setViewPrefs,
+  DEFAULT_VIEW_PREFS,
 } = await import("./settings.js");
 
 beforeEach(() => {
@@ -160,5 +163,65 @@ describe("board-branch handoff settings", () => {
     await clearNativeReconnectRequired(project, "antigravity");
     expect(readSettings().pendingNativeReconnects?.[project]).toBeUndefined();
     expect(readSettings().pendingNativeReconnects?.[other]).toBeUndefined();
+  });
+});
+
+describe("Focus Board view preferences (FRD-036 R8)", () => {
+  const project = "dc201ffe-56fa-40b3-aa27-3a01b371c7db";
+
+  it("defaults to Active work with the rail open and no remembered pages", () => {
+    expect(readViewPrefs(project)).toEqual(DEFAULT_VIEW_PREFS);
+    expect(DEFAULT_VIEW_PREFS.scope).toBe("active");
+    expect(DEFAULT_VIEW_PREFS.sidebarCollapsed).toBe(false);
+  });
+
+  it("round-trips a project's scope, collapse and column pages", async () => {
+    await setViewPrefs(project, {
+      scope: "done",
+      sidebarCollapsed: true,
+      columnPages: { done: 12 },
+    });
+    expect(readViewPrefs(project)).toEqual({
+      scope: "done",
+      sidebarCollapsed: true,
+      columnPages: { done: 12 },
+    });
+  });
+
+  it("keys preferences per project so two projects cannot overwrite each other", async () => {
+    await setViewPrefs(project, { scope: "backlog", sidebarCollapsed: false });
+    await setViewPrefs("other-project", { scope: "archived", sidebarCollapsed: true });
+    expect(readViewPrefs(project).scope).toBe("backlog");
+    expect(readViewPrefs("other-project").scope).toBe("archived");
+  });
+
+  it("drops a page that is not a page rather than handing the renderer junk", async () => {
+    await setViewPrefs(project, {
+      scope: "all",
+      sidebarCollapsed: false,
+      // 1 is the default and is never stored; the rest are not page numbers.
+      columnPages: { done: 1, review: 0, backlog: -3, verifying: 2.5, preparing: 4 } as Record<string, number>,
+    });
+    expect(readViewPrefs(project).columnPages).toEqual({ preparing: 4 });
+  });
+
+  it("survives a hand-edited settings file with a malformed viewPrefs block", async () => {
+    // readSettings must normalise rather than throw: a corrupt display
+    // preference is not a reason to lose theme, tabs and recent projects.
+    await setViewPrefs(project, { scope: "active", sidebarCollapsed: false });
+    const settingsFile = join(fixture.userData, "settings.json");
+    const parsed = JSON.parse(await readFile(settingsFile, "utf8")) as Record<string, unknown>;
+    parsed.viewPrefs = { [project]: "not-an-object", "": { scope: "all", sidebarCollapsed: true } };
+    await writeFile(settingsFile, JSON.stringify(parsed), "utf8");
+
+    expect(readSettings().viewPrefs).toBeUndefined();
+    expect(readViewPrefs(project)).toEqual(DEFAULT_VIEW_PREFS);
+  });
+
+  it("never writes a preference anywhere but settings.json", async () => {
+    await setViewPrefs(project, { scope: "done", sidebarCollapsed: true });
+    expect((await readdir(fixture.userData)).filter((n) => !n.endsWith(".tmp"))).toEqual([
+      "settings.json",
+    ]);
   });
 });

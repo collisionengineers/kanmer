@@ -290,6 +290,147 @@ textarea:focus {
   display: flex;
   min-height: 0;
 }
+
+/* ── Navigation rail (FRD-036 R7) ───────────────────────────────────────────
+   A fixed-width column of scopes and areas beside the content. It is a plain
+   <nav> of <ul>s of <button>s, so everything here is styling only: nothing
+   below is load-bearing for keyboard operation or for the accessible name. */
+.sidebar {
+  flex: none;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 8px;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 8px;
+}
+.sidebar-project {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-toggle {
+  margin-left: auto;
+  padding: 2px 6px;
+}
+.nav-caption {
+  margin: 10px 0 4px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--muted);
+}
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
+  text-align: left;
+}
+.nav-item:hover {
+  background: var(--bg-3);
+  border-color: transparent;
+}
+/* Selection is never colour alone: the active item carries a weight change and
+   an inset bar as well as its tint, and aria-current says it non-visually. */
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.nav-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+.nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.nav-item.active .nav-count {
+  color: var(--text);
+}
+.nav-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--line-2);
+}
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+/* Collapsed: a width change, not a feature removal. The labels and counts stay
+   in the DOM so every accessible name survives; only their pixels go. */
+.sidebar.collapsed {
+  width: 46px;
+  padding: 10px 5px;
+}
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-count,
+.sidebar.collapsed .nav-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 7px 0;
+}
+.sidebar.collapsed .sidebar-toggle {
+  margin: 0 auto;
+}
+
 .content {
   flex: 1;
   overflow: auto;
@@ -316,18 +457,24 @@ textarea:focus {
 .board {
   display: grid;
   gap: 8px;
-  /* Header row + one cell row that stretches: cells reach the column bottom
-     so a drop under a short stack still lands in the column. */
-  grid-template-rows: auto 1fr;
+  /* One row of columns. Each column is its own flex stack — head, cards, pager
+     — so the pager sits at the bottom of its own column rather than in a
+     shared grid row that every column has to agree about. */
+  grid-template-rows: 1fr;
   min-height: 100%;
   align-items: stretch;
+}
+.board-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .col-head {
   position: sticky;
   top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 6px;
   font-weight: 600;
   color: var(--muted);
@@ -337,11 +484,50 @@ textarea:focus {
   letter-spacing: 0.5px;
   background: var(--bg);
 }
+.col-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-2);
+  flex: none;
+}
 .col-count {
   font-weight: 500;
   opacity: 0.75;
+  margin-left: auto;
+}
+/* The bounded-column pager (FRD-036 R3). Present only when the column holds
+   more than it shows, because it is the way to reach the rest — a pager on a
+   column that fits is a control with nothing behind it. */
+.col-pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.col-range {
+  font-variant-numeric: tabular-nums;
+  margin-right: auto;
+}
+.col-pager button {
+  min-width: 24px;
+  line-height: 1;
+}
+/* A refused drop says why, in the column it was refused in. */
+.col-refused {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius);
 }
 .cell {
+  flex: 1;
   min-height: 60px;
   border: 1px dashed transparent;
   border-radius: var(--radius);
@@ -434,8 +620,24 @@ textarea:focus {
   flex-wrap: wrap;
   gap: 4px;
 }
+/* One quiet line under the title: area, the single group chip, the "+N"
+   indicator and the assignee. Deliberately lower contrast than the title and
+   than a real exception badge — not every badge gets equal weight. */
+.card-context {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.chip.more {
+  color: var(--muted);
+  border-style: dashed;
+  cursor: help;
+}
 .card-assignee {
-  margin-top: 6px;
   font-size: 11px;
   color: var(--muted);
 }
@@ -2067,4 +2269,44 @@ button.danger {
 }
 .registry-field input {
   min-width: 160px;
+}
+
+/* Narrow windows collapse the rail to its icon width. The toggle still works —
+   this is a floor on the layout, not a lock. */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 46px;
+    padding: 10px 5px;
+  }
+  .sidebar .nav-label,
+  .sidebar .nav-count,
+  .sidebar .nav-caption,
+  .sidebar .sidebar-project {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .sidebar .nav-item {
+    justify-content: center;
+    padding: 7px 0;
+  }
+}
+
+/* Reduced motion is a preference, not a hint: honour it globally rather than
+   per-component, so a transition added later cannot quietly opt out. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

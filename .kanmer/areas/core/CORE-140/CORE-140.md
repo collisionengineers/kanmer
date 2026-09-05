@@ -13,16 +13,6 @@ stageEntered:
   review: '2026-09-05T02:41:24.782Z'
   verifying: '2026-09-05T03:41:13.180Z'
   done: '2026-09-05T03:52:38.349Z'
-taken_at: '2026-09-05T02:18:41.901Z'
-branch: CORE-140-rail-build-once
-worktree: .worktrees/CORE-140
-claim_expires_at: '2026-09-05T02:48:41.901Z'
-claim_controller: claude-code
-lease_id: bb30fcb6-f9f0-4eeb-ab4f-7934e86f7c15
-lease_revision: 1
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-140'
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T02:18:41.901Z'
 labels:
   - rail
   - build
@@ -31,6 +21,8 @@ groups:
   - HZN-009
 links:
   - CORE-139
+commits:
+  - 941650317be4cad4f6a86c6ab16362ee5dd8dfdb
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/322'
 delivery_state: integrated
@@ -39,7 +31,7 @@ delivery_sha: 941650317be4cad4f6a86c6ab16362ee5dd8dfdb
 delivery_recorded_at: '2026-09-05T03:52:42.259Z'
 archived: false
 created: '2026-09-05T02:12:03.055Z'
-updated: '2026-09-05T03:52:42.259Z'
+updated: '2026-09-05T04:00:54.312Z'
 ---
 
 ## Problem
@@ -51,6 +43,10 @@ The GUI build (`npm run build -w @kanmer/gui`) is a different artifact and is no
 ## Outcome
 
 Within one canonical rail each required output is generated once and consumed by every later step. The public standalone commands (`npm run test:http -w @kanmer/mcp-server`, `npm run mcpb:check`) still build their own prerequisites on a fresh checkout. An "already-built" step refuses — never silently rebuilds — when the in-run stamp is absent or does not match the source, lockfile, Node major or the output hashes.
+
+Shipped as planned. Merged via PR #322 (https://github.com/collisionengineers/kanmer/pull/322), merge commit `941650317be4cad4f6a86c6ab16362ee5dd8dfdb`, integrated to `main`. Verify proof PASS (proof/proof.md): hosted `pr.yml` push-to-main run 33942465093 green at the exact merge SHA, plus a detached-worktree re-derivation of the ticket's scoped checks.
+
+Follow-ups opened from the independent review (none block this ticket): **CORE-144** (static-guard fidelity gaps in `verify-steps.test.mjs` and the dirty-digest untracked-directory blind spot), **CORE-145** (fresh-clone `npm run test:http -w @kanmer/mcp-server` build-ordering gap, pre-existing and unrelated to this change).
 
 ## Acceptance
 

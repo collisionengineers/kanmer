@@ -1,3 +1,4 @@
+import { assessReceipt } from "./proof-receipts.js";
 import { hasLegacyTicketClaim } from "./types.js";
 import type {
   ReconciliationAction,
@@ -33,6 +34,31 @@ function receiptNamesOtherMerge(evidence: ReconciliationEvidence): boolean {
   const mergeSha = evidence.pullRequest.mergeSha;
   if (!Array.isArray(receipts) || receipts.length === 0 || !mergeSha) return false;
   return receipts.some((receipt) => typeof receipt.head_sha === "string" && receipt.head_sha.length > 0 && receipt.head_sha !== mergeSha);
+}
+
+/**
+ * Every non-SHA rejection reason `assessReceipt` (MCP-057) reports for the
+ * proof's receipts against the current PR merge SHA. `head_sha`-related
+ * reasons are deliberately excluded here — `receiptNamesOtherMerge` above,
+ * and the existing `PROOF_MERGE_SHA_MISMATCH` binding it feeds, already own
+ * that specific mismatch under its own finding code, so a caller checks
+ * `receiptNamesOtherMerge` first and only reaches this once the SHA itself is
+ * not in question. A proof with no `receipts` returns `[]`, matching the
+ * back-compat requirement that a proof without receipts is unaffected.
+ */
+function receiptAssessmentRejections(evidence: ReconciliationEvidence, mergedSha: string): string[] {
+  const receipts = evidence.proof.receipts;
+  if (!Array.isArray(receipts) || receipts.length === 0) return [];
+  const reasons: string[] = [];
+  for (const receipt of receipts) {
+    const assessment = assessReceipt(receipt, { mergedSha });
+    if (assessment.kind === "rejected") {
+      for (const reason of assessment.reasons) {
+        if (!reason.includes("head_sha")) reasons.push(reason);
+      }
+    }
+  }
+  return reasons;
 }
 
 function stableEvidence(evidence: ReconciliationEvidence): ReconciliationEvidence {
@@ -235,6 +261,11 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
         findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the PASS proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not recommend Done"));
         return none();
       }
+      const passReceiptRejections = receiptAssessmentRejections(evidence, evidence.pullRequest.mergeSha);
+      if (passReceiptRejections.length > 0) {
+        findings.push(finding("PROOF_RECEIPT_REJECTED", "error", `the PASS proof carries a receipt assessReceipt rejects: ${passReceiptRejections.join("; ")}; reconciliation does not recommend Done`));
+        return none();
+      }
       findings.push(finding("PASS_PROOF_STILL_VERIFYING", "info", "a PASS proof is present for the merged pull request while the ticket remains Verifying"));
       return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_DONE", "done") };
     }
@@ -256,6 +287,13 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
       if ((failureClass === "implementation" || failureClass === "plan") && receiptNamesOtherMerge(evidence)) {
         findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the FAIL proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
         return none();
+      }
+      if (failureClass === "implementation" || failureClass === "plan") {
+        const failReceiptRejections = receiptAssessmentRejections(evidence, evidence.pullRequest.mergeSha ?? "");
+        if (failReceiptRejections.length > 0) {
+          findings.push(finding("PROOF_RECEIPT_REJECTED", "error", `the FAIL proof carries a receipt assessReceipt rejects: ${failReceiptRejections.join("; ")}; reconciliation does not route the ticket backwards on stale verification evidence`));
+          return none();
+        }
       }
       switch (failureClass) {
         case "implementation":

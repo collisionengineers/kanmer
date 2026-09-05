@@ -88,10 +88,22 @@ describe("assessReceipt", () => {
     expect((result as { reasons: string[] }).reasons.some((r) => r.includes("event"))).toBe(true);
   });
 
-  it("rejects a receipt missing the verify job", () => {
+  it("rejects a receipt missing the job entirely", () => {
     const result = assessReceipt(validReceipt({ job: undefined }), { mergedSha });
     expect(result.kind).toBe("rejected");
     expect((result as { reasons: string[] }).reasons).toContain("receipt is missing job");
+  });
+
+  it("rejects a receipt whose job is not verify", () => {
+    const result = assessReceipt(validReceipt({ job: "kanmer-gate" }), { mergedSha });
+    expect(result.kind).toBe("rejected");
+    expect((result as { reasons: string[] }).reasons).toContain('receipt job must be "verify", got "kanmer-gate"');
+  });
+
+  it("rejects a receipt whose workflow is not pr.yml", () => {
+    const result = assessReceipt(validReceipt({ workflow: "some-other.yml" }), { mergedSha });
+    expect(result.kind).toBe("rejected");
+    expect((result as { reasons: string[] }).reasons).toContain('receipt workflow must be "pr.yml", got "some-other.yml"');
   });
 
   it("rejects an unknown receipt kind", () => {
@@ -114,5 +126,25 @@ describe("assessReceipt", () => {
     const result = assessReceipt(validReceipt({ head_sha: "not-a-sha" }), { mergedSha });
     expect(result.kind).toBe("rejected");
     expect((result as { reasons: string[] }).reasons).toContain("receipt head_sha must be a full 40-hex Git object id");
+  });
+
+  it("rejects an uppercase 40-hex head_sha (case-sensitive, no case-folding)", () => {
+    const result = assessReceipt(validReceipt({ head_sha: mergedSha.toUpperCase() }), { mergedSha });
+    expect(result.kind).toBe("rejected");
+    // Fails the shape check (the regex has no `i` flag) rather than the
+    // mismatch check — both are rejections, but this pins which reason.
+    expect((result as { reasons: string[] }).reasons).toContain("receipt head_sha must be a full 40-hex Git object id");
+  });
+
+  it("rejects an abbreviated 7-character head_sha", () => {
+    const result = assessReceipt(validReceipt({ head_sha: mergedSha.slice(0, 7) }), { mergedSha });
+    expect(result.kind).toBe("rejected");
+    expect((result as { reasons: string[] }).reasons).toContain("receipt head_sha must be a full 40-hex Git object id");
+  });
+
+  it("rejects an uppercase conclusion (case-sensitive, no case-folding)", () => {
+    const result = assessReceipt(validReceipt({ conclusion: "SUCCESS" }), { mergedSha });
+    expect(result.kind).toBe("rejected");
+    expect((result as { reasons: string[] }).reasons).toContain('receipt conclusion must be "success", got "SUCCESS"');
   });
 });

@@ -205,9 +205,16 @@ receipts:
 ```
 
 A receipt whose `head_sha` disagrees with `merged_sha` is rejected by
-`assessReceipt` and by the reconciliation classifier's
-`PROOF_RECEIPT_SHA_MISMATCH` finding — it never authorises Done, whichever
-way it would otherwise route the ticket.
+`assessReceipt` and, at runtime, by the reconciliation classifier's own
+`PROOF_RECEIPT_SHA_MISMATCH` finding. Every other `assessReceipt` reason —
+wrong `job`, wrong `workflow`, non-`push` `event`, non-`success` `conclusion`,
+an unrecognised `kind`, or a missing `run_id`/`url` — is likewise checked at
+runtime through the classifier's `PROOF_RECEIPT_REJECTED` finding
+(`packages/core/src/reconciliation.ts`'s `receiptAssessmentRejections`, which
+calls `assessReceipt` on every receipt in the proof). A rejected receipt
+never authorises Done, and never authorises a backward
+`implementation`/`plan` route on a FAIL proof either, whichever way it would
+otherwise route the ticket.
 
 When the result is `FAIL` or `INCONCLUSIVE`, add one more key:
 
@@ -247,12 +254,18 @@ quotes the proof (every backward move is audited under `## Transitions`):
 
 ## What is validated by code and what is human judgement in this release
 
-Code validates: receipt shape (`kind`, `job`, `run_id`, `url` present),
-`head_sha` exactly matching the PR's merge SHA, `event == push`, the job
-named `verify`, and `conclusion == success`. `assessReceipt` and the
-reconciliation classifier's `PROOF_RECEIPT_SHA_MISMATCH` finding enforce
-these mechanically; a receipt that fails any of them is `rejected`, not
-merely unused.
+Code validates: receipt shape (`kind` is `github-actions-run`, `job ==
+"verify"`, `workflow == "pr.yml"`, `run_id`/`url` present), `head_sha`
+exactly matching the PR's merge SHA, `event == "push"`, and `conclusion ==
+"success"`. `assessReceipt` is the single function that checks every one of
+these, and it runs at verification time through
+`reconcileEvidence`/`reconcile_ticket`: a receipt whose `head_sha` disagrees
+with the merge SHA produces `PROOF_RECEIPT_SHA_MISMATCH`, and a receipt
+rejected for any other reason (wrong job, wrong workflow, wrong event,
+wrong conclusion, unknown kind, missing field) produces
+`PROOF_RECEIPT_REJECTED` with the exact reasons — either finding blocks
+`MOVE_TO_DONE` and the backward `ROUTE_VERIFICATION_FAILURE` routes alike.
+A receipt that fails any of them is `rejected`, not merely unused.
 
 The human recording the proof is responsible for two judgements this release
 does not automate:

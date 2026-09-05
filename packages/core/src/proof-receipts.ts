@@ -98,7 +98,14 @@ function nonEmptyString(value: unknown): value is string {
  * about one specific commit, and normalising case would let a receipt for a
  * differently-cased (but git-equal) SHA silently pass — this module never
  * assumes the two are the same object id without the caller having already
- * normalised them identically.
+ * normalised them identically. `conclusion` matching is exact-string, not
+ * case-insensitive, for the same reason.
+ *
+ * `job` must equal exactly `"verify"` and `workflow` must equal exactly
+ * `"pr.yml"` — a receipt naming any other job or workflow (for example
+ * `kanmer-gate`, which runs on the same push and can be green while
+ * `verify` fails or has not finished) never satisfies an obligation this
+ * function is asked about, however successful that other job was.
  */
 export function assessReceipt(receipt: ProofReceipt, opts: { mergedSha: string }): ReceiptAssessment {
   const reasons: string[] = [];
@@ -108,6 +115,11 @@ export function assessReceipt(receipt: ProofReceipt, opts: { mergedSha: string }
   }
   if (!nonEmptyString(receipt.job)) {
     reasons.push("receipt is missing job");
+  } else if (receipt.job !== "verify") {
+    reasons.push(`receipt job must be "verify", got ${JSON.stringify(receipt.job)}`);
+  }
+  if (receipt.workflow !== "pr.yml") {
+    reasons.push(`receipt workflow must be "pr.yml", got ${JSON.stringify(receipt.workflow)}`);
   }
   if (receipt.run_id === undefined || receipt.run_id === null || receipt.run_id === "") {
     reasons.push("receipt is missing run_id");

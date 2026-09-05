@@ -48,7 +48,7 @@ const closedJson = JSON.stringify({ state: "CLOSED", headRefOid: headSha, mergeC
 const passChecks = JSON.stringify([{ state: "SUCCESS", bucket: "pass" }]);
 const commonDir = (root) => async () => ({ ok: true, path: root });
 
-function proof(result = "PASS", failureClass, merged = mergeSha, receiptHeadSha) {
+function proof(result = "PASS", failureClass, merged = mergeSha, receiptHeadSha, receiptJob = "verify") {
   const receiptsBlock = receiptHeadSha === undefined ? "" :
     "receipts:\n" +
     "  - kind: github-actions-run\n" +
@@ -59,7 +59,7 @@ function proof(result = "PASS", failureClass, merged = mergeSha, receiptHeadSha)
     "    run_id: 1234567890\n" +
     "    attempt: 1\n" +
     "    head_sha: \"" + receiptHeadSha + "\"\n" +
-    "    job: verify\n" +
+    "    job: " + receiptJob + "\n" +
     "    conclusion: success\n" +
     "    url: \"https://github.com/collisionengineers/kanmer/actions/runs/1234567890\"\n" +
     "    covers: [\"npm run verify\"]\n" +
@@ -351,6 +351,39 @@ test("reconcileEvidence rejects a receipt naming a different merge, distinct fro
   const result = reconcileEvidence(evidenceWithMismatchedReceipt);
   assert.equal(result.recommendation, null);
   assert.ok(result.findings.some((finding) => finding.code === "PROOF_RECEIPT_SHA_MISMATCH"));
+});
+
+test("reconcileEvidence rejects a receipt naming the wrong job via assessReceipt, on both the PASS and FAIL routes (MCP-057)", () => {
+  const baseTicket = { id: "TICK-057", status: "verifying", updated: "2026-08-26T00:00:00.000Z", taken: false };
+  const baseClaim = { state: "unclaimed", controller: null, worker: null, takenAt: null, expiresAt: null, branch: null, worktree: null, reviewRound: 0, remediationBudget: 1 };
+  const baseCommits = { values: [], reachability: "not-applicable" };
+  const basePullRequest = { state: "merged", mergeSha, requiredChecks: "pass" };
+  const baseWorkspace = { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" };
+  const baseRelease = { state: "not-applicable" };
+
+  const passResult = reconcileEvidence({
+    ticket: baseTicket,
+    claim: baseClaim,
+    commits: baseCommits,
+    pullRequest: basePullRequest,
+    proof: proofEvidence(proof("PASS", undefined, mergeSha, mergeSha, "kanmer-gate")),
+    workspace: baseWorkspace,
+    release: baseRelease,
+  });
+  assert.equal(passResult.recommendation, null);
+  assert.ok(passResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be "verify"')));
+
+  const failResult = reconcileEvidence({
+    ticket: baseTicket,
+    claim: baseClaim,
+    commits: baseCommits,
+    pullRequest: basePullRequest,
+    proof: proofEvidence(proof("FAIL", "implementation", mergeSha, mergeSha, "kanmer-gate")),
+    workspace: baseWorkspace,
+    release: baseRelease,
+  });
+  assert.equal(failResult.recommendation, null);
+  assert.ok(failResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be "verify"')));
 });
 
 test("collector selects the active recorded PR rather than the first reference and uses required-only checks", async (t) => {

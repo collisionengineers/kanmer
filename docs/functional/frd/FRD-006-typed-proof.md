@@ -39,14 +39,21 @@ The proof frontmatter carries an optional `receipts[]` list beside
 push-to-`main` `verify` job `pr.yml` already ran for this ticket's PR merge
 SHA — discharged one or more of the verification packet's obligations, so
 `kanmer-verify` does not re-run them in a fresh detached worktree. A receipt
-is accepted (`assessReceipt`) only when its `head_sha` exactly matches the
-proof's `merged_sha`, its `event` is `push`, its `job` is `verify`, and its
-`conclusion` is `success`; a wrong SHA, a `pull_request`-event run, a
-cancelled/skipped/timed-out run, a missing `verify` job, or an unrecognised
-`kind` is rejected with a reason. `receipts` is purely additive: it is
-absent from every proof written before MCP-057, an absent or empty list
-leaves reconciliation and the Done gate exactly as they were, and no
-existing proof is rewritten to add one. Manual GUI, installed-host,
+is accepted (`assessReceipt`, `packages/core/src/proof-receipts.ts`) only
+when its `head_sha` exactly matches the proof's `merged_sha`, its `event` is
+`push`, its `job` is exactly `verify`, its `workflow` is exactly `pr.yml`,
+and its `conclusion` is `success`; a wrong or wrong-case SHA, a
+`pull_request`-event run, a cancelled/skipped/timed-out run, a job or
+workflow named anything else, or an unrecognised `kind` is rejected with a
+reason. This is enforced at verification time, not merely documented:
+`packages/core/src/reconciliation.ts` calls `assessReceipt` on every receipt
+in the proof and reports a `head_sha` disagreement as
+`PROOF_RECEIPT_SHA_MISMATCH` and every other rejection as
+`PROOF_RECEIPT_REJECTED`, either of which blocks the Done and backward
+verification-failure routes. `receipts` is purely additive: it is absent
+from every proof written before MCP-057, an absent or empty list leaves
+reconciliation and the Done gate exactly as they were, and no existing proof
+is rewritten to add one. Manual GUI, installed-host,
 Windows-lock, and provider/deployment obligations are never discharged by a
 receipt — they remain the verifier's own detached-worktree evidence.
 

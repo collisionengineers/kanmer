@@ -221,3 +221,11 @@ Retry succeeded end-to-end. Full rail passed, GUI built, `npx electron-builder -
 **Release URL:** https://github.com/collisionengineers/kanmer/releases/tag/v0.4.2
 
 `gh run list --workflow release.yml --limit 3`: v0.4.2 run (id `33983890950`, "release: v0.4.2 (#332)") shows `in_progress` at the time of check, triggered by the tag push at `2026-09-05T18:23:07Z`. Watching for completion next.
+
+### B2: release ledger — PASS
+
+`release_channel acquire` (channel `main`, `integration_sha: 7a6e437574fd653f4c49d0a3fa00e6b5e4904809`) → `attempt_id: main@2`, lease `bd6e4740-e974-420a-9631-4b71b3589ce3` rev 1.
+`release_channel record` (same lease, rev 1→2): `release_tag: v0.4.2`, `included_prs: [321..332]` (12 PRs), `included_tickets: [DOC-028, GUI-152, CORE-140, DOC-026, MCP-057, CORE-138, CORE-144, CORE-145, CORE-129, CORE-147, CORE-141]`, `artifact_manifest` with the 4 asset sha256s above, `verification_state: passed`.
+`release_channel complete` (lease rev 2) → lease cleared, attempt `outcome: released`, `terminal_at: 2026-09-05T18:24:33.165Z`.
+
+Confirmed via `get_status.release`: `attemptCount: 2`, `main@2` present with `outcome: released`, `releaseTag: v0.4.2`, `verificationState: passed`, matching everything recorded, `channels: []` (no live lease remaining) — exactly as expected. `main@1` (v0.4.1) unchanged/untouched.

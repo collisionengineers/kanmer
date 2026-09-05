@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Stop a PR body edit from cancelling verify, keep the merge gate advisory on
   drafts, and make regate re-evaluate an in-progress run
-status: verifying
+status: done
 area: core
 assignee: claude-code
 profile: fix
@@ -12,16 +12,18 @@ stageEntered:
   preparing: '2026-09-05T02:57:08.520Z'
   review: '2026-09-05T03:09:05.355Z'
   verifying: '2026-09-05T04:21:00.958Z'
+  done: '2026-09-05T13:10:07.785Z'
 taken_at: '2026-09-05T02:58:13.328Z'
 branch: CORE-138-gate-handoff
 worktree: .worktrees/core-138
-claim_expires_at: '2026-09-05T03:28:13.328Z'
+claim_expires_at: '2026-09-05T13:39:18.044Z'
 claim_controller: claude-code
-lease_id: f40b49e8-b658-4928-8379-939a5d5796c8
-lease_revision: 1
+lease_id: 31536675-7b5c-422e-a6b9-3ed31ceeafd2
+lease_revision: 2
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-138'
 lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T02:58:13.328Z'
+lease_heartbeat_at: '2026-09-05T13:09:18.044Z'
+lease_reclaimed_from: claude-code
 labels:
   - ci
   - merge-gate
@@ -43,7 +45,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/324'
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T04:21:00.958Z'
+updated: '2026-09-05T13:10:07.785Z'
 ---
 
 ## Problem

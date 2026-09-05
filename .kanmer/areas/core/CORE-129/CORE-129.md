@@ -14,13 +14,13 @@ stageEntered:
 taken_at: '2026-09-05T04:04:14.267Z'
 branch: CORE-129-typed-proof-record
 worktree: .worktrees/CORE-129
-claim_expires_at: '2026-09-05T14:14:30.566Z'
+claim_expires_at: '2026-09-05T14:15:09.292Z'
 claim_controller: claude-code
 lease_id: adc83e1b-1f39-4636-a0f4-a4f96d78b093
-lease_revision: 11
+lease_revision: 12
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-129'
-lease_phase: running-command
-lease_heartbeat_at: '2026-09-05T13:44:30.566Z'
+lease_phase: review
+lease_heartbeat_at: '2026-09-05T13:45:09.292Z'
 labels:
   - reliable-autonomy
   - 0.4.2
@@ -39,7 +39,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/329'
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T13:44:47.422Z'
+updated: '2026-09-05T13:45:09.292Z'
 ---
 
 ## What

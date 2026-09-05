@@ -19,9 +19,9 @@
 
 ## Inventory
 
-384 tickets + 30 archived = 414 records. By stage: backlog 10, preparing 1, implementing 0, review 0, verifying 0, done 373. Taken 0. Groups: EPIC-001..013 and HZN-001..008 all archived; HZN-009/HZN-010 created today.
+384 tickets + 30 archived = 414 records at the snapshot. By stage: backlog 10, preparing 1, implementing 0, review 0, verifying 0, done 373. Taken 0. Groups: EPIC-001..013 and HZN-001..008 all archived; HZN-009/HZN-010 created today.
 
-Active non-Done tickets (all 11) and their package mapping:
+Pre-existing active non-Done tickets (all 11) and their package mapping:
 
 | Ticket | Stage | Package | Horizon |
 |---|---|---|---|
@@ -47,13 +47,13 @@ Archived-but-non-Done records (CORE-103, CORE-107, MCP-028, MCP-051, GUI-141, GU
 | R1-POL routing + integration branch + scoped loading | DOC-028, DOC-026 | B |
 | R1-EVID evidence-first verify + `receipts[]`, typed proof record | MCP-057, CORE-129 | B |
 | R1-GATE handoff subset | CORE-138 | A |
-| R1-LEASE | procedural (no ticket); permit → CORE-141 (R2) | — |
+| R1-LEASE | procedural (no ticket); permit → CORE-143 (R2) | — |
 | R1-UI Focus Board UI-A+B | GUI-152 | C |
-| R1-PROMOTE | CORE-143 | operator |
+| R1-PROMOTE | CORE-141 | operator |
 
 ## Deliberately excluded from R1
 
-Implemented heavy permit (CORE-141); gate-only hosted required check and blocking attestation (CORE-142, needs repository administration); Focus Board list view, conflict UI, time-in-stage and packaged qualification (GUI-153); Electron runtime upgrade and `release.yml` Node bump (R2-DESKTOP); receipt store / reuse key / provenance adapter (R2-EVIDENCE); the pack's `tools/audit_board.py` (unnecessary — live inventory read via MCP); every Pegasus item.
+Implemented heavy permit (CORE-143); gate-only hosted required check and blocking attestation (CORE-142, needs repository administration); Focus Board list view, conflict UI, time-in-stage and packaged qualification (GUI-153); Electron runtime upgrade and `release.yml` Node bump (R2-DESKTOP); receipt store / reuse key / provenance adapter (R2-EVIDENCE); the pack's `tools/audit_board.py` (unnecessary — live inventory read via MCP); every Pegasus item.
 
 ## Rollback reference
 

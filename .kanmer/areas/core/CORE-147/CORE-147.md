@@ -5,10 +5,12 @@ title: >-
   Make the verification contract project-declared: integration branch, workflow,
   required jobs and event drive receipt validation and the verify skill, with a
   proven designated-verifier fallback
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-09-05T15:01:49.611Z'
 labels:
   - evidence
   - receipts
@@ -24,7 +26,7 @@ refs:
   - docs/functional/frd/FRD-006-typed-proof.md
 archived: false
 created: '2026-09-05T14:03:46.047Z'
-updated: '2026-09-05T14:59:57.320Z'
+updated: '2026-09-05T15:01:49.611Z'
 ---
 
 ## Problem

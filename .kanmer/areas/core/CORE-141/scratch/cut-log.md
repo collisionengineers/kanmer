@@ -307,3 +307,19 @@ Found the correct additional command: `claude plugin update kanmer@kanmer` — e
 Note: "restart to apply" means a **new** Claude Code session picks up the 0.4.2 plugin cache; my own running session was loaded from the 0.4.1 marketplace state and is unaffected (this is expected and matches how the MCP tool schemas were already loaded at my session start — irrelevant to the board operations I'm performing via direct process spawns for B4's version checks, which correctly used the new generation's binary directly).
 
 **B4 host adoption: PASS in full** — new generation installed and adopted via the sanctioned in-app updater, stable launcher resolves to it, live-board `get_status` confirms server.version 0.4.2 with delivery.verification and proofValidation present, Claude plugin/marketplace restaged to 0.4.2. Proceeding to B5 (M5 disposable mutation through the installed route).
+
+### B5: M5 disposable mutation (AT-37) through the INSTALLED 0.4.2 route — PASS
+
+Fresh MCP session against the installed 0.4.2 generation (`KANMER_NODE=...\Programs\Kanmer\Kanmer.exe`, `KANMER_SERVER=...\mcp\0.4.2-4920\resources\mcp\kanmer-mcp.cjs`), server spawned directly with `--root <mkdtemp dir>` (never `.worktrees/kanmer`) via raw JSON-RPC stdio — first attempt had a client-side parsing bug (mis-read `list_items`'s response shape as `{items:[...]}` instead of the bare array `structuredContent.result`/`content[0].text` returns), corrected and reran clean on a fresh temp root:
+
+1. `get_status` -> `exists: false`, `server.version: "0.4.2"`, `boardSource: "default"` (confirms fresh synthesized board, server correctly identifies itself as 0.4.2 even off the live board)
+2. `create_item {type: ticket, title: "B5 M5 disposable mutation check", profile: chore}` -> `id: TICK-001`
+3. `set_ticket_doc {id, doc: "plan/plan.md", body: ...}` -> succeeded (no error)
+4. `get_doc_gates {id}` -> returned the full 6-stage gate schema (backlog/preparing/implementing/review/verifying/done) with profiles including chore's `leave-preparing: [plan, questions-resolved]`
+5. `move_item {id, status: preparing}` -> `status: "preparing"` confirmed
+6. `list_items {}` -> readback found the ticket, 1 item total, `status: "preparing"` confirmed
+7. `update_item {id, archived: true}` -> `archived: true` confirmed
+
+Temp root deleted after (`rm -rf "$TMP/kanmer-m5-b5" "$TMP/kanmer-m5-b5-run2"`; the first, buggy-parse attempt's root was also removed). No live board touched — this ran entirely against disposable synthesized boards under `--root`.
+
+**M5/AT-37: PASS.** Proceeding to B6 (rollback drill).

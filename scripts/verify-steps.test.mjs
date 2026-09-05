@@ -12,8 +12,21 @@ import { fileURLToPath } from "node:url";
 
 import { VERIFY_STEPS } from "./verify.mjs";
 import { assertBuilt, writeStamp } from "./build-stamp.mjs";
+import { COMMANDS as RUN_TESTS_COMMANDS } from "./run-tests.mjs";
+import { COMMANDS as RUN_HTTP_TESTS_COMMANDS } from "../packages/mcp-server/scripts/run-http-tests.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+// CORE-144: the two rail runner scripts moved the nested-build call sites out
+// of package.json (where the resolver below can follow `npm run <script>`
+// indirection) into bare `node <script>` leaves. Each runner exports its own
+// command list as pure data (`COMMANDS`, keyed by `default`/`assumeBuilt`) so
+// this resolver can expand those leaves too, instead of treating them as
+// opaque terminals it cannot see through.
+const RUNNER_COMMANDS = {
+  "scripts/run-tests.mjs": RUN_TESTS_COMMANDS,
+  "scripts/run-http-tests.mjs": RUN_HTTP_TESTS_COMMANDS,
+};
 
 // ---------------------------------------------------------------------------
 // Static resolution: walk every VERIFY_STEPS entry through package.json
@@ -57,8 +70,12 @@ function loadWorkspaces() {
 
 /**
  * Recursively resolve one shell command through `npm run <script>[ -w <ws>]`
- * indirection, recording every `npm run` invocation it passes through.
- * Non-`npm run` leaves (bare `node ...`, tool binaries, etc.) terminate that
+ * indirection, recording every `npm run` invocation it passes through. A bare
+ * `node <runnerScript>[ --assume-built]` leaf that matches a known rail
+ * runner (RUNNER_COMMANDS) is expanded via that runner's exported `COMMANDS`
+ * data for the matching mode, so the resolver can see through it exactly as
+ * if its command list had been inlined in package.json. Any other
+ * non-`npm run` leaf (bare `node ...`, tool binaries, etc.) terminates that
  * branch. `&&` chains are split at the top level (none of these scripts use
  * `&&` inside quotes).
  */
@@ -66,18 +83,33 @@ function resolve_(command, workspaces, currentWorkspace, invocations, seen) {
   const parts = command.split("&&").map((part) => part.trim());
   for (const part of parts) {
     const match = part.match(/^npm run ([^\s]+)(?:\s+-w\s+(\S+))?$/);
-    if (!match) continue; // terminal leaf: node/tsc/tsup/etc — nothing further to expand
-    const [, scriptName, wsFlag] = match;
-    const targetWorkspace = wsFlag ?? currentWorkspace;
-    const key = `${targetWorkspace ?? "<root>"}::${scriptName}`;
-    invocations.push({ workspace: targetWorkspace ?? null, script: scriptName });
-    if (seen.has(key)) continue; // avoid infinite recursion on a cyclical script (none expected)
-    seen.add(key);
-    const target = workspaces.get(targetWorkspace ?? null);
-    if (!target) continue; // unknown workspace (e.g. --workspaces --if-present forms): leave as a leaf
-    const scriptBody = target.scripts[scriptName];
-    if (!scriptBody) continue;
-    resolve_(scriptBody, workspaces, targetWorkspace ?? null, invocations, seen);
+    if (match) {
+      const [, scriptName, wsFlag] = match;
+      const targetWorkspace = wsFlag ?? currentWorkspace;
+      const key = `${targetWorkspace ?? "<root>"}::${scriptName}`;
+      invocations.push({ workspace: targetWorkspace ?? null, script: scriptName });
+      if (seen.has(key)) continue; // avoid infinite recursion on a cyclical script (none expected)
+      seen.add(key);
+      const target = workspaces.get(targetWorkspace ?? null);
+      if (!target) continue; // unknown workspace (e.g. --workspaces --if-present forms): leave as a leaf
+      const scriptBody = target.scripts[scriptName];
+      if (!scriptBody) continue;
+      resolve_(scriptBody, workspaces, targetWorkspace ?? null, invocations, seen);
+      continue;
+    }
+
+    const runnerMatch = part.match(/^node (scripts\/run-tests\.mjs|scripts\/run-http-tests\.mjs)(\s+--assume-built)?$/);
+    if (runnerMatch) {
+      const [, scriptPath, assumeBuiltFlag] = runnerMatch;
+      const mode = assumeBuiltFlag ? "assumeBuilt" : "default";
+      const runnerCommands = RUNNER_COMMANDS[scriptPath][mode];
+      for (const nested of runnerCommands) {
+        resolve_(nested, workspaces, currentWorkspace, invocations, seen);
+      }
+      continue;
+    }
+
+    // terminal leaf: node/tsc/tsup/etc with no known further expansion
   }
 }
 
@@ -96,6 +128,65 @@ describe("VERIFY_STEPS build-once rail (CORE-140)", () => {
       1,
       `expected the root "build" script to be reached exactly once, got ${rootBuildInvocations.length}: ` +
         JSON.stringify(invocations, null, 2),
+    );
+  });
+
+  test("every workspace's own build script is reached at most once across the rail", () => {
+    // The root build script itself recurses into `npm run build -w @kanmer/core`
+    // and `npm run build -w @kanmer/mcp-server`, so each workspace's build is
+    // expected to appear exactly once as a side effect of resolving the one
+    // root build step above. A "built" rail step that forgets --assume-built
+    // (CORE-144 F-001) reintroduces a second, redundant build of that
+    // workspace without ever re-invoking the *root* build script by name, so
+    // the "root build reached exactly once" assertion alone cannot see it —
+    // this one counts per workspace instead.
+    const workspaces = loadWorkspaces();
+    const invocations = [];
+    for (const step of VERIFY_STEPS) {
+      resolve_(step, workspaces, null, invocations, new Set());
+    }
+    const buildCounts = new Map();
+    for (const invocation of invocations) {
+      if (invocation.script !== "build") continue;
+      const key = invocation.workspace ?? "<root>";
+      buildCounts.set(key, (buildCounts.get(key) ?? 0) + 1);
+    }
+    for (const [key, count] of buildCounts) {
+      assert.equal(
+        count,
+        1,
+        `expected "${key}"'s build script to be reached at most once across the rail, got ${count}`,
+      );
+    }
+  });
+
+  test("dropping --assume-built from test:built reintroduces a detectable duplicate mcp-server build", () => {
+    // Mutation probe (CORE-140 review, probe A): simulates the regression a
+    // guard-fidelity gap let through — root package.json's "test:built"
+    // losing its "--assume-built" flag, which silently restores a full
+    // rebuild of @kanmer/mcp-server inside test:http on top of the one the
+    // root build already performed. Proves the resolver (and therefore the
+    // "at most once" assertion above) now sees this, where before the fix it
+    // could not see into run-tests.mjs / run-http-tests.mjs at all.
+    const workspaces = loadWorkspaces();
+    const mutatedWorkspaces = new Map(workspaces);
+    const rootPkg = workspaces.get(null);
+    mutatedWorkspaces.set(null, {
+      ...rootPkg,
+      scripts: { ...rootPkg.scripts, "test:built": "node scripts/run-tests.mjs" }, // --assume-built dropped
+    });
+
+    const invocations = [];
+    for (const step of VERIFY_STEPS) {
+      resolve_(step, mutatedWorkspaces, null, invocations, new Set());
+    }
+    const mcpServerBuilds = invocations.filter(
+      (invocation) => invocation.workspace === "@kanmer/mcp-server" && invocation.script === "build",
+    );
+    assert.equal(
+      mcpServerBuilds.length,
+      2,
+      "expected the resolver to see the reintroduced duplicate @kanmer/mcp-server build once --assume-built is dropped from test:built",
     );
   });
 
@@ -204,6 +295,20 @@ describe("build-stamp.mjs (temp git repo)", () => {
     );
     writeFileSync(stampPath, JSON.stringify({ ...stamp, outputs }));
     assert.throws(() => assertBuilt(["server"], { root: tmp }), /hash mismatch/);
+  });
+
+  test("assertBuilt refuses when a file is added inside an already-untracked directory", () => {
+    // CORE-144 F-002: git collapses an untracked directory to a single
+    // "?? dir/" porcelain entry, so a mutation *inside* an already-untracked
+    // directory used to leave the dirty digest — and therefore --assert —
+    // unchanged. Reproduces the review's probe: create probe-dir/a.txt, stamp,
+    // then add probe-dir/b.txt and expect a refusal.
+    mkdirSync(join(tmp, "probe-dir"), { recursive: true });
+    writeFileSync(join(tmp, "probe-dir", "a.txt"), "first\n");
+    writeStamp({ root: tmp });
+    writeFileSync(join(tmp, "probe-dir", "b.txt"), "second\n");
+    assert.throws(() => assertBuilt(["server"], { root: tmp }), /dirty digest mismatch/);
+    rmSync(join(tmp, "probe-dir"), { recursive: true, force: true });
   });
 
   test("assertBuilt refuses when package-lock.json hash differs", () => {

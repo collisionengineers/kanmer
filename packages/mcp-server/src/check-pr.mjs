@@ -19,6 +19,11 @@ function parseArgs(argv) {
   const values = {};
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
+    if (flag === "--draft") {
+      if (values[flag]) throw new Error(`duplicate argument ${flag}`);
+      values[flag] = true;
+      continue;
+    }
     if (flag !== "--board" && flag !== "--event") throw new Error(`unknown argument ${flag}`);
     if (values[flag]) throw new Error(`duplicate argument ${flag}`);
     const value = argv[++i];
@@ -26,7 +31,13 @@ function parseArgs(argv) {
     values[flag] = value;
   }
   if (!values["--board"] || !values["--event"]) throw new Error("--board and --event are required");
-  return { board: values["--board"], event: values["--event"] };
+  // `--draft` is a workflow-level signal that the caller intends draft/advisory
+  // mode; it is deliberately NOT the authoritative source of truth for whether
+  // this PR is a draft (see readPrEvent/main: the event payload's
+  // `pull_request.draft` decides that). A caller that forgets or mis-computes
+  // this flag must not silently flip a draft PR to strict or a ready PR to
+  // advisory, so the flag is carried through but never trusted alone.
+  return { board: values["--board"], event: values["--event"], draft: values["--draft"] === true };
 }
 
 function readPrEvent(value) {
@@ -63,6 +74,10 @@ function readPrEvent(value) {
   if (url) Object.defineProperty(result, "url", { value: url });
   if (repository) Object.defineProperty(result, "repository", { value: repository });
   if (headRepository) Object.defineProperty(result, "headRepository", { value: headRepository });
+  // The event payload's `pull_request.draft` is the sole authoritative source
+  // for advisory-vs-strict mode (see main()); the `--draft` CLI flag is only a
+  // workflow-level confirmation and is never trusted alone.
+  Object.defineProperty(result, "draft", { value: pr.draft === true });
   return result;
 }
 
@@ -247,6 +262,33 @@ async function main() {
     }
     const result = await evaluateMergeGate(store, pr, evidence);
     process.stdout.write(`${JSON.stringify(result)}\n`);
+    // The event payload's `pull_request.draft` decides advisory mode, not the
+    // `--draft` CLI flag (readPrEvent/parseArgs). Every check still runs; a
+    // draft PR only changes how the result is reported and exits.
+    const isDraft = pr.draft === true;
+    if (isDraft) {
+      const lines = result.findings.length > 0
+        ? result.findings.map((finding) => `ADVISORY (draft): [${finding.code}] ${finding.message}`)
+        : ["ADVISORY (draft): no findings"];
+      for (const line of lines) process.stdout.write(`${line}\n`);
+      for (const finding of result.findings) {
+        process.stderr.write(`::notice title=kanmer/gate::ADVISORY (draft): [${finding.code}] ${escapeCommandData(finding.message)}\n`);
+      }
+      const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+      if (summaryPath) {
+        const summary = [
+          "### kanmer-gate (draft PR — advisory)",
+          "",
+          ...lines.map((line) => `- ${line}`),
+          "",
+        ].join("\n");
+        await fs.appendFile(summaryPath, `${summary}\n`);
+      }
+      // Draft PRs never fail the check: the strict/warn judgment that matters
+      // binds to the PR once it is marked ready (kanmer-execute/SKILL.md).
+      process.exitCode = 0;
+      return;
+    }
     for (const finding of result.findings) {
       const command = finding.level === "error" ? "error" : "warning";
       process.stderr.write(`::${command} title=kanmer/gate [${finding.code}]::${escapeCommandData(finding.message)}\n`);

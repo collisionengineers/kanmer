@@ -21,9 +21,15 @@ permissions:
 # One live run per PR (or per ref for a dispatch): a newer head or a burst of
 # board-push dispatches cancels the superseded run instead of queueing behind
 # it. A push to `main` is never cancelled — its `verify` result is the bound
-# post-merge receipt kanmer-verify consumes, and it must finish.
+# post-merge receipt kanmer-verify consumes, and it must finish. An `edited`
+# PR event (a body/title edit — CORE-139 F-001) is carved into its own
+# `meta-`-prefixed group instead of sharing the PR's group: it never cancels
+# an in-progress `verify`/`kanmer-gate` run for that PR, while a superseded
+# `edited` event still only cancels another `edited` run of the same PR.
+# `opened`/`synchronize`/`reopened`/`ready_for_review` keep the original
+# per-PR group and continue to cancel a superseded run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.action == 'edited' && 'meta-' || '' }}${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
 defaults:
@@ -105,7 +111,7 @@ jobs:
           # warnings (missing/stale attestation, unreachable commits, board
           # sync); `1`/`true` promotes them to blocking errors (CORE-123).
           KANMER_GATE_STRICT: ${{ vars.KANMER_GATE_STRICT || '' }}
-        run: node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH"
+        run: node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH" ${{ github.event.pull_request.draft && '--draft' || '' }}
 
   # Re-run the kanmer-gate job of the latest pull_request run for every open PR
   # into main. Runs on workflow_dispatch (by hand, or dispatched from the board
@@ -149,8 +155,16 @@ jobs:
             fi
             if gh run rerun "$run_id" --job "$job_id"; then
               echo "PR #$number ($sha): re-ran kanmer-gate job $job_id of run $run_id"
+              continue
+            fi
+            # A run still in progress cannot be re-run yet. Wait (bounded) for it to
+            # finish, then retry the rerun exactly once instead of skipping outright —
+            # a board push that lands mid-run must still get its own re-evaluation.
+            echo "PR #$number ($sha): run $run_id is in progress; waiting for it to finish"
+            timeout 900 gh run watch "$run_id" --exit-status >/dev/null 2>&1 || true
+            if gh run rerun "$run_id" --job "$job_id"; then
+              echo "PR #$number ($sha): waited for run $run_id, then re-ran kanmer-gate job $job_id"
             else
-              # A run still in progress cannot be re-run; it will judge the new tip anyway.
-              echo "PR #$number ($sha): could not re-run job $job_id of run $run_id (in progress or not permitted); skipping"
+              echo "PR #$number ($sha): still could not re-run job $job_id of run $run_id after waiting; skipping"
             fi
           done <<< "$heads"

@@ -532,8 +532,13 @@ never the rail: the pre-CORE-139 condition tested `github.ref`, which is
 already-proven commit (25 identical rails on one SHA). A push to `main` runs
 both `verify` and `regate`, which re-runs the `kanmer-gate` job of the latest
 pull-request run for every open PR into `main`. The workflow's `concurrency`
-group (keyed by event and PR number or ref) cancels a superseded run for every
-event except `push`, whose result is the post-merge receipt. The gate reads the
+group is keyed by event and PR number or ref, and cancels a superseded run for
+every event except `push`, whose result is the post-merge receipt — **except**
+an `edited` PR event (a body/title edit), which CORE-138 carves into its own
+`meta-`-prefixed group so a body edit never cancels an in-progress
+`verify`/`kanmer-gate` run for that same PR (closing CORE-139's accepted-risk
+finding F-001); a superseded `edited` event still only cancels another
+`edited` run. The gate reads the
 remote board tip, so a
 board push should also re-judge open PRs — but `pr.yml` cannot listen for
 `push: kanmer-board`: GitHub runs push workflows from the pushed ref's tree, and
@@ -546,10 +551,27 @@ header); it dispatches `pr.yml` on `main` only when an open pull request into
 automatically: when the file changes on `main`, an operator re-copies it onto
 the board branch. Agents never commit to the board branch, so until an operator
 installs it, re-gate by hand with `gh workflow run pr.yml --ref main` after
-pushing the board. Missing/stale attestations,
+pushing the board. `regate` no longer skips a `kanmer-gate` run that is still
+in progress: it waits (bounded, `gh run watch … --exit-status`, up to 15
+minutes) for that run to finish, then retries `gh run rerun --job` once, so a
+board push that lands mid-run still gets its own re-evaluation instead of
+being silently dropped. Missing/stale attestations,
 `needs-changes`, unreachable commits, and `SYNC_REQUIRED` (an attestation
 `board_sha` absent from the fetched board) are warnings until the repository
 variable `KANMER_GATE_STRICT` is set to `1`/`true`, which makes them errors.
+
+A draft PR runs `kanmer-gate` exactly like a ready one — every check executes,
+nothing is skipped — but the workflow passes `check-pr.mjs --draft`
+(authoritative source: the event payload's `pull_request.draft`, not the CLI
+flag alone), which runs every check, writes each finding prefixed
+`ADVISORY (draft):` to stdout/stderr and to `$GITHUB_STEP_SUMMARY` when set,
+and always exits `0`. A fresh `kanmer-execute` handoff therefore opens the PR
+with `gh pr create --draft` first, records it and moves the ticket to Review,
+pushes the board, and only then runs `gh pr ready` — so the strict/warn
+judgment that actually gates a merge binds to the PR once it is marked ready,
+and no expected red required check ever sits against an `implementing`
+snapshot. A non-draft (ready) PR's behaviour is byte-for-byte unchanged:
+strict/warn per `KANMER_GATE_STRICT`, same exit codes.
 
 A batch PR has one standalone `Kanmer: <ID>` footer for every member of the
 complete immutable manifest roster, with no omitted or extra ticket. The gate
@@ -569,7 +591,7 @@ git worktree add "$RUNNER_TEMP/kanmer-board" "refs/remotes/origin/$KANMER_BOARD_
 The gate then runs:
 
 ```bash
-node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH"
+node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH" ${{ github.event.pull_request.draft && '--draft' || '' }}
 ```
 
 Keep that board worktree separate from the pull-request checkout. When changing

@@ -73,6 +73,7 @@ function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40), 
     },
     base,
     ...(identity.url ? { html_url: identity.url } : {}),
+    ...(Object.hasOwn(identity, "draft") ? { draft: identity.draft } : {}),
   };
   return {
     pull_request,
@@ -213,6 +214,64 @@ test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
 test("strict flag parsing accepts only explicit truthy values", () => {
   for (const value of ["1", "true", "TRUE", "yes", " on "]) assert.equal(readStrictFlag({ KANMER_GATE_STRICT: value }), true, value);
   for (const value of ["", "0", "false", "no", undefined, "strict"]) assert.equal(readStrictFlag({ KANMER_GATE_STRICT: value }), false, String(value));
+});
+
+test("readPrEvent exposes draft from the event payload as the sole authoritative source", () => {
+  const draftEvent = pullRequestEvent(9, "Kanmer: CORE-138", "a".repeat(40), "draft-branch", "b".repeat(40), { draft: true });
+  assert.equal(readPrEvent(draftEvent).draft, true);
+  const readyEvent = pullRequestEvent(9, "Kanmer: CORE-138", "a".repeat(40), "ready-branch", "b".repeat(40), { draft: false });
+  assert.equal(readPrEvent(readyEvent).draft, false);
+  const absentEvent = pullRequestEvent(9, "Kanmer: CORE-138", "a".repeat(40), "no-draft-field");
+  assert.equal(readPrEvent(absentEvent).draft, false);
+});
+
+test("--draft mode runs every check but reports advisory and always exits 0", async () => {
+  const { board, ticket, event } = await fixture();
+  try {
+    const head = "a".repeat(40);
+    // No review attestation at all: under KANMER_GATE_STRICT this is normally
+    // a blocking NO_REVIEW_RECORD error (exit 1). In --draft mode the same
+    // evaluation runs, but the report is advisory and the process still exits 0.
+    await fs.writeFile(event, JSON.stringify(pullRequestEvent(9, `Kanmer: ${ticket.id}`, head, "draft-pr", "b".repeat(40), { draft: true })));
+    const draftStrict = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event, "--draft");
+    assert.equal(draftStrict.status, 0, draftStrict.stderr);
+    assert.match(draftStrict.stdout, /ADVISORY \(draft\): \[NO_REVIEW_RECORD\]/);
+    const draftResult = JSON.parse(draftStrict.stdout.split("\n")[0]);
+    assert.equal(draftResult.ok, false);
+    assert.equal(draftResult.findings.some((finding) => finding.code === "NO_REVIEW_RECORD"), true);
+
+    // The identical fixture without --draft (or with draft:false) keeps
+    // today's strict/warn behaviour unchanged.
+    await fs.writeFile(event, JSON.stringify(pullRequestEvent(9, `Kanmer: ${ticket.id}`, head, "draft-pr", "b".repeat(40), { draft: false })));
+    const readyStrict = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(readyStrict.status, 1);
+    assert.doesNotMatch(readyStrict.stdout, /ADVISORY \(draft\)/);
+
+    // The `--draft` CLI flag alone, without the event payload agreeing, does
+    // NOT flip a ready PR to advisory: the event payload is authoritative.
+    const flagOnly = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event, "--draft");
+    assert.equal(flagOnly.status, 1);
+    assert.doesNotMatch(flagOnly.stdout, /ADVISORY \(draft\)/);
+  } finally {
+    await removeTreeWithRetry(board);
+  }
+});
+
+test("--draft mode still reports a stale attestation, advisory and exit 0", async () => {
+  const { board, store, ticket, event } = await fixture();
+  try {
+    const head = "a".repeat(40);
+    // Attestation bound to a different head than the current PR head.
+    await store.setDoc(ticket.id, "scratch/review", attestation("f".repeat(40), "pass"));
+    await fs.writeFile(event, JSON.stringify(pullRequestEvent(10, `Kanmer: ${ticket.id}`, head, "draft-stale", "b".repeat(40), { draft: true })));
+    const draft = run(board, event, "--draft");
+    assert.equal(draft.status, 0, draft.stderr);
+    assert.match(draft.stdout, /ADVISORY \(draft\): \[STALE_REVIEW\]/);
+    const result = JSON.parse(draft.stdout.split("\n")[0]);
+    assert.equal(result.findings.some((finding) => finding.code === "STALE_REVIEW"), true);
+  } finally {
+    await removeTreeWithRetry(board);
+  }
 });
 
 test("attestation checks warn by default and block under KANMER_GATE_STRICT", async () => {

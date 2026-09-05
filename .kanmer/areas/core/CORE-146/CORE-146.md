@@ -17,16 +17,19 @@ groups:
 links:
   - MCP-057
   - CORE-133
+  - CORE-129
 refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-09-05T04:25:13.842Z'
-updated: '2026-09-05T04:25:13.842Z'
+updated: '2026-09-05T15:04:48.329Z'
 ---
 
 ## Problem
 
 `reconcile_ticket` reports `RECORDED_COMMIT_UNREACHABLE` for every ticket whose `commits[]` holds pre-squash branch commits, because a squash merge creates a new commit and the branch commits are never its ancestors by construction. On this repository every PR is squash-merged, so the read-only reconciler's `MOVE_TO_DONE` recommendation is effectively unreachable for any Verifying ticket with recorded implementation commits. Observed on MCP-057 (merge `e474f317`) during the first evidence-first verification on 2026-09-05; CORE-133 (Done, merge `c973f94a`) has the identical property. Verifiers currently fall back to a manual `move_item` after writing a PASS proof, which is safe but defeats the purpose of the inspector's recommendation.
+
+**Observed mitigation (CORE-129 verification, 2026-09-05):** when the verifier replaced the pre-squash head in `commits[]` with the GitHub merge SHA before calling `reconcile_ticket`, the finding cleared and `MOVE_TO_DONE` was recommended. So the minimal fix may be procedural (the verify skill records the merge SHA in `commits[]` as its first write, and closeout keeps it) plus an informational rather than error-level finding for pre-squash commits that are ancestors of the merged PR head.
 
 ## Outcome
 
@@ -37,7 +40,7 @@ Reconciliation distinguishes "recorded commit is contained in the merge" (its pa
 - A ticket whose `commits[]` are ancestors of the merged PR's recorded head (`gh pr view --json headRefOid`, or the `pullRequest.headSha` already in `ReconciliationEvidence`) and whose proof is a valid PASS at the merge SHA gets `MOVE_TO_DONE`; the finding, if kept, is informational.
 - A commit reachable from neither the merge SHA nor the PR head still yields `RECORDED_COMMIT_UNREACHABLE` as an error.
 - Existing CORE-133 tests (FAIL routing bound to the merge SHA) unchanged; new table cases for squash-merged PASS, squash-merged FAIL, and genuinely unreachable commit.
-- `kanmer-verify` and `kanmer-closeout` prose updated to describe when the recommendation is expected.
+- `kanmer-verify` and `kanmer-closeout` prose updated to describe when the recommendation is expected and to record the merge SHA in `commits[]` at verification.
 
 ## Out of scope
 
@@ -45,4 +48,4 @@ Rewriting historical `commits[]`; changing the merge strategy; any GUI change.
 
 ## Technical seam
 
-`packages/core/src/reconciliation.ts` (commit reachability evidence and `RECORDED_COMMIT_UNREACHABLE`), `packages/mcp-server/src/reconciliation.ts` (`pullRequestEvidence`, where the host supplies `headSha`/`mergeSha` and could supply per-commit containment), `packages/core/src/reconciliation.test.ts`, `packages/mcp-server/src/reconciliation.test.mjs`.
+`packages/core/src/reconciliation.ts` (commit reachability evidence and `RECORDED_COMMIT_UNREACHABLE`), `packages/mcp-server/src/reconciliation.ts` (`pullRequestEvidence`, where the host supplies `headSha`/`mergeSha` and could supply per-commit containment), `packages/core/src/reconciliation.test.ts`, `packages/mcp-server/src/reconciliation.test.mjs`, `plugins/kanmer/skills/kanmer-verify/SKILL.md`.

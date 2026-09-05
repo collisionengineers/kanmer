@@ -14,17 +14,6 @@ stageEntered:
   review: '2026-09-05T15:33:47.350Z'
   verifying: '2026-09-05T15:52:06.972Z'
   done: '2026-09-05T16:02:41.819Z'
-taken_at: '2026-09-05T15:03:14.642Z'
-branch: CORE-147-verification-contract
-worktree: .worktrees/CORE-147
-claim_expires_at: '2026-09-05T16:32:34.291Z'
-claim_controller: claude-code
-lease_id: 58ddf368-136e-49b3-bf24-7191c8baa4af
-lease_revision: 5
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-147'
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T16:02:34.291Z'
-lease_reclaimed_from: claude-code
 labels:
   - evidence
   - receipts
@@ -48,7 +37,7 @@ delivery_sha: 4a1c3a235ccd9f5bfd8ef8ccee18959a15c0fa5d
 delivery_recorded_at: '2026-09-05T16:02:43.934Z'
 archived: false
 created: '2026-09-05T14:03:46.047Z'
-updated: '2026-09-05T16:02:43.934Z'
+updated: '2026-09-05T16:03:53.762Z'
 ---
 
 ## Problem
@@ -77,3 +66,9 @@ Provider provenance verification (`VerificationHost`, R2-EVIDENCE); receipt stor
 ## Technical seam
 
 `packages/core/src/types.ts` (`DeliveryPolicy`, `BoardConfig.delivery`), `packages/core/src/board.ts` (`resolveDelivery`), `packages/core/src/proof-receipts.ts` (`assessReceipt`), `packages/core/src/reconciliation.ts` (`receiptAssessmentRejections` gets the contract from the evidence), `packages/mcp-server/src/reconciliation.ts` / `index.ts` (`get_status.delivery`, evidence assembly), `packages/mcp-server/src/golden-board.mjs` or `smoke.mjs` (fallback scenario), `plugins/kanmer/skills/kanmer-verify/SKILL.md`, `plugins/kanmer/skills/kanmer-setup/SKILL.md`, `docs/manual/proof.md`, `docs/functional/frd/FRD-006-typed-proof.md`, `docs/functional/frd/FRD-031-configurable-delivery-and-release-state.md`, `AGENTS.md` §4.
+
+## Closeout
+
+Merged as PR [#330](https://github.com/collisionengineers/kanmer/pull/330), squash SHA `4a1c3a235ccd9f5bfd8ef8ccee18959a15c0fa5d`, merged 2026-09-05T15:50:42Z. Verified PASS at that exact merge SHA (`proof/proof.md`, schema 2): the hosted `pr.yml` `verify` job (run 33976030780) satisfied the default contract receipt, and — because the installed 0.4.1 control plane does not yet report `get_status.delivery.verification` (stale-control-plane, same condition as review F-007) — the ticket's own decisive acceptance criteria (`resolveDelivery`/`deliveryPolicySource`/`deliveryVerificationSource` on a declared `dev`/`ci.yml` board, `assessReceiptSet` empty-list fallback, and rejection of a `pr.yml`/`verify` receipt under that declared contract naming `ci.yml`) were additionally proven directly against the built `packages/core/dist/index.js` in a disposable detached worktree at the merge SHA. No successor ticket required by this closeout; CORE-146 (pre-existing, unrelated backlog item about `RECORDED_COMMIT_UNREACHABLE` after a squash merge) remains open and was worked around procedurally in this verification per its own documented mitigation (recording the merge SHA, not the pre-squash head, in `commits[]`).
+
+delivery_state: integrated, delivery_branch: main, delivery_sha: 4a1c3a235ccd9f5bfd8ef8ccee18959a15c0fa5d.

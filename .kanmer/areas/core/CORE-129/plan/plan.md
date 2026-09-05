@@ -15,10 +15,11 @@
 >    reading is now pinned by tests in `docs.test.ts` rather than left to prose.
 > 2. **F-001, parser purity.** Required change 1 now states explicitly that
 >    `parseProofDocument` must be *pure over its input bytes*. `gray-matter`
->    memoises by input string and caches `{ data: {} }` on a YAML throw, so the
->    same document read as `invalid` once and `legacy` thereafter — which made a
->    census disagree with its own locked re-read. `cache: false` is part of the
->    contract, not an implementation detail.
+>    memoises parsed files in a module-global keyed by the input string, and
+>    writes that entry **before** parsing — so a document whose YAML throws leaves
+>    `{ data: {} }` cached under its own bytes and reads `legacy` ever after. That
+>    made a census disagree with its own locked re-read. Suppressing that cache is
+>    part of the contract, not an implementation detail.
 >
 > **Version 2 (2026-09-05)** superseded version 1, which was written against a
 > "v0.3.13" roster and base `4fda54b4`; neither exists any more. This plan is
@@ -76,11 +77,17 @@ engine or dependency is introduced.
      mirrors `review-attestation.ts`'s style; `parseProofDocument(raw)` runs
      `gray-matter` and delegates, so no caller decodes proof frontmatter itself.
    - **`parseProofDocument` must be a pure function of its input bytes** (F-001).
-     `gray-matter` memoises by input string and stores `{ data: {} }` under that
-     key when the YAML throws, so without `cache: false` the same document reads
-     `invalid` once and `legacy` for the rest of the process — and a census
-     disagrees with its own locked re-read over byte-identical documents. Pass
-     `{ cache: false }`; do not rely on `matter.clearCache()` discipline.
+     `gray-matter` keeps a module-global `matter.cache` keyed on the input string
+     and populates it *before* parsing (`matter.cache[file.content] = file;` then
+     `parseMatter(...)`), so a document whose YAML throws leaves an entry with
+     `data: {}` behind: the same bytes read `invalid` once and `legacy` for the
+     rest of the process, and a census disagrees with its own locked re-read.
+     `gray-matter` skips the cache entirely for any call that passes an options
+     object (`if (!options)` guards both the read and the write), so always call
+     it with one — the module keeps a single `PARSE_OPTIONS` constant whose
+     contents are deliberately a no-op. Do not rely on `matter.clearCache()`
+     discipline: it mutates a global every caller shares and only helps whoever
+     remembers to call it.
    - `proof-record/2` semantics: `kind: proof-record`, `schema: 2`, 40-hex
      `merged_sha`, non-empty `environment`, ISO `verified_at`, a `result`, and a
      non-empty `attempts[]`.

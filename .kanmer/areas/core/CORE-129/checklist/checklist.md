@@ -23,7 +23,7 @@
 - [x] Unknown top-level keys are preserved on the parsed record and reported in diagnostics, never dropped and never fatal.
 - [x] `receipts[]` is parsed by the same parser via `parseProofReceipts`, unknown receipt fields preserved; a receipt whose `head_sha` ≠ `merged_sha` makes the record `invalid`; a proof with no `receipts` is unaffected.
 - [x] A record without `schema: 2` (every proof written to date, including this week's) is `legacy` and is never rewritten.
-- [x] Parsing is pure: the same bytes yield the same state however many times they are read in one process, so a census and its own locked re-read cannot disagree (`cache: false` on `gray-matter`; review round 1, F-001).
+- [x] Parsing is pure over its input bytes: the same document yields the same state however many times it is read in one process, so a census and its own locked re-read cannot disagree. `gray-matter` populates its content-keyed module cache *before* parsing, so a YAML throw would otherwise leave `data: {}` behind; every call passes an options object, which is what makes `gray-matter` skip that cache (review round 1, F-001).
 - [x] Two dry-run censuses over an unchanged board return the same digest and the same buckets, and that digest still authorises the cutover.
 - [x] `BoardConfig.proofValidation` is optional; `defaultBoardConfig()` writes `strict`; an absent field resolves to `report` with source `default`.
 - [x] `get_status.proofValidation` reports `{ mode, source }`.
@@ -43,4 +43,4 @@
 - [x] ADR-0011 records the bounded strict proof reader as an explicit exception; FRD-002, FRD-006 and the manuals match the implemented behaviour.
 - [x] `kanmer-verify` documents schema 2, one typed attempt per rerun and `authority`; closeout/auto/setup and the tool reference agree; the tool roster stays 41.
 - [x] Scoped checks pass: core tests, `npm run test:built`, typecheck, `check-browser.mjs`, smoke, golden, `verify:skills`, `verify:docs`, `check:manual`, `plugin:build` with the bundle committed.
-- [x] The v0.4.2 census is recorded from a copy of the live board; the live board is not touched.
+- [x] The v0.4.2 census is recorded from a copy of the live board, twice in one process with matching digests; the live board is not touched.

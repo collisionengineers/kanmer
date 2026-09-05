@@ -4,12 +4,22 @@ type: ticket
 title: >-
   Build each rail artifact once and refuse an already-built step whose stamp
   does not match
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-09-05T02:17:42.836Z'
+taken_at: '2026-09-05T02:18:41.901Z'
+branch: CORE-140-rail-build-once
+worktree: .worktrees/CORE-140
+claim_expires_at: '2026-09-05T02:48:41.901Z'
+claim_controller: claude-code
+lease_id: bb30fcb6-f9f0-4eeb-ab4f-7934e86f7c15
+lease_revision: 1
+lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-140'
+lease_phase: implementing
+lease_heartbeat_at: '2026-09-05T02:18:41.901Z'
 labels:
   - rail
   - build
@@ -20,7 +30,7 @@ links:
   - CORE-139
 archived: false
 created: '2026-09-05T02:12:03.055Z'
-updated: '2026-09-05T02:17:42.836Z'
+updated: '2026-09-05T02:18:41.901Z'
 ---
 
 ## Problem

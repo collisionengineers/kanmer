@@ -4,13 +4,14 @@ type: ticket
 title: >-
   Validate proof documents for internal consistency so a stale result cannot
   outlive its own evidence
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-08-31T17:48:20.688Z'
   review: '2026-09-05T13:44:47.422Z'
+  verifying: '2026-09-05T14:47:13.751Z'
 taken_at: '2026-09-05T04:04:14.267Z'
 branch: CORE-129-typed-proof-record
 worktree: .worktrees/CORE-129
@@ -40,7 +41,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/329'
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T14:27:00.629Z'
+updated: '2026-09-05T14:47:13.751Z'
 ---
 
 ## What

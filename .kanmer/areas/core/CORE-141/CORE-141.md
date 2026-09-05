@@ -2,10 +2,22 @@
 id: CORE-141
 type: ticket
 title: Release v0.4.2
-status: backlog
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: chore
+stageEntered:
+  preparing: '2026-09-05T14:47:32.100Z'
+taken_at: '2026-09-05T14:48:07.489Z'
+branch: CORE-141-release-0.4.2
+worktree: .worktrees/CORE-141
+claim_expires_at: '2026-09-05T15:18:07.489Z'
+claim_controller: claude-code
+lease_id: 3b7420d8-cebe-41e2-8257-6960c8bdaf5a
+lease_revision: 1
+lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-141'
+lease_phase: implementing
+lease_heartbeat_at: '2026-09-05T14:48:07.489Z'
 labels:
   - release
   - v0.4.2
@@ -18,7 +30,7 @@ refs:
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-09-05T02:13:04.749Z'
-updated: '2026-09-05T02:13:04.749Z'
+updated: '2026-09-05T14:48:07.489Z'
 ---
 
 ## Why

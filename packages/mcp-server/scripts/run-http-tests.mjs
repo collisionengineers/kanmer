@@ -8,6 +8,22 @@
 // instead refuses (via build-stamp's assertBuilt) if the server output does
 // not match the rail's build-once stamp.
 //
+// CORE-145: `@kanmer/mcp-server`'s own `build` script never builds
+// `@kanmer/core` first, so on a genuinely fresh `npm ci` (no prior root
+// `npm run build`) the workspace build below fails in esbuild resolving
+// `@kanmer/core`. Building core here (rather than adding it to
+// `@kanmer/mcp-server`'s `package.json` `build` script) keeps the root
+// `npm run build` from building core twice — it already runs
+// `npm run build -w @kanmer/core` before `npm run build -w
+// @kanmer/mcp-server`. This is skipped whenever `packages/core/dist/index.js`
+// already exists (the common case — the rail's own root build, or a prior
+// local build), so it only fires on a cold checkout. Deliberately imperative,
+// not part of `COMMANDS.default` below: it is conditional, and
+// `COMMANDS.default` is read by scripts/verify-steps.test.mjs's "every
+// workspace's build script reached at most once" assertion as an
+// unconditional command list — a conditional build declared there would lie
+// to that guard.
+//
 // `COMMANDS` is exported as pure data (CORE-144) so
 // scripts/verify-steps.test.mjs can statically expand this script's two
 // modes instead of treating `node scripts/run-http-tests.mjs` as an opaque
@@ -15,11 +31,13 @@
 // default branch below rebuilds `@kanmer/mcp-server`, so a
 // `--assume-built`-less `test:built` variant went undetected.
 import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "..", "..");
+const coreDistIndex = join(repoRoot, "packages", "core", "dist", "index.js");
 
 export const COMMANDS = Object.freeze({
   default: Object.freeze(["npm run build -w @kanmer/mcp-server"]),
@@ -76,6 +94,9 @@ async function main() {
     const { assertBuilt } = await import(pathToFileURL(join(repoRoot, "scripts", "build-stamp.mjs")).href);
     assertBuilt(["server"]);
   } else {
+    if (!existsSync(coreDistIndex)) {
+      runNpmCommand("npm run build:core");
+    }
     for (const command of COMMANDS.default) {
       runNpmCommand(command);
     }

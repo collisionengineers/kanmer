@@ -32,6 +32,7 @@ import {
   resolveGroupKinds,
   resolveProfiles,
   resolveProofTypes,
+  resolveProofValidation,
   serialiseItem,
   DispatchSupervisor,
   dispatchDeliverableProven,
@@ -780,6 +781,14 @@ server.registerTool(
       // answers "is the release channel clear?" in the orientation call every
       // session already makes.
       release: await releaseStatus(store),
+      /**
+       * CORE-129 typed proof policy. `mode` is what the Done gate enforces;
+       * `source` says whether the board declared it or it was defaulted, so a
+       * board whose `proofValidation` key an older server stripped on write
+       * reads as `{ mode: "report", source: "default" }` rather than silently
+       * looking configured.
+       */
+      proofValidation: resolveProofValidation(board),
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
         path: projectRoot,
@@ -830,6 +839,7 @@ server.registerTool(
       defaultProfile: board.defaultProfile ?? "fix",
       groupKinds: resolveGroupKinds(board),
       proofTypes: resolveProofTypes(board),
+      proofValidation: resolveProofValidation(board),
       docTypes: DOC_TYPES,
       gateExemptFolders: GATE_EXEMPT_DIRS,
       boundaries: BOUNDARIES,

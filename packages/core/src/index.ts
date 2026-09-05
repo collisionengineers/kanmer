@@ -26,6 +26,7 @@ export * from "./store.js";
 export * from "./merge-gate.js";
 export * from "./review-attestation.js";
 export * from "./proof-receipts.js";
+export * from "./proof-record.js";
 export * from "./reconciliation.js";
 export * from "./links.js";
 export * from "./migrate.js";

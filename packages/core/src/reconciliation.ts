@@ -310,6 +310,31 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
           return none();
       }
     }
+    // CORE-129. A proof document that exists but carries no machine authority
+    // used to fall through to the generic "no reconciliation needed", which is
+    // indistinguishable from having no proof at all — and that
+    // indistinguishability is what let a confirm-and-finish worker treat a
+    // contradicted record as good enough. Naming the parsed state turns it into
+    // an actionable statement about the document that is actually there.
+    if (evidence.proof.state === "invalid" && evidence.proof.record) {
+      const { state, diagnostics } = evidence.proof.record;
+      const why =
+        state === "legacy"
+          ? "the proof predates the typed proof-record/2 contract and has never been validated"
+          : state === "valid-inconclusive"
+            ? "the proof is a valid INCONCLUSIVE record, which is not a PASS"
+            : state === "valid-pass"
+              ? "the proof is an operator waiver, which is a human disposition rather than an automated recommendation"
+              : "the proof declares the typed proof-record/2 contract and breaks it";
+      findings.push(
+        finding(
+          "PROOF_RECORD_NOT_AUTHORITATIVE",
+          "warning",
+          `${why}; reconciliation does not recommend Done${diagnostics.length > 0 ? ` (${diagnostics.join("; ")})` : ""}`,
+        ),
+      );
+      return none();
+    }
   }
 
   if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean" && evidence.workspace.claimIdentity === "matches-claim") {

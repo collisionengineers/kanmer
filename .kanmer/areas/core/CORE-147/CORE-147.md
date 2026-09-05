@@ -5,7 +5,7 @@ title: >-
   Make the verification contract project-declared: integration branch, workflow,
   required jobs and event drive receipt validation and the verify skill, with a
   proven designated-verifier fallback
-status: verifying
+status: done
 area: core
 assignee: claude-code
 profile: fix
@@ -13,17 +13,18 @@ stageEntered:
   preparing: '2026-09-05T15:01:49.611Z'
   review: '2026-09-05T15:33:47.350Z'
   verifying: '2026-09-05T15:52:06.972Z'
+  done: '2026-09-05T16:02:41.819Z'
 taken_at: '2026-09-05T15:03:14.642Z'
 branch: CORE-147-verification-contract
 worktree: .worktrees/CORE-147
-claim_expires_at: '2026-09-05T16:01:15.154Z'
+claim_expires_at: '2026-09-05T16:32:34.291Z'
 claim_controller: claude-code
-lease_id: 4bc5a7f2-3931-42a3-bdd8-f7f34f072145
-lease_revision: 4
+lease_id: 58ddf368-136e-49b3-bf24-7191c8baa4af
+lease_revision: 5
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-147'
-lease_provider: claude-code
 lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T15:31:15.154Z'
+lease_heartbeat_at: '2026-09-05T16:02:34.291Z'
+lease_reclaimed_from: claude-code
 labels:
   - evidence
   - receipts
@@ -41,9 +42,13 @@ commits:
   - 4a1c3a235ccd9f5bfd8ef8ccee18959a15c0fa5d
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/330'
+delivery_state: integrated
+delivery_branch: main
+delivery_sha: 4a1c3a235ccd9f5bfd8ef8ccee18959a15c0fa5d
+delivery_recorded_at: '2026-09-05T16:02:43.934Z'
 archived: false
 created: '2026-09-05T14:03:46.047Z'
-updated: '2026-09-05T15:52:06.972Z'
+updated: '2026-09-05T16:02:43.934Z'
 ---
 
 ## Problem

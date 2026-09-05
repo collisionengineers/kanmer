@@ -5,12 +5,13 @@ title: >-
   Make the verification contract project-declared: integration branch, workflow,
   required jobs and event drive receipt validation and the verify skill, with a
   proven designated-verifier fallback
-status: implementing
+status: review
 area: core
 assignee: claude-code
 profile: fix
 stageEntered:
   preparing: '2026-09-05T15:01:49.611Z'
+  review: '2026-09-05T15:33:47.350Z'
 taken_at: '2026-09-05T15:03:14.642Z'
 branch: CORE-147-verification-contract
 worktree: .worktrees/CORE-147
@@ -35,9 +36,13 @@ links:
   - CORE-129
 refs:
   - docs/functional/frd/FRD-006-typed-proof.md
+commits:
+  - 7d9ed857dc6c96bae35f30e70c3052b753e71279
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/330'
 archived: false
 created: '2026-09-05T14:03:46.047Z'
-updated: '2026-09-05T15:31:15.154Z'
+updated: '2026-09-05T15:33:47.350Z'
 ---
 
 ## Problem

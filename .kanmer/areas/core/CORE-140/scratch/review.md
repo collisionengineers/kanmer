@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "322"
-head_sha: "8ce4dc6ab8329a5b57947c7e79c728d1ca2cbd6b"
+head_sha: "d15796d02c54ddc58affb73716b2229e02a81131"
 verdict: pass
 reviewer: "independent-reviewer-subagent"
 independent: true
 plan_hash: "2e5378469583cdaf"
 ticket_updated: "2026-09-05T02:41:24.782Z"
-board_sha: "902aa547830f3393d844a990f88c1fa07c72aa5e"
+board_sha: "ed2ea9eac50ce7aebe16a33de2ce20099646a4ba"
 expected_reviewers:
   - "independent-reviewer-subagent"
 threads_snapshot: []
@@ -39,17 +39,67 @@ findings:
     reason: "The ticket's declared technical seam specifies assertBuilt(['server']) for this step, and inside the rail core is produced by the same single root build in the immediately preceding step, so a divergent core dist is not reachable without also failing the HEAD / dirty-digest / lockHash checks."
   - id: F-006
     severity: note
-    summary: "The required kanmer-gate check was red on this head with the single finding NO_REVIEW_RECORD; every other gate check passed. Fixed by this attestation itself, which is the missing record; the gate must be re-run because it does not re-trigger on a board push."
+    summary: "kanmer-gate was red on the earlier head 8ce4dc6a with the single finding NO_REVIEW_RECORD; every other gate check passed. Fixed by this attestation, which is the missing record, now rebound to head d15796d0. The gate must be re-run because it re-reads the remote board and does not re-trigger on a board push."
+    disposition: fixed
+  - id: F-007
+    severity: note
+    summary: "The merge of main into the branch (d15796d0) carries no CORE-140 content change: nine of the ten CORE-140 files are byte-identical to 8ce4dc6a and AGENTS.md merged both sides cleanly, so the review conclusions on 8ce4dc6a transfer unchanged to d15796d0."
     disposition: fixed
 ---
 
 # Independent review — CORE-140, PR #322
 
-Head `8ce4dc6ab8329a5b57947c7e79c728d1ca2cbd6b`, branch `CORE-140-rail-build-once`,
-base `main` at `c088be1391a1198c914fc3ef247103fd52c277c5`. Reviewer did not write
-this code and did not push to the branch, merge, or run the full `npm run verify`.
+Head `d15796d02c54ddc58affb73716b2229e02a81131`, branch
+`CORE-140-rail-build-once`, base `main`. This head is `gh pr update-branch`'s
+merge of `main` into the branch; the substantive review below was performed on
+`8ce4dc6ab8329a5b57947c7e79c728d1ca2cbd6b` and carried forward after proving
+the merge changed nothing in CORE-140's scope (next section). Reviewer did not
+write this code and did not push to the branch, merge, or run the full
+`npm run verify`.
 
-## What changed
+## Rebind to d15796d0 — proof the delta is only the merge of main
+
+`git log --oneline 8ce4dc6a..d15796d0` is exactly three commits: the merge
+commit `d15796d0` plus the two `main` commits it brought in — `32aa54fc`
+(GUI-152, Focus Board) and `bd368549` (DOC-028, managed-block routing).
+
+- `git diff 8ce4dc6a...d15796d0 --stat` — 23 files, all of them GUI-152's
+  `apps/gui/**` + `docs/functional/frd/FRD-036-focus-board.md` and DOC-028's
+  `scripts/agents-block-body.mjs`, `plugins/kanmer/scripts/agents-block-body.mjs`,
+  `plugins/kanmer/skills/kanmer-setup/SKILL.md`,
+  `scripts/agents-block-routing.test.mjs`, `scripts/verify-agents-block.mjs`,
+  `AGENTS.md`. No CORE-140 file appears except `AGENTS.md`, which both sides
+  touched.
+- `git diff 32aa54fc...d15796d0 --stat` — still exactly CORE-140's ten files at
+  **+598/-11**, byte-for-byte the same shape as the diff reviewed at 8ce4dc6a.
+- **Blob-level check, the decisive one:** nine of CORE-140's ten files hash
+  identically at `8ce4dc6a` and `d15796d0` — `.github/workflows/pr.yml`,
+  `package.json`, `packages/mcp-server/package.json`,
+  `packages/mcp-server/scripts/run-http-tests.mjs`, `scripts/build-stamp.mjs`,
+  `scripts/release.mjs`, `scripts/run-tests.mjs`,
+  `scripts/verify-steps.test.mjs`, `scripts/verify.mjs`. Nothing was resolved,
+  reformatted or dropped in any of them, so every scoped check and mutation
+  probe recorded below still describes the bytes now on the PR head.
+- `AGENTS.md` is the only shared file, and it merged cleanly in both
+  directions. `git diff 8ce4dc6a d15796d0 -- AGENTS.md` is textually identical
+  to `git diff c088be13 32aa54fc -- AGENTS.md` (same hunk, same lines, 5
+  insertions / 3 deletions), i.e. DOC-028's change applied verbatim on top of
+  CORE-140's. And `git diff 32aa54fc d15796d0 -- AGENTS.md` reproduces
+  CORE-140's own delta exactly (3 insertions / 3 deletions). Both sides
+  survive: the merged file contains DOC-028's new "Resolve the request before
+  starting a workflow" routing bullet **and** all three CORE-140 §6 rows
+  (three `CORE-140` markers, `verify-stamp.json` ×3, `test:built`,
+  `mcpb:check:built`). The two edits are in disjoint sections — main's near the
+  operating bullets at the top, CORE-140's in the §6 command table — so no
+  conflict arose.
+- `.github/workflows/pr.yml` at `d15796d0` still has `node-version: 24` at
+  lines 52 and 70, i.e. both Node jobs; main never touched that file.
+- No conflict markers exist anywhere in the merge tree.
+
+Verdict is therefore unchanged from the 8ce4dc6a review, and every finding is
+carried forward with its original disposition.
+
+## What changed (CORE-140's own scope)
 
 Ten files, +598/-11, no dependency and no `package-lock.json` change.
 
@@ -84,13 +134,16 @@ Ten files, +598/-11, no dependency and no `package-lock.json` change.
 | Public commands unchanged for a fresh checkout | `npm test` → `run-tests.mjs` runs the identical five-command chain in the identical order; `test:http` → `run-http-tests.mjs` runs `npm run build` then the same file list; `mcpb:build` / `mcpb:check` untouched. | met |
 | `release.mjs` still imports and runs `VERIFY_STEPS`, and refuses a dirty stamp | Diff confirms the `for (const step of VERIFY_STEPS) run(step)` loop is unchanged and the new `readStamp()?.dirty` refusal sits immediately after it, before the `dryRun` branch, so it applies to both prepare and publish modes. It is redundant in practice (release.mjs already refuses a dirty tree before verification), which is why it is defence in depth rather than the primary control — reviewed at diff level as the report requested, since it is not exercised end to end. | met |
 | `KANMER_ROOT` temp-board env reaches the test step | `verify.mjs` keys on the exact string `"npm run test:built"`, which is the literal entry in `VERIFY_STEPS`; `run-tests.mjs`'s `execSync` and `run-http-tests.mjs`'s `spawnSync` both inherit `process.env`, so the override survives the two extra process hops. | met |
-| `pr.yml` Node 24 in both jobs; `release.yml` untouched | `verify` (line 52) and `kanmer-gate` (line 70) are both `node-version: 24`. The third job, `regate`, runs on ubuntu with no `setup-node`. `release.yml` is not in the diff. Root `engines` unchanged at `>=20`. | met |
+| `pr.yml` Node 24 in both jobs; `release.yml` untouched | `verify` (line 52) and `kanmer-gate` (line 70) are both `node-version: 24`, re-confirmed on the merged head. The third job, `regate`, runs on ubuntu with no `setup-node`. `release.yml` is not in the diff. Root `engines` unchanged at `>=20`. | met |
 | Every existing assertion preserved | The 21-entry `node --test` file list was compared programmatically against `c088be13`'s inlined list: identical set **and** identical order. The `npm test` chain is byte-equivalent in content and order. No test file was added to or removed from any suite except the new `scripts/verify-steps.test.mjs`, which `scripts/test-scripts.mjs` auto-discovers. | met |
 | No new dependencies | `package-lock.json` is not in the diff; no `dependencies`/`devDependencies` changed; every new script uses node builtins only. | met |
-| AGENTS.md §6 updated (conduct rule 24) | Three rows (`npm test`, `npm run verify`, `npm run mcpb:check`) describe the stamp and the internal `:built` variants. | met |
+| AGENTS.md §6 updated (conduct rule 24) | Three rows (`npm test`, `npm run verify`, `npm run mcpb:check`) describe the stamp and the internal `:built` variants, and all three survive the merge with main. | met |
 | Before/after wall time recorded as an observation | Post-implementation report records it as a local observation and explicitly defers the real Windows-runner comparison to CI, as the acceptance wording requires. | met |
 
-## Reviewer-run scoped checks (in `.worktrees/CORE-140`, nothing heavier)
+## Reviewer-run scoped checks (in `.worktrees/CORE-140` at 8ce4dc6a, nothing heavier)
+
+Every file these exercised is byte-identical at `d15796d0`, so the results
+stand unchanged on the current head.
 
 | Command | Result |
 |---|---|
@@ -103,6 +156,7 @@ Ten files, +598/-11, no dependency and no `package-lock.json` change.
 | Mutation probe A: drop `--assume-built` from root `test:built`, run `verify-steps.test.mjs` | **still green** → F-001 |
 | Mutation probe B: revert `mcpb:check:built` to `mcpb:check` in `VERIFY_STEPS`, run `verify-steps.test.mjs` | fails as intended → guard has partial power |
 | Untracked-directory probe: add a second file inside an existing untracked dir, then `--assert` | exit 0 — should have refused → F-002 |
+| `check-pr.mjs --board <board worktree>` with `KANMER_GATE_STRICT=true`, against the previous attestation | `ok: true`, all nine gate checks pass (validator accepts the record's shape, `board_sha` included) |
 
 The worktree was restored to a clean `git status` after every probe.
 
@@ -119,11 +173,17 @@ are built with `node:path` `join`. Verified empirically on this Windows host.
 
 ## CI
 
-| Job | Run | Result |
-|---|---|---|
-| `verify` (windows-latest, Node 24) | 33939788978 / job 101234848374 | pass, 8m19s — the first full-rail exercise of the new `:built` wiring, end to end |
-| `kanmer-gate` (windows-latest, Node 24) | 33939788978 / job 101234848432 | fail, 51s — sole finding `NO_REVIEW_RECORD`; `NO_TICKET`, `OPEN_QUESTIONS`, `WRONG_STAGE`, `DEPENDENCY_BLOCKED`, `WRONG_TARGET`, `COMMITS_UNREACHABLE` all passed. See F-006. |
-| `regate` | 33939788978 / job 101234849203 | skipped (not a PR-event job) |
+| Head | Job | Run / job id | Result |
+|---|---|---|---|
+| `8ce4dc6a` | `verify` (windows-latest, Node 24) | 33939788978 / 101240671912 | **success** — the full-rail exercise of the new `:built` wiring, end to end. (An earlier attempt of the same job, 101234848374, also passed in 8m19s.) |
+| `8ce4dc6a` | `kanmer-gate` | 33939788978 / 101234848432, re-run 101240671380 | fail (`NO_REVIEW_RECORD` only), then cancelled by the update-branch push. See F-006. |
+| `d15796d0` | `verify` | 33941835173 / 101240848093 | **cancelled at queue time** (0 steps, cancelled 03:26:04 by `pr.yml`'s `cancel-in-progress` concurrency group) — *not* a code failure, but also not evidence. Must be re-run. |
+| `d15796d0` | `kanmer-gate` | 33941835173 / 101240847226 | in progress at attestation time; it re-reads the remote board and will need re-running after this attestation is pushed. |
+| both | `regate` | — | skipped (not a PR-event job) |
+
+The rail was proven green at `8ce4dc6a`, and the merge changed no CORE-140
+file, but `verify` has not yet completed at `d15796d0` itself. That is a
+merge-time obligation for the merger, recorded below.
 
 ## Findings and dispositions
 
@@ -155,14 +215,18 @@ are built with `node:path` `join`. Verified empirically on this Windows host.
   unchanged" contract — the public path is exactly as broken, and exactly as
   working, as it was on `main`.
 - **F-004, F-005 (notes, accepted risk).** Reasons in the frontmatter.
-- **F-006 (note, fixed).** The `kanmer-gate` failure on run 33939788978 was
+- **F-006 (note, fixed).** The `kanmer-gate` failure at `8ce4dc6a` was
   `NO_REVIEW_RECORD` alone — the gate reads the remote board and no review
-  attestation existed there when it ran. This attestation is that record, so
-  the finding is fixed by the document you are reading rather than by any
-  change to the reviewed tree (no repo commit supersedes it, which is why the
-  disposition is `fixed` and not `obsolete-after-change`). The gate does not
-  re-trigger on a board push, so it must be re-run before merge; that is a
-  merge-time action for the merger, recorded below, not an open code finding.
+  attestation existed there when it ran. This attestation is that record, now
+  rebound to `d15796d0`, so the finding is fixed by the document you are
+  reading rather than by a change to the reviewed tree (no repo commit
+  supersedes it, which is why the disposition is `fixed`). The gate re-reads
+  the remote board and does not re-trigger on a board push, so it must be
+  re-run before merge — a merge-time action, not an open code finding.
+- **F-007 (note, fixed).** The head moved from `8ce4dc6a` to `d15796d0` while
+  this review was open. Rather than assume the merge was inert, the delta was
+  proved inert file by file (section 2 above); this record is rebound to the
+  new head on that evidence.
 
 No finding is `open`. No blocker or major finding was raised.
 
@@ -174,17 +238,24 @@ dirty digest has one untracked-directory blind spot (F-002). Both are carried
 by CORE-144. The `release.mjs` dirty-stamp refusal has not been exercised end
 to end by anyone; it was reviewed at diff level and is redundant with an
 existing earlier refusal, so the residual exposure is that a second, weaker
-control is unproven rather than that a control is missing.
+control is unproven rather than that a control is missing. Finally, the full
+rail has been proven green at `8ce4dc6a` but not yet at `d15796d0`; the
+argument that it transfers rests on the byte-identity proof above, not on a
+run at the new head.
 
 ## Merge preconditions for the merger (Alex)
 
-This attestation is a `pass`, but merge authority is not the reviewer's and two
-mechanical preconditions remain:
+This attestation is a `pass`, but merge authority is not the reviewer's and
+three mechanical preconditions remain:
 
-1. `kanmer-gate` is red on the run above and **does not re-run on a board
-   push**. Re-run the `kanmer-gate` job now that the board commit carrying this
-   attestation is on the remote, and require it green.
-2. Re-check that the board branch tip is still pushed immediately before
+1. Re-run `verify` at `d15796d0`. The current run's `verify` job was cancelled
+   at queue time by the workflow's own concurrency group, so there is no
+   completed rail evidence at this head. Re-running the *old* run at
+   `8ce4dc6a` does not produce it.
+2. Re-run `kanmer-gate` at `d15796d0` after the board commit carrying this
+   attestation is on the remote, and require it green — it does not re-trigger
+   on a board push.
+3. Re-check that the board branch tip is still pushed immediately before
    `gh pr merge`.
 
 There are no blocking changes for the implementing lane.

@@ -57,6 +57,8 @@ import {
   setNotifications,
   setOpenTabs,
   setPreferences,
+  readViewPrefs,
+  setViewPrefs,
   setDispatchSettings,
   setTheme,
   setKanmerGitPreferences,
@@ -68,6 +70,7 @@ import {
   type AppSettings,
   type Theme,
   type UiPreferences,
+  type ViewPrefs,
   type WindowBounds,
 } from "./settings.js";
 import {
@@ -350,6 +353,18 @@ function requireCtx(projectId: string): ProjectContext {
 }
 function requireStore(projectId: string): KanmerStore {
   return requireCtx(projectId).store;
+}
+
+/**
+ * The key one project's view preferences are stored under: its logical
+ * `project_id` from `.kanmer/project.json`, falling back to the canonical root
+ * path when the board has no identity record yet. Reading it through
+ * `store.getProject()` is the same route `registrySelectedIdentity` already
+ * takes, so there is one reader of project identity in main, not two.
+ */
+async function viewPrefsKey(projectId: string): Promise<string> {
+  const record = await requireCtx(projectId).store.getProject();
+  return record?.project_id ?? projectId;
 }
 
 /** Keep OS-rendered chrome (title/menu/dialogs) in the same mode as the app. */
@@ -1281,6 +1296,16 @@ function registerIpc(): void {
   });
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
   ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
+  // View preferences are stored under the LOGICAL project id, resolved here
+  // from the open context — `p` is the project's canonical root path, which
+  // changes with every worktree the same project is opened from (AGENTS.md §8
+  // gotcha 15). The root path is the fallback for a board that has no
+  // `.kanmer/project.json` yet, so a pre-identity board still remembers its
+  // scope. The renderer never sees the uuid and no path field is added here.
+  ipcMain.handle(CH.getViewPrefs, async (_e, p: string) => readViewPrefs(await viewPrefsKey(p)));
+  ipcMain.handle(CH.setViewPrefs, async (_e, p: string, prefs: ViewPrefs) =>
+    setViewPrefs(await viewPrefsKey(p), prefs),
+  );
   ipcMain.handle(CH.setDispatchSettings, (_e, settings) => setDispatchSettings(settings));
   ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>
     applyGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),

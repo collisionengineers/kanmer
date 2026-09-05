@@ -15,6 +15,26 @@ export interface UiPreferences {
   defaultArea: string;
 }
 
+/**
+ * Per-project Focus Board view preferences (FRD-036 R8). Mirror of
+ * shared/ipc.ts ViewPrefs.
+ *
+ * Keyed by the **logical** `project_id` from `.kanmer/project.json`, resolved
+ * in main — never by the project's root path, which changes with every
+ * worktree the same project is opened from (AGENTS.md §8 gotcha 15). These are
+ * personal display preferences: they are never written to a ticket and nothing
+ * in the gate engine can read them.
+ */
+export interface ViewPrefs {
+  /** A `Scope` id from the renderer's lib/scopes.ts. Validated there, not here. */
+  scope: string;
+  sidebarCollapsed: boolean;
+  /** Column id → 1-based page. Only pages past the first are stored. */
+  columnPages?: Record<string, number>;
+}
+
+export const DEFAULT_VIEW_PREFS: ViewPrefs = { scope: "active", sidebarCollapsed: false };
+
 export interface WindowBounds {
   x?: number;
   y?: number;
@@ -54,6 +74,8 @@ export interface AppSettings extends UiPreferences {
   lastKnownBoardBranches?: Record<string, string>;
   /** GUI remote-access registry; owned by the remote-access store but preserved by settings writes. */
   remoteAccess?: Record<string, unknown>;
+  /** Focus Board view preferences, keyed by logical project id (FRD-036 R8). */
+  viewPrefs?: Record<string, ViewPrefs>;
   dispatch: DispatchSettings;
 }
 
@@ -183,6 +205,10 @@ export function readSettings(): AppSettings {
         ? { lastKnownBoardBranches: normalizeKnownBranches(parsed.lastKnownBoardBranches) }
         : {}),
       ...(parsed.remoteAccess && typeof parsed.remoteAccess === "object" ? { remoteAccess: parsed.remoteAccess as Record<string, unknown> } : {}),
+      ...(() => {
+        const prefs = normalizeViewPrefsMap(parsed.viewPrefs);
+        return prefs ? { viewPrefs: prefs } : {};
+      })(),
       dispatch: normalizeDispatchSettings(parsed.dispatch),
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
         ? { windowBounds: bounds }
@@ -251,6 +277,87 @@ function normalizeKnownBranches(value: unknown): Record<string, string> | undefi
     if (clean) result[projectId] = clean;
   }
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/** Ceilings on stored view preferences, so a hand-edited file cannot grow without bound. */
+const MAX_VIEW_PREF_PROJECTS = 64;
+const MAX_VIEW_PREF_COLUMNS = 32;
+
+/**
+ * One project's view preferences, with every field defaulted rather than
+ * trusted.
+ *
+ * `scope` is deliberately **not** validated against the renderer's `Scope`
+ * union here: the five scope ids live in `renderer/src/lib/scopes.ts` and main
+ * must not grow a second copy of that list (one list per concept). The renderer
+ * sanitises what it reads with `isScope`, which is where the union is defined.
+ * Main's job is to store a plausible string, not to know the vocabulary.
+ */
+function normalizeViewPrefs(value: unknown): ViewPrefs | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const scope = cleanText(record.scope, 32, MODEL_CONTROL);
+  const columnPages: Record<string, number> = {};
+  if (record.columnPages && typeof record.columnPages === "object" && !Array.isArray(record.columnPages)) {
+    for (const [columnId, page] of Object.entries(record.columnPages as Record<string, unknown>)) {
+      if (Object.keys(columnPages).length >= MAX_VIEW_PREF_COLUMNS) break;
+      const id = cleanText(columnId, 64, MODEL_CONTROL);
+      // Page 1 is the default and is never stored, so a stored 1 (or anything
+      // that is not a page number at all) is dropped rather than kept.
+      if (id && Number.isInteger(page) && (page as number) > 1) columnPages[id] = page as number;
+    }
+  }
+  return {
+    scope: scope ?? DEFAULT_VIEW_PREFS.scope,
+    sidebarCollapsed: record.sidebarCollapsed === true,
+    ...(Object.keys(columnPages).length > 0 ? { columnPages } : {}),
+  };
+}
+
+function normalizeViewPrefsMap(value: unknown): Record<string, ViewPrefs> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const result: Record<string, ViewPrefs> = {};
+  for (const [projectKey, prefs] of Object.entries(value as Record<string, unknown>)) {
+    if (Object.keys(result).length >= MAX_VIEW_PREF_PROJECTS) break;
+    const key = cleanText(projectKey, 512, MODEL_CONTROL);
+    const clean = key ? normalizeViewPrefs(prefs) : undefined;
+    if (key && clean) result[key] = clean;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/** This project's remembered view preferences, or the defaults. */
+export function readViewPrefs(projectKey: string): ViewPrefs {
+  return readSettings().viewPrefs?.[projectKey] ?? { ...DEFAULT_VIEW_PREFS };
+}
+
+/**
+ * Replace one project's view preferences.
+ *
+ * Whole-value rather than a patch: scope, collapse and pages are read and
+ * written together by the renderer as one view state, and a patch merge would
+ * make "clear every remembered page" unexpressible.
+ */
+export function setViewPrefs(projectKey: string, prefs: ViewPrefs): Promise<ViewPrefs> {
+  return withSettingsFileLock(async () => {
+    const clean = normalizeViewPrefs(prefs) ?? { ...DEFAULT_VIEW_PREFS };
+    const key = cleanText(projectKey, 512, MODEL_CONTROL);
+    if (!key) return clean;
+    const settings = readSettings();
+    const map = { ...(settings.viewPrefs ?? {}) };
+    map[key] = clean;
+    // Oldest-first eviction is not available (there is no timestamp), so cap by
+    // dropping other projects rather than refusing this project's write.
+    const keys = Object.keys(map);
+    if (keys.length > MAX_VIEW_PREF_PROJECTS) {
+      for (const stale of keys.filter((k) => k !== key).slice(0, keys.length - MAX_VIEW_PREF_PROJECTS)) {
+        delete map[stale];
+      }
+    }
+    settings.viewPrefs = map;
+    writeSettings(settings);
+    return clean;
+  });
 }
 
 function writeNativeReconnectState(settings: AppSettings, projectId: string, requirement: NativeReconnectRequirement | null): void {

@@ -13,13 +13,13 @@ stageEntered:
 taken_at: '2026-09-05T04:04:14.267Z'
 branch: CORE-129-typed-proof-record
 worktree: .worktrees/CORE-129
-claim_expires_at: '2026-09-05T14:05:31.214Z'
+claim_expires_at: '2026-09-05T14:10:55.687Z'
 claim_controller: claude-code
 lease_id: adc83e1b-1f39-4636-a0f4-a4f96d78b093
-lease_revision: 6
+lease_revision: 7
 lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-129'
 lease_phase: running-command
-lease_heartbeat_at: '2026-09-05T13:35:31.214Z'
+lease_heartbeat_at: '2026-09-05T13:40:55.687Z'
 labels:
   - reliable-autonomy
   - 0.4.2
@@ -34,7 +34,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T13:35:31.214Z'
+updated: '2026-09-05T13:40:55.687Z'
 ---
 
 ## What

@@ -41,6 +41,7 @@ refs:
 commits:
   - 93e59f93e7f1ef1550c99d0af5268b8cca05dd42
   - 992569647df7ceaac058d949cf93a8bc01b02314
+  - 9945b1f2a0a4839cbb575437823fbd00926bd33e
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/324'
 delivery_state: integrated
@@ -49,7 +50,7 @@ delivery_sha: 9945b1f2a0a4839cbb575437823fbd00926bd33e
 delivery_recorded_at: '2026-09-05T13:10:13.453Z'
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T13:10:13.453Z'
+updated: '2026-09-05T13:20:38.182Z'
 ---
 
 ## Problem

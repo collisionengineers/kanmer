@@ -7,16 +7,16 @@ reviewer: "independent-review-subagent"
 independent: true
 plan_hash: "8212119cbee8fe03"
 ticket_updated: "2026-09-05T03:23:05.025Z"
-board_sha: "3b4025e68203d9644a44019ffaa8c9b25a47f207"
+board_sha: "bbc4d48e6579dc0a999717f96a1b52e932dc7c4f"
 expected_reviewers:
   - "independent-review-subagent"
 threads_snapshot: []
 findings:
   - id: F-001
     severity: minor
-    summary: "kanmer-gate red on this head with exactly one failing check, STALE_REVIEW (\"review attestation head 2ab7262a… does not match PR head 57a6e919…\"), after two `gh pr update-branch` merges moved the head. On the previous head 2ab7262a the single failure was instead NO_REVIEW_RECORD."
+    summary: "kanmer-gate was red on this head with exactly one failing check, STALE_REVIEW (\"review attestation head 2ab7262a… does not match PR head 57a6e919…\"), after two `gh pr update-branch` merges moved the head. On the previous head 2ab7262a the single failure was instead NO_REVIEW_RECORD."
     disposition: fixed
-    reason: "Both are attestation-binding states, not defects in the change. This record is now written against head 57a6e919ad1ad51aa52f10430e1ec9900094d722 and the pushed board tip 3b4025e68203d9644a44019ffaa8c9b25a47f207; kanmer-gate must be re-run and confirmed green before any merge."
+    reason: "Both are attestation-binding states, not defects in the change. This record is bound to head 57a6e919ad1ad51aa52f10430e1ec9900094d722 with a pushed board_sha, and kanmer-gate has since re-run green on this head (run 33942486457, job 101243591297): all nine checks pass, including STALE_REVIEW (\"review attestation head matches the PR head\", verdict pass) and SYNC_REQUIRED state `current`."
   - id: F-002
     severity: note
     summary: "The new AGENTS.md entry \"`goal.md` — historical owner brief, kept\" points at a path that no clone of this repository contains: goal.md is gitignored (.gitignore:74, under the comment \"Machine-local operator inputs, never source\") and is not tracked anywhere in the tree."
@@ -36,7 +36,12 @@ findings:
     severity: note
     summary: "On the previously attested head 2ab7262a the PR was BEHIND origin/main (base parent bd368549 vs origin/main 32aa54fc); gh reported mergeStateStatus BEHIND."
     disposition: fixed
-    reason: "Resolved by two `gh pr update-branch` merges (32212cd8 bringing GUI-152 at 32aa54fc, 57a6e919 bringing CORE-140 at 94165031). The head's base SHA is now 941650317be4cad4f6a86c6ab16362ee5dd8dfdb == origin/main, and gh reports mergeable MERGEABLE with mergeStateStatus BLOCKED for gate reasons only (F-001), not for being behind. The update introduced no content delta — verified below."
+    reason: "Resolved by two `gh pr update-branch` merges (32212cd8 bringing GUI-152 at 32aa54fc, 57a6e919 bringing CORE-140 at 94165031). The head's base SHA is now 941650317be4cad4f6a86c6ab16362ee5dd8dfdb == origin/main and gh now reports mergeStateStatus CLEAN, mergeable MERGEABLE. The update introduced no content delta — verified below."
+  - id: F-006
+    severity: minor
+    summary: "The first `verify` run on this head failed (run 33942486457, job 101242491460, 8m06s): `packages/mcp-server/src/smoke.mjs` reported 383/384 checks passed with one failure, \"ready packet is read-only\" — the assertion that get_execution_packet mutates no sandbox file (content-hash tree snapshot plus the ticket file and activity.jsonl)."
+    disposition: accepted-risk
+    reason: "Established as a flake on unchanged content, not a regression, on three independent grounds. (1) This PR's entire diff is two documentation files; nothing in it can reach get_execution_packet. (2) Both `main` commits merged in passed `verify` on their own heads — CORE-140 #322 (run 33941835173, job 101242268453, 7m47s) whose base was already 32aa54fc, i.e. content equivalent to main@94165031, and GUI-152 #323 (run 33941260052, job 101240467022, 9m24s). (3) Decisively, the re-run of the identical head 57a6e919 passed: run 33942486457, job 101243591230, `verify` **pass** in 8m19s. Residual risk is a genuinely intermittent smoke assertion in the packet read-only check, worth a follow-up flake ticket for the lane that owns smoke.mjs; it is not caused by, and cannot be fixed within, this doc-only PR."
 ---
 
 # Review — DOC-026, PR 326 @ `57a6e919ad1ad51aa52f10430e1ec9900094d722`
@@ -117,8 +122,8 @@ the 12 rows in §2.
 ## Checks re-run at the new head
 
 Run in a disposable detached worktree at `57a6e919` (the ticket's own worktree
-was left read-only at `2ab7262a`), using the dependency-free `scripts/`
-entry points:
+was left read-only at `2ab7262a`; the disposable worktree was removed
+afterwards), using the dependency-free `scripts/` entry points:
 
 | Check | Result |
 |---|---|
@@ -139,14 +144,15 @@ reserved to the named heavy verifier per HZN-009 `context.md`.
 All five findings from the `2ab7262a` attestation carry forward with their
 dispositions. F-005 (BEHIND) is now `fixed` by the update-branch merges;
 F-001 is restated with its current gate manifestation (`STALE_REVIEW` rather
-than `NO_REVIEW_RECORD`) and remains `fixed` by this record. F-002, F-003 and
-F-004 are unchanged and re-verified against the merged head — in particular
-`goal.md` is still untracked/gitignored, `## 0.1` still precedes `## 0.`, and
-the "clean merged `main`" row is still at line 518.
+than `NO_REVIEW_RECORD`) and is `fixed` — the gate has since re-run green.
+F-002, F-003 and F-004 are unchanged and re-verified against the merged head —
+in particular `goal.md` is still untracked/gitignored, `## 0.1` still precedes
+`## 0.`, and the "clean merged `main`" row is still at line 518.
 
-No new finding is raised: the delta is merge-only, and the delta-review scope
-(lines changed since the previously attested head, their contracts, and the
-relevant checks) contains no ticket-authored change at all.
+One new finding, **F-006**, is raised with a written reason as the delta-review
+rules require: it is new evidence that did not exist at the previous head — a
+first-run `verify` failure on this head, established as a flake by a passing
+re-run of the identical head.
 
 ## Evidence retained from the round-0 consolidated review
 
@@ -184,38 +190,36 @@ The substantive review at `2ab7262a` established, and re-verification at
 
 ## CI
 
-Workflow run `33942486457` on head `57a6e919`:
+Workflow run `33942486457` on head `57a6e919`, first attempt then re-run:
 
-| Job | Result | Run / job |
-|---|---|---|
-| `verify` | pending at attestation time | 33942486457 / 101242491460 |
-| `kanmer-gate` | **fail**, 55s | 33942486457 / 101242491669 |
-| `regate` | skipping | 33942486457 / 101242492083 |
+| Job | First attempt | Re-run | Job ids |
+|---|---|---|---|
+| `verify` | **fail**, 8m06s | **pass**, 8m19s | 101242491460 → 101243591230 |
+| `kanmer-gate` | **fail**, 55s | **pass**, 52s | 101242491669 → 101243591297 |
+| `regate` | skipping | skipping | 101242492083 → 101243591797 |
 
-`kanmer-gate` (`KANMER_GATE_STRICT: true`) fails only `STALE_REVIEW` (F-001).
-Eight checks pass on this head, including two that were degraded or absent
-before:
+**Current state: both required checks are green on this exact head**, and
+`gh pr view` reports `mergeStateStatus: CLEAN`, `mergeable: MERGEABLE`.
 
-- `NO_REVIEW_RECORD` — **pass**, "review attestation is present" (was `fail`
-  at the previous head)
-- `SYNC_REQUIRED` — **pass**, state `current`: "review attestation board
-  5aa5b7c2697087d00ed90dc1fa1afcd9f1629aa2 is on the fetched board tip
-  3b4025e68203d9644a44019ffaa8c9b25a47f207" (was the degraded `unrecorded`
-  form at the previous head), which independently confirms the board-push
-  binding works
-- `NO_TICKET` (DOC-026 resolved from the `Kanmer: DOC-026` footer),
-  `OPEN_QUESTIONS` (0 of 0), `WRONG_STAGE` (review), `DEPENDENCY_BLOCKED` (no
-  live blockers), `WRONG_TARGET` (targets integration branch "main", base
-  `main`), `COMMITS_UNREACHABLE` (`2ab7262a` reachable — it is an ancestor of
-  the merged head)
+`kanmer-gate` (`KANMER_GATE_STRICT: true`) passes all nine checks on the
+re-run: `NO_TICKET` (DOC-026 resolved from the `Kanmer: DOC-026` footer),
+`OPEN_QUESTIONS` (0 of 0), `WRONG_STAGE` (review), `DEPENDENCY_BLOCKED` (no
+live blockers), `WRONG_TARGET` (targets integration branch "main"),
+`NO_REVIEW_RECORD` ("review attestation is present"), `STALE_REVIEW` ("review
+attestation head matches the PR head", attested `57a6e919…`, verdict pass),
+`COMMITS_UNREACHABLE` (`2ab7262a` reachable — an ancestor of the merged head),
+and `SYNC_REQUIRED` state `current` ("review attestation board
+3b4025e68203d9644a44019ffaa8c9b25a47f207 is on the fetched board tip
+16cb32b1aa76129493660662649349ded8e7900b").
 
-At the previous head `2ab7262a`, run `33941701422`: `verify` **passed**
-(7m03s, job 101240297110), `kanmer-gate` failed on `NO_REVIEW_RECORD` only
-(job 101240297299), `regate` skipping (job 101240297780). Since the only
-source delta since then is two clean merges of `main`, that green `verify` is
-supporting evidence, but the authoritative required-check evidence for this
-head is run `33942486457`'s own `verify` job, which must be confirmed green
-before merge.
+The first-attempt failures were F-001 (`STALE_REVIEW`, before this record was
+re-bound) and F-006 (a `verify` smoke flake). Neither is a defect in the
+change; see those findings for the evidence.
+
+For completeness, at the previous head `2ab7262a`, run `33941701422`:
+`verify` **passed** (7m03s, job 101240297110), `kanmer-gate` failed on
+`NO_REVIEW_RECORD` only (job 101240297299), `regate` skipping (job
+101240297780).
 
 ## Review threads
 
@@ -239,16 +243,21 @@ governs it, and the plan says so explicitly.
 ## Residual risk
 
 F-002, F-003 and F-004: one doc pointer that a fresh clone cannot resolve, one
-cosmetic heading order, and one correctly-retained phrase. None changes what
-an agent or contributor does. No finding of any severity is `open`.
+cosmetic heading order, and one correctly-retained phrase. F-006: an
+intermittent `smoke.mjs` assertion ("ready packet is read-only") that is
+outside this PR's scope and worth a separate flake ticket for the lane owning
+`packages/mcp-server/src/smoke.mjs`. None of these changes what an agent or
+contributor does. No finding of any severity is `open`.
 
 ## Merge preconditions (for the merger, not this reviewer)
 
-1. Confirm `verify` (job 101242491460, run 33942486457) is green at this head.
-2. Confirm the board is pushed past this attestation and re-run `kanmer-gate`;
-   the gate reads the **remote** board tip and does not re-run on a board
-   push, so a gate result from before the push is evidence about a board the
-   remote never saw.
+1. `verify` and `kanmer-gate` are both green on this exact head as of this
+   record — satisfied.
+2. The board is pushed; this record names board tip
+   `bbc4d48e6579dc0a999717f96a1b52e932dc7c4f`. Because the gate reads the
+   **remote** board tip and does not re-run on a board push, re-run
+   `kanmer-gate` once more after this record is pushed if a gate result older
+   than the push is being relied on.
 3. If the head moves again, this attestation stops being authoritative and a
    fresh re-bound record is owed.
 

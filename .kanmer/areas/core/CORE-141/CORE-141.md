@@ -2,12 +2,13 @@
 id: CORE-141
 type: ticket
 title: Release v0.4.2
-status: implementing
+status: review
 area: core
 assignee: claude-code
 profile: chore
 stageEntered:
   preparing: '2026-09-05T14:47:32.100Z'
+  review: '2026-09-05T16:06:24.628Z'
 taken_at: '2026-09-05T14:48:07.489Z'
 branch: CORE-141-release-0.4.2
 worktree: .worktrees/CORE-141
@@ -28,9 +29,13 @@ links:
 refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
+commits:
+  - 415aeb692242547bd394af0e7376e5dbc94db111
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/331'
 archived: false
 created: '2026-09-05T02:13:04.749Z'
-updated: '2026-09-05T14:48:07.489Z'
+updated: '2026-09-05T16:06:24.628Z'
 ---
 
 ## Why

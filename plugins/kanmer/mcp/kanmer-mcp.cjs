@@ -47582,8 +47582,87 @@ function pruneUndefined(obj) {
   }
   return out;
 }
+function parseProofReceipts(frontmatter) {
+  if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return [];
+  const raw = frontmatter.receipts;
+  if (raw === void 0) return [];
+  if (!Array.isArray(raw)) return { invalid: ["receipts must be an array when present"] };
+  const receipts = [];
+  const invalid = [];
+  raw.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      invalid.push(`receipts[${index}] must be an object`);
+      return;
+    }
+    const record22 = entry;
+    if (typeof record22.kind !== "string" || record22.kind.trim().length === 0) {
+      invalid.push(`receipts[${index}].kind must be a non-empty string`);
+      return;
+    }
+    receipts.push({ ...record22, kind: record22.kind });
+  });
+  if (invalid.length > 0) return { invalid };
+  return receipts;
+}
+var FULL_SHA2 = /^[0-9a-f]{40}$/;
+var KNOWN_RECEIPT_KINDS = /* @__PURE__ */ new Set(["github-actions-run"]);
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function assessReceipt(receipt, opts) {
+  const reasons = [];
+  if (!nonEmptyString(receipt.kind) || !KNOWN_RECEIPT_KINDS.has(receipt.kind)) {
+    reasons.push(`unknown receipt kind: ${String(receipt.kind)}`);
+  }
+  if (!nonEmptyString(receipt.job)) {
+    reasons.push("receipt is missing job");
+  } else if (receipt.job !== "verify") {
+    reasons.push(`receipt job must be "verify", got ${JSON.stringify(receipt.job)}`);
+  }
+  if (receipt.workflow !== "pr.yml") {
+    reasons.push(`receipt workflow must be "pr.yml", got ${JSON.stringify(receipt.workflow)}`);
+  }
+  if (receipt.run_id === void 0 || receipt.run_id === null || receipt.run_id === "") {
+    reasons.push("receipt is missing run_id");
+  }
+  if (!nonEmptyString(receipt.url)) {
+    reasons.push("receipt is missing url");
+  }
+  if (receipt.event !== "push") {
+    reasons.push(`receipt event must be "push", got ${JSON.stringify(receipt.event)}`);
+  }
+  if (receipt.conclusion !== "success") {
+    reasons.push(`receipt conclusion must be "success", got ${JSON.stringify(receipt.conclusion)}`);
+  }
+  if (!nonEmptyString(receipt.head_sha) || !FULL_SHA2.test(receipt.head_sha)) {
+    reasons.push("receipt head_sha must be a full 40-hex Git object id");
+  } else if (receipt.head_sha !== opts.mergedSha) {
+    reasons.push("receipt head_sha does not match the PR merge SHA");
+  }
+  return reasons.length > 0 ? { kind: "rejected", reasons } : { kind: "satisfied" };
+}
 function finding(code, level, message) {
   return { code, level, message };
+}
+function receiptNamesOtherMerge(evidence) {
+  const receipts = evidence.proof.receipts;
+  const mergeSha = evidence.pullRequest.mergeSha;
+  if (!Array.isArray(receipts) || receipts.length === 0 || !mergeSha) return false;
+  return receipts.some((receipt) => typeof receipt.head_sha === "string" && receipt.head_sha.length > 0 && receipt.head_sha !== mergeSha);
+}
+function receiptAssessmentRejections(evidence, mergedSha) {
+  const receipts = evidence.proof.receipts;
+  if (!Array.isArray(receipts) || receipts.length === 0) return [];
+  const reasons = [];
+  for (const receipt of receipts) {
+    const assessment = assessReceipt(receipt, { mergedSha });
+    if (assessment.kind === "rejected") {
+      for (const reason of assessment.reasons) {
+        if (!reason.includes("head_sha")) reasons.push(reason);
+      }
+    }
+  }
+  return reasons;
 }
 function stableEvidence(evidence) {
   return {
@@ -47697,6 +47776,15 @@ function reconcileEvidence(input) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the PASS proof does not name the current merged pull-request SHA; reconciliation does not recommend Done"));
         return none();
       }
+      if (receiptNamesOtherMerge(evidence)) {
+        findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the PASS proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not recommend Done"));
+        return none();
+      }
+      const passReceiptRejections = receiptAssessmentRejections(evidence, evidence.pullRequest.mergeSha);
+      if (passReceiptRejections.length > 0) {
+        findings.push(finding("PROOF_RECEIPT_REJECTED", "error", `the PASS proof carries a receipt assessReceipt rejects: ${passReceiptRejections.join("; ")}; reconciliation does not recommend Done`));
+        return none();
+      }
       findings.push(finding("PASS_PROOF_STILL_VERIFYING", "info", "a PASS proof is present for the merged pull request while the ticket remains Verifying"));
       return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_DONE", "done") };
     }
@@ -47705,6 +47793,17 @@ function reconcileEvidence(input) {
       if ((failureClass === "implementation" || failureClass === "plan") && !proofNamesCurrentMerge) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the FAIL proof does not name the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
         return none();
+      }
+      if ((failureClass === "implementation" || failureClass === "plan") && receiptNamesOtherMerge(evidence)) {
+        findings.push(finding("PROOF_RECEIPT_SHA_MISMATCH", "error", "the FAIL proof carries a receipt whose head_sha disagrees with the current merged pull-request SHA; reconciliation does not route the ticket backwards on stale verification evidence"));
+        return none();
+      }
+      if (failureClass === "implementation" || failureClass === "plan") {
+        const failReceiptRejections = receiptAssessmentRejections(evidence, evidence.pullRequest.mergeSha ?? "");
+        if (failReceiptRejections.length > 0) {
+          findings.push(finding("PROOF_RECEIPT_REJECTED", "error", `the FAIL proof carries a receipt assessReceipt rejects: ${failReceiptRejections.join("; ")}; reconciliation does not route the ticket backwards on stale verification evidence`));
+          return none();
+        }
       }
       switch (failureClass) {
         case "implementation":
@@ -50068,8 +50167,10 @@ function proofEvidence(raw) {
     if (parsed.kind !== "proof-record" || typeof parsed.result !== "string" || typeof parsed.merged_sha !== "string" || !parsed.merged_sha.trim() || typeof parsed.environment !== "string" || !parsed.environment.trim() || !validTimestamp(parsed.verified_at) || !Array.isArray(parsed.attempts)) return { state: "invalid" };
     const result = parsed.result.trim().toUpperCase();
     const mergedSha = parsed.merged_sha.trim();
-    if (result === "PASS") return { state: "pass", mergedSha };
-    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class) };
+    const parsedReceipts = parseProofReceipts(parsed);
+    const receipts = Array.isArray(parsedReceipts) && parsedReceipts.length > 0 ? parsedReceipts : void 0;
+    if (result === "PASS") return { state: "pass", mergedSha, ...receipts ? { receipts } : {} };
+    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class), ...receipts ? { receipts } : {} };
     return { state: "invalid" };
   } catch {
     return { state: "invalid" };

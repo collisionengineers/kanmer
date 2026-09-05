@@ -54,3 +54,14 @@ ticket's own acceptance bullets.
 ## Not ticked (out of scope for this ticket, owned by GUI-153)
 
 - [ ] Pixel comparison against `approved-ui/previews/` (desktop/laptop/mobile) and real-pointer interaction (live drag, hover states, live `prefers-reduced-motion` and ≤900px behaviour) — no automated or manual evidence in this PR or by this verifier covers rendered pixels or pointer events; the reviewer's scratch/review.md open question 8 and the post-implementation report both name this residual risk explicitly and assign it to GUI-153/UI-D.
+
+## Closeout — GUI-152
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/GUI-152`
+- [ ] `git branch -d GUI-152-focus-board-scopes` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

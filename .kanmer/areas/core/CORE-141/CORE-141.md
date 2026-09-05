@@ -2,23 +2,15 @@
 id: CORE-141
 type: ticket
 title: Release v0.4.2
-status: review
+status: done
 area: core
 assignee: claude-code
 profile: chore
 stageEntered:
   preparing: '2026-09-05T14:47:32.100Z'
   review: '2026-09-05T16:06:24.628Z'
-taken_at: '2026-09-05T14:48:07.489Z'
-branch: CORE-141-release-0.4.2
-worktree: .worktrees/CORE-141
-claim_expires_at: '2026-09-05T15:18:07.489Z'
-claim_controller: claude-code
-lease_id: 3b7420d8-cebe-41e2-8257-6960c8bdaf5a
-lease_revision: 1
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-141'
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T14:48:07.489Z'
+  verifying: '2026-09-05T18:51:09.893Z'
+  done: '2026-09-05T18:51:11.692Z'
 labels:
   - release
   - v0.4.2
@@ -30,13 +22,19 @@ refs:
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
   - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 commits:
-  - bc97f5799f7d794c1db9f380fad00cce4b0a9fa4
+  - 7a6e437574fd653f4c49d0a3fa00e6b5e4904809
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/331'
   - 'https://github.com/collisionengineers/kanmer/pull/332'
+delivery_state: production-verified
+delivery_branch: main
+delivery_sha: 7a6e437574fd653f4c49d0a3fa00e6b5e4904809
+delivery_release_branch: main
+delivery_release_tag: v0.4.2
+delivery_recorded_at: '2026-09-05T18:51:06.524Z'
 archived: false
 created: '2026-09-05T02:13:04.749Z'
-updated: '2026-09-05T17:45:35.431Z'
+updated: '2026-09-05T18:51:31.604Z'
 ---
 
 ## Why

@@ -335,3 +335,21 @@ Reproduced the exact activation mechanism `apps/gui/build/installer.nsh` uses (G
 Confirmed 0.4.1 was never uninstalled: `%LOCALAPPDATA%\Kanmer\mcp\0.4.1-7432` still present on disk throughout; registry `DisplayVersion` now correctly reads `Kanmer 0.4.2` / `0.4.2` (the one Programs-and-Features entry tracks the currently-installed GUI app, which the in-app updater legitimately replaced — this is separate from the retained per-generation MCP server directories under `%LOCALAPPDATA%\Kanmer\mcp\`, which is where rollback capability actually lives).
 
 **AT-38: PASS.** All of B1-B6 now complete and PASS. Proceeding to B7 (closeout report) and B8 (proof + Done + closeout).
+
+## B7: closeout report — DONE
+
+Wrote `HZN-009/closeout.md` (via `set_group_doc`) with real M1-M5 results (M1 PASS, M2 PROCEDURAL, M3 PASS(code)/PROCEDURAL(provenance), M4 PASS with the B5 disposable-scenario evidence, M5 PASS with full B1-B6 evidence), live-board inventory delta, CORE-129 census/report-mode decision, rollback evidence, and the unfinished->HZN-010 list including the new GUI-154 finding.
+
+Updated `Kanmer_Upgrade_Pack_2026-09-05/contracts/release-resumption-gate.json`: `kind` -> `EXECUTED_ACCEPTANCE_TEMPLATE`, `observed_at` set, adopted runtime/skills/policy filled in, all 5 gates filled with real result/control_mode/evidence/owner, `live_board_audit_complete: true`, `unfinished_packages` (8 entries incl. GUI-154), `rollback_evidence` (4 entries), `resume_authority: Alex`, `resume_decision` recorded. Regenerated its line in `MANIFEST.sha256` (`sha256sum contracts/release-resumption-gate.json`, replaced line 27: new hash `b57468ce33a5a0de4f06c49b45db9a93c063c3ada629ce0bda03fe12f7ae1f94`).
+
+## B8: proof + Done — DONE
+
+Wrote CORE-141's `proof/proof.md` as a full `schema: 2` typed proof record: `merged_sha: 7a6e4375...`, `result: PASS`, 2 receipts (github-actions-run for `pr.yml`/`verify` push run `33982388947` and `release.yml`/`release-verify` tag run `33983890950`, both `conclusion: success` at the exact merge SHA), 10 typed `attempts[]` covering every B1-B6 command with exit codes (including the two non-authoritative FAILs for the withdrawn manual-installer attempts and the one transient FAIL for the first publish crash), final entry `authority: authoritative`, `result: PASS`.
+
+`update_item`: `commits: [7a6e4375...]`, `delivery_state: released` -> then `production-verified` (B4-B6 all passed), `delivery_branch: main`, `delivery_sha: 7a6e4375...`, `delivery_release_branch: main`, `delivery_release_tag: v0.4.2`.
+
+`move_item` Review -> Verifying -> Done: both succeeded cleanly (no reconciliation/attestation blocker hit).
+
+Closeout: `git worktree remove .worktrees/CORE-141 --force` exit 0; `git branch -D CORE-141-release-0.4.2` exit 0 (merged via #331); `git push origin --delete CORE-141-release-0.4.2` exit 0. `take_ticket action: release` — succeeded, lease/branch/worktree fields cleared from the ticket record.
+
+**CORE-141 final state: Done.** Phase B complete in full (B1-B8), all PASS except the two non-fatal, non-destructive withdrawn manual-installer attempts in B4 (superseded by the sanctioned in-app-updater path, which succeeded).

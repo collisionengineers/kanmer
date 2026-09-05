@@ -60,3 +60,19 @@ Start 2026-09-05T16:34:16Z. Failed again with the identical tinypool crash: `Err
 
 ### npm run test -w @kanmer/gui — diagnostic run 2, NODE_OPTIONS=--max-old-space-size=4096 (diagnostic only, not a permanent change; env var scoped to this one invocation)
 In progress, started per `/tmp/gui-test-heap-start.txt`, log `/tmp/gui-test-heap.log`.
+
+### npm run test -w @kanmer/gui — diagnostic run 2 result: FAIL, identical crash point even with 4GB heap ceiling
+
+`NODE_OPTIONS=--max-old-space-size=4096 npm run test -w @kanmer/gui` — same crash: `Error: Worker exited unexpectedly` (tinypool `ChildProcess.onUnexpectedExit`, `node_modules/tinypool/dist/index.js:118`), at the **exact same point** as every prior attempt. Log `/tmp/gui-test-heap.log`.
+
+### Root-caused: exact failing location (identical across all 4 crash attempts: 2 full-rail `npm run verify` + 2 standalone `npm run test -w @kanmer/gui`, one with 4GB heap)
+
+**File:** `apps/gui/src/main/kanmerGit.test.ts`
+**Test:** the very last test in the file — `describe("ensureBoardWorktree reconciliation", ...) > realGitTest("is idempotent once the worktree is on the branch", ...)` (source lines 994-1001, file ends at line 1001 immediately after this test's closing brace).
+**Worker message:** `Error: Worker exited unexpectedly` thrown from tinypool (`ChildProcess.onUnexpectedExit` -> `ChildProcess.emit('error')` -> unhandled at `node:events:487`), immediately after that test's `✓` line prints — i.e. the crash happens during worker teardown/handoff to the next test file, not during a running assertion. No JS heap OOM message, no "FATAL", no "out of memory" string anywhere in any of the 4 logs (`grep -n "Worker exited\|FATAL\|heap\|out of memory"` matches only the `Worker exited unexpectedly` lines).
+
+**Why this is NOT simple host memory pressure:** raising `--max-old-space-size` to 4096MB (diagnostic only, not committed) made zero difference — same test, same crash. If this were ordinary V8 heap exhaustion inside the worker, a larger heap ceiling should have shifted or cleared the crash point. It did not. Combined with the crash always landing at the identical spot (end of `kanmerGit.test.ts`, whose suite uses `realGitTest(...)` — real (non-mocked) git subprocess calls building actual worktrees/remotes under `REAL_GIT_TEST_TIMEOUT_MS`), this looks environment/mechanism-specific to real Git child-process teardown on this host (e.g. AV scanning of freshly-created git worktree files, orphaned git subprocess/file-handle cleanup racing tinypool's worker recycle) rather than pure RAM exhaustion, even though overall host free memory was also low (~3.1GB/13.9GB) throughout.
+
+**Stopping per coordinator's branch (3): standalone GUI suite fails even with the larger heap.** No `npm run verify` attempt 3 was run. Steps 3-8 remain not run. All four logs preserved: `/tmp/npm-verify.log` (attempt 1), `/tmp/npm-verify2.log` (attempt 2), `/tmp/gui-test.log` (standalone run 1), `/tmp/gui-test-heap.log` (standalone diagnostic run 2 with 4GB heap). `npm run build` (root) succeeded cleanly (exit 0) and is not implicated.
+
+Awaiting coordinator decision on whether this is a real defect (possibly touching GUI-152/CORE-129 or the `ensureBoardWorktree`/`kanmerGit` real-git suite specifically) that windows-latest CI tolerates but this host does not, versus an accepted environmental gap for this operator machine.

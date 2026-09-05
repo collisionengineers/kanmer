@@ -1064,15 +1064,38 @@ try {
     gated.isError === true && textOf(gated).includes("entering Done requires proof"),
     textOf(gated).slice(0, 90),
   );
+  // CORE-129: a fresh board is `strict`, so free text under `proof/` no longer
+  // opens the Done gate — the refusal above says so in as many words. The gate
+  // opens on a valid `proof-record/2` PASS and nothing else.
+  const smokeProofSha = "e".repeat(40);
+  const smokePassProof = `---
+kind: proof-record
+schema: 2
+merged_sha: "${smokeProofSha}"
+environment: "smoke sandbox / Node ${process.version}"
+verified_at: "2026-08-21T00:00:00.000Z"
+result: PASS
+attempts:
+  - attempted_at: "2026-08-21T00:00:00.000Z"
+    command: "npm test"
+    cwd: "."
+    exit_code: 0
+    result: PASS
+    authority: authoritative
+    summary: "Smoke evidence."
+---
+
+Smoke evidence.
+`;
   await client.callTool({
     name: "set_ticket_doc",
-    arguments: { id: "TICK-002", doc: "proof", content: "Smoke evidence." },
+    arguments: { id: "TICK-002", doc: "proof", content: smokePassProof },
   });
   const nowDone = await client.callTool({
     name: "move_item",
     arguments: { id: "TICK-002", status: "done" },
   });
-  check("move_item succeeds once proof exists", JSON.parse(textOf(nowDone)).status === "done");
+  check("move_item succeeds once a valid typed PASS proof exists", JSON.parse(textOf(nowDone)).status === "done");
   const released = await client.callTool({
     name: "take_ticket",
     arguments: { id: "TICK-002", action: "release" },
@@ -1611,16 +1634,20 @@ Replacement review body.
   const proofSha = "b".repeat(40);
   const proofFail = `---
 kind: proof-record
+schema: 2
 merged_sha: "${proofSha}"
 environment: "smoke sandbox / Node ${process.version}"
 verified_at: "2026-08-21T00:00:00.000Z"
 result: FAIL
+failure_class: transient
 attempts:
   - attempted_at: "2026-08-21T00:00:00.000Z"
     command: "npm test"
     cwd: "."
     exit_code: 1
     result: FAIL
+    authority: authoritative
+    failure_class: transient
     summary: "The first verification attempt failed."
 ---
 
@@ -1651,13 +1678,18 @@ First proof attempt failed.
   const proofGateAfterFailure = gatesAfterFailedProof.boundaries
     .find((boundary) => boundary.boundary === "enter-done")
     ?.requirements.find((requirement) => requirement.requirement === "proof");
+  // CORE-129 replaced the existence-only reading. A truthful FAIL record is a
+  // perfectly valid document — it is simply not a PASS, and this board is
+  // strict — so the gate refuses it and says which kind of record it read.
   check(
-    "a FAIL proof still satisfies the existence-only proof gate",
-    proofGateAfterFailure?.satisfied === true,
+    "a valid FAIL proof does not satisfy the strict proof gate, and the refusal names the record",
+    proofGateAfterFailure?.satisfied === false &&
+      String(proofGateAfterFailure?.detail ?? "").includes("valid FAIL record"),
     JSON.stringify(proofGateAfterFailure),
   );
   const proofPass = `---
 kind: proof-record
+schema: 2
 merged_sha: "${proofSha}"
 environment: "smoke sandbox / Node ${process.version}"
 verified_at: "2026-08-21T00:01:00.000Z"
@@ -1668,12 +1700,15 @@ attempts:
     cwd: "."
     exit_code: 1
     result: FAIL
+    authority: supporting
+    failure_class: transient
     summary: "The first verification attempt failed."
   - attempted_at: "2026-08-21T00:01:00.000Z"
     command: "npm test"
     cwd: "."
     exit_code: 0
     result: PASS
+    authority: authoritative
     summary: "The rerun passed after the recorded failure."
 ---
 
@@ -1702,6 +1737,32 @@ Second proof attempt passed; the first failure is retained.
       proofPassMatter.data.attempts[1].exit_code === 0 &&
       proofPassMatter.data.attempts[0].attempted_at < proofPassMatter.data.attempts[1].attempted_at,
     JSON.stringify(proofPassMatter.data.attempts),
+  );
+  // CORE-129: the same ticket, the same board, one rewritten document — the
+  // strict gate now opens, which is the whole difference the typed record makes.
+  const gatesAfterPassedProof = JSON.parse(
+    textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: gpId } })),
+  );
+  const proofGateAfterPass = gatesAfterPassedProof.boundaries
+    .find((boundary) => boundary.boundary === "enter-done")
+    ?.requirements.find((requirement) => requirement.requirement === "proof");
+  check(
+    "a valid PASS proof-record/2 satisfies the strict proof gate",
+    proofGateAfterPass?.satisfied === true && proofGateAfterPass?.detail === undefined,
+    JSON.stringify(proofGateAfterPass),
+  );
+  // The census is read-only and reports what is actually on this board.
+  const census = JSON.parse(
+    textOf(await client.callTool({ name: "migrate_board", arguments: { dry_run: true } })),
+  ).proofValidation;
+  check(
+    "migrate_board's dry run censuses proof records without writing",
+    census.dryRun === true &&
+      census.changed === false &&
+      census.census.complete === true &&
+      census.census.counts.valid >= 1 &&
+      /^proof-census-v1:[0-9a-f]{64}$/.test(census.census.digest),
+    JSON.stringify(census.census.counts),
   );
 
   const scratchFixture = JSON.parse(
@@ -1929,6 +1990,42 @@ Second proof attempt passed; the first failure is retained.
     requires: { "enter-done": ["proof:visual"] },
   });
   await writeDoc(visual, "proof/after.md", "no picture here");
+  // CORE-129: the image advisory is unchanged, but it is now *reached* only
+  // once the strict typed-record check has passed — so this fixture supplies a
+  // canonical record as well as the flavour-specific document. Without one, the
+  // refusal would be about the missing record and the advisory would never fire.
+  const visualNoRecordGates = JSON.parse(
+    textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: visual } })),
+  );
+  check(
+    "a proof folder without the canonical proof/proof.md carries no strict authority",
+    visualNoRecordGates.boundaries
+      .find((boundary) => boundary.boundary === "enter-done")
+      ?.requirements.find((requirement) => requirement.requirement === "proof:visual")?.satisfied === false,
+  );
+  await writeDoc(
+    visual,
+    "proof/proof.md",
+    `---
+kind: proof-record
+schema: 2
+merged_sha: "${"f".repeat(40)}"
+environment: "smoke sandbox / Node ${process.version}"
+verified_at: "2026-08-21T00:00:00.000Z"
+result: PASS
+attempts:
+  - attempted_at: "2026-08-21T00:00:00.000Z"
+    command: "npm test"
+    cwd: "."
+    exit_code: 0
+    result: PASS
+    authority: authoritative
+    summary: "Visual check recorded."
+---
+
+No picture here.
+`,
+  );
   const visualGates = JSON.parse(
     textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: visual } })),
   );

@@ -2089,9 +2089,17 @@ server.registerTool(
   {
     title: "Migrate / upgrade the board",
     description:
-      "Bring the board fully current: run the v1→v2 migration if needed, then backfill the 7-stage default (alias-aware, additive — never renames or reorders existing stages, never touches item files), then the one-time logical identity migration (FRD-029): a board without .kanmer/project.json receives a `project_id` with the prior machine-local fingerprint recorded as its auditable fallback, reported under `identity`. Pass dry_run: true to preview what would move, which stages would be added and whether an identity would be allocated, without writing. The agent-facing route to the same upgrade the GUI offers.",
+      "Bring the board fully current: run the v1→v2 migration if needed, then backfill the 7-stage default (alias-aware, additive — never renames or reorders existing stages, never touches item files), then the one-time logical identity migration (FRD-029): a board without .kanmer/project.json receives a `project_id` with the prior machine-local fingerprint recorded as its auditable fallback, reported under `identity`. Pass dry_run: true to preview what would move, which stages would be added and whether an identity would be allocated, without writing. The agent-facing route to the same upgrade the GUI offers. " +
+      "Every call also returns `proofValidation` (CORE-129): a READ-ONLY census of every ticket's canonical `proof/proof.md`, bucketed `valid` / `legacy` / `invalid` / `absent` with per-ticket diagnostics, plus a `digest` binding that exact reading. The census writes nothing — proof bytes, tickets, stages and activity are untouched by it, in a dry run and a real run alike. " +
+      "Enabling STRICT proof validation — where entering Done needs a valid `proof-record/2` PASS rather than merely a file under `proof/` — is a separate, deliberate act: read a dry run's census, then pass that exact `proof_census_digest` back on a non-dry run. The digest is recomputed under the board write lock, and the cutover is refused WITHOUT WRITING if the board changed, if the census is incomplete, or if the board is not yet format 3 (migrate the format first). Calling this tool without `proof_census_digest` NEVER enables strict; an already-strict board reports `changed: false` and the same read-only census.",
     inputSchema: {
       dry_run: z.boolean().optional().describe("Preview without writing"),
+      proof_census_digest: z
+        .string()
+        .optional()
+        .describe(
+          "The exact `proofValidation.census.digest` from a dry run, to enable strict proof validation (CORE-129). Omit it and strict is never enabled.",
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
@@ -2100,12 +2108,23 @@ server.registerTool(
   // could never be read-only and `identity.wouldAllocate` was unreachable over
   // MCP. Same guard order as write() — WRONG_PROJECT first, then actor, then
   // init — but init only when actually writing.
-  guard(async ({ dry_run, expected_project }: { dry_run?: boolean; expected_project?: string }, extra) => {
+  guard(async (
+    {
+      dry_run,
+      proof_census_digest,
+      expected_project,
+    }: { dry_run?: boolean; proof_census_digest?: string; expected_project?: string },
+    extra,
+  ) => {
     await assertExpectedProject(expected_project);
     store.setActor(actorName(server, extra));
     if (!dry_run) await ensureInit();
     const legacy = await legacyIdentity();
-    const report = await migrateBoard(store, { dryRun: dry_run, fallbackFingerprint: legacy.fingerprint });
+    const report = await migrateBoard(store, {
+      dryRun: dry_run,
+      fallbackFingerprint: legacy.fingerprint,
+      proofCensusDigest: proof_census_digest,
+    });
     await resolveProject();
     return ok(report);
   }),

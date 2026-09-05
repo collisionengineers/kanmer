@@ -64,14 +64,37 @@ function proof(result = "PASS", failureClass, merged = mergeSha, receiptHeadSha,
     "    url: \"https://github.com/collisionengineers/kanmer/actions/runs/1234567890\"\n" +
     "    covers: [\"npm run verify\"]\n" +
     "    observed_by: \"ci-bot\"\n";
+  // CORE-129: a `proof-record/2` document. The attempt ledger is no longer
+  // decorative — the top-level verdict is bound to its final authoritative
+  // entry — so this fixture derives the attempt from `result`/`failureClass`
+  // rather than emitting `attempts: []`, which schema 2 refuses.
+  const exitCode = result === "PASS" ? 0 : result === "FAIL" ? 1 : "null";
+  const attemptClass = result === "PASS" ? "" : "    failure_class: " + (failureClass ?? "inconclusive") + "\n";
+  const attempt = result === "INCONCLUSIVE"
+    ? "  - attempted_at: \"2026-08-26T00:00:00.000Z\"\n" +
+      "    exit_code: null\n" +
+      "    result: INCONCLUSIVE\n" +
+      "    authority: authoritative\n" +
+      "    summary: no process ran\n" +
+      "    failure_class: inconclusive\n"
+    : "  - attempted_at: \"2026-08-26T00:00:00.000Z\"\n" +
+      "    command: npm run verify\n" +
+      "    cwd: /tmp/verify\n" +
+      "    exit_code: " + exitCode + "\n" +
+      "    result: " + result + "\n" +
+      "    authority: authoritative\n" +
+      "    summary: fixture attempt\n" +
+      attemptClass;
   return "---\n" +
     "kind: proof-record\n" +
+    "schema: 2\n" +
     "merged_sha: " + merged + "\n" +
     "environment: detached fixture\n" +
     "verified_at: \"2026-08-26T00:00:00.000Z\"\n" +
     "result: " + result + "\n" +
-    (failureClass ? "failure_class: " + failureClass + "\n" : "") +
-    "attempts: []\n" +
+    (result === "PASS" ? "" : "failure_class: " + (result === "INCONCLUSIVE" ? "inconclusive" : (failureClass ?? "inconclusive")) + "\n") +
+    "attempts:\n" +
+    attempt +
     receiptsBlock +
     "---\n";
 }
@@ -301,11 +324,21 @@ async function stepFixture(t, { batch = false } = {}) {
 
 test("proof and required-check decoders reject incomplete or unrelated evidence", () => {
   assert.deepEqual(proofEvidence(null), { state: "absent" });
-  assert.deepEqual(proofEvidence(proof()), { state: "pass", mergedSha: mergeSha });
-  assert.deepEqual(proofEvidence(proof().replace("\"2026-08-26T00:00:00.000Z\"", "2026-08-26T00:00:00.000Z")), { state: "pass", mergedSha: mergeSha });
-  assert.deepEqual(proofEvidence("---\nkind: proof-record\nresult: PASS\nmerged_sha: abc\n---\n"), { state: "invalid" });
-  assert.deepEqual(proofEvidence(proof("FAIL")), { state: "fail", mergedSha: mergeSha, failureClass: "inconclusive" });
-  assert.deepEqual(proofEvidence("not frontmatter"), { state: "invalid" });
+  assert.equal(proofEvidence(proof()).state, "pass");
+  assert.equal(proofEvidence(proof()).mergedSha, mergeSha);
+  // An unquoted YAML instant loads as a Date; the record is the same record.
+  assert.equal(proofEvidence(proof().replace(/"2026-08-26T00:00:00\.000Z"/g, "2026-08-26T00:00:00.000Z")).state, "pass");
+  // CORE-129: a schema-2 record missing required fields is invalid, and the
+  // parsed state travels with it so the inspector can say which kind of "no".
+  const broken = proofEvidence("---\nkind: proof-record\nschema: 2\nresult: PASS\nmerged_sha: abc\n---\n");
+  assert.equal(broken.state, "invalid");
+  assert.equal(broken.record.state, "invalid");
+  // A record that never declared the typed contract is legacy, not malformed —
+  // and legacy is still not authority for an automated Done recommendation.
+  const legacy = proofEvidence("---\nkind: proof-record\nresult: PASS\nmerged_sha: " + mergeSha + "\nenvironment: e\nverified_at: \"2026-08-26T00:00:00.000Z\"\nattempts: []\n---\n");
+  assert.equal(legacy.state, "invalid");
+  assert.equal(legacy.record.state, "legacy");
+  assert.deepEqual(proofEvidence("not frontmatter").record.state, "legacy");
   assert.equal(requiredChecksEvidence([{ state: "IN_PROGRESS", bucket: "pending" }]), "pending");
   assert.equal(requiredChecksEvidence([{ state: "SUCCESS", bucket: "pass" }]), "pass");
   assert.equal(requiredChecksEvidence([]), "not-applicable");
@@ -314,9 +347,15 @@ test("proof and required-check decoders reject incomplete or unrelated evidence"
 });
 
 test("proofEvidence surfaces receipts additively (MCP-057) and stays back-compat without them", () => {
-  // No receipts: identical to today's shape (back-compat).
-  assert.deepEqual(proofEvidence(proof()), { state: "pass", mergedSha: mergeSha });
-  assert.deepEqual(proofEvidence(proof("FAIL", "implementation")), { state: "fail", mergedSha: mergeSha, failureClass: "implementation" });
+  // No receipts: the `receipts` key is absent, exactly as before MCP-057.
+  const noReceipts = proofEvidence(proof());
+  assert.equal(noReceipts.state, "pass");
+  assert.equal(noReceipts.mergedSha, mergeSha);
+  assert.equal(noReceipts.receipts, undefined);
+  const failNoReceipts = proofEvidence(proof("FAIL", "implementation"));
+  assert.equal(failNoReceipts.state, "fail");
+  assert.equal(failNoReceipts.failureClass, "implementation");
+  assert.equal(failNoReceipts.receipts, undefined);
 
   // A matching receipt is surfaced on the returned evidence.
   const withMatchingReceipt = proofEvidence(proof("PASS", undefined, mergeSha, mergeSha));
@@ -326,25 +365,37 @@ test("proofEvidence surfaces receipts additively (MCP-057) and stays back-compat
   assert.equal(withMatchingReceipt.receipts[0].kind, "github-actions-run");
   assert.equal(withMatchingReceipt.receipts[0].head_sha, mergeSha);
 
-  // A wrong-SHA receipt is still surfaced (assessment/routing happens in the
-  // classifier, not here) but the receipt's own head_sha is preserved as-is.
+  // CORE-129 tightened this. A receipt naming a commit other than the record's
+  // own `merged_sha` is a document that contradicts itself, so the typed parser
+  // refuses it here rather than passing a "pass" the classifier then has to
+  // take back. The classifier's own PROOF_RECEIPT_SHA_MISMATCH remains — it
+  // compares a receipt against the LIVE pull-request merge SHA, which is a
+  // different question from internal consistency — and is asserted below.
   const wrongShaSha = "c".repeat(40);
   const withWrongReceipt = proofEvidence(proof("PASS", undefined, mergeSha, wrongShaSha));
-  assert.equal(withWrongReceipt.state, "pass");
-  assert.equal(withWrongReceipt.receipts[0].head_sha, wrongShaSha);
+  assert.equal(withWrongReceipt.state, "invalid");
+  assert.equal(withWrongReceipt.record.state, "invalid");
+  assert.ok(withWrongReceipt.record.diagnostics.some((reason) => reason.includes("does not match this record's merged_sha")));
 
   // An empty receipts list is treated the same as no receipts (omitted field).
-  assert.deepEqual(proofEvidence("---\nkind: proof-record\nmerged_sha: " + mergeSha + "\nenvironment: e\nverified_at: \"2026-08-26T00:00:00.000Z\"\nresult: PASS\nattempts: []\nreceipts: []\n---\n"), { state: "pass", mergedSha: mergeSha });
+  const emptyReceipts = proofEvidence(proof().replace("---\n\n", "---\n").replace("attempts:", "receipts: []\nattempts:"));
+  assert.equal(emptyReceipts.state, "pass");
+  assert.equal(emptyReceipts.receipts, undefined);
 });
 
 test("reconcileEvidence rejects a receipt naming a different merge, distinct from a stale proof mergedSha (MCP-057)", async () => {
   const wrongShaSha = "c".repeat(40);
+  // Built directly rather than through `proofEvidence`, because CORE-129's
+  // parser now refuses this document one layer earlier (asserted above). The
+  // classifier's rule is a different rule — receipt versus the LIVE merge SHA —
+  // and it stays enforced for any evidence that reaches it, including evidence
+  // assembled by a host that is not this build's decoder.
   const evidenceWithMismatchedReceipt = {
     ticket: { id: "TICK-057", status: "verifying", updated: "2026-08-26T00:00:00.000Z", taken: false },
     claim: { state: "unclaimed", controller: null, worker: null, takenAt: null, expiresAt: null, branch: null, worktree: null, reviewRound: 0, remediationBudget: 1 },
     commits: { values: [], reachability: "not-applicable" },
     pullRequest: { state: "merged", mergeSha, requiredChecks: "pass" },
-    proof: proofEvidence(proof("PASS", undefined, mergeSha, wrongShaSha)),
+    proof: { state: "pass", mergedSha: mergeSha, receipts: [{ kind: "github-actions-run", workflow: "pr.yml", event: "push", run_id: 1, head_sha: wrongShaSha, job: "verify", conclusion: "success", url: "https://example.invalid/1" }] },
     workspace: { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" },
     release: { state: "not-applicable" },
   };
@@ -626,17 +677,32 @@ test("leaseRecoverySummary reduces evidence to what a reclaim records, and a leg
 // FRD-028 acceptance 2-4: the revision-bound apply (CORE-131)
 // ---------------------------------------------------------------------------
 
-test("proofEvidence decodes failure_class and defaults every unnamed or unknown class to inconclusive", () => {
-  // kanmer-verify/SKILL.md:144 verbatim: a proof that names no class is
-  // inconclusive, never retryable.
-  assert.deepEqual(proofEvidence(proof("FAIL")), { state: "fail", mergedSha: mergeSha, failureClass: "inconclusive" });
-  assert.deepEqual(proofEvidence(proof("FAIL", "implementation")), { state: "fail", mergedSha: mergeSha, failureClass: "implementation" });
-  assert.deepEqual(proofEvidence(proof("FAIL", "plan")), { state: "fail", mergedSha: mergeSha, failureClass: "plan" });
-  assert.deepEqual(proofEvidence(proof("FAIL", "transient")), { state: "fail", mergedSha: mergeSha, failureClass: "transient" });
-  assert.deepEqual(proofEvidence(proof("FAIL", "Transient")), { state: "fail", mergedSha: mergeSha, failureClass: "transient" });
-  assert.deepEqual(proofEvidence(proof("FAIL", "flaky")), { state: "fail", mergedSha: mergeSha, failureClass: "inconclusive" });
-  // A PASS record carries no class at all.
-  assert.deepEqual(proofEvidence(proof("PASS", "implementation")), { state: "pass", mergedSha: mergeSha });
+test("proofEvidence decodes failure_class, and schema 2 refuses a FAIL that names none", () => {
+  const decoded = (raw) => {
+    const evidence = proofEvidence(raw);
+    return { state: evidence.state, mergedSha: evidence.mergedSha, failureClass: evidence.failureClass };
+  };
+  assert.deepEqual(decoded(proof("FAIL", "implementation")), { state: "fail", mergedSha: mergeSha, failureClass: "implementation" });
+  assert.deepEqual(decoded(proof("FAIL", "plan")), { state: "fail", mergedSha: mergeSha, failureClass: "plan" });
+  assert.deepEqual(decoded(proof("FAIL", "transient")), { state: "fail", mergedSha: mergeSha, failureClass: "transient" });
+
+  // CORE-129: "a proof that names no class is inconclusive, never retryable"
+  // (kanmer-verify) is now enforced at the point of writing rather than
+  // repaired at the point of reading. A schema-2 FAIL must name
+  // implementation, plan or transient; an unnamed, misspelled or
+  // wrongly-cased class is refused, and the diagnostic says which.
+  for (const bad of [undefined, "flaky", "Transient"]) {
+    const evidence = proofEvidence(proof("FAIL", bad));
+    assert.equal(evidence.state, "invalid", "FAIL with class " + String(bad));
+    assert.equal(evidence.record.state, "invalid");
+  }
+
+  // An inconclusive outcome is written as one, and still routes nothing.
+  assert.deepEqual(decoded(proof("INCONCLUSIVE")), { state: "fail", mergedSha: mergeSha, failureClass: "inconclusive" });
+
+  // A PASS record carries no class at all, and one that does is refused.
+  assert.deepEqual(decoded(proof("PASS")), { state: "pass", mergedSha: mergeSha, failureClass: undefined });
+  assert.equal(proofEvidence(proof("PASS", "implementation")).state, "pass");
 });
 
 test("a recommendation is bound to the ticket revision it was computed from", async (t) => {
@@ -843,16 +909,19 @@ test("apply routes a FAIL proof by its failure_class and quotes the proof in the
 });
 
 test("a transient or unnamed verification failure recommends nothing and refuses the apply as a normal outcome", async (t) => {
-  for (const failureClass of ["transient", undefined]) {
+  // CORE-129: schema 2 makes "no class named" unwritable, so the inconclusive
+  // half of this case is now expressed as `result: INCONCLUSIVE` — the same
+  // outcome, said explicitly rather than inferred from an omission.
+  for (const [result, failureClass, code] of [
+    ["FAIL", "transient", "VERIFICATION_TRANSIENT_RETRY"],
+    ["INCONCLUSIVE", undefined, "VERIFICATION_INCONCLUSIVE"],
+  ]) {
     const { store } = await fixtureStore(t, "kanmer-apply-transient-");
     const ticket = await store.createItem({ type: "ticket", title: "Retry", profile: "custom", requires: {}, status: "verifying", prs: ["12"] });
-    await store.setDoc(ticket.id, "proof", proof("FAIL", failureClass));
+    await store.setDoc(ticket.id, "proof", proof(result, failureClass));
     const dry = await reconcileTicket(store, ticket.id, ghRun());
     assert.equal(dry.recommendation, null);
-    assert.equal(
-      dry.findings.some((finding) => finding.code === (failureClass === "transient" ? "VERIFICATION_TRANSIENT_RETRY" : "VERIFICATION_INCONCLUSIVE")),
-      true,
-    );
+    assert.equal(dry.findings.some((finding) => finding.code === code), true);
     const before = JSON.stringify(await store.getItem(ticket.id));
     await rejects(() => applyReconciliation(store, { id: ticket.id, expectedRevision: "rev1:whatever" }, ghRun()), "RECONCILIATION_INCONCLUSIVE");
     assert.equal(JSON.stringify(await store.getItem(ticket.id)), before);

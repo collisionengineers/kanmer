@@ -162,8 +162,19 @@ export function proofEvidence(raw: string | null): ReconciliationEvidence["proof
       ...summary,
     };
   }
-  // valid-inconclusive: a truthful record, and not a route.
-  return { state: "invalid", ...summary };
+  // valid-inconclusive: a truthful record, and not a route. It is reported as
+  // a `fail`/`inconclusive` pair rather than `invalid` so the classifier
+  // reaches its existing `VERIFICATION_INCONCLUSIVE` finding — "the ticket
+  // stays in Verifying until the proof names a class" — which says something
+  // useful, where `invalid` would say only that the document is unreadable.
+  // It still recommends no move, exactly as before.
+  return {
+    state: "fail",
+    mergedSha: record.mergedSha,
+    failureClass: "inconclusive",
+    ...(receipts ? { receipts } : {}),
+    ...summary,
+  };
 }
 
 /** Interpret only `gh pr checks --required`; rollup checks can be unrelated. */

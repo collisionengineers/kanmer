@@ -199,16 +199,45 @@ function attestation({ pr, headSha, verdict, findings = [], planHash = "plan-v1"
   ].join("\n");
 }
 
+/**
+ * A valid `proof-record/2` document (CORE-129). The attempt ledger is derived
+ * from the verdict rather than left empty: schema 2 binds the top-level result
+ * to the final authoritative attempt, so a record with `attempts: []` is not a
+ * record this board's gate or reconciliation will act on.
+ */
 function proofRecord({ result, mergedSha, failureClass }) {
+  const attempt =
+    result === "PASS"
+      ? [
+          '  - attempted_at: "2026-09-04T00:00:00.000Z"',
+          '    command: "npm run verify"',
+          '    cwd: "."',
+          "    exit_code: 0",
+          "    result: PASS",
+          "    authority: authoritative",
+          '    summary: "the golden rail passed"',
+        ]
+      : [
+          '  - attempted_at: "2026-09-04T00:00:00.000Z"',
+          '    command: "npm run verify"',
+          '    cwd: "."',
+          "    exit_code: 1",
+          "    result: FAIL",
+          "    authority: authoritative",
+          `    failure_class: ${failureClass ?? "transient"}`,
+          '    summary: "the golden rail failed"',
+        ];
   return [
     "---",
     "kind: proof-record",
+    "schema: 2",
     `merged_sha: "${mergedSha}"`,
     'environment: "golden disposable board"',
     'verified_at: "2026-09-04T00:00:00.000Z"',
     `result: ${result}`,
-    ...(failureClass ? [`failure_class: ${failureClass}`] : []),
-    "attempts: []",
+    ...(result === "PASS" ? [] : [`failure_class: ${failureClass ?? "transient"}`]),
+    "attempts:",
+    ...attempt,
     "---",
     "",
   ].join("\n");

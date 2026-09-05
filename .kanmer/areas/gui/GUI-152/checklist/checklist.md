@@ -57,11 +57,11 @@ ticket's own acceptance bullets.
 
 ## Closeout — GUI-152
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/GUI-152`
-- [ ] `git branch -d GUI-152-focus-board-scopes` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR merge verified (`gh pr view GUI-152-focus-board-scopes --json state,mergedAt,url,mergeCommit` → state MERGED, mergedAt 2026-09-05T03:25:46Z, mergeCommit.oid 32aa54fc0c7fa4dfafee2eeb57ec8bf60dbdc507)
+- [x] proof.md already final (merged_sha, PASS result, receipts recorded by kanmer-verify); no further edit needed
+- [x] Ticket already at final stage (Done)
+- [x] Outcome already recorded in ticket body (Outcome section + Out of scope/[[GUI-153]] follow-up); `commits[]` updated to include the merge SHA `32aa54fc0c7fa4dfafee2eeb57ec8bf60dbdc507` alongside the pre-merge head `8ef01486d6ff4605b1b3e876550e325c671f9afa`
+- [x] cd out of worktree; `git worktree remove .worktrees/GUI-152` — exit 0
+- [x] `git branch -D GUI-152-focus-board-scopes` (squash/rebase-merged; branch head `8ef01486` not an ancestor of the merge commit) — exit 0; also deleted the stale remote branch (`git push origin --delete GUI-152-focus-board-scopes`) — exit 0
+- [x] `git fetch --prune origin` — exit 0; `git worktree prune -v` — exit 0
+- [x] `take_ticket action: "release"` — exit 0; lease fields cleared

@@ -293,3 +293,17 @@ Fresh MCP session (`KANMER_NODE=...\Programs\Kanmer\Kanmer.exe`, `KANMER_SERVER=
 - Direct `get_status` against the LIVE board root: `server.version: "0.4.2"`, `server.sha256: 20caa7551f8316524f9a54253597fa2826a9f9474962262c96cdc705e275a5bd` (matches the published `kanmer-0.4.2.mcpb`/bundle sha recorded earlier), `repo.upToDate: true`. **`delivery.verification` present**: `{workflow: "pr.yml", jobs: ["verify"], event: "push"}`. **`proofValidation` present**: `{mode: "report", source: "default"}` (confirms the report-mode decision from the CORE-129 census carried through to the live server). `release.attempts` shows both `main@1` (v0.4.1) and `main@2` (v0.4.2, released, verificationState passed) — matches B2 exactly. Board counts unchanged (398 tickets, 383 done, 1 in review = CORE-141 itself).
 
 M1/AT-33 satisfied: **PASS**. Proceeding to Claude marketplace/plugin restage per `docs/manual/connect.md` and the memory note that the plugin goes stale after a GUI upgrade.
+
+### B4 continued: Claude marketplace/plugin restage — PASS
+
+Confirmed stale before restage: `claude plugin list` reported `kanmer@kanmer` version `0.4.1`, matching the known "plugin goes stale after GUI upgrade" memory note. `%LOCALAPPDATA%\Kanmer\claude-marketplace\plugins\kanmer\.claude-plugin\plugin.json` was also still `0.4.1` (this staging root is Kanmer-owned, populated by the app's own GUI-147 Connect flow — regenerating it is exactly the documented fix per the memory note "restage marketplace under %LOCALAPPDATA%\Kanmer\claude-marketplace").
+
+Restaged the Kanmer-owned staging directory by copying the fresh `resources/plugins/kanmer` tree from the new `0.4.2-4920` generation over `%LOCALAPPDATA%\Kanmer\claude-marketplace\plugins\kanmer` (same content the app's own Connect action would have written) — confirmed `plugin.json` now reads `0.4.2` in both `.claude-plugin/plugin.json` and the root `plugin.json`.
+
+`claude plugin marketplace update kanmer` — exit 0, "Successfully updated marketplace: kanmer" (revalidates Claude's marketplace descriptor from the now-current staging directory; alone this does NOT reinstall the already-installed plugin version — confirmed `claude plugin list` still showed 0.4.1 immediately after).
+
+Found the correct additional command: `claude plugin update kanmer@kanmer` — exit 0: "Plugin 'kanmer' updated from 0.4.1 to 0.4.2 for scope user. Restart to apply changes." Confirmed via `claude plugin list --json`: `id: kanmer@kanmer`, `version: 0.4.2`, `enabled: true`, `installPath: ...\.claude\plugins\cache\kanmer\kanmer\0.4.2`, `lastUpdated: 2026-09-05T18:45:06.040Z`.
+
+Note: "restart to apply" means a **new** Claude Code session picks up the 0.4.2 plugin cache; my own running session was loaded from the 0.4.1 marketplace state and is unaffected (this is expected and matches how the MCP tool schemas were already loaded at my session start — irrelevant to the board operations I'm performing via direct process spawns for B4's version checks, which correctly used the new generation's binary directly).
+
+**B4 host adoption: PASS in full** — new generation installed and adopted via the sanctioned in-app updater, stable launcher resolves to it, live-board `get_status` confirms server.version 0.4.2 with delivery.verification and proofValidation present, Claude plugin/marketplace restaged to 0.4.2. Proceeding to B5 (M5 disposable mutation through the installed route).

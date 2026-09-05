@@ -23,15 +23,20 @@ worktree remain untouched.
    the unexplained state faster and more truthfully than a manual re-read.
 2. Ask GitHub for `state`, `mergeCommit`, and `url`. If the PR is not `MERGED`
    or `mergeCommit` is null, stop immediately: this skill is running too early.
-3. **Look up the bound receipt before any Git operation.** The push to `main`
-   that the merge itself triggered already ran `pr.yml`'s `verify` job for
-   this exact merge SHA — the "bound post-merge receipt" the workflow's own
-   comment names. Query it before creating anything.
+3. **Look up the bound receipt before any Git operation.** Read the project's
+   verification contract from `get_status` — `delivery.integrationBranch` and
+   `delivery.verification` — and query the run it names for this exact merge
+   SHA before creating anything. On Kanmer's own board that contract is the
+   default (`pr.yml`, job `verify`, event `push`); on another project it is
+   whatever that board declares, and this skill never assumes a name.
 4. **Classify each packet obligation** as `satisfied`, `missing`, or
    `rejected` against that receipt.
 5. **Create the detached verification worktree only if step 4 left anything
    missing.** A fully satisfied receipt needs no new full run and no
-   verification worktree at all.
+   verification worktree at all. When the contract's workflow has **no** run at
+   the exact merge SHA, every obligation is `missing`, the designated verifier
+   runs them all here, and the proof records `receipts: []` with the reason —
+   a complete proof, not a degraded one.
 6. Run only the missing checks there. Record every command, cwd, exit code,
    observed result, and summary; preserve failures and inconclusive attempts.
 7. Replace `proof/proof.md` as one version-aware proof record — the receipt
@@ -61,24 +66,43 @@ main.
 
 ## Look up the bound receipt before any Git operation
 
-Before creating a worktree, ask GitHub for the push-to-`main` run `pr.yml`
-already ran for the exact merge SHA:
+The project's board decides which run counts. Read it first — never hardcode a
+workflow or job name:
 
 ```sh
-gh run list --workflow pr.yml --event push --commit <MERGED_SHA> --limit 5 --json databaseId,headSha,event,status,conclusion,url,createdAt
+# get_status → delivery.integrationBranch, delivery.verification
+# delivery.verification = { workflow, jobs: [...], event }
+```
+
+`delivery.verificationSource` says whether that contract came from `board.yml`
+or is the shipped default (`pr.yml`, `["verify"]`, `push` — Kanmer's own
+contract). Then ask GitHub for the run the contract names, at the exact merge
+SHA:
+
+```sh
+gh run list --workflow <workflow> --event <event> --commit <MERGED_SHA> --limit 5 --json databaseId,headSha,event,status,conclusion,url,createdAt
 gh run view <databaseId> --json jobs,conclusion,status,attempt,headSha,url
 ```
 
 **Satisfied** only when ALL of the following hold: `headSha` string-equals
-the full merge SHA; `event == push`; the workflow is `pr.yml`; and a job
-named `verify` has `status: completed` and `conclusion: success`.
+the full merge SHA; the run's `event` equals the contract's `event`; the
+workflow is the contract's `workflow`; and **every** job named in the
+contract's `jobs` has `status: completed` and `conclusion: success`. One green
+job out of two required ones is not satisfied — the obligations the other job
+runs were never run at all.
 
 **Rejected** — not merely missing — for: `cancelled`, `skipped`,
-`timed_out`, or `action_required`; no `verify` job present; or a run that
-only exists for the `pull_request` event on the PR's head SHA. A PR-head run
-or a synthetic-merge run is never interchangeable with the actual squash
-commit pushed to `main` — they are different commits with different history,
-even when their diffs match.
+`timed_out`, or `action_required`; a contract job absent from the run; or a
+run for an event the contract does not name. A `pull_request` run is
+acceptable *only* when the contract's `event` is `pull_request` **and** the
+run's `head_sha` equals the merge SHA. For a squash merge it never does: the
+PR head and the squash commit pushed to the integration branch are different
+commits with different history, even when their diffs match. So a project
+whose CI runs only on pull requests always takes the fallback below.
+
+**No matching run at all** is the ordinary case for a project whose workflow
+does not run on pushes to the integration branch. That is `missing`, not an
+error, and it routes to the fallback — see "Exact detached worktree".
 
 **In progress**: wait once with `gh run watch <databaseId> --exit-status`
 rather than starting a competing local rail. Do not poll repeatedly and do
@@ -89,9 +113,11 @@ not fall back to a local run while the bound run is still queued or running.
 Classify each of the packet's named obligations as `satisfied`, `missing`, or
 `rejected` against the receipt looked up above:
 
-- An obligation that is a subset of `npm run verify` — the `verify` job in
-  `pr.yml` runs exactly the packet's `VERIFY_STEPS` — is `satisfied` by a
-  `satisfied` receipt. Do not re-run it locally.
+- An obligation the contract's jobs actually run is `satisfied` by a
+  `satisfied` receipt. Do not re-run it locally. *In this repository* that
+  mapping is `pr.yml`'s `verify` job running exactly the packet's
+  `VERIFY_STEPS`; that is the worked example, not the rule. For another
+  project, read what its declared jobs run and draw the line there.
 - Manual GUI checks, installed-host checks, Windows-lock checks, and any
   provider/deployment check stay `missing` regardless of the receipt: the
   hosted rail cannot observe them, so they are always run in the worktree as
@@ -106,6 +132,18 @@ Classify each of the packet's named obligations as `satisfied`, `missing`, or
 missing.** A fully `satisfied` receipt needs no new full run and no
 verification worktree at all — skip straight to writing the proof with the
 receipt in `receipts:` and no new `attempts:`.
+
+**The fallback, stated explicitly.** When the contract's workflow has no run at
+the exact merge SHA — because the project's CI runs on pull requests only, on a
+different branch, or under a workflow that has not been declared yet — every
+obligation is `missing`. There is nothing to reject and nothing to wait for:
+the designated verifier runs every obligation here, in the detached worktree,
+and the proof records `receipts: []` plus one body sentence naming why there
+was no receipt (for example: "`ci.yml` does not run on pushes to `dev`, so
+there is no post-integration run at this merge SHA; every obligation was run
+locally"). That proof is complete and authorises Done exactly like a
+receipt-bearing one. Never invent a receipt for a run that does not exist, and
+never treat the absence of one as a failure of the change.
 
 When something is missing, from a normal repository checkout (never
 `.worktrees/kanmer`):
@@ -244,17 +282,24 @@ receipts:
     observed_by: "<actor>"
 ```
 
+The `workflow`, `job` and `event` values above are the *contract's*, read from
+`get_status.delivery.verification` — the block shown is Kanmer's own default.
+Write one receipt per contract job the run discharged; a proof that covers only
+some of the required jobs is rejected as incomplete.
+
 A receipt whose `head_sha` disagrees with `merged_sha` is rejected by
 `assessReceipt` and, at runtime, by the reconciliation classifier's own
-`PROOF_RECEIPT_SHA_MISMATCH` finding. Every other `assessReceipt` reason —
-wrong `job`, wrong `workflow`, non-`push` `event`, non-`success` `conclusion`,
-an unrecognised `kind`, or a missing `run_id`/`url` — is likewise checked at
-runtime through the classifier's `PROOF_RECEIPT_REJECTED` finding
+`PROOF_RECEIPT_SHA_MISMATCH` finding. Every other reason — a `job`, `workflow`
+or `event` that is not the contract's, a non-`success` `conclusion`, an
+unrecognised `kind`, a `run_id` that is not a positive integer, a missing
+`url`, or a receipt set that leaves a required job uncovered — is likewise
+checked at runtime through the classifier's `PROOF_RECEIPT_REJECTED` finding
 (`packages/core/src/reconciliation.ts`'s `receiptAssessmentRejections`, which
-calls `assessReceipt` on every receipt in the proof). A rejected receipt
-never authorises Done, and never authorises a backward
+calls `assessReceiptSet` on the proof's receipts with the board's contract). A
+rejected receipt never authorises Done, and never authorises a backward
 `implementation`/`plan` route on a FAIL proof either, whichever way it would
-otherwise route the ticket.
+otherwise route the ticket. A proof with **no** receipts is not rejected: that
+is the fallback, and it is judged on its attempts alone.
 
 When the result is `FAIL` or `INCONCLUSIVE`, add one more key:
 
@@ -294,11 +339,15 @@ quotes the proof (every backward move is audited under `## Transitions`):
 
 ## What is validated by code and what is human judgement in this release
 
-Code validates: receipt shape (`kind` is `github-actions-run`, `job ==
-"verify"`, `workflow == "pr.yml"`, `run_id`/`url` present), `head_sha`
-exactly matching the PR's merge SHA, `event == "push"`, and `conclusion ==
-"success"`. `assessReceipt` is the single function that checks every one of
-these, and it runs at verification time through
+Code validates: receipt shape (`kind` is `github-actions-run`; `workflow`,
+`job` and `event` equal to the project's declared contract; `run_id` a positive
+integer; `url` present; `attempt`, `provider` and `repo` well-formed when
+present), `head_sha` exactly matching the PR's merge SHA, and `conclusion ==
+"success"`. It also validates the receipts *as a set*: a proof whose accepted
+receipts do not cover every job the contract requires is rejected as
+incomplete, naming the missing jobs, so one green job of two can never stand in
+for both. `assessReceipt`/`assessReceiptSet` are the functions that check every
+one of these, and they run at verification time through
 `reconcileEvidence`/`reconcile_ticket`: a receipt whose `head_sha` disagrees
 with the merge SHA produces `PROOF_RECEIPT_SHA_MISMATCH`, and a receipt
 rejected for any other reason (wrong job, wrong workflow, wrong event,
@@ -313,12 +362,15 @@ does not automate:
 - **Provider provenance** — that the receipt genuinely names the GitHub Actions
   run it claims to (not a forged or hand-edited value), and that
   `observed_by` names the actual actor who looked it up.
-- **"packet ⊆ npm run verify" coverage** — that every obligation marked
-  `satisfied` by the receipt is actually a subset of what the `verify` job in
-  `pr.yml` runs. A packet obligation that is not part of `VERIFY_STEPS` stays
-  `missing` and is run in the worktree regardless of the receipt, and it is
-  the verifier's judgement, not a mechanical check, that draws that line
-  correctly for a given ticket's packet.
+- **Coverage** — that every obligation marked `satisfied` by the receipt is
+  actually something the contract's jobs run. Kanmer's own mapping is "packet
+  ⊆ `npm run verify`", because its `verify` job runs exactly `VERIFY_STEPS`;
+  another project's mapping is whatever its declared jobs run. Code checks that
+  the *jobs* are present and green; nothing checks that a given obligation is
+  inside them. An obligation the contract's jobs do not run stays `missing` and
+  is run in the worktree regardless of the receipt, and it is the verifier's
+  judgement, not a mechanical check, that draws that line correctly for a given
+  ticket's packet.
 
 Read a proof record **in full** before acting on it, your own or an earlier
 one — the frontmatter carries the only machine-readable verdict, and prose

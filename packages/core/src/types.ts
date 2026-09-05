@@ -350,6 +350,27 @@ export type DeploymentConfig = z.infer<typeof DeploymentConfigSchema>;
  * Resolve it with `resolveDelivery(board)` rather than reading these fields:
  * `releaseBranch` defaults to the *integration* branch, not to a constant.
  */
+/**
+ * The project's **verification contract** (CORE-147): which hosted run counts
+ * as post-integration evidence for a merge on the integration branch.
+ *
+ * All three keys are required together when the block is present. A
+ * half-declared contract is a board error rather than a silent partial
+ * default, because the entire point of declaring it is that a consuming
+ * repository can see exactly which run Kanmer will look for — a contract that
+ * quietly kept `pr.yml` for a board that only named `jobs` would reproduce the
+ * hardcoding this block exists to remove.
+ */
+export const VerificationContractSchema = z.object({
+  /** Workflow file name as GitHub reports it, e.g. `ci.yml`. */
+  workflow: z.string().min(1),
+  /** Every job that must be `completed`/`success` for the run to count. */
+  jobs: z.array(z.string().min(1)).min(1),
+  /** The event that triggers the post-integration run. */
+  event: z.enum(["push", "pull_request", "workflow_run"]),
+});
+export type VerificationContract = z.infer<typeof VerificationContractSchema>;
+
 export const DeliveryConfigSchema = z.object({
   /** Branch normal implementation PRs target. Absent ⇒ `main`. */
   integrationBranch: z.string().min(1).optional(),
@@ -359,6 +380,12 @@ export const DeliveryConfigSchema = z.object({
   releaseCandidatePattern: z.string().min(1).nullable().optional(),
   /** Whether a release-branch hotfix owes a backport to the integration branch. Absent ⇒ true. */
   hotfixBackport: z.boolean().optional(),
+  /**
+   * Which hosted run discharges verification obligations for a merge on the
+   * integration branch (CORE-147). Absent ⇒ `DEFAULT_VERIFICATION_CONTRACT`,
+   * which is Kanmer's own contract.
+   */
+  verification: VerificationContractSchema.optional(),
 });
 export type DeliveryConfig = z.infer<typeof DeliveryConfigSchema>;
 
@@ -933,6 +960,21 @@ export function deliveryStateRank(state: DeliveryState): number {
 /** The integration branch assumed when board.yml declares no delivery policy. */
 export const DEFAULT_INTEGRATION_BRANCH = "main";
 
+/**
+ * The verification contract assumed when board.yml declares none (CORE-147).
+ *
+ * This *is* Kanmer's own contract — the `verify` job of `pr.yml`, on the push
+ * to the integration branch that the merge itself produced — which is why
+ * Kanmer's board declares no block, exactly as FRD-031 requires of the rest of
+ * the delivery policy. Frozen so a caller cannot mutate the shared default;
+ * `resolveDelivery` hands out a copy with its own `jobs` array.
+ */
+export const DEFAULT_VERIFICATION_CONTRACT: VerificationContract = Object.freeze({
+  workflow: "pr.yml",
+  jobs: Object.freeze(["verify"]) as unknown as string[],
+  event: "push",
+}) as VerificationContract;
+
 /** A project's resolved Git delivery policy — every field decided (FRD-031). */
 export interface DeliveryPolicy {
   /** Branch normal implementation PRs target and ordinary verification proves. */
@@ -943,6 +985,18 @@ export interface DeliveryPolicy {
   releaseCandidatePattern: string | null;
   /** Whether a release-branch hotfix owes a backport to the integration branch. */
   hotfixBackport: boolean;
+  /**
+   * Which hosted run counts as post-integration evidence (CORE-147). Always
+   * decided: the board's block, or `DEFAULT_VERIFICATION_CONTRACT`. Read it
+   * rather than any literal — `pr.yml`/`verify` is Kanmer's contract, not
+   * every project's.
+   *
+   * Deliberately **not** part of `deliveryPolicyVersion`: it says which run
+   * proves a merge, not where changes integrate or release from, so it cannot
+   * invalidate a release candidate's identity and must not shift the digests
+   * already recorded in `.kanmer/releases/`.
+   */
+  verification: VerificationContract;
 }
 
 /** Whether a resolved policy came from board.yml or from the shipped default. */
@@ -1179,6 +1233,17 @@ export interface ReconciliationEvidence {
   release: {
     state: "not-applicable" | "superseded" | "contended" | "unavailable";
   };
+  /**
+   * The project's verification contract (CORE-147), read from the board by the
+   * host collector so the pure classifier can judge receipts without a store.
+   *
+   * Optional and additive: evidence assembled by an older collector carries
+   * none, and the classifier then falls back to
+   * `DEFAULT_VERIFICATION_CONTRACT` — which is exactly the behaviour before
+   * this field existed, so an old collector paired with a new classifier
+   * cannot start accepting receipts it used to reject.
+   */
+  verification?: VerificationContract;
 }
 
 export interface ReconciliationFinding {

@@ -358,6 +358,10 @@ delivery:                          # optional Git delivery policy (FRD-031); abs
   release_branch: main             #   → releaseBranch: defaults to the integration branch
   release_candidate_pattern: null  #   → releaseCandidatePattern: e.g. "release/*"; null = no candidates
   hotfix_backport: true            #   → hotfixBackport: a release-branch hotfix owes an integration backport
+  verification:                    #   → verification: which run proves a merge (CORE-147); absent = pr.yml/verify/push
+    workflow: ci.yml               #     the workflow file name as GitHub reports it
+    jobs: [build, test]            #     EVERY job that must be completed/success for the run to count
+    event: push                    #     push | pull_request | workflow_run
 ```
 
 > The `delivery:` keys are camelCase in `board.yml`
@@ -368,7 +372,12 @@ delivery:                          # optional Git delivery policy (FRD-031); abs
 > so declaring `integrationBranch: dev` alone must not start releasing from
 > `main`. **Kanmer's own board deliberately carries no `delivery:` block** —
 > the resolved default *is* its policy, and FRD-031 forbids changing it merely
-> to demonstrate another one.
+> to demonstrate another one. The same applies to `verification`: `pr.yml` /
+> `verify` / `push` is Kanmer's contract, shipped as the default, and a
+> consuming project declares its own instead of renaming its workflows. All
+> three verification keys are required together when the block is present, and
+> `get_status.delivery.verificationSource` reports it separately from `source`
+> — a board may declare a policy and no contract.
 
 Area `prefix` is 2–6 uppercase alphanumerics, derived from the id when unset
 (`areaPrefix()` in board.ts), and uniqueness — including *among* the

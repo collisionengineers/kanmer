@@ -72,11 +72,24 @@ until something has merged, and it will tell you so.
 A proof's `attempts:` list is what an agent actually ran in a detached
 verification worktree at the merge commit. Beside it, `receipts:` is
 additive evidence that some of a ticket's obligations were already
-discharged by a hosted CI run — the exact push-to-`main` `verify` job for
-that same merge SHA — so the agent did not have to re-run them locally. A
-receipt is accepted only when it names the exact merge SHA, the `push`
-event, a completed `verify` job, and a `success` conclusion; anything else
-is rejected and the obligation is verified the old way, in the worktree.
+discharged by a hosted CI run for that same merge SHA, so the agent did not
+have to re-run them locally.
+
+Which run counts is the project's own **verification contract**, declared on
+the board under `delivery.verification` — a workflow, the set of jobs that must
+all be green, and the event that triggers them. Declare nothing and you get
+Kanmer's own contract: the `pr.yml` `verify` job on the push to the integration
+branch. A receipt is accepted only when it names the exact merge SHA, the
+contract's workflow, one of the contract's jobs, the contract's event, and a
+`success` conclusion — and the receipts together have to cover *every* job the
+contract requires. Anything else is rejected and the obligation is verified the
+old way, in the worktree.
+
+If your CI does not run on pushes to the integration branch — for example it
+runs on pull requests only — there is no run at the squash-merge commit, so
+there is no receipt to have. That is the normal fallback, not a fault: the
+verifier runs everything itself at the merge commit and the proof records
+`receipts: []` with the reason. It is slower, and it is just as valid.
 `receipts` is optional: a proof with none of them behaves exactly as it did
 before this list existed, and no existing proof is rewritten to add one.
 Receipts sit beside the attempt ledger, not inside it, and the same reader

@@ -4,10 +4,22 @@ type: ticket
 title: >-
   packages/mcp-server's build never builds @kanmer/core, so a fresh clone fails
   npm run test:http
-status: backlog
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: fix
+stageEntered:
+  preparing: '2026-09-05T04:12:13.725Z'
+taken_at: '2026-09-05T04:12:51.989Z'
+branch: CORE-145-mcp-server-build-core
+worktree: .worktrees/CORE-145
+claim_expires_at: '2026-09-05T04:42:51.989Z'
+claim_controller: claude-code
+lease_id: 1bf29689-d126-46e6-8ac6-a066ef0ce33a
+lease_revision: 1
+lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-145'
+lease_phase: implementing
+lease_heartbeat_at: '2026-09-05T04:12:51.989Z'
 labels:
   - rail
   - build
@@ -19,7 +31,7 @@ links:
 docs_todo: true
 archived: false
 created: '2026-09-05T03:03:02.310Z'
-updated: '2026-09-05T03:03:02.310Z'
+updated: '2026-09-05T04:12:51.989Z'
 ---
 
 Filed by the independent review of CORE-140 (PR #322). **Pre-existing on `main` at `c088be1391a1198c914fc3ef247103fd52c277c5`; not introduced by CORE-140.**

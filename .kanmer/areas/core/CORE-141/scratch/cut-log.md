@@ -283,3 +283,13 @@ Starting poll now.
 `%LOCALAPPDATA%\Kanmer\mcp\0.4.2-4920` created 2026-09-05T19:41 (local), `current` symlink now targets it (`current -> 0.4.2-4920`). Registry: `HKCU:\Software\...\Uninstall\*` reports `DisplayName: Kanmer 0.4.2`, `DisplayVersion: 0.4.2`. Prior generations (`0.3.12-35044`, `0.4.0-3280`, `0.4.0-14236`, `0.4.1-48196`, `0.4.1-7432`) all retained, untouched — `0.4.1-7432` is the rollback target for B6.
 
 Adoption happened via Alex applying the in-app "Restart now" banner (electron-updater `quitAndInstall`) — no manual installer action from me. Continuing B4.
+
+### B4 continued: launcher resolution + fresh session against live board — PASS (M1/AT-33)
+
+`kanmer-mcp.cmd --probe` → "Kanmer MCP launcher: healthy", exit 0 (resolves via registry `InstallDir` -> `%LOCALAPPDATA%\Kanmer\mcp\current` -> `0.4.2-4920`). App relaunched with new PIDs (6280, 11660, 11972, 19876, 24864) confirming `quitAndInstall` closed and reopened it as designed.
+
+Fresh MCP session (`KANMER_NODE=...\Programs\Kanmer\Kanmer.exe`, `KANMER_SERVER=...\mcp\0.4.2-4920\resources\mcp\kanmer-mcp.cjs`) against the live board (`.worktrees/kanmer`):
+- `packages/mcp-server/src/smoke.mjs` (fresh temp board): "build: packaged v0.4.2 sha 20caa755", 41 tools, standard smoke suite passing.
+- Direct `get_status` against the LIVE board root: `server.version: "0.4.2"`, `server.sha256: 20caa7551f8316524f9a54253597fa2826a9f9474962262c96cdc705e275a5bd` (matches the published `kanmer-0.4.2.mcpb`/bundle sha recorded earlier), `repo.upToDate: true`. **`delivery.verification` present**: `{workflow: "pr.yml", jobs: ["verify"], event: "push"}`. **`proofValidation` present**: `{mode: "report", source: "default"}` (confirms the report-mode decision from the CORE-129 census carried through to the live server). `release.attempts` shows both `main@1` (v0.4.1) and `main@2` (v0.4.2, released, verificationState passed) — matches B2 exactly. Board counts unchanged (398 tickets, 383 done, 1 in review = CORE-141 itself).
+
+M1/AT-33 satisfied: **PASS**. Proceeding to Claude marketplace/plugin restage per `docs/manual/connect.md` and the memory note that the plugin goes stale after a GUI upgrade.

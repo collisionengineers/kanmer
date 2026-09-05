@@ -5,7 +5,7 @@ environment: "detached verification worktree .worktrees/verify-doc-026-37b83b143
 verified_at: "2026-09-05T04:10:00Z"
 result: PASS
 pr_url: "https://github.com/collisionengineers/kanmer/pull/326"
-merged_at: "2026-09-05T03:57:XX Z"
+merged_at: "2026-09-05T03:58:04Z"
 attempts:
   - attempted_at: "2026-09-05T03:59:00Z"
     command: "gh pr view 326 --json state,mergeCommit,url"
@@ -96,7 +96,7 @@ attempts:
     cwd: "n/a — cited, not re-run"
     exit_code: null
     result: PASS
-    summary: "Transient discharged per the skill's three-part rule for the PR-event run at head 57a6e919 (a pre-merge head, not the merge SHA): the smoke case 'ready packet is read-only' (packages/mcp-server/src/smoke.mjs) failed on first attempt (job 101242491460, 8m06s) and passed on an identical re-run of the same job at the same head SHA with no code change (job 101243591230, 8m19s). (1) The PR's entire diff is two documentation files (AGENTS.md, CLOSEOUT_PLAN.md); nothing in it can reach get_execution_packet or its sandbox tree-snapshot mechanism. (2) The failing test/file (packages/mcp-server/src/smoke.mjs's read-only packet assertion) is untouched by this diff. (3) Mechanism argument: the assertion compares a content-hash tree snapshot plus the ticket file and activity.jsonl before/after a read-only MCP call — a timing-sensitive filesystem snapshot check unrelated to documentation content, consistent with a known intermittent flake class already recorded on the board (scratch/review.md F-006), not a regression this doc-only change could cause. This is cited corroborating evidence for the merge-SHA push run's cleanliness, not itself the authoritative receipt — the authoritative receipt is the push-to-main run 33943282405 at the exact merge SHA 37b83b14, which passed on its only attempt with no retry needed."
+    summary: "Transient discharged per the skill's three-part rule for the PR-event run at head 57a6e919 (a pre-merge head, not the merge SHA): the smoke case 'ready packet is read-only' (packages/mcp-server/src/smoke.mjs) failed on first attempt (job 101242491460, 8m06s) and passed on an identical re-run of the same job at the same head SHA with a docs-only diff and no code change (job 101243591230, 8m19s). (1) The PR's entire diff is two documentation files (AGENTS.md, CLOSEOUT_PLAN.md); nothing in it can reach get_execution_packet or its sandbox tree-snapshot mechanism. (2) The failing test/file (packages/mcp-server/src/smoke.mjs's read-only packet assertion) is untouched by this diff. (3) Mechanism argument: the assertion compares a content-hash tree snapshot plus the ticket file and activity.jsonl before/after a read-only MCP call — a timing-sensitive filesystem snapshot check unrelated to documentation content, consistent with a known intermittent flake class already recorded on the board (scratch/review.md F-006), not a regression this doc-only change could cause. This is cited corroborating evidence for the merge-SHA push run's cleanliness, not itself the authoritative receipt — the authoritative receipt is the push-to-main run 33943282405 at the exact merge SHA 37b83b14, which passed on its only attempt with no retry needed."
 receipts:
   - kind: github-actions-run
     provider: github

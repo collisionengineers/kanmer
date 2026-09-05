@@ -9,6 +9,7 @@ import {
   parseProofDocument,
   reconcileEvidence,
   reconcileStepPacket,
+  resolveDelivery,
   revisionCountsDocument,
   extractAtxSection,
   parsePlan,
@@ -395,6 +396,11 @@ export async function collectReconciliationEvidence(
     // collector still never manufactures a neutral observation for evidence it
     // cannot inspect.
     release: classifyReleaseEvidence(await store.releaseSnapshot(), id),
+    // The project verification contract (CORE-147). Read from the board here,
+    // at the host boundary, precisely so the pure classifier can judge a
+    // proof's receipts against *this project's* workflow and job set without
+    // ever touching a store.
+    verification: resolveDelivery(board).verification,
   };
 }
 

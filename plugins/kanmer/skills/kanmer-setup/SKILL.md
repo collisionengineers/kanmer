@@ -84,6 +84,40 @@ rewriting no proof at all. Only if they agree, call `migrate_board` again
 without `dry_run` and with that exact `proof_census_digest`. Never pass a digest
 the user has not seen the census for.
 
+### Declare the project's verification contract
+
+Kanmer's post-merge evidence is a *receipt*: a hosted CI run for the exact
+merge SHA that already discharged some of a ticket's verification obligations.
+Which run counts is the project's own business, so it is declared on the board
+beside the rest of the delivery policy (`board.yml`, camelCase keys):
+
+```yaml
+delivery:
+  integrationBranch: dev
+  verification:
+    workflow: ci.yml         # the workflow file name, as GitHub reports it
+    jobs: [build, test]      # EVERY job that must be completed/success
+    event: push              # push | pull_request | workflow_run
+```
+
+Declaring nothing keeps the shipped default — `pr.yml`, job `verify`, event
+`push`, which is Kanmer's own contract. All three keys are required together
+when the block is present; a half-declared contract is refused rather than
+silently keeping `pr.yml`. Check the effective values with `get_status` →
+`delivery.verification`, and `delivery.verificationSource` to see whether they
+came from the file or the default.
+
+Say this plainly to the user, because it decides how their verification
+actually runs: **a workflow that does not run on pushes to the integration
+branch will always take the fallback.** A `pull_request` run is accepted only
+when the contract's `event` is `pull_request` *and* the run's head SHA equals
+the merge SHA — which a squash merge never produces. Taking the fallback is not
+a failure: the designated verifier runs every obligation in the detached
+worktree at the merge SHA and the proof records `receipts: []` with the reason.
+It is simply slower, and it stays that way until the repository adds a run on
+pushes to its integration branch. Kanmer never renames or edits another
+repository's workflows to make a receipt possible.
+
 ## 4. Refresh the AGENTS.md operating instructions
 
 Run the script that owns the managed block (see below). It only ever rewrites

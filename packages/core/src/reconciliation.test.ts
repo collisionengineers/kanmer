@@ -23,6 +23,9 @@ function evidence(overrides: Partial<ReconciliationEvidence> = {}): Reconciliati
     proof: { state: "absent", ...overrides.proof },
     workspace: { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable", ...overrides.workspace },
     release: { state: "not-applicable", ...overrides.release },
+    // CORE-147: absent unless a case declares one, which is exactly how
+    // evidence from a collector that predates the contract arrives.
+    ...(overrides.verification ? { verification: overrides.verification } : {}),
   };
 }
 
@@ -59,6 +62,8 @@ describe("reconcileEvidence", () => {
     ["returns review without PR or worker to implementing", evidence({ pullRequest: { state: "absent", requiredChecks: "not-applicable" } }), "MOVE_TO_IMPLEMENTING"],
     ["moves merged PASS verification to done", evidence({ ticket: ticket("verifying"), pullRequest: { ...merged, mergeSha: sha("b") }, proof: { state: "pass", mergedSha: sha("b") } }), "MOVE_TO_DONE"],
     ["moves merged PASS verification to done with a matching receipt (MCP-057)", evidence({ ticket: ticket("verifying"), pullRequest: { ...merged, mergeSha: sha("b") }, proof: { state: "pass", mergedSha: sha("b"), receipts: [validReceipt(sha("b"))] } }), "MOVE_TO_DONE"],
+    ["moves merged PASS verification to done with receipts covering both contract jobs (CORE-147)", evidence({ ticket: ticket("verifying"), pullRequest: { ...merged, mergeSha: sha("b") }, verification: { workflow: "ci.yml", jobs: ["build", "test"], event: "push" }, proof: { state: "pass", mergedSha: sha("b"), receipts: [validReceipt(sha("b"), { workflow: "ci.yml", job: "build" }), validReceipt(sha("b"), { workflow: "ci.yml", job: "test" })] } }), "MOVE_TO_DONE"],
+    ["moves merged PASS verification to done with no receipts under a declared contract — the designated-verifier fallback (CORE-147)", evidence({ ticket: ticket("verifying"), pullRequest: { ...merged, mergeSha: sha("b") }, verification: { workflow: "ci.yml", jobs: ["build", "test"], event: "push" }, proof: { state: "pass", mergedSha: sha("b"), receipts: [] } }), "MOVE_TO_DONE"],
     ["releases only an identity-matched clean terminal claim", evidence({ ticket: ticket("done", true), workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "matches-claim" } }), "RELEASE_CLEAN_TERMINAL_CLAIM"],
   ])("%s", (_name, input, action) => {
     const before = JSON.stringify(input);
@@ -94,6 +99,8 @@ describe("reconcileEvidence", () => {
     ["rejects a FAIL/implementation proof whose receipt names a different merge (MCP-057)", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", mergedSha: sha("a"), failureClass: "implementation", receipts: [{ kind: "github-actions-run", head_sha: sha("c") }] } }), "PROOF_RECEIPT_SHA_MISMATCH"],
     ["rejects a PASS proof whose receipt names the wrong job (MCP-057)", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "pass", mergedSha: sha("a"), receipts: [validReceipt(sha("a"), { job: "kanmer-gate" })] } }), "PROOF_RECEIPT_REJECTED"],
     ["rejects a FAIL/implementation proof whose receipt names the wrong job (MCP-057)", evidence({ ticket: ticket("verifying"), pullRequest: merged, proof: { state: "fail", mergedSha: sha("a"), failureClass: "implementation", receipts: [validReceipt(sha("a"), { job: "kanmer-gate" })] } }), "PROOF_RECEIPT_REJECTED"],
+    ["rejects a PASS proof whose receipt names Kanmer's workflow under a ci.yml contract (CORE-147)", evidence({ ticket: ticket("verifying"), pullRequest: merged, verification: { workflow: "ci.yml", jobs: ["build", "test"], event: "push" }, proof: { state: "pass", mergedSha: sha("a"), receipts: [validReceipt(sha("a"))] } }), "PROOF_RECEIPT_REJECTED"],
+    ["rejects a PASS proof covering only one of two contract jobs (CORE-147)", evidence({ ticket: ticket("verifying"), pullRequest: merged, verification: { workflow: "ci.yml", jobs: ["build", "test"], event: "push" }, proof: { state: "pass", mergedSha: sha("a"), receipts: [validReceipt(sha("a"), { workflow: "ci.yml", job: "build" })] } }), "PROOF_RECEIPT_REJECTED"],
     ["preserves an incomplete legacy claim", evidence({ ticket: ticket("implementing", true), claim: { state: "current", controller: null, worker: "worker", takenAt: at, expiresAt: null, branch: "core-113", worktree: null, reviewRound: 0, remediationBudget: 1 } }), "CLAIM_WITHOUT_RECORDED_WORKSPACE"],
     ["preserves a clean terminal claim without matching identity", evidence({ ticket: ticket("done", true), workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "branch-mismatch" } }), "TERMINAL_CLAIM_IDENTITY_UNVERIFIED"],
     ["does not recover an expired claim whose worktree belongs to another repository", evidence({ ticket: ticket("implementing", true), claim: expiredClaim, workspace: { state: "clean", recordedWorktree: "wt", claimIdentity: "foreign-repository" } }), "CLAIM_EXPIRED"],

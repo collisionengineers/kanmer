@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { assessReceipt, parseProofReceipts, type ProofReceipt } from "./proof-receipts.js";
+import { assessReceipt, assessReceiptSet, parseProofReceipts, type ProofReceipt } from "./proof-receipts.js";
+import { DEFAULT_VERIFICATION_CONTRACT, type VerificationContract } from "./types.js";
 
 const mergedSha = "a".repeat(40);
 const otherSha = "b".repeat(40);
@@ -94,10 +95,10 @@ describe("assessReceipt", () => {
     expect((result as { reasons: string[] }).reasons).toContain("receipt is missing job");
   });
 
-  it("rejects a receipt whose job is not verify", () => {
+  it("rejects a receipt whose job is not the default contract's verify", () => {
     const result = assessReceipt(validReceipt({ job: "kanmer-gate" }), { mergedSha });
     expect(result.kind).toBe("rejected");
-    expect((result as { reasons: string[] }).reasons).toContain('receipt job must be "verify", got "kanmer-gate"');
+    expect((result as { reasons: string[] }).reasons).toContain('receipt job must be one of "verify", got "kanmer-gate"');
   });
 
   it("rejects a receipt whose workflow is not pr.yml", () => {
@@ -146,5 +147,108 @@ describe("assessReceipt", () => {
     const result = assessReceipt(validReceipt({ conclusion: "SUCCESS" }), { mergedSha });
     expect(result.kind).toBe("rejected");
     expect((result as { reasons: string[] }).reasons).toContain('receipt conclusion must be "success", got "SUCCESS"');
+  });
+
+  // MCP-057 review F-002: the old presence-only run_id check let every one of
+  // these through, so a receipt could name a run id that cannot address a run.
+  it.each([
+    ["zero", 0],
+    ["a digit string", "abc"],
+    ["a boolean", false],
+    ["a fraction", 1.5],
+    ["a negative", -1],
+  ])("rejects a run_id that is %s", (_label, run_id) => {
+    const result = assessReceipt(validReceipt({ run_id }), { mergedSha });
+    expect(result.kind).toBe("rejected");
+    expect((result as { reasons: string[] }).reasons.some((r) => r.startsWith("receipt run_id must be a positive integer"))).toBe(true);
+  });
+
+  it("rejects attempt: 0 but accepts an absent attempt (MCP-057 never required it)", () => {
+    const zero = assessReceipt(validReceipt({ attempt: 0 }), { mergedSha });
+    expect(zero.kind).toBe("rejected");
+    expect((zero as { reasons: string[] }).reasons).toContain("receipt attempt must be a positive integer, got 0");
+    expect(assessReceipt(validReceipt({ attempt: undefined }), { mergedSha })).toEqual({ kind: "satisfied" });
+  });
+
+  it("rejects an empty provider or repo but accepts their absence", () => {
+    const emptyProvider = assessReceipt(validReceipt({ provider: "" }), { mergedSha });
+    expect((emptyProvider as { reasons: string[] }).reasons).toContain('receipt provider must be a non-empty string, got ""');
+    const emptyRepo = assessReceipt(validReceipt({ repo: "   " }), { mergedSha });
+    expect((emptyRepo as { reasons: string[] }).reasons).toContain('receipt repo must be a non-empty string, got "   "');
+    expect(assessReceipt(validReceipt({ provider: undefined, repo: undefined }), { mergedSha })).toEqual({ kind: "satisfied" });
+  });
+});
+
+// CORE-147: the same function, judged against a board-declared contract. This
+// is the case that proves `pr.yml`/`verify`/`push` is Kanmer's contract and not
+// a rule baked into `@kanmer/core` for every consuming repository.
+const CI_CONTRACT: VerificationContract = { workflow: "ci.yml", jobs: ["build", "test"], event: "push" };
+
+describe("assessReceipt under a board-declared contract (CORE-147)", () => {
+  it("accepts a receipt matching the declared workflow and either declared job", () => {
+    for (const job of CI_CONTRACT.jobs) {
+      expect(assessReceipt(validReceipt({ workflow: "ci.yml", job }), { mergedSha, contract: CI_CONTRACT }))
+        .toEqual({ kind: "satisfied" });
+    }
+  });
+
+  it("rejects Kanmer's own pr.yml/verify receipt under that contract, naming ci.yml", () => {
+    const result = assessReceipt(validReceipt(), { mergedSha, contract: CI_CONTRACT });
+    expect(result.kind).toBe("rejected");
+    const reasons = (result as { reasons: string[] }).reasons;
+    expect(reasons).toContain('receipt workflow must be "ci.yml", got "pr.yml"');
+    expect(reasons).toContain('receipt job must be one of "build", "test", got "verify"');
+  });
+
+  it("names the declared event when the run's event disagrees", () => {
+    const contract: VerificationContract = { ...CI_CONTRACT, event: "workflow_run" };
+    const result = assessReceipt(validReceipt({ workflow: "ci.yml", job: "build" }), { mergedSha, contract });
+    expect((result as { reasons: string[] }).reasons).toContain('receipt event must be "workflow_run", got "push"');
+  });
+
+  it("accepts a pull_request receipt only when the contract asks for one", () => {
+    const prContract: VerificationContract = { workflow: "ci.yml", jobs: ["build"], event: "pull_request" };
+    const receipt = validReceipt({ workflow: "ci.yml", job: "build", event: "pull_request" });
+    // head_sha still has to be the merge SHA — which a squash merge's
+    // pull_request run never is. Here the fixture's head_sha *is* the merge
+    // SHA, so this pins the event rule alone.
+    expect(assessReceipt(receipt, { mergedSha, contract: prContract })).toEqual({ kind: "satisfied" });
+    const wrongSha = assessReceipt({ ...receipt, head_sha: otherSha }, { mergedSha, contract: prContract });
+    expect(wrongSha.kind).toBe("rejected");
+  });
+});
+
+describe("assessReceiptSet (CORE-147)", () => {
+  it("is satisfied by an empty list — the designated-verifier fallback", () => {
+    expect(assessReceiptSet([], { mergedSha, contract: CI_CONTRACT })).toEqual({ kind: "satisfied" });
+  });
+
+  it("is satisfied when accepted receipts cover every required job", () => {
+    const receipts = CI_CONTRACT.jobs.map((job) => validReceipt({ workflow: "ci.yml", job }));
+    expect(assessReceiptSet(receipts, { mergedSha, contract: CI_CONTRACT })).toEqual({ kind: "satisfied" });
+  });
+
+  it("rejects a single accepted receipt that covers only one of two required jobs", () => {
+    // The hole a per-receipt loop cannot see: `build` is individually
+    // flawless, and `test` never ran at all.
+    const result = assessReceiptSet([validReceipt({ workflow: "ci.yml", job: "build" })], {
+      mergedSha,
+      contract: CI_CONTRACT,
+    });
+    expect(result.kind).toBe("rejected");
+    expect((result as { reasons: string[] }).reasons).toContain(
+      'receipts do not cover every required job: missing "test" (contract jobs: "build", "test")',
+    );
+  });
+
+  it("reports only the per-receipt reasons when nothing was accepted", () => {
+    const result = assessReceiptSet([validReceipt()], { mergedSha, contract: CI_CONTRACT });
+    expect(result.kind).toBe("rejected");
+    expect((result as { reasons: string[] }).reasons.some((r) => r.startsWith("receipts do not cover"))).toBe(false);
+  });
+
+  it("defaults to Kanmer's contract when none is supplied", () => {
+    expect(assessReceiptSet([validReceipt()], { mergedSha })).toEqual({ kind: "satisfied" });
+    expect(DEFAULT_VERIFICATION_CONTRACT).toEqual({ workflow: "pr.yml", jobs: ["verify"], event: "push" });
   });
 });

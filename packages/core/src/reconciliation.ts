@@ -1,4 +1,4 @@
-import { assessReceipt } from "./proof-receipts.js";
+import { assessReceiptSet } from "./proof-receipts.js";
 import { hasLegacyTicketClaim } from "./types.js";
 import type {
   ReconciliationAction,
@@ -37,28 +37,34 @@ function receiptNamesOtherMerge(evidence: ReconciliationEvidence): boolean {
 }
 
 /**
- * Every non-SHA rejection reason `assessReceipt` (MCP-057) reports for the
- * proof's receipts against the current PR merge SHA. `head_sha`-related
+ * Every non-SHA rejection reason `assessReceiptSet` (MCP-057, contract-bound
+ * by CORE-147) reports for the proof's receipts against the current PR merge
+ * SHA and the project's declared verification contract. `head_sha`-related
  * reasons are deliberately excluded here — `receiptNamesOtherMerge` above,
  * and the existing `PROOF_MERGE_SHA_MISMATCH` binding it feeds, already own
  * that specific mismatch under its own finding code, so a caller checks
  * `receiptNamesOtherMerge` first and only reaches this once the SHA itself is
  * not in question. A proof with no `receipts` returns `[]`, matching the
- * back-compat requirement that a proof without receipts is unaffected.
+ * back-compat requirement that a proof without receipts is unaffected — which
+ * is also the designated-verifier fallback: a repository whose contract names
+ * a workflow with no run at the merge SHA writes `receipts: []` and every
+ * obligation is run locally, and that proof must reconcile exactly like a
+ * receipt-bearing one.
+ *
+ * The set assessment is used rather than a per-receipt loop so a proof that
+ * carries one accepted receipt for one of two contract jobs is reported as
+ * incomplete instead of passing.
+ *
+ * `evidence.verification` is the board's contract, threaded in by the host
+ * collector; absent (an older collector) it falls back to
+ * `DEFAULT_VERIFICATION_CONTRACT`, which is the pre-CORE-147 behaviour.
  */
 function receiptAssessmentRejections(evidence: ReconciliationEvidence, mergedSha: string): string[] {
   const receipts = evidence.proof.receipts;
   if (!Array.isArray(receipts) || receipts.length === 0) return [];
-  const reasons: string[] = [];
-  for (const receipt of receipts) {
-    const assessment = assessReceipt(receipt, { mergedSha });
-    if (assessment.kind === "rejected") {
-      for (const reason of assessment.reasons) {
-        if (!reason.includes("head_sha")) reasons.push(reason);
-      }
-    }
-  }
-  return reasons;
+  const assessment = assessReceiptSet(receipts, { mergedSha, contract: evidence.verification });
+  if (assessment.kind === "satisfied") return [];
+  return assessment.reasons.filter((reason) => !reason.includes("head_sha"));
 }
 
 function stableEvidence(evidence: ReconciliationEvidence): ReconciliationEvidence {
@@ -70,6 +76,11 @@ function stableEvidence(evidence: ReconciliationEvidence): ReconciliationEvidenc
     proof: { ...evidence.proof },
     workspace: { ...evidence.workspace },
     release: { ...evidence.release },
+    // Additive (CORE-147): copied only when present, so evidence from an older
+    // collector round-trips without gaining a key it never carried.
+    ...(evidence.verification
+      ? { verification: { ...evidence.verification, jobs: [...evidence.verification.jobs] } }
+      : {}),
   };
 }
 

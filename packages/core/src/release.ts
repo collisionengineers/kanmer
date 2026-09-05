@@ -249,6 +249,11 @@ export function normalizeReleaseChannel(channel: string): string {
 
 /** Stable version of the complete resolved delivery policy. */
 export function deliveryPolicyVersion(policy: DeliveryPolicy): string {
+  // Enumerated, never spread: the four fields below are the ones that decide
+  // where a candidate integrates and releases from. `verification` (CORE-147)
+  // is deliberately excluded — it says which run *proves* a merge, not where
+  // the merge goes, so declaring a contract must not invalidate candidates or
+  // shift the policy digests already recorded in `.kanmer/releases/`.
   return createHash("sha256")
     .update(JSON.stringify({
       integrationBranch: policy.integrationBranch,

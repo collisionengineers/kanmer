@@ -37754,6 +37754,14 @@ var DeploymentConfigSchema = external_exports.object({
   /** Ordered environments; the last one is "live". */
   environments: external_exports.array(external_exports.string().min(1)).min(1)
 });
+var VerificationContractSchema = external_exports.object({
+  /** Workflow file name as GitHub reports it, e.g. `ci.yml`. */
+  workflow: external_exports.string().min(1),
+  /** Every job that must be `completed`/`success` for the run to count. */
+  jobs: external_exports.array(external_exports.string().min(1)).min(1),
+  /** The event that triggers the post-integration run. */
+  event: external_exports.enum(["push", "pull_request", "workflow_run"])
+});
 var DeliveryConfigSchema = external_exports.object({
   /** Branch normal implementation PRs target. Absent ⇒ `main`. */
   integrationBranch: external_exports.string().min(1).optional(),
@@ -37762,7 +37770,13 @@ var DeliveryConfigSchema = external_exports.object({
   /** Glob for immutable release candidates, e.g. `release/*`. Absent/null ⇒ candidates are not enabled. */
   releaseCandidatePattern: external_exports.string().min(1).nullable().optional(),
   /** Whether a release-branch hotfix owes a backport to the integration branch. Absent ⇒ true. */
-  hotfixBackport: external_exports.boolean().optional()
+  hotfixBackport: external_exports.boolean().optional(),
+  /**
+   * Which hosted run discharges verification obligations for a merge on the
+   * integration branch (CORE-147). Absent ⇒ `DEFAULT_VERIFICATION_CONTRACT`,
+   * which is Kanmer's own contract.
+   */
+  verification: VerificationContractSchema.optional()
 });
 var ProfileMapSchema = external_exports.record(external_exports.array(external_exports.string()));
 var GroupKindSchema = external_exports.object({
@@ -37970,6 +37984,11 @@ function deliveryStateRank(state) {
   return DELIVERY_STATES.indexOf(state);
 }
 var DEFAULT_INTEGRATION_BRANCH = "main";
+var DEFAULT_VERIFICATION_CONTRACT = Object.freeze({
+  workflow: "pr.yml",
+  jobs: Object.freeze(["verify"]),
+  event: "push"
+});
 var DELIVERY_PATCH_KEYS = [
   "delivery_state",
   "delivery_branch",
@@ -39150,11 +39169,20 @@ function resolveDelivery(board) {
     integrationBranch,
     releaseBranch: board.delivery?.releaseBranch ?? integrationBranch,
     releaseCandidatePattern: board.delivery?.releaseCandidatePattern ?? null,
-    hotfixBackport: board.delivery?.hotfixBackport ?? true
+    hotfixBackport: board.delivery?.hotfixBackport ?? true,
+    verification: resolveVerificationContract(board)
   };
+}
+function resolveVerificationContract(board) {
+  const declared = board.delivery?.verification;
+  const contract = declared ?? DEFAULT_VERIFICATION_CONTRACT;
+  return { workflow: contract.workflow, jobs: [...contract.jobs], event: contract.event };
 }
 function deliveryPolicySource(board) {
   return board.delivery ? "board" : "default";
+}
+function deliveryVerificationSource(board) {
+  return board.delivery?.verification ? "board" : "default";
 }
 function deliveryTargets(policy, item) {
   const hotfix = policy.releaseBranch !== policy.integrationBranch && item.delivery_branch === policy.releaseBranch;
@@ -43275,27 +43303,45 @@ var KNOWN_RECEIPT_KINDS = /* @__PURE__ */ new Set(["github-actions-run"]);
 function nonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
+function positiveInteger(value) {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+function quoteList(values) {
+  return values.map((value) => JSON.stringify(value)).join(", ");
+}
 function assessReceipt(receipt, opts) {
+  const contract = opts.contract ?? DEFAULT_VERIFICATION_CONTRACT;
   const reasons = [];
   if (!nonEmptyString(receipt.kind) || !KNOWN_RECEIPT_KINDS.has(receipt.kind)) {
     reasons.push(`unknown receipt kind: ${String(receipt.kind)}`);
   }
   if (!nonEmptyString(receipt.job)) {
     reasons.push("receipt is missing job");
-  } else if (receipt.job !== "verify") {
-    reasons.push(`receipt job must be "verify", got ${JSON.stringify(receipt.job)}`);
+  } else if (!contract.jobs.includes(receipt.job)) {
+    reasons.push(`receipt job must be one of ${quoteList(contract.jobs)}, got ${JSON.stringify(receipt.job)}`);
   }
-  if (receipt.workflow !== "pr.yml") {
-    reasons.push(`receipt workflow must be "pr.yml", got ${JSON.stringify(receipt.workflow)}`);
+  if (receipt.workflow !== contract.workflow) {
+    reasons.push(`receipt workflow must be ${JSON.stringify(contract.workflow)}, got ${JSON.stringify(receipt.workflow)}`);
   }
   if (receipt.run_id === void 0 || receipt.run_id === null || receipt.run_id === "") {
     reasons.push("receipt is missing run_id");
+  } else if (!positiveInteger(receipt.run_id)) {
+    reasons.push(`receipt run_id must be a positive integer, got ${JSON.stringify(receipt.run_id)}`);
+  }
+  if (receipt.attempt !== void 0 && receipt.attempt !== null && !positiveInteger(receipt.attempt)) {
+    reasons.push(`receipt attempt must be a positive integer, got ${JSON.stringify(receipt.attempt)}`);
+  }
+  if (receipt.provider !== void 0 && !nonEmptyString(receipt.provider)) {
+    reasons.push(`receipt provider must be a non-empty string, got ${JSON.stringify(receipt.provider)}`);
+  }
+  if (receipt.repo !== void 0 && !nonEmptyString(receipt.repo)) {
+    reasons.push(`receipt repo must be a non-empty string, got ${JSON.stringify(receipt.repo)}`);
   }
   if (!nonEmptyString(receipt.url)) {
     reasons.push("receipt is missing url");
   }
-  if (receipt.event !== "push") {
-    reasons.push(`receipt event must be "push", got ${JSON.stringify(receipt.event)}`);
+  if (receipt.event !== contract.event) {
+    reasons.push(`receipt event must be ${JSON.stringify(contract.event)}, got ${JSON.stringify(receipt.event)}`);
   }
   if (receipt.conclusion !== "success") {
     reasons.push(`receipt conclusion must be "success", got ${JSON.stringify(receipt.conclusion)}`);
@@ -43304,6 +43350,26 @@ function assessReceipt(receipt, opts) {
     reasons.push("receipt head_sha must be a full 40-hex Git object id");
   } else if (receipt.head_sha !== opts.mergedSha) {
     reasons.push("receipt head_sha does not match the PR merge SHA");
+  }
+  return reasons.length > 0 ? { kind: "rejected", reasons } : { kind: "satisfied" };
+}
+function assessReceiptSet(receipts, opts) {
+  const contract = opts.contract ?? DEFAULT_VERIFICATION_CONTRACT;
+  if (receipts.length === 0) return { kind: "satisfied" };
+  const reasons = [];
+  const covered = /* @__PURE__ */ new Set();
+  for (const receipt of receipts) {
+    const assessment = assessReceipt(receipt, { mergedSha: opts.mergedSha, contract });
+    if (assessment.kind === "rejected") reasons.push(...assessment.reasons);
+    else if (typeof receipt.job === "string") covered.add(receipt.job);
+  }
+  if (covered.size > 0) {
+    const missing = contract.jobs.filter((job) => !covered.has(job));
+    if (missing.length > 0) {
+      reasons.push(
+        `receipts do not cover every required job: missing ${quoteList(missing)} (contract jobs: ${quoteList(contract.jobs)})`
+      );
+    }
   }
   return reasons.length > 0 ? { kind: "rejected", reasons } : { kind: "satisfied" };
 }
@@ -48007,16 +48073,9 @@ function receiptNamesOtherMerge(evidence) {
 function receiptAssessmentRejections(evidence, mergedSha) {
   const receipts = evidence.proof.receipts;
   if (!Array.isArray(receipts) || receipts.length === 0) return [];
-  const reasons = [];
-  for (const receipt of receipts) {
-    const assessment = assessReceipt(receipt, { mergedSha });
-    if (assessment.kind === "rejected") {
-      for (const reason of assessment.reasons) {
-        if (!reason.includes("head_sha")) reasons.push(reason);
-      }
-    }
-  }
-  return reasons;
+  const assessment = assessReceiptSet(receipts, { mergedSha, contract: evidence.verification });
+  if (assessment.kind === "satisfied") return [];
+  return assessment.reasons.filter((reason) => !reason.includes("head_sha"));
 }
 function stableEvidence(evidence) {
   return {
@@ -48026,7 +48085,10 @@ function stableEvidence(evidence) {
     pullRequest: { ...evidence.pullRequest },
     proof: { ...evidence.proof },
     workspace: { ...evidence.workspace },
-    release: { ...evidence.release }
+    release: { ...evidence.release },
+    // Additive (CORE-147): copied only when present, so evidence from an older
+    // collector round-trips without gaining a key it never carried.
+    ...evidence.verification ? { verification: { ...evidence.verification, jobs: [...evidence.verification.jobs] } } : {}
   };
 }
 function recommend(evidence, action, targetStatus) {
@@ -50811,7 +50873,12 @@ async function collectReconciliationEvidence(store2, id, run = execFile5, option
     // read sets `unreadable`, which classifies as `unavailable`, so this
     // collector still never manufactures a neutral observation for evidence it
     // cannot inspect.
-    release: classifyReleaseEvidence(await store2.releaseSnapshot(), id)
+    release: classifyReleaseEvidence(await store2.releaseSnapshot(), id),
+    // The project verification contract (CORE-147). Read from the board here,
+    // at the host boundary, precisely so the pure classifier can judge a
+    // proof's receipts against *this project's* workflow and job set without
+    // ever touching a store.
+    verification: resolveDelivery(board).verification
   };
 }
 function leaseRecoverySummary(evidence) {
@@ -52520,8 +52587,18 @@ function createKanmerMcpServer(policy = "local-stdio") {
          * `default` on a project that believes it declared one means the block is
          * missing from board.yml — for example because an older server, which does
          * not know the key, round-tripped the file.
+         *
+         * `verification` (CORE-147) is the project verification contract the
+         * verify skill builds its run lookup from and `assessReceipt` judges
+         * receipts against; `verificationSource` reports it separately because a
+         * board may declare a delivery policy and no contract, and one combined
+         * source would then claim the file named a workflow it never mentioned.
          */
-        delivery: { ...resolveDelivery(board), source: deliveryPolicySource(board) },
+        delivery: {
+          ...resolveDelivery(board),
+          source: deliveryPolicySource(board),
+          verificationSource: deliveryVerificationSource(board)
+        },
         // FRD-031 release serialization (CORE-132). The read side of
         // `release_channel`, reported here rather than as its own tool: it
         // answers "is the release channel clear?" in the orientation call every

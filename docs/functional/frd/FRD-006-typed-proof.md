@@ -50,30 +50,53 @@ ADR-0005 · ADR-0011 (the bounded content readers) · D31/D32/D34 · FRD-002 · 
 
 `proof/proof.md` is a whole-file, expected-version record with top-level ticket, merged SHA, outcome, and typed chronological attempts. An attempt records its type, command or procedure, result, timestamps, and retained output/evidence. Verification occurs in a detached worktree at the exact merged SHA, never against a moving `main`. `PASS`, `FAIL`, and other typed outcomes remain retained. A FAIL document satisfies the structural proof-exists gate in `report` mode, where skill/check choreography prevents completion from treating it as success; under `strict` (R7) it does not satisfy the gate at all, and the refusal says so. Review attestations may reference this evidence but are canonical in `scratch/review.md`.
 
-### Receipts (MCP-057)
+### Receipts (MCP-057), judged against the project's verification contract (CORE-147)
 
 The proof frontmatter carries an optional `receipts[]` list beside
-`attempts[]`. A receipt is typed evidence that a hosted CI run — the exact
-push-to-`main` `verify` job `pr.yml` already ran for this ticket's PR merge
-SHA — discharged one or more of the verification packet's obligations, so
-`kanmer-verify` does not re-run them in a fresh detached worktree. A receipt
-is accepted (`assessReceipt`, `packages/core/src/proof-receipts.ts`) only
-when its `head_sha` exactly matches the proof's `merged_sha`, its `event` is
-`push`, its `job` is exactly `verify`, its `workflow` is exactly `pr.yml`,
-and its `conclusion` is `success`; a wrong or wrong-case SHA, a
-`pull_request`-event run, a cancelled/skipped/timed-out run, a job or
-workflow named anything else, or an unrecognised `kind` is rejected with a
-reason. This is enforced at verification time, not merely documented:
-`packages/core/src/reconciliation.ts` calls `assessReceipt` on every receipt
-in the proof and reports a `head_sha` disagreement as
-`PROOF_RECEIPT_SHA_MISMATCH` and every other rejection as
-`PROOF_RECEIPT_REJECTED`, either of which blocks the Done and backward
-verification-failure routes. `receipts` is purely additive: it is absent
-from every proof written before MCP-057, an absent or empty list leaves
-reconciliation and the Done gate exactly as they were, and no existing proof
-is rewritten to add one. Manual GUI, installed-host,
-Windows-lock, and provider/deployment obligations are never discharged by a
-receipt — they remain the verifier's own detached-worktree evidence.
+`attempts[]`. A receipt is typed evidence that a hosted CI run for this
+ticket's exact PR merge SHA discharged one or more of the verification
+packet's obligations, so `kanmer-verify` does not re-run them in a fresh
+detached worktree.
+
+*Which* run counts is not decided by `@kanmer/core`. It is the project's
+**verification contract**, declared on the board as `delivery.verification`
+(`{ workflow, jobs[], event }`, FRD-031) and resolved by `resolveDelivery`;
+an undeclared board resolves to Kanmer's own contract — `pr.yml`, job
+`verify`, event `push`. `get_status.delivery.verification` exposes the
+effective contract and `delivery.verificationSource` says where it came from,
+so a verifier builds its `gh run list --workflow <workflow> --event <event>
+--commit <mergeSha>` lookup from the board rather than from a literal.
+
+A receipt is accepted (`assessReceipt`,
+`packages/core/src/proof-receipts.ts`) only when its `head_sha` exactly
+matches the proof's `merged_sha`, its `workflow` and `event` equal the
+contract's, its `job` is one of the contract's `jobs`, its `run_id` is a
+positive integer, and its `conclusion` is `success`; a wrong or wrong-case
+SHA, an event the contract does not name, a cancelled/skipped/timed-out run,
+a job or workflow the contract does not name, an unusable `run_id`/`attempt`,
+or an unrecognised `kind` is rejected with a reason naming the expected
+value. The receipts are also judged *as a set* (`assessReceiptSet`): a proof
+whose accepted receipts do not cover every job the contract requires is
+rejected as incomplete, so one green job of two can never stand in for both.
+This is enforced at verification time, not merely documented:
+`packages/core/src/reconciliation.ts` calls `assessReceiptSet` on the proof's
+receipts with the contract threaded through `ReconciliationEvidence`, and
+reports a `head_sha` disagreement as `PROOF_RECEIPT_SHA_MISMATCH` and every
+other rejection as `PROOF_RECEIPT_REJECTED`, either of which blocks the Done
+and backward verification-failure routes.
+
+`receipts` is purely additive: it is absent from every proof written before
+MCP-057, an absent or empty list leaves reconciliation and the Done gate
+exactly as they were, and no existing proof is rewritten to add one. That
+empty case is also the **designated-verifier fallback**, which is a first-class
+outcome rather than a degraded one: a project whose contract names a workflow
+with no run at the exact merge SHA — the common shape when CI runs on pull
+requests only, since a squash merge's commit is not the PR head — leaves every
+obligation `missing`, the single designated verifier runs them all in the
+detached worktree, and the proof records `receipts: []` with the reason. Manual
+GUI, installed-host, Windows-lock, and provider/deployment obligations are
+never discharged by a receipt — they remain the verifier's own
+detached-worktree evidence.
 
 This is the typed-evidence foundation the validated `attempts[]` schema (R7)
 builds on: `receipts[]` sits beside that ledger as its own typed list, not

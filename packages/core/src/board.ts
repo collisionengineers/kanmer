@@ -2,12 +2,14 @@ import YAML from "yaml";
 import {
   BoardConfigSchema,
   DEFAULT_INTEGRATION_BRANCH,
+  DEFAULT_VERIFICATION_CONTRACT,
   type BoardColumn,
   type BoardConfig,
   type BoardSource,
   type DeliveryPolicy,
   type DeliveryPolicySource,
   type ProofValidationPolicy,
+  type VerificationContract,
 } from "./types.js";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
@@ -259,7 +261,21 @@ export function resolveDelivery(board: BoardConfig): DeliveryPolicy {
     releaseBranch: board.delivery?.releaseBranch ?? integrationBranch,
     releaseCandidatePattern: board.delivery?.releaseCandidatePattern ?? null,
     hotfixBackport: board.delivery?.hotfixBackport ?? true,
+    verification: resolveVerificationContract(board),
   };
+}
+
+/**
+ * The project's verification contract, every field decided (CORE-147).
+ *
+ * Returned as a fresh object with its own `jobs` array so no caller can mutate
+ * the shared frozen default into something a later caller reads as the
+ * project's contract.
+ */
+function resolveVerificationContract(board: BoardConfig): VerificationContract {
+  const declared = board.delivery?.verification;
+  const contract = declared ?? DEFAULT_VERIFICATION_CONTRACT;
+  return { workflow: contract.workflow, jobs: [...contract.jobs], event: contract.event };
 }
 
 /**
@@ -271,6 +287,20 @@ export function resolveDelivery(board: BoardConfig): DeliveryPolicy {
  */
 export function deliveryPolicySource(board: BoardConfig): DeliveryPolicySource {
   return board.delivery ? "board" : "default";
+}
+
+/**
+ * Whether the resolved *verification contract* came from board.yml or from the
+ * shipped default (CORE-147).
+ *
+ * Reported separately from `deliveryPolicySource` rather than folded into it:
+ * a board may declare `integrationBranch` and no contract, and one combined
+ * source would then claim the file named a workflow it never mentioned. A
+ * consuming repository debugging "why is my ci.yml receipt rejected" needs to
+ * see `default` here specifically.
+ */
+export function deliveryVerificationSource(board: BoardConfig): DeliveryPolicySource {
+  return board.delivery?.verification ? "board" : "default";
 }
 
 /**

@@ -48,13 +48,17 @@ const closedJson = JSON.stringify({ state: "CLOSED", headRefOid: headSha, mergeC
 const passChecks = JSON.stringify([{ state: "SUCCESS", bucket: "pass" }]);
 const commonDir = (root) => async () => ({ ok: true, path: root });
 
-function proof(result = "PASS", failureClass, merged = mergeSha, receiptHeadSha, receiptJob = "verify") {
-  const receiptsBlock = receiptHeadSha === undefined ? "" :
+function proof(result = "PASS", failureClass, merged = mergeSha, receiptHeadSha, receiptJob = "verify", receiptWorkflow = "pr.yml") {
+  // `undefined` writes no `receipts` key at all (every proof before MCP-057);
+  // `null` writes an explicit empty list, which is what the CORE-147
+  // designated-verifier fallback records when the contract's workflow had no
+  // run at the exact merge SHA.
+  const receiptsBlock = receiptHeadSha === null ? "receipts: []\n" : receiptHeadSha === undefined ? "" :
     "receipts:\n" +
     "  - kind: github-actions-run\n" +
     "    provider: github\n" +
     "    repo: collisionengineers/kanmer\n" +
-    "    workflow: pr.yml\n" +
+    "    workflow: " + receiptWorkflow + "\n" +
     "    event: push\n" +
     "    run_id: 1234567890\n" +
     "    attempt: 1\n" +
@@ -422,7 +426,7 @@ test("reconcileEvidence rejects a receipt naming the wrong job via assessReceipt
     release: baseRelease,
   });
   assert.equal(passResult.recommendation, null);
-  assert.ok(passResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be "verify"')));
+  assert.ok(passResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be one of "verify"')));
 
   const failResult = reconcileEvidence({
     ticket: baseTicket,
@@ -434,7 +438,94 @@ test("reconcileEvidence rejects a receipt naming the wrong job via assessReceipt
     release: baseRelease,
   });
   assert.equal(failResult.recommendation, null);
-  assert.ok(failResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be "verify"')));
+  assert.ok(failResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be one of "verify"')));
+});
+
+test("a receipt-free PASS proof reconciles identically under a project-declared contract — the designated-verifier fallback (CORE-147)", () => {
+  // The motivating shape: a repository whose CI workflow is `ci.yml` and which
+  // has no run at the exact squash-merge SHA. Every obligation was `missing`,
+  // the designated verifier ran them in the detached worktree, and the proof
+  // records `receipts: []`. That must be a first-class PASS, not a degraded
+  // one — otherwise evidence-first verification only ever works for Kanmer.
+  const contract = { workflow: "ci.yml", jobs: ["build", "test"], event: "push" };
+  const base = {
+    ticket: { id: "TICK-147", status: "verifying", updated: "2026-08-26T00:00:00.000Z", taken: false },
+    claim: { state: "unclaimed", controller: null, worker: null, takenAt: null, expiresAt: null, branch: null, worktree: null, reviewRound: 0, remediationBudget: 1 },
+    commits: { values: [], reachability: "not-applicable" },
+    pullRequest: { state: "merged", mergeSha, requiredChecks: "pass" },
+    workspace: { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" },
+    release: { state: "not-applicable" },
+  };
+
+  // The document really goes through the CORE-129 parser: `receipts: []` is a
+  // valid schema-2 record, not something the decoder rejects.
+  const fallbackProof = proofEvidence(proof("PASS", undefined, mergeSha, null));
+  assert.equal(fallbackProof.state, "pass");
+  assert.equal(fallbackProof.record.state, "valid-pass");
+
+  const fallback = reconcileEvidence({ ...base, proof: fallbackProof, verification: contract });
+  assert.equal(fallback.findings.filter((finding) => finding.code.startsWith("PROOF_RECEIPT_")).length, 0);
+  assert.equal(fallback.recommendation?.action, "MOVE_TO_DONE");
+
+  // …and it is the SAME recommendation a receipt-bearing proof produces under
+  // the same contract, which is what "the fallback is not second-class" means.
+  const withReceipt = reconcileEvidence({
+    ...base,
+    proof: { state: "pass", mergedSha: mergeSha, receipts: [
+      { kind: "github-actions-run", provider: "github", repo: "acme/app", workflow: "ci.yml", event: "push", run_id: 7, attempt: 1, head_sha: mergeSha, job: "build", conclusion: "success", url: "https://example.invalid/7" },
+      { kind: "github-actions-run", provider: "github", repo: "acme/app", workflow: "ci.yml", event: "push", run_id: 8, attempt: 1, head_sha: mergeSha, job: "test", conclusion: "success", url: "https://example.invalid/8" },
+    ] },
+    verification: contract,
+  });
+  assert.deepEqual(withReceipt.recommendation, fallback.recommendation);
+});
+
+test("a pr.yml/verify receipt is rejected under a ci.yml contract, naming the expected workflow (CORE-147)", () => {
+  const contract = { workflow: "ci.yml", jobs: ["build", "test"], event: "push" };
+  const result = reconcileEvidence({
+    ticket: { id: "TICK-147", status: "verifying", updated: "2026-08-26T00:00:00.000Z", taken: false },
+    claim: { state: "unclaimed", controller: null, worker: null, takenAt: null, expiresAt: null, branch: null, worktree: null, reviewRound: 0, remediationBudget: 1 },
+    commits: { values: [], reachability: "not-applicable" },
+    pullRequest: { state: "merged", mergeSha, requiredChecks: "pass" },
+    proof: proofEvidence(proof("PASS", undefined, mergeSha, mergeSha)),
+    workspace: { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" },
+    release: { state: "not-applicable" },
+    verification: contract,
+  });
+  assert.equal(result.recommendation, null);
+  const rejected = result.findings.find((finding) => finding.code === "PROOF_RECEIPT_REJECTED");
+  assert.ok(rejected, "expected PROOF_RECEIPT_REJECTED");
+  assert.ok(rejected.message.includes('receipt workflow must be "ci.yml", got "pr.yml"'), rejected.message);
+});
+
+test("an accepted receipt covering only one of two contract jobs is rejected as incomplete (CORE-147)", () => {
+  const contract = { workflow: "ci.yml", jobs: ["build", "test"], event: "push" };
+  const result = reconcileEvidence({
+    ticket: { id: "TICK-147", status: "verifying", updated: "2026-08-26T00:00:00.000Z", taken: false },
+    claim: { state: "unclaimed", controller: null, worker: null, takenAt: null, expiresAt: null, branch: null, worktree: null, reviewRound: 0, remediationBudget: 1 },
+    commits: { values: [], reachability: "not-applicable" },
+    pullRequest: { state: "merged", mergeSha, requiredChecks: "pass" },
+    proof: proofEvidence(proof("PASS", undefined, mergeSha, mergeSha, "build", "ci.yml")),
+    workspace: { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" },
+    release: { state: "not-applicable" },
+    verification: contract,
+  });
+  assert.equal(result.recommendation, null);
+  const rejected = result.findings.find((finding) => finding.code === "PROOF_RECEIPT_REJECTED");
+  assert.ok(rejected, "expected PROOF_RECEIPT_REJECTED");
+  assert.ok(rejected.message.includes('missing "test"'), rejected.message);
+});
+
+test("collectReconciliationEvidence reads the contract from the board (CORE-147)", async (t) => {
+  const { store } = await fixtureStore(t, "kanmer-reconciliation-contract-");
+  const ticket = await store.createItem({ type: "ticket", title: "Contract", profile: "custom", requires: {}, status: "review" });
+
+  const shipped = await collectReconciliationEvidence(store, ticket.id, async () => ({ stdout: "" }), { resolveCommonDir: commonDir(store.paths.root) });
+  assert.deepEqual(shipped.verification, { workflow: "pr.yml", jobs: ["verify"], event: "push" });
+
+  await store.updateBoard((board) => ({ ...board, delivery: { verification: { workflow: "ci.yml", jobs: ["build", "test"], event: "push" } } }));
+  const declared = await collectReconciliationEvidence(store, ticket.id, async () => ({ stdout: "" }), { resolveCommonDir: commonDir(store.paths.root) });
+  assert.deepEqual(declared.verification, { workflow: "ci.yml", jobs: ["build", "test"], event: "push" });
 });
 
 test("collector selects the active recorded PR rather than the first reference and uses required-only checks", async (t) => {

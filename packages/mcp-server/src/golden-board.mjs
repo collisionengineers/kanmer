@@ -29,6 +29,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   KanmerStore,
+  assessReceiptSet,
   candidateIdentity,
   candidateRefFor,
   deliveryTargets,
@@ -898,6 +899,61 @@ export const SCENARIOS = [
           "a ticket whose recorded delivery names the release branch is the hotfix, and is verified there",
           hotfix.hotfix === true && hotfix.prTarget === "main" && hotfix.verificationTarget === "main",
           JSON.stringify(hotfix),
+        );
+
+        // CORE-147: the verification contract is part of the same delivery
+        // policy, so the project that integrates into `dev` also says which run
+        // proves a merge there. Declared here on top of the dev→main policy
+        // above and restored with it in the `finally`.
+        rec.check(
+          "an undeclared verification contract resolves to Kanmer's own pr.yml/verify/push and says so",
+          mainOnly.payload.delivery.verification?.workflow === "pr.yml" &&
+            mainOnly.payload.delivery.verification?.event === "push" &&
+            (mainOnly.payload.delivery.verification?.jobs ?? []).join(",") === "verify" &&
+            mainOnly.payload.delivery.verificationSource === "default",
+          JSON.stringify(mainOnly.payload?.delivery?.verification ?? null),
+        );
+        await store.setBoard({
+          ...(await store.getBoard()),
+          delivery: {
+            integrationBranch: "dev",
+            releaseBranch: "main",
+            releaseCandidatePattern: "candidate/*",
+            hotfixBackport: true,
+            verification: { workflow: "ci.yml", jobs: ["build", "test"], event: "push" },
+          },
+        });
+        const contractStatus = await tool(ctx.server, rec, "get_status");
+        rec.check(
+          "a declared verification contract is read from the board and reported as board-sourced",
+          contractStatus.ok &&
+            contractStatus.payload.delivery.verification?.workflow === "ci.yml" &&
+            (contractStatus.payload.delivery.verification?.jobs ?? []).join(",") === "build,test" &&
+            contractStatus.payload.delivery.verificationSource === "board",
+          JSON.stringify(contractStatus.payload?.delivery?.verification ?? null),
+        );
+        const contract = resolveDelivery(await store.getBoard()).verification;
+        const ciReceipt = (job) => ({
+          kind: "github-actions-run", provider: "github", repo: "acme/app", workflow: "ci.yml", event: "push",
+          run_id: 42, attempt: 1, head_sha: SHA_A, job, conclusion: "success", url: "https://example.invalid/42",
+        });
+        rec.check(
+          "receipts covering every contract job satisfy the set assessment",
+          assessReceiptSet([ciReceipt("build"), ciReceipt("test")], { mergedSha: SHA_A, contract }).kind === "satisfied",
+        );
+        rec.check(
+          "a receipt for only one of two contract jobs is incomplete, naming the missing one",
+          assessReceiptSet([ciReceipt("build")], { mergedSha: SHA_A, contract }).reasons?.some((reason) => reason.includes('missing "test"')) === true,
+          JSON.stringify(assessReceiptSet([ciReceipt("build")], { mergedSha: SHA_A, contract })),
+        );
+        rec.check(
+          "Kanmer's own pr.yml/verify receipt is rejected under this project's contract, naming ci.yml",
+          assessReceiptSet([{ ...ciReceipt("verify"), workflow: "pr.yml" }], { mergedSha: SHA_A, contract })
+            .reasons?.some((reason) => reason.includes('receipt workflow must be "ci.yml"')) === true,
+        );
+        rec.check(
+          "no receipts at all is satisfied — the designated verifier ran every obligation itself",
+          assessReceiptSet([], { mergedSha: SHA_A, contract }).kind === "satisfied",
         );
 
         const first = candidateIdentity("main", SHA_A, 1);

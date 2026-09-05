@@ -28,6 +28,7 @@ import {
   SourceDeclarationArraySchema,
   deliveryPolicySource,
   deliveryTargets,
+  deliveryVerificationSource,
   resolveDelivery,
   resolveGroupKinds,
   resolveProfiles,
@@ -774,8 +775,18 @@ server.registerTool(
        * `default` on a project that believes it declared one means the block is
        * missing from board.yml — for example because an older server, which does
        * not know the key, round-tripped the file.
+       *
+       * `verification` (CORE-147) is the project verification contract the
+       * verify skill builds its run lookup from and `assessReceipt` judges
+       * receipts against; `verificationSource` reports it separately because a
+       * board may declare a delivery policy and no contract, and one combined
+       * source would then claim the file named a workflow it never mentioned.
        */
-      delivery: { ...resolveDelivery(board), source: deliveryPolicySource(board) },
+      delivery: {
+        ...resolveDelivery(board),
+        source: deliveryPolicySource(board),
+        verificationSource: deliveryVerificationSource(board),
+      },
       // FRD-031 release serialization (CORE-132). The read side of
       // `release_channel`, reported here rather than as its own tool: it
       // answers "is the release channel clear?" in the orientation call every

@@ -2497,6 +2497,19 @@ No picture here.
         status.delivery?.source === "default",
       JSON.stringify(status.delivery),
     );
+    // CORE-147: the verification contract rides in the same block, with its own
+    // source, so a verifier builds its run lookup from the board rather than
+    // from `pr.yml`/`verify` literals.
+    check(
+      "get_status reports the default verification contract and that it came from the default",
+      status.delivery?.verification?.workflow === "pr.yml" &&
+        Array.isArray(status.delivery?.verification?.jobs) &&
+        status.delivery.verification.jobs.length === 1 &&
+        status.delivery.verification.jobs[0] === "verify" &&
+        status.delivery?.verification?.event === "push" &&
+        status.delivery?.verificationSource === "default",
+      JSON.stringify(status.delivery?.verification) + " source=" + status.delivery?.verificationSource,
+    );
     const deliveryPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: claimId, resume: { branch: "claim-branch", worktree: ".worktrees/claim" } } })));
     check(
       "get_execution_packet names the base branch, PR target and verification target from the delivery policy",

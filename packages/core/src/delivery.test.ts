@@ -5,10 +5,11 @@ import path from "node:path";
 import { removeTreeWithRetry } from "./io.js";
 import { KanmerStore } from "./store.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
-import { deliveryPolicySource, deliveryTargets, resolveDelivery } from "./board.js";
+import { deliveryPolicySource, deliveryTargets, deliveryVerificationSource, resolveDelivery } from "./board.js";
 import { evaluateMergeGate } from "./merge-gate.js";
 import { DISPATCH_TASKS, NEUTRAL_VERIFICATION_TARGET } from "./prompts.js";
-import { DELIVERY_STATES, deliveryStateRank, isDeliveryState, type DeliveryConfig } from "./types.js";
+import { DEFAULT_VERIFICATION_CONTRACT, DELIVERY_STATES, deliveryStateRank, isDeliveryState, type DeliveryConfig } from "./types.js";
+import { deliveryPolicyVersion } from "./release.js";
 
 let root: string;
 let store: KanmerStore;
@@ -57,6 +58,7 @@ describe("resolveDelivery / deliveryPolicySource (CORE-116)", () => {
       releaseBranch: "main",
       releaseCandidatePattern: null,
       hotfixBackport: true,
+      verification: { workflow: "pr.yml", jobs: ["verify"], event: "push" },
     });
     expect(deliveryPolicySource(board)).toBe("default");
   });
@@ -71,6 +73,7 @@ describe("resolveDelivery / deliveryPolicySource (CORE-116)", () => {
       releaseBranch: "dev",
       releaseCandidatePattern: null,
       hotfixBackport: true,
+      verification: { workflow: "pr.yml", jobs: ["verify"], event: "push" },
     });
     expect(deliveryPolicySource(board)).toBe("board");
   });
@@ -82,6 +85,7 @@ describe("resolveDelivery / deliveryPolicySource (CORE-116)", () => {
       releaseBranch: "main",
       releaseCandidatePattern: "release/*",
       hotfixBackport: true,
+      verification: { workflow: "pr.yml", jobs: ["verify"], event: "push" },
     });
   });
 
@@ -94,6 +98,59 @@ describe("resolveDelivery / deliveryPolicySource (CORE-116)", () => {
     // FRD-031: Kanmer's own repository policy is not changed to demonstrate
     // another one, so a board is born with no block and the resolved default.
     expect((await store.getBoard()).delivery).toBeUndefined();
+  });
+});
+
+describe("verification contract (CORE-147)", () => {
+  const CI: DeliveryConfig["verification"] = { workflow: "ci.yml", jobs: ["build", "test"], event: "push" };
+
+  it("defaults an undeclared board to Kanmer's own pr.yml/verify/push contract", async () => {
+    const board = await store.getBoard();
+    expect(resolveDelivery(board).verification).toEqual({ workflow: "pr.yml", jobs: ["verify"], event: "push" });
+    expect(deliveryVerificationSource(board)).toBe("default");
+  });
+
+  it("resolves a declared contract and reports it as board-sourced", async () => {
+    await policy({ verification: CI });
+    const board = await store.getBoard();
+    expect(resolveDelivery(board).verification).toEqual(CI);
+    expect(deliveryVerificationSource(board)).toBe("board");
+  });
+
+  it("reports the contract source separately from the policy source", async () => {
+    // A board can declare where it integrates and say nothing about which run
+    // proves a merge; one combined source would claim the file named a
+    // workflow it never mentioned.
+    await policy({ integrationBranch: "dev" });
+    const board = await store.getBoard();
+    expect(deliveryPolicySource(board)).toBe("board");
+    expect(deliveryVerificationSource(board)).toBe("default");
+  });
+
+  it("hands out a copy, so a caller cannot mutate the shared default", async () => {
+    const board = await store.getBoard();
+    resolveDelivery(board).verification.jobs.push("smuggled");
+    expect(resolveDelivery(board).verification.jobs).toEqual(["verify"]);
+    expect(DEFAULT_VERIFICATION_CONTRACT.jobs).toEqual(["verify"]);
+  });
+
+  it("rejects a half-declared contract rather than silently defaulting", async () => {
+    // Declaring `jobs` alone must not quietly keep looking for `pr.yml` — the
+    // whole point is that the board says exactly which run Kanmer looks up.
+    await expect(policy({ verification: { jobs: ["build"] } as unknown as DeliveryConfig["verification"] }))
+      .rejects.toThrow();
+    await expect(policy({ verification: { workflow: "ci.yml", jobs: [], event: "push" } })).rejects.toThrow();
+    await expect(policy({ verification: { workflow: "ci.yml", jobs: ["build"], event: "schedule" } as unknown as DeliveryConfig["verification"] }))
+      .rejects.toThrow();
+  });
+
+  it("does not change the delivery policy version", async () => {
+    // The recorded release ledger digests were minted before this field
+    // existed; a contract says which run *proves* a merge, not where the merge
+    // goes, so it must not invalidate a candidate identity.
+    const before = deliveryPolicyVersion(resolveDelivery(await store.getBoard()));
+    await policy({ verification: CI });
+    expect(deliveryPolicyVersion(resolveDelivery(await store.getBoard()))).toBe(before);
   });
 });
 

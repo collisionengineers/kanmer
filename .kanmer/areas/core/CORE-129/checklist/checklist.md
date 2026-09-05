@@ -44,3 +44,16 @@
 - [x] `kanmer-verify` documents schema 2, one typed attempt per rerun and `authority`; closeout/auto/setup and the tool reference agree; the tool roster stays 41.
 - [x] Scoped checks pass: core tests, `npm run test:built`, typecheck, `check-browser.mjs`, smoke, golden, `verify:skills`, `verify:docs`, `check:manual`, `plugin:build` with the bundle committed.
 - [x] The v0.4.2 census is recorded from a copy of the live board, twice in one process with matching digests; the live board is not touched.
+
+---
+
+## Closeout — CORE-129
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — MERGED, mergeCommit 410bfd22c2ad9fab3d430588e2ba8b4012ebf7c2
+- [x] proof.md finalised (PR URL + merge date appended) — schema 2, result PASS
+- [x] Moved to final stage — Verifying → Done via reconcile_ticket MOVE_TO_DONE
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/CORE-129`
+- [x] `git branch -d CORE-129-typed-proof-record` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

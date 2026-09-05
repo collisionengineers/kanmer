@@ -13,17 +13,6 @@ stageEntered:
   review: '2026-09-05T13:44:47.422Z'
   verifying: '2026-09-05T14:47:13.751Z'
   done: '2026-09-05T15:02:42.929Z'
-taken_at: '2026-09-05T04:04:14.267Z'
-branch: CORE-129-typed-proof-record
-worktree: .worktrees/CORE-129
-claim_expires_at: '2026-09-05T15:31:59.394Z'
-claim_controller: claude-code
-lease_id: bda0740c-4909-4699-8eb1-367eaa9bb1ce
-lease_revision: 14
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-129'
-lease_phase: review
-lease_heartbeat_at: '2026-09-05T15:01:59.394Z'
-lease_reclaimed_from: claude-code
 labels:
   - reliable-autonomy
   - 0.4.2
@@ -47,7 +36,7 @@ delivery_sha: 410bfd22c2ad9fab3d430588e2ba8b4012ebf7c2
 delivery_recorded_at: '2026-09-05T15:02:45.876Z'
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T15:02:45.876Z'
+updated: '2026-09-05T15:04:00.265Z'
 ---
 
 ## What
@@ -69,11 +58,15 @@ Nothing checks that a proof document's machine-readable verdict agrees with its 
 
 ## Verification
 
-- [ ] A fixture proof whose frontmatter says PASS while a later attempt says FAIL is reported inconsistent, and `enter-done` refuses it under strict board policy.
-- [ ] CORE-042's real free-prose proof is reported legacy/unvalidated before cutover and cannot authorise a new Done transition under strict policy; no prose heuristic rewrites its meaning.
-- [ ] A well-formed single-attempt PASS proof is unaffected.
-- [ ] A `receipts[]` list (from [[MCP-057]]) beside `attempts[]` is validated by the same parser — well-formed entries preserved, unknown fields preserved, a receipt whose `head_sha` disagrees with `merged_sha` reported invalid — and a proof without `receipts` is unaffected.
+- [x] A fixture proof whose frontmatter says PASS while a later attempt says FAIL is reported inconsistent, and `enter-done` refuses it under strict board policy.
+- [x] CORE-042's real free-prose proof is reported legacy/unvalidated before cutover and cannot authorise a new Done transition under strict policy; no prose heuristic rewrites its meaning.
+- [x] A well-formed single-attempt PASS proof is unaffected.
+- [x] A `receipts[]` list (from [[MCP-057]]) beside `attempts[]` is validated by the same parser — well-formed entries preserved, unknown fields preserved, a receipt whose `head_sha` disagrees with `merged_sha` reported invalid — and a proof without `receipts` is unaffected.
 
 ## Scope note 2026-09-05 ([[HZN-009]])
 
 Scheduled for 0.4.2 as the typed-evidence foundation of the recovery release. The existing `plan/plan.md` and `files/files.md` reference a "v0.3.13" roster and a base of `4fda54b4`; before implementation, revalidate both against `main` at `c088be13` or later (CORE-127 and CORE-133 have merged) and record the exact base in a versioned plan correction. Implement after [[MCP-057]] so the `receipts[]` shape is known; do not change proof bytes during the census; the live board's strict cutover decision is taken at the 0.4.2 cut ([[CORE-141]]) and recorded either way.
+
+## Outcome
+
+Shipped as planned (plan version 3, after one review round of remediation — F-001 parser purity and F-002 waiver-semantics documentation). Merged via PR [#329](https://github.com/collisionengineers/kanmer/pull/329) (squash commit `410bfd22c2ad9fab3d430588e2ba8b4012ebf7c2`) on 2026-09-05. Verified PASS at the exact merge SHA (first `schema: 2` proof record written on this board): the bound hosted `pr.yml` `verify` run (33972754959, job `verify` success) covered every obligation that is a subset of `npm run verify`, and the ticket's own decisive product check — a census of the live board's proof records, run against a disposable copy, never the live board — read `complete: true`, digest `proof-census-v1:444c89b9…`, counts `{ valid: 0, legacy: 319, invalid: 2 (GUI-133, GUI-135), absent: 105, total: 426 }`, identically across two audits and two dry runs in one process. `[[CORE-147]]` carries forward the two MCP-057 review deferrals (receipt literal-name coupling and `run_id` presence-only validation). The live board's strict cutover decision remains [[CORE-141]]'s at the 0.4.2 cut, per the ticket's own scope note; this ticket only makes that cutover safely performable. No other follow-up ticket required.

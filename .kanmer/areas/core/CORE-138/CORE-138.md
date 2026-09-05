@@ -36,12 +36,12 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 commits:
-  - 93e59f938b3f3a52a5c17e11c6cccb1e0d2e0f6a
+  - 93e59f93e7f1ef1550c99d0af5268b8cca05dd42
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/324'
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T03:09:05.355Z'
+updated: '2026-09-05T03:27:41.041Z'
 ---
 
 ## Problem

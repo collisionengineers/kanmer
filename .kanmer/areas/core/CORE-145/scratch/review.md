@@ -1,144 +1,94 @@
 ---
 kind: review-attestation
 pr: "328"
-head_sha: "ce4587afd94b9c673e8b2ef96fb517662e174f1d"
+head_sha: "3ebb71232c4505aea4019a49655be8c1144d68b4"
 verdict: pass
 reviewer: "independent-reviewer-subagent"
 independent: true
 plan_hash: "97dbda4a9709e55c"
-ticket_updated: "2026-09-05T04:21:49.616Z"
-board_sha: "6f37b2928d14f2daab6396e09f4aab4d7dfb7e6b"
+ticket_updated: "2026-09-05T13:26:20.387Z"
+board_sha: "3e00f81384de417c8c401eef0906bc25cf73a9c3"
 expected_reviewers:
   - "independent-reviewer-subagent"
 threads_snapshot: []
 findings:
   - id: F-001
     severity: note
-    summary: "kanmer-gate is red at ce4587af with the single finding NO_REVIEW_RECORD; the other eight gate checks pass and SYNC_REQUIRED reports 'unrecorded'. Fixed by this attestation, which is the missing record. The gate reads the remote board and does not re-trigger on a board push, so it must be re-run after this board commit is pushed."
+    summary: "Round 1: kanmer-gate red at ce4587af with the sole finding NO_REVIEW_RECORD. Fixed by the round-1 attestation."
     disposition: fixed
   - id: F-002
     severity: minor
-    summary: "Sibling PR #327 (CORE-144) edits the same else-branch of packages/mcp-server/scripts/run-http-tests.mjs. Proven by git merge-tree and a real test merge: once #327 lands, PR #328 CONFLICTS in that file and cannot be auto-merged or updated with gh pr update-branch. Mechanical merge-ordering artefact, not a defect in this diff."
-    disposition: accepted-risk
-    reason: "The conflict is one hunk with an unambiguous resolution recorded in the body (keep #327's COMMANDS.default loop, prepend #328's existsSync-guarded npm run build:core). Resolving it moves the head, which under this skill already requires a fresh delta attestation on the resolved head, so the risk is carried by the merge-time obligation rather than left unmanaged. AGENTS.md merges cleanly (#327 does not touch it)."
+    summary: "Round 1: sibling PR #327 (CORE-144) edits the same else-branch of packages/mcp-server/scripts/run-http-tests.mjs, so once #327 landed, #328 conflicted there and could not be auto-merged or updated with gh pr update-branch."
+    disposition: fixed
+    reason: "superseded by 3ebb71232c4505aea4019a49655be8c1144d68b4"
   - id: F-003
     severity: note
-    summary: "After #327, COMMANDS.default is documented as the pure-data description of the default mode that scripts/verify-steps.test.mjs statically expands; this PR's conditional core build lives in the execution path and so will not appear in that data. COMMANDS.default therefore under-describes the default mode — the same guard-fidelity class as CORE-140 F-001 that CORE-144 exists to close."
-    disposition: accepted-risk
-    reason: "No reachable consequence: VERIFY_STEPS reaches run-http-tests.mjs only via test:http:built (--assume-built), whose COMMANDS.assumeBuilt is empty, so the build-once count is unaffected either way. Moving the build into COMMANDS.default as data would make it unconditional and would build core twice on the warm npm test path — strictly worse. Exposure is only that a future rail step using the non-assume-built mode would under-count core builds."
+    summary: "Round 1: after #327, COMMANDS.default would under-describe the default mode because the conditional core build lives in the execution path rather than the exported data."
+    disposition: fixed
+    reason: "superseded by 3ebb71232c4505aea4019a49655be8c1144d68b4 — the resolution keeps the imperative placement and documents in-file exactly why (COMMANDS.default is read as an unconditional command list by verify-steps.test.mjs's at-most-once assertion, so a conditional build declared there would lie to that guard). The gap is now stated at the call site instead of being silent."
   - id: F-004
     severity: note
     summary: "The cold-checkout behaviour has no automated regression guard. The only proof is a manual fresh clone + npm ci + test:http run; nothing in scripts/verify-steps.test.mjs, test:scripts or the rail would fail if the existsSync branch were deleted."
     disposition: accepted-risk
-    reason: "A genuine cold-clone probe costs a full clone plus npm ci and cannot sit in the rail at reasonable cost. The reviewer reproduced the proof independently and additionally ran the negative control (removing packages/core/dist makes the mcp-server build fail in esbuild), so the fix is demonstrably load-bearing at this head."
+    reason: "A genuine cold-clone probe costs a full clone plus npm ci and cannot sit in the rail at reasonable cost. The reviewer reproduced the proof independently at both heads and ran a negative control at round 1 (removing packages/core/dist makes the mcp-server build fail in esbuild), so the fix is demonstrably load-bearing."
   - id: F-005
     severity: note
     summary: "The probe tests only packages/core/dist/index.js. @kanmer/core also exports ./browser -> dist/browser.js, so a partial or stale core dist containing index.js but not browser.js would not be rebuilt."
     disposition: accepted-risk
-    reason: "Not reachable in practice: core's build is a single tsup run that emits both entries (plus check-browser.mjs), so a dist with index.js and no browser.js implies a build the operator already saw fail. The mcp-server test path resolves only the root export. Widening the probe would add cost with no observed failure mode."
+    reason: "Not reachable in practice: core's build is a single tsup run that emits both entries (plus check-browser.mjs), so a dist with index.js and no browser.js implies a build the operator already saw fail. The mcp-server test path resolves only the root export."
   - id: F-006
     severity: note
-    summary: "PR #328 is BEHIND main: base is 9945b1f2 (CORE-138, #324) while the branch was cut at e474f317. mergeStateStatus is BEHIND, mergeable MERGEABLE."
-    disposition: accepted-risk
-    reason: "git merge-tree of ce4587af against 9945b1f2 resolves with no conflict (CORE-138 touched AGENTS.md in a different section). Bringing the branch up to date moves the head and requires a delta re-bind of this attestation; that is a merge-time obligation for the merger, recorded below."
+    summary: "Round 1: PR #328 was BEHIND main at 9945b1f2."
+    disposition: fixed
+    reason: "superseded by 3ebb71232c4505aea4019a49655be8c1144d68b4, which merges origin/main at de5bace9 into the branch."
   - id: F-007
     severity: note
-    summary: "The new execFileSync uses shell: true with an args array, which Node 24 flags as DEP0190 (args are concatenated, not escaped). The warning was observed in the fresh-clone run."
+    summary: "The core build call uses shell: true with an args array, which Node 24 flags as DEP0190 (args are concatenated, not escaped). Observed again in the round-2 fresh-clone run."
     disposition: accepted-risk
-    reason: "Identical to the adjacent pre-existing call this PR did not touch, and both arg lists are hard-coded literals with no interpolated input, so no injection surface exists. Changing the pattern is a separate hygiene change across the file, out of this ticket's scope."
+    reason: "At this head the call goes through CORE-144's own runNpmCommand helper, which owns that shell: true pattern for every command in the file; both arg lists are hard-coded literals with no interpolated input, so no injection surface exists. Changing the pattern is a file-wide hygiene change owned by CORE-144's code, out of this ticket's scope."
+  - id: F-008
+    severity: note
+    summary: "kanmer-gate is red at 3ebb7123 with the single finding STALE_REVIEW (attested head ce4587af != PR head 3ebb7123); NO_REVIEW_RECORD and the other eight checks pass, including SYNC_REQUIRED. Fixed by this round-2 attestation, which rebinds the record to 3ebb7123. The gate reads the remote board and does not re-trigger on a board push, so it must be re-run after this board commit is pushed."
+    disposition: fixed
 ---
 
-# Independent review — CORE-145, PR #328
+# Independent review — CORE-145, PR #328 (round 2, delta)
 
-Head `ce4587afd94b9c673e8b2ef96fb517662e174f1d`, branch
-`CORE-145-mcp-server-build-core`, base `main`, worktree `.worktrees/CORE-145`.
-Reviewer did not write this code, did not push to the branch, did not merge,
-and did not run the full `npm run verify`.
+Head `3ebb71232c4505aea4019a49655be8c1144d68b4`, branch
+`CORE-145-mcp-server-build-core`, base `main` at
+`de5bace9245f7ad1f84f885eaa1cbcd55099607e`. This head is a merge commit with
+parents `ce4587af` (the round-1 reviewed head) and `de5bace9` (`main`
+including CORE-144 / PR #327). Round 1 attested `ce4587af`; this record
+replaces it and is the authoritative review.
 
-## What changed
+Reviewer did not write this code, did not resolve the conflict, did not push
+to the branch, did not merge, and did not run the full `npm run verify`.
 
-Two files, +17/-1, no dependency and no `package-lock.json` change.
+## Delta scope
 
-- `packages/mcp-server/scripts/run-http-tests.mjs` — a new
-  `coreDistIndex` constant plus, inside the non-`--assume-built` branch only,
-  an `existsSync` guard that runs `npm run build:core` at the repo root before
-  the existing workspace `npm run build`, and an explanatory comment block.
-  The `--assume-built` branch (`assertBuilt(["server"])`) is byte-identical to
-  its previous form.
-- `AGENTS.md` §6, `npm test` row — one sentence added: the cold-checkout path
-  also builds `@kanmer/core` first when `packages/core/dist/index.js` is
-  missing.
+The delta is exactly the merge of `origin/main` plus the one-hunk conflict
+resolution in `packages/mcp-server/scripts/run-http-tests.mjs` that round 1's
+F-002 predicted and prescribed. The review below is limited to that
+resolution, its direct contracts, and the tests that cover them; the round-1
+conclusions on the unchanged CORE-145 substance carry forward.
 
-`packages/mcp-server/package.json`'s `build` is untouched, which is the point:
-the ticket's alternative remedy would have made the root `npm run build`
-(`npm run build -w @kanmer/core && npm run build -w @kanmer/mcp-server`) build
-core twice.
+## The conflict resolution — confirmed correct
 
-## Acceptance checks
-
-| Contract item | Evidence | Result |
-|---|---|---|
-| Non-assume-built path builds core at the repo root only when `packages/core/dist/index.js` is missing | The guard is exactly `if (!existsSync(coreDistIndex))` around one `execFileSync("npm", ["run", "build:core"], { cwd: repoRoot })`, followed unchanged by the workspace build. `build:core` at the root is `npm run build -w @kanmer/core`. | met |
-| `--assume-built` path unchanged | The `if (assumeBuilt)` arm is untouched in the diff; the dynamic `build-stamp.mjs` import and `assertBuilt(["server"])` are the same bytes. | met |
-| Root `npm run build` still builds core exactly once | `package.json` is not in the diff at all, so the root chain is unchanged by construction. `node --test scripts/verify-steps.test.mjs` re-run by the reviewer: 9/9 pass, including "the root workspace build script is reached exactly once across the whole rail". | met |
-| Workspace build count across the rail is unchanged | Reviewer re-derived the graph. `VERIFY_STEPS` reaches this script only through `npm run test:built` → `run-tests.mjs --assume-built` → `npm run test:http:built -w @kanmer/mcp-server` → `run-http-tests.mjs --assume-built`, i.e. the branch this PR does not touch. Rail workspace builds remain exactly: `@kanmer/core` ×1 and `@kanmer/mcp-server` ×1 (root `npm run build`) plus `@kanmer/gui` ×1 (`npm run build -w @kanmer/gui`). The new code adds zero. | met |
-| Non-rail public paths behave correctly | Cold `npm test` / `npm run test:http -w @kanmer/mcp-server`: core ×1, mcp-server ×1. Warm: core ×0, mcp-server ×1 — the pre-existing behaviour. | met |
-| AGENTS.md §6 truthful (conduct rule 24) | The `npm test` row's new clause states the exact condition the code tests (`packages/core/dist/index.js` missing). §6 has no `test:http` row, so no other row is made stale. `npm run verify:agents-block` 35/35 pass. | met |
-| No new dependencies | The PR touches two files; `package.json` and `package-lock.json` are not among them. The change uses only `node:fs`'s `existsSync`. | met |
-| Fresh-clone proof credible | Independently re-run by the reviewer — see below. | met |
-
-## Reviewer-run evidence
-
-Fresh-clone proof, re-run from scratch by the reviewer with `TMP` outside the
-repository (`C:\kanmer-tmp-145`):
+`git diff de5bace9...3ebb7123 --numstat` is exactly two files and nothing
+else:
 
 ```
-git clone <.worktrees/CORE-145> C:/kanmer-tmp-145/kanmer-fresh-145-review
-npm ci                       # packages/core/dist absent afterwards (ls fails)
-npm run test:http -w @kanmer/mcp-server
+1	1	AGENTS.md
+21	0	packages/mcp-server/scripts/run-http-tests.mjs
 ```
 
-Result: exit 0, **245 pass / 1 skipped**, and `packages/core/dist/` contains
-`index.js`, `index.js.map`, `index.d.ts`, `browser.js`, `browser.js.map`,
-`browser.d.ts` afterwards — i.e. the new path created it. This matches the
-post-implementation report exactly.
+i.e. the merge introduced no change of its own beyond CORE-145's own content,
+and no CORE-144 or `main` file was altered, reverted or partially resolved.
+`git grep` for conflict markers across `packages/`, `scripts/` and `AGENTS.md`
+at `3ebb7123` returns nothing.
 
-Negative control, in the same fresh clone: `rm -rf packages/core/dist
-packages/mcp-server/dist && npm run build -w @kanmer/mcp-server` fails in
-esbuild inside `tsup`, confirming the fix is load-bearing rather than
-incidental.
-
-| Scoped check (in `.worktrees/CORE-145`) | Result |
-|---|---|
-| `node --test scripts/verify-steps.test.mjs` | 9/9 pass |
-| `npm run test:scripts` | 193/193 pass |
-| `npm run verify:docs` | PASS (manual up to date, 22 chapters) |
-| `npm run verify:agents-block` | 35/35 pass |
-| `git status --porcelain=v1` (excluding `dist/`) | clean |
-
-## The #327 (CORE-144) merge interaction
-
-Both PRs edit the same `else` branch of
-`packages/mcp-server/scripts/run-http-tests.mjs`. #327 **deletes** the line
-`execFileSync("npm", ["run", "build"], { cwd: packageRoot, ... })` and
-replaces it with a loop over an exported `COMMANDS.default` data array; #328
-**inserts** its `existsSync` guard immediately above that same line and keeps
-it as context.
-
-Proven mechanically, not predicted:
-
-- `git merge-tree --write-tree --messages 8ba0cc86 ce4587af` (their merge base
-  is `37b83b14`) exits 1 with
-  `CONFLICT (content): Merge conflict in packages/mcp-server/scripts/run-http-tests.mjs`.
-- A real test merge in a scratch clone reproduces it: exactly one conflicted
-  hunk, `<<<<<<< HEAD` = #327's `for (const command of COMMANDS.default)`
-  loop, `>>>>>>>` = #328's guard plus the old `execFileSync`. Everything else
-  — including both PRs' new comment blocks at the top of the file — merges
-  cleanly, and #327 does not touch `AGENTS.md`.
-
-So: **#328's fresh-clone behaviour survives #327, but not automatically.**
-Once #327 merges first, `gh pr update-branch` on #328 will fail and a hand
-resolution is required. The correct resolution keeps both sides:
+The resolved `else` branch is exactly the form round 1 prescribed —
+imperative and conditional, **before** the loop, and **not** in the data:
 
 ```js
   } else {
@@ -151,55 +101,96 @@ resolution is required. The correct resolution keeps both sides:
   }
 ```
 
-`runNpmCommand` (introduced by #327) already runs from `repoRoot`, so
-`npm run build:core` keeps its current semantics exactly.
+CORE-144's contributions are intact at this head:
 
-Does the core-missing check need to live inside the `COMMANDS.default` data
-rather than the runner's execution path? **No — the execution path is the
-right home** (F-003). #327's resolver expands a runner leaf by mode:
-`node scripts/run-http-tests.mjs --assume-built` expands `COMMANDS.assumeBuilt`
-(empty), and only a bare `node scripts/run-http-tests.mjs` would expand
-`COMMANDS.default`. `VERIFY_STEPS` only ever reaches the `--assume-built`
-form, so the build-once assertion is unaffected wherever the core build sits.
-Putting it in `COMMANDS.default` would additionally make it unconditional
-data, rebuilding core on every warm `npm test` — reintroducing the duplicate
-build this ticket's plan deliberately avoided. The residual is documentation
-fidelity only, recorded as F-003.
+- `export const COMMANDS = Object.freeze({ default: Object.freeze(["npm run
+  build -w @kanmer/mcp-server"]), assumeBuilt: Object.freeze([]) });` —
+  unchanged, both modes, still frozen, still exported.
+- `runNpmCommand` — unchanged, still runs from `repoRoot`, so
+  `npm run build:core` keeps the round-1 semantics exactly.
+- The entry-point guard `if (process.argv[1] && fileURLToPath(import.meta.url)
+  === resolve(process.argv[1])) { main().catch(...) }` — unchanged, so
+  `verify-steps.test.mjs` importing `COMMANDS` still cannot run the chain.
+- The `--assume-built` arm (`assertBuilt(["server"])`) — unchanged.
 
-## CI
+The resolution also adds an in-file comment stating why the core-dist guard is
+deliberately outside `COMMANDS.default`: that array is read by
+`verify-steps.test.mjs`'s "every workspace's build script reached at most
+once" assertion as an *unconditional* command list, so declaring a conditional
+build there would misrepresent the guard's own data source. Reviewer verified
+that claim against the merged test at lines 134–161: the assertion counts
+`script === "build"` invocations per workspace across the expanded
+`VERIFY_STEPS` graph and requires exactly 1 each. This is a better-stated
+version of round-1 F-003, which is therefore dispositioned `fixed` rather than
+carried as residual risk.
 
-| Job | Run / job id | Result |
+## Delta acceptance checks
+
+| Contract item | Evidence | Result |
 |---|---|---|
-| `verify` (windows-latest) | 33944346397 attempt 2 / 101248882977 | **success**, 9m13s, at `ce4587af` |
-| `kanmer-gate` | 33944346397 attempt 2 / 101248882394 | **fail** — sole finding `NO_REVIEW_RECORD`; the other eight checks (`NO_TICKET`, `OPEN_QUESTIONS`, `WRONG_STAGE`, `DEPENDENCY_BLOCKED`, `WRONG_TARGET`, `COMMITS_UNREACHABLE`, `SYNC_REQUIRED`) pass, `STALE_REVIEW` skipped, `strict: true`, board read `6f37b292`. See F-001. |
-| `regate` | 33944346397 attempt 2 / 101248883261 | skipped (not a PR-event job) |
+| Guard stays imperative in the `else` branch, before the `COMMANDS.default` loop, not in the data | File read at `3ebb7123`, quoted above; `COMMANDS.default` still holds exactly one entry, `"npm run build -w @kanmer/mcp-server"` | met |
+| CORE-144's `COMMANDS` exports and entry-point guard intact | The two-file numstat proves every other region of the file is byte-identical to `de5bace9`; both were also read directly | met |
+| `git diff de5bace9...3ebb7123 --stat` is only CORE-145's two files | `AGENTS.md` +1/-1, `run-http-tests.mjs` +21/-0 | met |
+| Build-once invariant still holds with CORE-144's stronger assertions | `node --test scripts/verify-steps.test.mjs` → **12/12 pass**, including "the root workspace build script is reached exactly once across the whole rail", "every workspace's build script is reached at most once across the rail", and the mutation probe "dropping --assume-built from test:built reintroduces a detectable duplicate mcp-server build" | met |
+| Rail never reaches the new code | `VERIFY_STEPS` reaches this script only through `npm run test:built` → `run-tests.mjs --assume-built` → `test:http:built` → `run-http-tests.mjs --assume-built`, whose `COMMANDS.assumeBuilt` is empty and whose arm this PR does not touch | met |
+| AGENTS.md §6 row unchanged from round 1 and still truthful | The `npm test` row delta against `de5bace9` is the same single sentence reviewed in round 1; `npm run verify:agents-block` 35/35 | met |
+| No new dependencies | Delta touches two files; `package.json` / `package-lock.json` are not among them | met |
+| Fresh-clone behaviour survives the merge | Re-run at this head — see below | met |
 
+## Reviewer-run evidence at 3ebb7123
+
+Fresh-clone proof, re-run from scratch with `TMP` outside the repository
+(`C:\kanmer-tmp-145b`, since deleted):
+
+```
+git clone <.worktrees/CORE-145> C:/kanmer-tmp-145b/fresh   # at 3ebb7123
+npm ci                       # packages/core/dist absent before AND after (ls fails twice)
+npm run test:http -w @kanmer/mcp-server
+```
+
+Result: **exit 0, 249 tests, 248 pass / 1 skipped**, and `packages/core/dist/`
+exists afterwards — the new path created it. This matches the
+post-implementation report's post-merge row exactly.
+
+| Scoped check (in `.worktrees/CORE-145` at `3ebb7123`) | Result |
+|---|---|
+| `node --test scripts/verify-steps.test.mjs` | **12/12 pass** |
+| `npm run test:scripts` | **196/196 pass** |
+| `npm run verify:docs` | PASS (manual up to date, 22 chapters) |
+| `npm run verify:agents-block` | 35/35 pass |
+| `git status --porcelain=v1` (excluding `dist/`) | clean |
+
+## CI at 3ebb7123 (run 33968896784, attempt 1)
+
+| Job | Job id | Result |
+|---|---|---|
+| `verify` (windows-latest) | 101313779385 | **success**, 7m55s |
+| `kanmer-gate` | 101313779548 | **fail** — sole finding `STALE_REVIEW` (attested head `ce4587af` vs PR head `3ebb7123`); `NO_REVIEW_RECORD`, `NO_TICKET`, `OPEN_QUESTIONS`, `WRONG_STAGE`, `DEPENDENCY_BLOCKED`, `WRONG_TARGET`, `COMMITS_UNREACHABLE` and `SYNC_REQUIRED` all pass, `strict: true`. See F-008 — fixed by this record. |
+| `regate` | 101313779948 | skipped (not a PR-event job) |
+
+`mergeStateStatus` is `BLOCKED` (the red gate), `mergeable` is `MERGEABLE`.
 No reviews, no PR comments and no review threads exist on this head, so
 `threads_snapshot` is empty as a truthful value.
 
-## Findings, dispositions, residual risk
+## Findings and residual risk
 
-No finding is `open`; no blocker or major finding was raised. F-001 is fixed
-by this record. F-002 and F-006 are merge-ordering facts with proven
-resolutions. F-003, F-004, F-005 and F-007 are accepted notes with the reasons
-in the frontmatter.
+No finding is `open`; no blocker or major finding was raised in either round.
+F-001, F-002, F-003, F-006 and F-008 are `fixed` — F-002, F-003 and F-006 by
+the merge commit `3ebb7123` itself. F-004, F-005 and F-007 remain accepted
+notes with their reasons in the frontmatter.
 
-Residual risk: the cold-checkout path is proved by hand and guarded by nothing
-automated (F-004), and after #327 the runner's exported command data will no
-longer fully describe its own default mode (F-003). Neither is reachable from
-the rail.
+Residual risk is now only F-004 (the cold-checkout path is proved by hand at
+both heads and guarded by nothing automated) and the two benign notes F-005
+and F-007. None is reachable from the rail.
 
 ## Merge preconditions for the merger
 
-This is a `pass`; merge authority is not the reviewer's. Three mechanical
-preconditions remain:
+This is a `pass`; merge authority is not the reviewer's. Remaining:
 
-1. Land #327 first (as planned), then resolve the one-hunk conflict in
-   `run-http-tests.mjs` as written above, and update the branch past
-   `9945b1f2`. That moves the head, so this attestation must be replaced by a
-   delta review bound to the resolved head before merge.
-2. Re-run `kanmer-gate` after the board commit carrying this attestation is on
+1. Re-run `kanmer-gate` after the board commit carrying this attestation is on
    the remote, and require it green — it re-reads the remote board and does
    not re-trigger on a board push.
-3. Re-check that `kanmer-board`'s local tip equals `origin/kanmer-board`
+2. Re-check that `kanmer-board`'s local tip equals `origin/kanmer-board`
    immediately before `gh pr merge`.
+
+`verify` is already green at this exact head.

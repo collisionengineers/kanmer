@@ -9,6 +9,7 @@ import {
   KanmerStore,
   compileStepPacket,
   parsePlan,
+  reconcileEvidence,
   removeTreeWithRetry,
   STEP_PACKET_LIMITS,
   stepPacketDigest,
@@ -47,7 +48,22 @@ const closedJson = JSON.stringify({ state: "CLOSED", headRefOid: headSha, mergeC
 const passChecks = JSON.stringify([{ state: "SUCCESS", bucket: "pass" }]);
 const commonDir = (root) => async () => ({ ok: true, path: root });
 
-function proof(result = "PASS", failureClass, merged = mergeSha) {
+function proof(result = "PASS", failureClass, merged = mergeSha, receiptHeadSha, receiptJob = "verify") {
+  const receiptsBlock = receiptHeadSha === undefined ? "" :
+    "receipts:\n" +
+    "  - kind: github-actions-run\n" +
+    "    provider: github\n" +
+    "    repo: collisionengineers/kanmer\n" +
+    "    workflow: pr.yml\n" +
+    "    event: push\n" +
+    "    run_id: 1234567890\n" +
+    "    attempt: 1\n" +
+    "    head_sha: \"" + receiptHeadSha + "\"\n" +
+    "    job: " + receiptJob + "\n" +
+    "    conclusion: success\n" +
+    "    url: \"https://github.com/collisionengineers/kanmer/actions/runs/1234567890\"\n" +
+    "    covers: [\"npm run verify\"]\n" +
+    "    observed_by: \"ci-bot\"\n";
   return "---\n" +
     "kind: proof-record\n" +
     "merged_sha: " + merged + "\n" +
@@ -56,6 +72,7 @@ function proof(result = "PASS", failureClass, merged = mergeSha) {
     "result: " + result + "\n" +
     (failureClass ? "failure_class: " + failureClass + "\n" : "") +
     "attempts: []\n" +
+    receiptsBlock +
     "---\n";
 }
 
@@ -294,6 +311,79 @@ test("proof and required-check decoders reject incomplete or unrelated evidence"
   assert.equal(requiredChecksEvidence([]), "not-applicable");
   assert.equal(requiredChecksEvidence({ statusCheckRollup: [{ status: "COMPLETED", conclusion: "SUCCESS" }] }), "unavailable");
   assert.deepEqual(pullRequestEvidence(null, "pass"), { state: "unavailable", requiredChecks: "unavailable" });
+});
+
+test("proofEvidence surfaces receipts additively (MCP-057) and stays back-compat without them", () => {
+  // No receipts: identical to today's shape (back-compat).
+  assert.deepEqual(proofEvidence(proof()), { state: "pass", mergedSha: mergeSha });
+  assert.deepEqual(proofEvidence(proof("FAIL", "implementation")), { state: "fail", mergedSha: mergeSha, failureClass: "implementation" });
+
+  // A matching receipt is surfaced on the returned evidence.
+  const withMatchingReceipt = proofEvidence(proof("PASS", undefined, mergeSha, mergeSha));
+  assert.equal(withMatchingReceipt.state, "pass");
+  assert.equal(withMatchingReceipt.mergedSha, mergeSha);
+  assert.equal(withMatchingReceipt.receipts.length, 1);
+  assert.equal(withMatchingReceipt.receipts[0].kind, "github-actions-run");
+  assert.equal(withMatchingReceipt.receipts[0].head_sha, mergeSha);
+
+  // A wrong-SHA receipt is still surfaced (assessment/routing happens in the
+  // classifier, not here) but the receipt's own head_sha is preserved as-is.
+  const wrongShaSha = "c".repeat(40);
+  const withWrongReceipt = proofEvidence(proof("PASS", undefined, mergeSha, wrongShaSha));
+  assert.equal(withWrongReceipt.state, "pass");
+  assert.equal(withWrongReceipt.receipts[0].head_sha, wrongShaSha);
+
+  // An empty receipts list is treated the same as no receipts (omitted field).
+  assert.deepEqual(proofEvidence("---\nkind: proof-record\nmerged_sha: " + mergeSha + "\nenvironment: e\nverified_at: \"2026-08-26T00:00:00.000Z\"\nresult: PASS\nattempts: []\nreceipts: []\n---\n"), { state: "pass", mergedSha: mergeSha });
+});
+
+test("reconcileEvidence rejects a receipt naming a different merge, distinct from a stale proof mergedSha (MCP-057)", async () => {
+  const wrongShaSha = "c".repeat(40);
+  const evidenceWithMismatchedReceipt = {
+    ticket: { id: "TICK-057", status: "verifying", updated: "2026-08-26T00:00:00.000Z", taken: false },
+    claim: { state: "unclaimed", controller: null, worker: null, takenAt: null, expiresAt: null, branch: null, worktree: null, reviewRound: 0, remediationBudget: 1 },
+    commits: { values: [], reachability: "not-applicable" },
+    pullRequest: { state: "merged", mergeSha, requiredChecks: "pass" },
+    proof: proofEvidence(proof("PASS", undefined, mergeSha, wrongShaSha)),
+    workspace: { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" },
+    release: { state: "not-applicable" },
+  };
+  const result = reconcileEvidence(evidenceWithMismatchedReceipt);
+  assert.equal(result.recommendation, null);
+  assert.ok(result.findings.some((finding) => finding.code === "PROOF_RECEIPT_SHA_MISMATCH"));
+});
+
+test("reconcileEvidence rejects a receipt naming the wrong job via assessReceipt, on both the PASS and FAIL routes (MCP-057)", () => {
+  const baseTicket = { id: "TICK-057", status: "verifying", updated: "2026-08-26T00:00:00.000Z", taken: false };
+  const baseClaim = { state: "unclaimed", controller: null, worker: null, takenAt: null, expiresAt: null, branch: null, worktree: null, reviewRound: 0, remediationBudget: 1 };
+  const baseCommits = { values: [], reachability: "not-applicable" };
+  const basePullRequest = { state: "merged", mergeSha, requiredChecks: "pass" };
+  const baseWorkspace = { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" };
+  const baseRelease = { state: "not-applicable" };
+
+  const passResult = reconcileEvidence({
+    ticket: baseTicket,
+    claim: baseClaim,
+    commits: baseCommits,
+    pullRequest: basePullRequest,
+    proof: proofEvidence(proof("PASS", undefined, mergeSha, mergeSha, "kanmer-gate")),
+    workspace: baseWorkspace,
+    release: baseRelease,
+  });
+  assert.equal(passResult.recommendation, null);
+  assert.ok(passResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be "verify"')));
+
+  const failResult = reconcileEvidence({
+    ticket: baseTicket,
+    claim: baseClaim,
+    commits: baseCommits,
+    pullRequest: basePullRequest,
+    proof: proofEvidence(proof("FAIL", "implementation", mergeSha, mergeSha, "kanmer-gate")),
+    workspace: baseWorkspace,
+    release: baseRelease,
+  });
+  assert.equal(failResult.recommendation, null);
+  assert.ok(failResult.findings.some((finding) => finding.code === "PROOF_RECEIPT_REJECTED" && finding.message.includes('receipt job must be "verify"')));
 });
 
 test("collector selects the active recorded PR rather than the first reference and uses required-only checks", async (t) => {

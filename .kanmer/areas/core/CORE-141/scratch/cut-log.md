@@ -116,3 +116,24 @@ Baseline `git -C .worktrees/kanmer status --short` before either invocation: onl
 **Real invocation:** `node scripts/golden-promotion.mjs --candidate 0.4.2 --out dist/golden/promotion-core141-0.4.2.json` — exit 1, verdict INCOMPLETE. All 10 required steps reported **UNAVAILABLE** ("operator action, not automated (ADR-0021)") because no `--launcher`/`--board-copy`/candidate-installer were supplied — correct and expected for phase A: there is no packaged 0.4.2 candidate installer yet (that artifact doesn't exist until step 7's `release.mjs` real prepare runs, and full workflow-acceptance against an *installed* candidate is a phase B activity per CORE-137's own precedent, where the operator had to append the launcher-driven steps by hand after packaging existed). Transcript saved at `dist/golden/promotion-core141-0.4.2.json`. Live board asserted unchanged after this call too: `git -C .worktrees/kanmer status --short` identical, `HEAD` identical `db35986699f31df6f1051e3195956abe6f58da6d` — the script never touched Git, GitHub or the live board, matching its contract.
 
 Proceeding to step 5 (CORE-129 proof census on a copied board).
+
+## Step 5: CORE-129 proof census on a COPY of the live board (twice, then deleted)
+
+`cp -r .worktrees/kanmer/.kanmer "$TMP/core141-census/.kanmer"`, then a small script (`KanmerStore` + `auditProofRecords` from `packages/core/dist/index.js`) run twice against the copy:
+
+**Run 1 and Run 2 — identical (diff empty):**
+```
+complete: true
+problems: []
+counts: { valid: 2, legacy: 319, invalid: 2, absent: 105, total: 428 }
+digest: proof-census-v1:59830aa1862824e92b79e670dd81b8fd21be11ad7573e99b3dd4028ac5afe818
+parserVersion: proof-record/2#1
+```
+
+Buckets vs. the HZN-009 baseline description ("0 valid / ~319 legacy / 2 invalid GUI-133+GUI-135 / ~105 absent, now plus the new schema-2 proofs from today"): legacy and invalid match exactly (319, 2); **valid is now 2** (baseline said 0 valid — the new schema-2 proofs from today, i.e. tickets that merged since with typed `proof-record/2` records, moved from 0 to 2 valid); absent is 105, matching. Total 428 tickets censused (up from the ~414 in the HZN-009 snapshot, consistent with new tickets since — including CORE-141 itself, GUI-154 filed today, etc).
+
+The two `invalid` entries are confirmed by id: **GUI-133** and **GUI-135** — exactly as the plan predicted — both `done`, not archived, with frontmatter parse diagnostics: GUI-133 "unknown escape sequence at line 63, column 57" (an unescaped backslash in a `%LOCALAPPDATA%\Kanmer\bin\kanmer-mcp.cmd` path string), GUI-135 "can not read a block mapping entry; a multiline key may not be an implicit key at line 72, column 1".
+
+Copy deleted after both runs: `rm -rf "$TMP/core141-census"`. Live board confirmed untouched throughout (`git -C .worktrees/kanmer status --short` shows only the ongoing scratch-file edits from this ticket's own `append_scratch` calls; no other change).
+
+**Decision per plan: the LIVE board stays in `report` (non-strict) proof-validation policy for 0.4.2 — no real cutover run.** This matches the ticket body's explicit instruction ("decide the live strict cutover and record it either way") — decision recorded here: **not cut over this release.** Rationale: 2 invalid legacy proof records (GUI-133, GUI-135) would need hand-repair before a strict-mode cutover could pass without failing/blocking those two Done tickets' proof gate retroactively, and that repair is out of scope for this release's roster (HZN-009 R1 packages). Left for a future ticket/horizon.

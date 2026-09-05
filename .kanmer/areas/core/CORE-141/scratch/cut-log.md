@@ -102,3 +102,17 @@ Additional coordinator actions, recorded for completeness:
 Confirmed post-fix state: `git status --short` empty; `git rev-parse HEAD` = `8c515c4afbeba2a3ddf09f40d7d2c6fbe15656f5` (unchanged, still == origin/main). Root cause of the whole verify saga: host TEMP disk exhaustion (96% full, 1,689 leaked `kanmer*` test-board dirs) causing real-git worktree teardown in `kanmerGit.test.ts`'s last test to kill its tinypool worker — not RAM, not a code defect in this release's roster. Resolved.
 
 **Proceeding to step 3 (golden) through step 8 (release.mjs real prepare) now**, per coordinator's explicit go-ahead.
+
+## Step 3: npm run golden (standalone, with --out)
+
+`node packages/mcp-server/src/golden-board.mjs --out dist/golden/golden-core141-standalone.json` — exit 0. **20/20 scenarios passed in 17343ms** (budget 300000ms). Transcript at `dist/golden/golden-core141-standalone.json`. All scenario classes covered (GB-00 through GB-19, including reconciliation routing, structured-plan/reconciliation catching forbidden/undeclared/stale paths, independent exact-head review, and the stable-controlled promotion/rollback contract evaluating the recorded v0.4.0 transcript as PASS).
+
+## Step 4: golden:promotion — dry-run then real, live board asserted untouched
+
+Baseline `git -C .worktrees/kanmer status --short` before either invocation: only the pre-existing `M .kanmer/areas/core/CORE-141/scratch/cut-log.md` (from my own ongoing `append_scratch` calls on this ticket — expected, that IS the live board and is supposed to change as I write this log). `git -C .worktrees/kanmer rev-parse HEAD` = `db35986699f31df6f1051e3195956abe6f58da6d`.
+
+**Dry-run:** `node scripts/golden-promotion.mjs --candidate 0.4.2 --dry-run` — exit 0. All 10 steps reported SKIPPED (contract-shape check only). `contract shape: 10 steps, 10 required`; `verdict: INCOMPLETE` (expected for dry-run); "the recorded v0.4.0 instance still evaluates PASS" (fixture cross-check green). Live board unchanged after: same status line, same HEAD.
+
+**Real invocation:** `node scripts/golden-promotion.mjs --candidate 0.4.2 --out dist/golden/promotion-core141-0.4.2.json` — exit 1, verdict INCOMPLETE. All 10 required steps reported **UNAVAILABLE** ("operator action, not automated (ADR-0021)") because no `--launcher`/`--board-copy`/candidate-installer were supplied — correct and expected for phase A: there is no packaged 0.4.2 candidate installer yet (that artifact doesn't exist until step 7's `release.mjs` real prepare runs, and full workflow-acceptance against an *installed* candidate is a phase B activity per CORE-137's own precedent, where the operator had to append the launcher-driven steps by hand after packaging existed). Transcript saved at `dist/golden/promotion-core141-0.4.2.json`. Live board asserted unchanged after this call too: `git -C .worktrees/kanmer status --short` identical, `HEAD` identical `db35986699f31df6f1051e3195956abe6f58da6d` — the script never touched Git, GitHub or the live board, matching its contract.
+
+Proceeding to step 5 (CORE-129 proof census on a copied board).

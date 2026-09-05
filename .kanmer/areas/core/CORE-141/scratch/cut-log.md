@@ -201,3 +201,23 @@ No GUI-154 crash. Proceeding to the real `--publish`.
 `node scripts/release.mjs 0.4.2 --publish --release-commit 7a6e437574fd653f4c49d0a3fa00e6b5e4904809` (attempt 1). The full rail passed (35/35 managed-block, `plugin:check` green at v0.4.2), `release commit ... is reachable from main` confirmed, `npm run build -w @kanmer/gui` succeeded, then `npx electron-builder --win --publish never` began: native rebuild, packaging, electron download/extract, asar integrity, signtool.exe signing of `Kanmer.exe`, NSIS build started, signtool.exe signing of `elevate.exe` — and the entire process tree (release.mjs, electron-builder, all children) disappeared with **no `EXIT:` marker and no error trace in the log** (log simply stops mid-signing). Not the `kanmerGit.test.ts`/tinypool `Worker exited unexpectedly` signature (GUI-154) — this crash is in the packaging/signing phase, past the test rail entirely.
 
 Verified before retrying: `git tag -l v0.4.2` empty (local), `git ls-remote --tags origin v0.4.2` empty (remote), `gh release view v0.4.2` → "release not found", `git status --short` clean. **No partial/orphaned tag or GitHub release was created** — the crash happened before the script reached its tag-push step (which only runs after `assertLocalPackageCoherent()` post-build). Safe to retry. Host state at crash: 4.45GB/14.6GB free RAM, 48.7GB free disk, 10 `kanmer*` temp dirs re-accumulated (from this session's golden/census runs) — cleared to 1 before retry, consistent with the same general host-resource-contention pattern as the GUI-154 verify crashes, just hitting a different heavy stage (native rebuild + electron packaging + Authenticode signing under signtool.exe, also memory/CPU heavy). Treating as an evidenced transient and retrying once, per the standing single-retry policy.
+
+### B1 real publish — attempt 2: PASS
+
+Retry succeeded end-to-end. Full rail passed, GUI built, `npx electron-builder --win --publish never` completed this time (native rebuild, packaging, signtool.exe signing of `Kanmer.exe`/`elevate.exe`/uninstaller/`Kanmer-Setup-0.4.2.exe`, blockmap built), `node scripts/check-updater-package.mjs` → "updater package OK (8 checks)", `git tag v0.4.2` + `git push origin refs/tags/v0.4.2` (new tag), `gh release create v0.4.2 --draft` then `gh release upload` (4 assets) then `gh release edit --draft=false --latest` → published. Script's own post-publish verification: "verified: all 4 assets of v0.4.2 are present, uploaded, and byte-identical to the local build" and "verified: /releases/latest is v0.4.2". Exit 0.
+
+**Asset SHA-256 digests** (from `gh release view v0.4.2 --json assets`):
+| Asset | Size | sha256 |
+|---|---|---|
+| kanmer-0.4.2.mcpb | 1,796,819 | `3fac31674d3ebf7011f61aa661cc32c888edc07ac9d9416de646d97122436b29` |
+| Kanmer-Setup-0.4.2.exe | 80,492,722 | `fdbf0255ca39bead3de6aceb1847aa9235bf08427567b6158feb82d088b72967` |
+| Kanmer-Setup-0.4.2.exe.blockmap | 83,600 | `116d9ddae9777d5f14118e39875fa513f6d7ebae660f40e6fb30f3696b6ded13` |
+| latest.yml | 340 | `02247ab5c441c813eb8d33a69150d7e4b370d0e0814e86de40932b42a21fd89b` |
+
+`gh release view v0.4.2 --json assets,tagName,isDraft,isPrerelease`: `tagName: v0.4.2`, `isDraft: false`, `isPrerelease: false`, all 4 assets `state: uploaded`.
+
+`node scripts/verify-release-assets.mjs 0.4.2 --remote-coherent` — exit 0: "PASS: v0.4.2 is complete and its public manifest matches the published installer bytes."
+
+**Release URL:** https://github.com/collisionengineers/kanmer/releases/tag/v0.4.2
+
+`gh run list --workflow release.yml --limit 3`: v0.4.2 run (id `33983890950`, "release: v0.4.2 (#332)") shows `in_progress` at the time of check, triggered by the tag push at `2026-09-05T18:23:07Z`. Watching for completion next.

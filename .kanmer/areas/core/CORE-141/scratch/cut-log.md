@@ -264,3 +264,22 @@ Verified the retained local installer matches the published asset exactly: `sha2
 **I have no tool to drive the running Electron app's renderer UI** (the "Restart now" banner / `startInstall()` IPC call is the only sanctioned trigger site per AGENTS.md §8: "`CH.installUpdate` has exactly one renderer call site"), so I cannot complete the real app-driven updater flow headlessly, and completing the direct-silent-install path requires closing the 5 running `Kanmer.exe` processes and 1 `kanmer-mcp.exe`(0.4.1) — which is exactly what you told me not to do.
 
 **Stopping B4 here rather than guessing.** Everything else (B1 publish, B2 ledger, B3 fresh clone) is confirmed PASS above. I have not touched the running app or its MCP servers beyond killing the installer's own stuck process (PID 14512, not an app/MCP process). Awaiting your call: either (a) authorize me to let the app close itself via its own update path (which will need either UI automation I don't have, or your direct action), (b) authorize a plain closed-app silent install (which does require the 5 `Kanmer.exe` + `kanmer-mcp.exe` processes to stop, via the app's own Quit rather than a forced kill if you'd prefer), or (c) treat B4 onward (B4 host adoption, B5 M5 disposable mutation through the installed route, B6 rollback drill) as INCONCLUSIVE for this pass and let me proceed straight to B7/B8 with M4 PASS (fresh-clone) but M1/M5 recorded truthfully as NOT RUN / INCONCLUSIVE, matching the "record M5 truthfully" stop condition you specified.
+
+### B4 adoption route: in-app updater (electron-updater), not manual installer
+
+Coordinator decision: the two manual `Kanmer-Setup-0.4.2.exe /S` invocations were the wrong instrument and are withdrawn — no further manual installer runs. The running Kanmer app's own updater (`autoUpdater.autoDownload = true`) has already downloaded v0.4.2 to its pending cache: `%LOCALAPPDATA%\@kanmergui-updater\pending\Kanmer-Setup-0.4.2.exe`, 80,492,722 bytes (matches the published asset size exactly), with `update-info.json` present. Alex will apply it in-app via the "Restart now" banner, which calls the single sanctioned `startInstall()` -> `installUpdateNow()` -> `autoUpdater.quitAndInstall(true, true)` call site (AGENTS.md §8) — this is the mechanism that legitimately closes the running `Kanmer.exe` processes as part of the update, not a manual kill.
+
+My role now: read-only poll (no touching the app, installer, or pending cache) for up to 45 minutes at ~60s intervals for:
+1. A new `%LOCALAPPDATA%\Kanmer\mcp\0.4.2-*` generation directory
+2. The `current` link resolving to it
+3. Registry `DisplayVersion` under `HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*` (Kanmer entry) reading `0.4.2`
+
+Then continue B4 (stable launcher resolution check, Claude marketplace/plugin restage, fresh MCP session confirming `get_status.server.version` 0.4.2 with `delivery.verification`/`proofValidation`), then B5/B6/B7/B8. If nothing appears within 45 minutes: stop, record B4-B6 NOT RUN, proceed to B7/B8 with M5 INCONCLUSIVE/NOT RUN, leave CORE-141 in Verifying with proof INCONCLUSIVE / `failure_class: inconclusive`.
+
+Starting poll now.
+
+### B4 adoption detected via in-app updater — within ~5 min of poll start
+
+`%LOCALAPPDATA%\Kanmer\mcp\0.4.2-4920` created 2026-09-05T19:41 (local), `current` symlink now targets it (`current -> 0.4.2-4920`). Registry: `HKCU:\Software\...\Uninstall\*` reports `DisplayName: Kanmer 0.4.2`, `DisplayVersion: 0.4.2`. Prior generations (`0.3.12-35044`, `0.4.0-3280`, `0.4.0-14236`, `0.4.1-48196`, `0.4.1-7432`) all retained, untouched — `0.4.1-7432` is the rollback target for B6.
+
+Adoption happened via Alex applying the in-app "Restart now" banner (electron-updater `quitAndInstall`) — no manual installer action from me. Continuing B4.

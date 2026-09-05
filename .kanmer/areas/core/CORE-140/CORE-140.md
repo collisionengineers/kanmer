@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Build each rail artifact once and refuse an already-built step whose stamp
   does not match
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-09-05T02:17:42.836Z'
 labels:
   - rail
   - build
@@ -18,7 +20,7 @@ links:
   - CORE-139
 archived: false
 created: '2026-09-05T02:12:03.055Z'
-updated: '2026-09-05T02:12:03.055Z'
+updated: '2026-09-05T02:17:42.836Z'
 ---
 
 ## Problem

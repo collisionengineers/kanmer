@@ -12,8 +12,11 @@ stageEntered:
   preparing: '2026-08-31T17:48:20.688Z'
 labels:
   - reliable-autonomy
-groups: []
-links: []
+  - 0.4.2
+groups:
+  - HZN-009
+links:
+  - MCP-057
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-002-requirement-profiles.md
@@ -21,7 +24,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-01T00:01:42.636Z'
+updated: '2026-09-05T02:15:09.878Z'
 ---
 
 ## What
@@ -46,3 +49,8 @@ Nothing checks that a proof document's machine-readable verdict agrees with its 
 - [ ] A fixture proof whose frontmatter says PASS while a later attempt says FAIL is reported inconsistent, and `enter-done` refuses it under strict board policy.
 - [ ] CORE-042's real free-prose proof is reported legacy/unvalidated before cutover and cannot authorise a new Done transition under strict policy; no prose heuristic rewrites its meaning.
 - [ ] A well-formed single-attempt PASS proof is unaffected.
+- [ ] A `receipts[]` list (from [[MCP-057]]) beside `attempts[]` is validated by the same parser — well-formed entries preserved, unknown fields preserved, a receipt whose `head_sha` disagrees with `merged_sha` reported invalid — and a proof without `receipts` is unaffected.
+
+## Scope note 2026-09-05 ([[HZN-009]])
+
+Scheduled for 0.4.2 as the typed-evidence foundation of the recovery release. The existing `plan/plan.md` and `files/files.md` reference a "v0.3.13" roster and a base of `4fda54b4`; before implementation, revalidate both against `main` at `c088be13` or later (CORE-127 and CORE-133 have merged) and record the exact base in a versioned plan correction. Implement after [[MCP-057]] so the `receipts[]` shape is known; do not change proof bytes during the census; the live board's strict cutover decision is taken at the 0.4.2 cut ([[CORE-141]]) and recorded either way.

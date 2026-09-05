@@ -10,13 +10,14 @@ assignee: ''
 profile: fix
 labels:
   - reliable-autonomy
-groups: []
+groups:
+  - HZN-010
 links: []
 refs:
   - docs/functional/frd/FRD-032-quick-capture-and-promotion.md
 archived: false
 created: '2026-08-28T02:56:18.633Z'
-updated: '2026-08-28T04:25:59.920Z'
+updated: '2026-09-05T02:15:11.427Z'
 ---
 
 ## What

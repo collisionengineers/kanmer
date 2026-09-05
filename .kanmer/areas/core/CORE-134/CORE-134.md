@@ -9,12 +9,14 @@ area: core
 assignee: ''
 profile: fix
 labels: []
+groups:
+  - HZN-010
 links: []
 refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 archived: false
 created: '2026-08-28T07:23:14.070Z'
-updated: '2026-08-28T07:23:14.070Z'
+updated: '2026-09-05T02:15:12.879Z'
 ---
 
 ## What

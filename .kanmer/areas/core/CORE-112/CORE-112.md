@@ -13,13 +13,15 @@ labels:
   - toml
   - staleness
   - follow-up
+groups:
+  - HZN-010
 links:
   - GUI-142
 refs:
   - docs/functional/frd/FRD-012-connect.md
 archived: false
 created: '2026-08-26T18:29:27.041Z'
-updated: '2026-08-26T18:29:27.041Z'
+updated: '2026-09-05T02:15:10.629Z'
 ---
 
 ## Why

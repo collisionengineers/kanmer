@@ -93,3 +93,47 @@ Replace the MCP-only proof decoder with the shared core parser.
 ## Non-goals
 
 No prose NLP, proof rewriting, extra stage/tool/database, automatic reopening of history, unrelated reconciliation behavior, provider work or release-publisher changes.
+
+## Revalidation 2026-09-05 (base `37b83b14`, 0.4.2 / HZN-009)
+
+Re-read against `main` at `37b83b1435602dddeaea3da32668b4846d1be963` (DOC-028, GUI-152,
+CORE-140, DOC-026 merged) plus the open PR #325 (MCP-057, head `24f22653`). Every defect
+recorded above still reproduces:
+
+- `packages/core/src/gates.ts::statusOf` still resolves `proof` through `ev.hasType("proof")`
+  alone; `EvidenceProbe` has no proof-state member.
+- `packages/core/src/store.ts::gateReport` (line ~5083) still supplies only existence probes.
+- `packages/mcp-server/src/reconciliation.ts::proofEvidence` is still an independent
+  `gray-matter` decoder that accepts `attempts` merely because it is an array.
+- `BoardConfigSchema` (`types.ts` ~390) has no proof-validation policy; `migrateBoard`
+  (`migrate.ts` ~799) is v2/backfill/v3/identity only.
+
+What changed since the original research, and what it means here:
+
+- **MCP-057 (PR #325) lands first.** It adds `packages/core/src/proof-receipts.ts`
+  (`parseProofReceipts`, `assessReceipt`), an additive `receipts?: ProofReceipt[]` on
+  `ReconciliationEvidence["proof"]`, and the `PROOF_RECEIPT_SHA_MISMATCH` /
+  `PROOF_RECEIPT_REJECTED` findings in `packages/core/src/reconciliation.ts`. CORE-129 must
+  therefore parse `receipts[]` inside the same record parser (ticket Verification item 4) and
+  must not re-implement receipt assessment: `parseProofReceipts` is reused verbatim, and a
+  receipt whose `head_sha` disagrees with the record's `merged_sha` makes the *record*
+  invalid — a check strictly inside the proof document, distinct from the reconciliation
+  finding that compares a receipt against the live PR merge SHA. Both survive.
+- **Today's proofs still have no `schema`.** The proof records written this week by DOC-028,
+  GUI-152 and CORE-140 verification carry `kind: proof-record` and an `attempts[]` whose
+  entries have no `authority` field. They are `legacy` under this parser by construction and
+  are never rewritten.
+- **Roster/base correction.** The plan's "v0.3.13 / base `4fda54b4`" framing is retired: the
+  release is 0.4.2 and the horizon is HZN-009. `CORE-141` takes the live board's strict
+  cutover decision at the 0.4.2 cut; CORE-129 ships the mechanism and the census only.
+- **Fresh-board strict has a test blast radius.** `defaultBoardConfig()` writing `strict`
+  means every core/MCP fixture that creates a board and moves a ticket to Done on a
+  free-text proof must either write a valid schema-2 record or set the board to `report`
+  explicitly. The affected fixtures were enumerated by grep: `claims.test.ts`,
+  `delivery.test.ts`, `release.test.ts`, `docs.test.ts`, `store.test.ts`, `project.test.ts`,
+  `capture.test.ts`, `packages/mcp-server/src/smoke.mjs` and
+  `packages/mcp-server/src/golden-board.mjs`.
+- **GUI is unaffected structurally.** `apps/gui/src/renderer/src/lib/gateFeedback.ts` parses
+  `blockedBy` strings of the form `"<label>: needs <requirements>"` and
+  `gateError.ts` rewrites the refusal prose. Neither reads a proof state, so the added
+  `proofValidation` reporting is additive for the GUI.

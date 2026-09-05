@@ -32,9 +32,13 @@ refs:
   - docs/functional/frd/FRD-002-requirement-profiles.md
   - docs/functional/frd/FRD-006-typed-proof.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
+commits:
+  - 1aa725eed1ba21b209f9981d8ab7e8881abe9c02
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/329'
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T13:40:55.687Z'
+updated: '2026-09-05T13:41:27.395Z'
 ---
 
 ## What

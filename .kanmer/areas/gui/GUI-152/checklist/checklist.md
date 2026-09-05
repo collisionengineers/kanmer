@@ -49,6 +49,8 @@ ticket's own acceptance bullets.
 - [x] Root `npm run typecheck` exits 0
 - [x] Live-board pass: Active shows 4 columns; Backlog/Completed/Archived counts equal `get_status.counts`; Done (373) pages across all 94 pages with no empty page; an empty filtered scope shows blank counts and no pager; all 14 rail controls are focusable buttons. Pixel comparison against the previews and real-pointer interaction are UI-D / GUI-153 and are named as uncovered in the report
 - [x] `post-implementation-report` written with the parity checklist ticked item by item
-- [ ] Draft PR opened, `prs` recorded, ticket moved to Review, PR marked ready
+- [x] Draft PR opened (#323), `prs` and `commits` recorded, ticket moved to Review, PR marked ready, then merged to `main` at `32aa54fc0c7fa4dfafee2eeb57ec8bf60dbdc507` (verified: `gh pr view 323` reports `state: MERGED`, `mergeCommit.oid: 32aa54fc0c7fa4dfafee2eeb57ec8bf60dbdc507`). Head `8ef01486d6ff4605b1b3e876550e325c671f9afa`.
 
-- [x] Draft PR opened (#323), `prs` and `commits` recorded, ticket moved to Review, PR marked ready. Head `8ef01486d6ff4605b1b3e876550e325c671f9afa`.
+## Not ticked (out of scope for this ticket, owned by GUI-153)
+
+- [ ] Pixel comparison against `approved-ui/previews/` (desktop/laptop/mobile) and real-pointer interaction (live drag, hover states, live `prefers-reduced-motion` and ≤900px behaviour) — no automated or manual evidence in this PR or by this verifier covers rendered pixels or pointer events; the reviewer's scratch/review.md open question 8 and the post-implementation report both name this residual risk explicitly and assign it to GUI-153/UI-D.

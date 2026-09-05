@@ -7,7 +7,7 @@ reviewer: "independent-reviewer-core-141"
 independent: true
 plan_hash: "b5d971f65023c10d"
 ticket_updated: "2026-09-05T16:06:24.628Z"
-board_sha: "42d24bee2303848d524f117f972b79c5df20e314"
+board_sha: "e8f4f92ba6b9677ce93e7bb11ece8f4f591739d3"
 expected_reviewers:
   - "independent-reviewer-core-141"
 threads_snapshot: []
@@ -42,9 +42,15 @@ findings:
 # Review — CORE-141 (Release v0.4.2 notes), PR 331
 
 Independent review of PR 331 at head `415aeb692242547bd394af0e7376e5dbc94db111`,
-reviewed against board tip `42d24bee2303848d524f117f972b79c5df20e314` (pushed;
-`boardSync.ahead` 0). Consolidated round 0. **Verdict: pass** on content, with
-the merge gate's own state recorded below.
+reviewed against board tip `e8f4f92ba6b9677ce93e7bb11ece8f4f591739d3` (pushed;
+local == `origin/kanmer-board`). Consolidated round 0. **Verdict: pass.**
+
+This is the second whole-file write of this record for the same head. The first
+(board `42d24bee…`) was written while `kanmer-gate` was still red for the
+expected pre-attestation reason; this replacement re-gathers the PR after the
+board push and records the gate green. Nothing else about the review changed —
+same head, same plan version, same ticket timestamp, same findings, still no
+threads.
 
 ## Scope of the change
 
@@ -159,20 +165,26 @@ prints to stdout and writes nothing"). I ran `npm run release:notes` in
 
 ## Checks and threads
 
-- `verify` — **success**, 7m54s, run `33976822764`, job `101336009320`.
-- `kanmer-gate` — the earlier attempt (job `101334889137`) failed at "Run the
-  phase-2 merge gate"; the current attempt (job `101336008592`) is pending.
-  This is the expected pre-attestation state: `KANMER_GATE_STRICT` is true and
-  `check-pr.mjs` reads the fetched board, on which no current-head
-  `scratch/review.md` existed. This record is written to satisfy it; the
-  merge authority must confirm `kanmer-gate` is green on the regated run before
-  merging, and must not treat a gate result predating this board push as
-  current.
-- `regate` — skipped (it only fires on `workflow_dispatch` or a push to main).
+All required checks on `415aeb69` are green at the time of writing, and
+`mergeStateStatus` is `CLEAN`:
+
+- `verify` — **success**, 7m54s, run `33976822764` (jobs `101336009320` /
+  `101336275128` across attempts).
+- `kanmer-gate` — **success**, 55s, run `33976822764`, job `101336274424`.
+  Its two earlier attempts (`101334889137`, `101336008592`) failed at "Run the
+  phase-2 merge gate" for the expected pre-attestation reason:
+  `KANMER_GATE_STRICT` is true and `check-pr.mjs` reads the freshly fetched
+  board, which carried no current-head `scratch/review.md`. Writing this record
+  and pushing the board (`e8f4f92b`) triggered `board-regate.yml`, whose
+  dispatch (run `33977336148`) re-ran only `kanmer-gate`, and it passed. Any
+  further board push re-triggers the same regate; a gate result predating the
+  board push it should have read is not evidence about the current board.
+- `regate` — skipped on the PR run, as designed (it fires only on
+  `workflow_dispatch` or a push to main).
 - Review threads on the head: **none**. `reviewThreads`, `reviews` and
-  `comments` are all empty at gather time, re-checked immediately before this
-  record was written. `threads_snapshot` is therefore empty as a truthful
-  value. No bot thread exists; none is a gate.
+  `comments` are all empty, re-gathered immediately before this record was
+  written. `threads_snapshot` is therefore empty as a truthful value. No bot
+  thread exists on this head; none would be a gate if it did.
 - Expected reviewers: this reviewer only, settled on this exact head.
 
 ## Residual risk
@@ -185,7 +197,7 @@ misstates the runtime or security posture, the roster, or the proof policy.
 
 ## Not done here
 
-The ticket is deliberately **not** moved and the PR is **not** merged: the
-brief for this review withheld merge authority, and the cut sequence's later
-steps (version bump, tag, publish, host install, rollback drill) belong to the
-operator running `scripts/release.mjs`, not to review.
+The ticket is deliberately **not** moved and the PR is **not** merged: this
+review was dispatched without merge authority. The version bump, tag and
+publish, and the later cut steps (host install, disposable mutation, rollback
+drill), belong to the operator running `scripts/release.mjs`, not to review.

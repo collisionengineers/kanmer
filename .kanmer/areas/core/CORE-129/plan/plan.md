@@ -1,133 +1,241 @@
 # Plan — CORE-129: validated proof authority and deliberate strict cutover
 
+> **Version 2 (2026-09-05).** Supersedes version 1, which was written against a
+> "v0.3.13" roster and base `4fda54b4`. Neither exists any more. This version is
+> written against `main` at `37b83b1435602dddeaea3da32668b4846d1be963`, release
+> **0.4.2**, horizon **HZN-009**. The "Required changes 1–5" contract below is
+> carried over unchanged in substance; what changed is the base, the roster, the
+> `receipts[]` requirement and the MCP-057 interaction.
+
 ## Objective
 
-Make the exact proof record—not file existence or free prose—the single authority for entering Done and reconciliation. Preserve every historical proof byte, census old records before cutover, and enable strict validation through the existing board migration path. No new tool, stage, database or workflow engine is introduced.
+Make the exact proof record — not file existence and not free prose — the single
+authority for entering Done and for reconciliation. Preserve every historical
+proof byte, census old records before cutover, and enable strict validation only
+through the existing board migration path. No new tool, stage, database, workflow
+engine or dependency is introduced.
 
 ## Starting state
 
-- Revalidated source base: `4fda54b4489fa4bc4b6b091c2af67715245ffa08`; implementation begins only after CORE-127 and CORE-133 merge and records their exact final base.
-- Research: `research/research.md`@`03e90e244aae5d4a`.
-- Files: `files/files.md`@`fffdea6e864b999c`.
-- 298 historical proof files exist; 218 have no raw attempts field, 80 have one, two attempt-bearing records are not YAML-parseable, zero use schema 2, and a raw scan finds 30 parseable top-level/last-entry differences. These are census signals only; deterministic parser buckets are the authority.
-- Core gates are existence-only. MCP reconciliation separately trusts the top-level verdict.
-- Existing boards have no proof-validation policy. Stable v0.3.12 must remain able to read the board until candidate promotion.
+- **Base:** branch `CORE-129-typed-proof-record` off `main` at
+  `37b83b1435602dddeaea3da32668b4846d1be963` (DOC-028, GUI-152, CORE-140, DOC-026
+  merged). Build-once rail (CORE-140): `npm run build && node scripts/build-stamp.mjs --write`
+  once, then `npm run test:built` or focused vitest files.
+- **Predecessor:** PR #325 (MCP-057, `MCP-057-evidence-first-verify`, head
+  `24f22653`) merges first. `origin/main` is merged into this branch before the PR
+  is opened, keeping both behaviours in `reconciliation.ts` and `types.ts`.
+- Research: `research/research.md` (revalidated 2026-09-05).
+- Files: `files/files.md` (version 2, 2026-09-05).
+- Core gates are existence-only. MCP reconciliation separately trusts the
+  top-level verdict through its own decoder.
+- Existing boards have no proof-validation policy, so an absent field must keep
+  behaving exactly as today.
 
 ## Governing contract
 
-- `docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md`: amend the movement-gate content-reader boundary so strict typed proof validation is an explicit, bounded exception rather than an undocumented second content parser.
-- `docs/functional/frd/FRD-002-requirement-profiles.md`: update the legacy existence-only proof requirement to explicit report/strict semantics.
-- `docs/functional/frd/FRD-006-typed-proof.md`: replace the historical rule that FAIL satisfies the hard gate with the current typed-proof authority and compatibility cutover.
-- `docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md`: exact merged-SHA PASS precedes Done.
-- AGENTS rule 20: INCONCLUSIVE is not PASS, later evidence does not erase failure, and Done requires PASS.
-- The frozen v0.3.13 acceptance requires contradictory PASS/FAIL evidence to be unable to reach Done.
-- CORE-042/GUI-141 are historical evidence only. Do not reopen, rewrite or add them to the release roster.
+- `docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md`: amend the
+  movement-gate content-reader boundary so strict typed proof validation is an
+  explicit, bounded exception rather than an undocumented second content parser.
+- `docs/functional/frd/FRD-002-requirement-profiles.md`: replace the existence-only
+  proof requirement with explicit report/strict semantics.
+- `docs/functional/frd/FRD-006-typed-proof.md`: replace the historical rule that a
+  FAIL document satisfies the hard gate with the typed-proof authority and the
+  compatibility cutover, and join it to the MCP-057 `receipts[]` section.
+- `docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md`:
+  exact merged-SHA PASS precedes Done.
+- AGENTS rule 20: INCONCLUSIVE is not PASS, later evidence does not erase failure,
+  and Done requires PASS.
+- CORE-042 and GUI-141 are historical evidence only. Do not reopen, rewrite or add
+  them to the 0.4.2 roster. The live board's strict cutover decision belongs to
+  CORE-141 at the 0.4.2 cut.
 
 ## Required changes
 
-1. **Create one versioned proof parser**
-   - Add `proof-record/2` semantics in core with strict top-level and attempt objects: exact kind/schema, merged SHA, nonempty environment, verified timestamp, result and non-empty attempts.
-   - Each attempt carries timestamp, `PASS | FAIL | INCONCLUSIVE`, `authority: authoritative | supporting`, summary, compatible failure class, and either complete process evidence or an explicit manual/no-process form with null exit.
-   - Validate required fields/enums, 40-hex merge SHA, ISO timestamps, unknown keys, process/manual evidence, strictly increasing timestamps with ties refused, and require the final ledger entry to be authoritative.
-   - Bind `verified_at`, top-level result and any top-level failure class to that final authoritative entry. PASS/process requires zero and omits failure class; FAIL/process requires non-zero and uses implementation/plan/transient; INCONCLUSIVE uses inconclusive.
-   - Supporting entries may precede the final verdict only. A later FAIL/INCONCLUSIVE must become final authority or the record is invalid, so it always invalidates an earlier PASS.
-   - Return typed `valid-pass | valid-fail | valid-inconclusive | legacy | invalid` state plus deterministic diagnostics. Never infer authority from body prose.
+1. **Create one versioned proof parser** — `packages/core/src/proof-record.ts`
+   (+ `proof-record.test.ts`, exported from `index.ts`, not from `browser.ts`).
+   - `parseProofRecord(frontmatter)` is pure (no IO, no `node:` imports) and
+     mirrors `review-attestation.ts`'s style; `parseProofDocument(raw)` runs
+     `gray-matter` and delegates, so no caller decodes proof frontmatter itself.
+   - `proof-record/2` semantics: `kind: proof-record`, `schema: 2`, 40-hex
+     `merged_sha`, non-empty `environment`, ISO `verified_at`, a `result`, and a
+     non-empty `attempts[]`.
+   - Every attempt carries `attempted_at`, `result` in `PASS | FAIL | INCONCLUSIVE`,
+     `authority` in `authoritative | supporting`, a non-empty `summary`, a
+     compatible `failure_class`, and either complete process evidence (`command`,
+     `cwd`, integer `exit_code`) or the explicit manual/no-process form
+     (`exit_code: null`, no `command`/`cwd`).
+   - Attempt timestamps are strictly increasing; ties are refused. The final entry
+     must be `authoritative`. Top-level `result`, `failure_class` and `verified_at`
+     are bound to that final authoritative entry.
+   - PASS requires exit `0` and no failure class; FAIL requires a non-zero exit and
+     `implementation | plan | transient`; INCONCLUSIVE uses `inconclusive`.
+   - `WAIVED_BY_OPERATOR` is accepted at the **top level only**, and only with the
+     operator identity fields the verify skill requires (`waived_by`,
+     `waiver_reason`); it is the one documented exception to top-level/final-attempt
+     binding, and it is reported distinctly so reconciliation never recommends Done
+     from a waiver.
+   - Unknown top-level keys are **preserved and reported**, never dropped and never
+     fatal.
+   - `receipts[]` is parsed with MCP-057's `parseProofReceipts` (never
+     re-implemented). A receipt whose `head_sha` disagrees with the record's own
+     `merged_sha` makes the record **invalid**; a malformed `receipts` list is
+     likewise invalid on a schema-2 record. A record with no `receipts` is
+     unaffected.
+   - Result: `valid-pass | valid-fail | valid-inconclusive | legacy | invalid` plus
+     deterministic, ordered diagnostics. A record without `schema: 2` — which is
+     every proof on the live board today, including the ones written this week by
+     DOC-028/GUI-152/CORE-140 verification, whose `attempts` have no `authority` —
+     is `legacy` and is never rewritten or heuristically upgraded.
 
 2. **Make proof policy a board-owned central invariant**
-   - Add optional `proofValidation.mode: report | strict` to `BoardConfig`.
-   - Fresh boards write strict. Existing boards with the field absent resolve to report.
-   - In report mode, proof existence retains compatibility but `get_doc_gates`/GUI surface parser warnings and the parsed state.
-   - In strict mode, every proof requirement is satisfied only by a current valid PASS. Visual proof keeps its existing image advisory after that hard check.
-   - Existing Done items remain untouched because gates apply only on transitions.
-   - Expose `get_status.proofValidation = { mode, source }` so an absent/stripped explicit board policy is observable.
-   - Ordinary board writers (`setBoard`/`updateBoard`) must refuse a `report` or absent-policy → `strict` escalation. Strict activation is available only through one dedicated digest-bound store cutover method under the board-wide write lock.
+   - Optional `proofValidation: { mode: "report" | "strict" }` on `BoardConfig`
+     (zod, additive, `.optional()`).
+   - `defaultBoardConfig()` writes `strict`. An existing board with the field absent
+     resolves to `report`.
+   - `resolveProofValidation(board)` returns `{ mode, source: "board" | "default" }`;
+     `get_status.proofValidation` exposes it, so a stripped key is observable.
+   - In `report` mode, existence still satisfies the requirement, and the parsed
+     state plus its diagnostics are surfaced as `get_doc_gates` warnings (and
+     therefore in the GUI).
+   - In `strict` mode, the proof requirement is satisfied only by `valid-pass`. The
+     visual-proof image advisory is unchanged and still runs after the hard check.
+   - `setBoard`/`updateBoard`/`update_column` refuse a `report`-or-absent → `strict`
+     escalation. Strict activation is available only through one dedicated
+     digest-bound store method under the board write lock (used by change 3).
 
-3. **Census before enabling strict**
-   - Extend existing `migrate_board`; do not add a tool.
-   - Refuse to combine proof cutover with an older-format migration: migrate format first, then operate only on a current-format board.
-   - Dry run scans canonical `proof/proof.md` documents and returns deterministic valid/legacy/invalid buckets, ticket diagnostics and a digest binding parser/census version, ordered ticket identity/stage, raw proof size/SHA-256, parsed state and diagnostics.
-   - Any listing/read/inventory failure marks the census incomplete and forbids cutover. Report-to-strict requires the caller's exact digest; census re-read and the policy write occur under the same ticket-write lock and refuse without writing on any mismatch.
-   - `migrate_board` without the digest never enables strict. A successful real migration writes only the board proof policy to strict and never edits proofs, tickets, stages or activity.
-   - Preserve idempotency: an already-strict board reports no policy change and the same read-only census.
-   - Record the v0.3.13 live/copy census before running the real cutover.
+3. **Census before enabling strict** — extend `migrate_board`; do not add a tool.
+   - Dry run censuses every canonical `proof/proof.md` into deterministic
+     `valid | legacy | invalid` buckets with per-ticket diagnostics, and returns a
+     digest over the parser version, the ordered ticket identity/stage, the raw
+     proof size and sha256, and the parsed state.
+   - Refuse to combine the proof cutover with a format migration: migrate format
+     first, then operate on a current-format board.
+   - Any listing or read failure marks the census incomplete and forbids cutover.
+   - A real run requires the caller's exact digest, re-reads the census under the
+     board write lock and writes only the board policy; a mismatch refuses without
+     writing. `migrate_board` without a digest never enables strict.
+   - Idempotent: an already-strict board reports no policy change and the same
+     read-only census. Proofs, tickets, stages and activity are never edited.
+   - The `migrate_board` tool description is updated. The tool roster stays 41.
 
 4. **Unify Done gating and reconciliation**
-   - `KanmerStore.gateReport` reads proof bytes once and passes the shared parsed result to the gate engine.
-   - Remove the independent MCP proof decoder; adapt its response from the core parser.
-   - Valid PASS still requires the exact selected PR merge SHA.
-   - Valid FAIL still routes by the existing failure-class table and must also name the current merge SHA.
-   - Valid INCONCLUSIVE, legacy or invalid evidence produces no Done recommendation.
-   - Keep `reconcile_ticket` read-only and preserve all non-proof recommendation behavior.
+   - `KanmerStore.gateReport` reads canonical proof bytes once and passes the parsed
+     state into the gate engine through a new `EvidenceProbe` member.
+   - Replace `packages/mcp-server/src/reconciliation.ts::proofEvidence`'s independent
+     decoder with the core parser, keeping MCP-057's `receipts` surfacing and both
+     receipt findings intact.
+   - Valid PASS still requires the exact merge SHA. Valid FAIL keeps the existing
+     `implementation | plan | transient | inconclusive` routing. Legacy, invalid,
+     INCONCLUSIVE and waived records produce no Done recommendation.
+   - `reconcile_ticket` stays read-only; no new action, finding-free paths unchanged.
 
 5. **Publish the new record contract**
-   - Update kanmer-verify to write schema 2 as one whole-file record, append every rerun as a typed attempt, identify supporting versus authoritative attempts, and read it back fully.
-   - Update FRD-002, FRD-006, closeout/auto/setup/tool reference/AGENTS plus proof/gates/first-ticket manuals with the same authority and migration-census rules.
-   - Pin the prose in existing validators and regenerate the manual and standalone MCP bundle. The tool roster remains 41.
+   - Amend ADR-0011 (bounded strict proof reader as an explicit, third exception),
+     FRD-002, FRD-006, `docs/manual/proof.md`, `docs/manual/gates.md`.
+   - `kanmer-verify`: write schema 2 as one whole-file record, every rerun a typed
+     attempt, `authority` on every attempt. `kanmer-closeout`, `kanmer-auto`,
+     `kanmer-setup` and the tool reference where they mention proof.
+   - AGENTS.md §4/§5 proof lines; regenerate the manual (`npm run build:manual`) and
+     the plugin bundle (`npm run plugin:build` — the bundle changes because MCP
+     server source changed; commit it).
+   - `scripts/verify-skill-prose.mjs` and `npm run verify:docs` must pass.
 
 ## Ordered steps
 
-### Step 1 — Implement and exhaustively test the pure parser
+### Step 1 — the pure parser
 
-- Files: `packages/core/src/proof-record.ts`, `proof-record.test.ts`, `index.ts`.
-- Symbols: `parseProofRecord`, `ProofRecordState`, schema/attempt types.
-- Negative cases: missing/unknown schema, blank environment, empty attempts, non-authoritative final entry, malformed/unknown fields, SHA/time/manual/process evidence, result/exit contradiction, verified/final timestamp drift, failure-class drift, timestamp tie/reversal, top/final disagreement, PASS→FAIL and PASS→INCONCLUSIVE.
-- Preserve: a valid one-attempt authoritative PASS.
-- Commands: focused Vitest for proof-record, core typecheck/build.
-- Done when: no caller needs to inspect raw proof frontmatter independently.
+Files: `packages/core/src/proof-record.ts`, `proof-record.test.ts`, `index.ts`.
+Symbols: `parseProofRecord`, `parseProofDocument`, `ProofRecordState`,
+`ProofRecord`, `PROOF_RECORD_PARSER_VERSION`.
+Table-driven negative cases: missing/unknown `schema`; wrong `kind`; blank
+`environment`; non-40-hex `merged_sha`; unparseable `verified_at`; empty
+`attempts`; non-object attempt; unknown attempt result/authority enum; missing
+`summary`; non-authoritative final entry; partial process evidence; non-null
+`exit_code` on the manual form; `command`/`cwd` present with a null exit code;
+PASS with non-zero exit; FAIL with zero exit; FAIL with `inconclusive` class;
+INCONCLUSIVE with a failure class other than `inconclusive`; PASS carrying a
+failure class; timestamp tie; timestamp reversal; `verified_at` drift from the
+final attempt; top-level result/failure-class drift; `WAIVED_BY_OPERATOR` without
+operator identity; a receipt whose `head_sha` ≠ `merged_sha`; a non-array
+`receipts`. Preserved: a valid one-attempt authoritative PASS; unknown top-level
+keys retained and reported; a legacy record (no `schema`) with today's shape.
 
-### Step 2 — Add report/strict central gate policy
+### Step 2 — report/strict board policy
 
-- Files: `types.ts`, `board.ts`, `gates.ts`, `store.ts`, `docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md`, plus board/gates/profile-matrix/store/docs/claims/delivery/release tests named in `files/files.md`.
-- Symbols: board policy schema/resolver, `EvidenceProbe` proof state, `statusOf`, `gateReport`.
-- Negative cases: absent legacy policy reports with source `default`; explicit policy reports source `board`; stripped-key fallback is observable; direct generic board-update escalation to strict refuses; strict legacy/invalid/FAIL/INCONCLUSIVE blocks; strict valid PASS passes; a noncanonical proof Markdown cannot satisfy canonical `proof/proof.md`; visual advisory unchanged; existing Done creation/backfill remains ungated.
-- Commands: focused board/gates/docs/store suites and core typecheck.
-- Done when: GUI and MCP observe one central gate decision.
+Files: `types.ts`, `board.ts`, `gates.ts`, `store.ts`, plus `board.test.ts`,
+`gates.test.ts`, `profile-matrix.test.ts`, `store.test.ts`, `docs.test.ts`,
+`capture.test.ts`, `claims.test.ts`, `delivery.test.ts`, `release.test.ts`,
+`project.test.ts`.
+Symbols: `ProofValidationSchema`, `resolveProofValidation`, `EvidenceProbe.proofState`,
+`statusOf`, `gateReport`, `setBoardWithProofValidationGuard`.
+Negative cases: absent policy resolves `report`/`default`; explicit policy resolves
+`board`; `setBoard`/`updateBoard` escalation to strict refuses; strict blocks
+legacy/invalid/FAIL/INCONCLUSIVE/waived; strict passes a valid PASS; a
+non-canonical proof markdown cannot satisfy strict; visual advisory unchanged;
+report mode still satisfied by existence and emits warnings.
 
-### Step 3 — Add a byte-preserving census and cutover to migrate_board
+### Step 3 — census and cutover in `migrate_board`
 
-- Files: `migrate.ts`, `migrate.test.ts`, tool description in MCP index.
-- Symbols: `auditProofRecords`, the dedicated locked store cutover method, proof-policy migration report, `migrateBoard`.
-- Negative cases: old-format combined cutover refuses; dry run writes nothing; incomplete census, missing digest or stale digest refuses with no write; concurrent proof drift under the lock refuses; direct `setBoard`/`updateBoard` strict escalation refuses; successful dedicated cutover changes only board policy; malformed/legacy records are listed; repeat is idempotent; old proofs/tickets/activity remain byte-identical.
-- Commands: focused migration tests and server build.
-- Done when: strict is never enabled for the release board before its durable census is recorded.
+Files: `migrate.ts`, `migrate.test.ts`, `packages/mcp-server/src/index.ts`.
+Symbols: `auditProofRecords`, `ProofCensus`, `proofCensusDigest`,
+`migrateProofValidation`, `KanmerStore.activateStrictProofValidation`.
+Negative cases: old-format board refuses the cutover; dry run writes nothing;
+incomplete census refuses; missing/stale digest refuses without writing; drift
+under the lock refuses; success changes only the board policy; repeat is
+idempotent; proof/ticket bytes unchanged.
 
-### Step 4 — Reuse the parser in reconciliation
+### Step 4 — reconciliation reuses the parser
 
-- Files: core reconciliation/types/tests and MCP reconciliation/tests/smoke.
-- Symbols: proof evidence state mapping, `reconcileEvidence`, `proofEvidence`, `reconcileTicket`.
-- Negative cases: contradictory/legacy/invalid/INCONCLUSIVE never moves Done; stale-SHA PASS/FAIL refuses; valid current FAIL preserves existing implementation/plan/transient routes; packet-aware CORE-127 response remains unchanged.
-- Commands: focused core/MCP reconciliation tests, server build and smoke.
-- Done when: gating and reconciliation cannot disagree about the proof verdict.
+Files: `packages/core/src/reconciliation.ts` (only if needed),
+`packages/mcp-server/src/reconciliation.ts`, `reconciliation.test.mjs`,
+`packages/mcp-server/src/smoke.mjs`, `packages/mcp-server/src/golden-board.mjs`.
+Negative cases: legacy/invalid/INCONCLUSIVE/waived never recommend Done; stale-SHA
+PASS/FAIL still refuse; MCP-057's `PROOF_RECEIPT_SHA_MISMATCH` and
+`PROOF_RECEIPT_REJECTED` still fire; existing FAIL routes intact.
 
-### Step 5 — Update operating prose, generate artifacts and verify
+### Step 5 — prose, generated artefacts, checks
 
-- Files: ADR-0011, FRD-002/FRD-006, AGENTS, verify/closeout/auto/setup skills, tool reference, proof/gates/first-ticket manuals and generated manual, prose validators, plugin bundle.
-- Preserve: existing review/retry/closeout contracts, 41 tools and byte-identical source/bundle build.
-- Commands: script tests, skill/AGENTS/manual checks, plugin build/check, typecheck, one clean non-overlapping `npm run verify`, `git diff --check`.
-- Done when: one bounded PR is open at a clean exact head with current report, hosted checks and exact-head independent review.
+Files: ADR-0011, FRD-002, FRD-006, `docs/manual/proof.md`, `docs/manual/gates.md`,
+`AGENTS.md`, `kanmer-verify`, `kanmer-closeout`, `kanmer-auto`, `kanmer-setup`,
+`plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`,
+`apps/gui/src/renderer/src/manual/chapters.generated.ts`,
+`plugins/kanmer/mcp/kanmer-mcp.cjs`.
 
 ## Acceptance checks
 
-- A valid schema-2 single authoritative PASS is Done-eligible only at the exact merge SHA.
-- The final ledger entry is authoritative; a later FAIL or INCONCLUSIVE cannot be hidden behind an earlier or top-level PASS.
-- Blank environment, result/exit contradictions, timestamp ties/reversals, verified/final timestamp drift, unknown keys, ambiguous manual evidence and incompatible failure classes are invalid.
-- Only canonical `proof/proof.md` can supply strict proof authority.
-- Legacy/invalid proofs are fully reported before strict cutover and never rewritten.
-- Strict Done refuses legacy, invalid, contradictory, FAIL and INCONCLUSIVE evidence.
-- Reconciliation uses the same parser and cannot recommend Done from those states.
-- Report-mode compatibility and stable-v0.3.12 board readability are preserved before promotion.
-- Census and reconciliation are read-only; only a complete current-format digest-bound census may atomically change the explicit board policy under the write lock, and generic board writers cannot bypass that cutover.
-- ADR-0011 explicitly authorizes the bounded strict proof content reader; FRD-002, FRD-006, setup guidance and the manuals agree with the implemented report/strict behavior.
-- No historical ticket is reopened and no excluded ticket joins the v0.3.13 roster.
+- A valid schema-2 single-authoritative-PASS record is Done-eligible under strict,
+  and only at the exact merge SHA.
+- The final ledger entry must be authoritative, so a later FAIL or INCONCLUSIVE can
+  never hide behind an earlier or top-level PASS.
+- Blank environment, result/exit contradictions, timestamp ties and reversals,
+  `verified_at` drift, incompatible failure classes and ambiguous manual/process
+  evidence are `invalid`; unknown top-level keys are preserved and reported.
+- A `receipts[]` list is validated by the same parser: well-formed entries and
+  unknown fields preserved, a `head_sha` ≠ `merged_sha` receipt invalid, and a proof
+  without `receipts` unaffected.
+- A record without `schema: 2` is `legacy`, never rewritten, and cannot authorise a
+  new Done transition under strict policy.
+- Only canonical `proof/proof.md` supplies strict proof authority.
+- `report` mode preserves today's existence behaviour and adds warnings only.
+- Census and reconciliation are read-only; only a complete, current-format,
+  digest-bound census may change the board policy, under the write lock; generic
+  board writers cannot escalate to strict.
+- ADR-0011 authorises the bounded strict proof reader; FRD-002, FRD-006, the manuals
+  and the skills agree with the implemented behaviour; the tool roster stays 41 and
+  no dependency is added.
 
 ## Deviation rules
 
-- Do not add free-prose heuristics to manufacture historical authority.
-- Do not add an environment-only policy that lets GUI and MCP disagree.
-- Do not add a tool or change proof bytes during migration.
-- Any post-CORE-127/CORE-133 overlap requires re-reading their exact merge diff and a versioned plan/files correction before source work.
-- One authoritative Windows rail runs only after the final source head is clean.
+- No free-prose heuristics that manufacture historical authority.
+- No environment-variable or host-local policy that lets the GUI and MCP disagree.
+- No new tool, and no proof bytes changed during the census.
+- Do not touch `scripts/verify.mjs`, `scripts/agents-block-body.mjs`, `.github/workflows/pr.yml`,
+  or `apps/gui/**` beyond what changed `get_doc_gates` output forces; if a GUI edit
+  is needed, keep it minimal and say so in the report.
 
 ## Stop condition
 
-Stop implementation at Review with one clean PR, current post-implementation report, synced board, full focused evidence and one completed exact-head Windows rail. Independent review, merge and exact-merge verification remain controller phases.
+Stop at Review with one draft-then-ready PR against `main`, `origin/main` merged in,
+the post-implementation report written, the board updated, and the scoped checks
+recorded with exit codes. Independent review, merge and exact-merge verification
+remain other phases.

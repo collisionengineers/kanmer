@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Validate proof documents for internal consistency so a stale result cannot
   outlive its own evidence
-status: verifying
+status: done
 area: core
 assignee: claude-code
 profile: fix
@@ -12,6 +12,7 @@ stageEntered:
   preparing: '2026-08-31T17:48:20.688Z'
   review: '2026-09-05T13:44:47.422Z'
   verifying: '2026-09-05T14:47:13.751Z'
+  done: '2026-09-05T15:02:42.929Z'
 taken_at: '2026-09-05T04:04:14.267Z'
 branch: CORE-129-typed-proof-record
 worktree: .worktrees/CORE-129
@@ -37,12 +38,16 @@ refs:
   - docs/functional/frd/FRD-006-typed-proof.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 commits:
-  - e36a0db26228e553588c52c6bc83aeaa31fcc5ee
+  - 410bfd22c2ad9fab3d430588e2ba8b4012ebf7c2
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/329'
+delivery_state: integrated
+delivery_branch: main
+delivery_sha: 410bfd22c2ad9fab3d430588e2ba8b4012ebf7c2
+delivery_recorded_at: '2026-09-05T15:02:45.876Z'
 archived: false
 created: '2026-08-27T23:52:07.334Z'
-updated: '2026-09-05T15:01:59.394Z'
+updated: '2026-09-05T15:02:45.876Z'
 ---
 
 ## What

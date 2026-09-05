@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ProofReceipt } from "./proof-receipts.js";
 
 /** The three kinds of item Kanmer stores, each in its own subfolder. */
 export const ItemTypeSchema = z.enum(["ticket", "plan", "research"]);
@@ -1107,6 +1108,14 @@ export interface ReconciliationEvidence {
      * default and never means "retryable".
      */
     failureClass?: ReconciliationFailureClass;
+    /**
+     * Typed post-merge verification receipts (MCP-057), decoded by the host
+     * boundary's `proofEvidence()` from the proof's `receipts[]` frontmatter
+     * list. Additive: absent on every proof written before MCP-057 and on any
+     * proof whose `receipts` failed to parse, in which case the base
+     * PASS/FAIL/mergedSha reading is unaffected.
+     */
+    receipts?: ProofReceipt[];
   };
   workspace: {
     state: "not-recorded" | "clean" | "dirty" | "missing" | "unavailable";

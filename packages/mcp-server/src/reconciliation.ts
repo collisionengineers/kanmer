@@ -7,6 +7,7 @@ import {
   classifyReleaseEvidence,
   leaseConfig,
   leaseState,
+  parseProofReceipts,
   reconcileEvidence,
   reconcileStepPacket,
   revisionCountsDocument,
@@ -136,9 +137,16 @@ export function proofEvidence(raw: string | null): ReconciliationEvidence["proof
     ) return { state: "invalid" };
     const result = parsed.result.trim().toUpperCase();
     const mergedSha = parsed.merged_sha.trim();
+    // Decode `receipts[]` (MCP-057) beside the base fields. A malformed
+    // `receipts` list is reported by the parser but never fails the whole
+    // proof: the base PASS/FAIL/mergedSha reading this function has always
+    // provided is unaffected, and `receipts` is simply omitted. An empty
+    // list is also omitted, matching every proof written before MCP-057.
+    const parsedReceipts = parseProofReceipts(parsed);
+    const receipts = Array.isArray(parsedReceipts) && parsedReceipts.length > 0 ? parsedReceipts : undefined;
     // A PASS record carries no class; only a failure is routed by one.
-    if (result === "PASS") return { state: "pass", mergedSha };
-    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class) };
+    if (result === "PASS") return { state: "pass", mergedSha, ...(receipts ? { receipts } : {}) };
+    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class), ...(receipts ? { receipts } : {}) };
     return { state: "invalid" };
   } catch {
     return { state: "invalid" };

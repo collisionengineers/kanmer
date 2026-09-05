@@ -69,3 +69,5 @@ repoDocs:
   prd: docs/product/prd/**
   frd: docs/functional/frd/**
   adr: docs/architecture/adr/**
+proofValidation:
+  mode: strict

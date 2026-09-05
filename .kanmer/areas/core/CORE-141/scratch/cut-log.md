@@ -47,3 +47,16 @@ Per the instruction "do not retry more than once for an evidenced transient": **
 **Decision: Phase A halts at step 2.** Steps 3-8 (golden, golden:promotion, CORE-129 census, release.mjs dry-run and real prepare) were not run — release.mjs itself re-runs the full verify rail internally (step 7), so proceeding past a verify that cannot currently complete would either reproduce the same crash mid-script or, worse, risk packaging on an unverified tree. No release branch, PR, tag, or board state was created or mutated. Ticket left in `review` stage unchanged; no `update_item` call made (no PR to record — nothing shipped this phase).
 
 **Recommended remediation before retry:** free host memory (identify and, with the operator's authorization, stop or relocate the unrelated `codex --yolo` / `@azure/mcp` processes competing for RAM) or run verify at a time/host where this process is genuinely the only heavy one, then rerun `npm run verify` fresh. Once it passes cleanly (dist/verify-stamp.json dirty:false), resume at step 3.
+
+## Coordinator-directed bounded diagnostic (host check: CPU ~50%, free mem 3.1GB/13.9GB, codex/azure processes confirmed owner's other sessions, not to be stopped)
+
+### npm run build (root, prerequisite for GUI tests)
+Exit 0. Log `/tmp/npm-build.log`. Core+server dist rebuilt (kanmer-mcp.cjs 2.00MB, doctor-cli.cjs 2.23MB, remote-cli.cjs 2.13MB, build success in 639ms for the standalone bundle stage; full `npm run build` pipeline completed cleanly).
+
+### npm run test -w @kanmer/gui — standalone, run 1 (no heap flag)
+Start 2026-09-05T16:34:16Z. Failed again with the identical tinypool crash: `Error: Worker exited unexpectedly` at `node_modules/tinypool/dist/index.js:118` (`ChildProcess.onUnexpectedExit`), this time immediately after the `ensureBoardWorktree reconciliation > is idempotent once the worktree is on the branch` test (last suite in that block), before any GUI-152/CORE-129-specific suite ran. Cascaded to `npm error Lifecycle script "test" failed with error, code 1`. No assertion failure anywhere in the log — pure worker-process death. Wall time to crash ~3 min. Full log at `/tmp/gui-test.log` (107 lines; no trailing EXIT: marker because the wrapping bash subshell itself was killed by the harness's own low-memory guard, same as the two full-rail attempts — the npm error text confirms effective exit 1 regardless).
+
+`grep -n "Worker exited\|FATAL\|heap\|out of memory" /tmp/gui-test.log`: only the `Worker exited unexpectedly` lines match; no FATAL/heap/OOM strings present in vitest's own output (Node's default OOM abort message was not emitted, consistent with the OS/task-runner killing the child process rather than V8 raising a JS heap OOM inside it).
+
+### npm run test -w @kanmer/gui — diagnostic run 2, NODE_OPTIONS=--max-old-space-size=4096 (diagnostic only, not a permanent change; env var scoped to this one invocation)
+In progress, started per `/tmp/gui-test-heap-start.txt`, log `/tmp/gui-test-heap.log`.

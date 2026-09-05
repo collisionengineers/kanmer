@@ -242,3 +242,25 @@ Confirmed via `get_status.release`: `attemptCount: 2`, `main@2` present with `ou
 Clone deleted after: `rm -rf "$TMP/kanmer-fresh-042"`.
 
 Continuing to watch `release.yml` run `33983890950` for the tag push (`gh run list`/`gh run view`); still `in_progress` at the "Run the authoritative verification rail" step as of this check.
+
+### release.yml CI — PASS
+
+`gh run view 33983890950 --repo collisionengineers/kanmer --json status,conclusion` → `{"status":"completed","conclusion":"success"}`. The independent tag-triggered release-verify workflow passed end to end (authoritative rail, packaged-updater build/check, published-asset verification) for `v0.4.2` at `7a6e4375`.
+
+### B4 host adoption — BLOCKED, need a decision before proceeding
+
+Confirmed before attempting: Kanmer GUI app running (5 `Kanmer.exe` processes, main PID 14724) and `kanmer-mcp.exe` (0.4.1, PID 25228) — matches your note, left untouched.
+
+Verified the retained local installer matches the published asset exactly: `sha256sum apps/gui/release/Kanmer-Setup-0.4.2.exe` = `fdbf0255ca39bead3de6aceb1847aa9235bf08427567b6158feb82d088b72967`, matching the GitHub-published digest.
+
+**Attempt 1** (`Kanmer-Setup-0.4.2.exe /S` via bash exec): the process launched but hung for 7+ minutes with near-zero CPU time and an unexpected visible window titled "Kanmer Setup" — not truly silent. Killed the stuck installer process (PID 14512; this is the installer, not the app — no Kanmer/MCP process was touched).
+
+**Root cause found in `apps/gui/build/installer.nsh` (`customCheckAppRunning`, GUI-133):** the installer's process guard detects running `Kanmer.exe` under the install root and, for a **direct/interactive** invocation (not `${isUpdated}`), shows `MessageBox MB_OKCANCEL ... "Kanmer must close before the installation can be replaced." /SD IDCANCEL IDOK gui133_stop_processes`. `/SD IDCANCEL` means a properly-silent run should auto-answer Cancel and exit cleanly with error level 2 — **not** hang.
+
+**Attempt 2** (`Start-Process -FilePath ... -ArgumentList '/S'` via PowerShell, cleaner argument handling): ran and exited quickly with **no visible window** this time — consistent with the guard correctly auto-refusing under true silent mode (no new `0.4.2-*` generation appeared under `%LOCALAPPDATA%\Kanmer\mcp\`, install root unchanged, all 5 `Kanmer.exe` + `kanmer-mcp.exe` processes still running, untouched). This is the **designed, safe outcome**: a direct silent install refuses to touch a live install root rather than silently killing a running app out from under the user.
+
+**What I found investigating the alternative ("via the app's updater")**: `apps/gui/build/installer.nsh` only takes the non-interactive "updater" path (skips the MessageBox, does a 1s grace-then-recheck) when `${isUpdated}` is true, which NSIS sets from the electron-updater-supplied `--updated` CLI flag — and even then it only proceeds past the recheck if the app has *already* exited by that point. AGENTS.md §8 confirms this is by design: "An update force-kills legacy install-root MCP servers — and if it doesn't, the update fails" — i.e. the real `autoUpdater.quitAndInstall(true, true)` path calls `app.quit()` (closing the 5 `Kanmer.exe` processes as a normal, sanctioned part of the update) **before** spawning the installer, so by the time the guard runs, the processes are already gone through the app's own quit path, not a manual kill.
+
+**I have no tool to drive the running Electron app's renderer UI** (the "Restart now" banner / `startInstall()` IPC call is the only sanctioned trigger site per AGENTS.md §8: "`CH.installUpdate` has exactly one renderer call site"), so I cannot complete the real app-driven updater flow headlessly, and completing the direct-silent-install path requires closing the 5 running `Kanmer.exe` processes and 1 `kanmer-mcp.exe`(0.4.1) — which is exactly what you told me not to do.
+
+**Stopping B4 here rather than guessing.** Everything else (B1 publish, B2 ledger, B3 fresh clone) is confirmed PASS above. I have not touched the running app or its MCP servers beyond killing the installer's own stuck process (PID 14512, not an app/MCP process). Awaiting your call: either (a) authorize me to let the app close itself via its own update path (which will need either UI automation I don't have, or your direct action), (b) authorize a plain closed-app silent install (which does require the 5 `Kanmer.exe` + `kanmer-mcp.exe` processes to stop, via the app's own Quit rather than a forced kill if you'd prefer), or (c) treat B4 onward (B4 host adoption, B5 M5 disposable mutation through the installed route, B6 rollback drill) as INCONCLUSIVE for this pass and let me proceed straight to B7/B8 with M4 PASS (fresh-clone) but M1/M5 recorded truthfully as NOT RUN / INCONCLUSIVE, matching the "record M5 truthfully" stop condition you specified.

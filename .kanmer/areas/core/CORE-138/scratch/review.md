@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "324"
-head_sha: "992569647df7ceaac058d949cf93a8bc01b02314"
+head_sha: "2e44b8059c5bc238a98ccf3ba6f5d3fb81fe4241"
 verdict: pass
 reviewer: "independent-reviewer"
 independent: true
 plan_hash: "9f943cb91bf945c1"
 ticket_updated: "2026-09-05T03:30:59.587Z"
-board_sha: "9373d30d43ed88e3f797723df887d8d0a048893a"
+board_sha: "ea3038205afd07423aede2e0da66e66046cd3ca8"
 expected_reviewers:
   - "independent-reviewer"
 threads_snapshot: []
@@ -37,9 +37,9 @@ findings:
     reason: "Not exploitable: GitHub refuses to merge a draft PR at all, and ready_for_review is a configured trigger type, so a strict evaluation always re-fires before the PR can be merged."
   - id: F-006
     severity: note
-    summary: "The ticket Outcome sentence 'leaves no expected red required check' is only met for the implementing snapshot. Between `gh pr ready` and the reviewer's attestation push the gate is still expected-red — NO_REVIEW_RECORD on run 33941257446, then STALE_REVIEW on run 33942062209."
+    summary: "The ticket Outcome sentence 'leaves no expected red required check' is only met for the implementing snapshot. Between `gh pr ready` and each reviewer attestation push the gate is expected-red — NO_REVIEW_RECORD on run 33941257446, STALE_REVIEW on 33942062209 and again on 33943839974 after the update-branch."
     disposition: accepted-risk
-    reason: "Inherent and correct gate semantics: an unreviewed or stale-reviewed PR should not be green. AGENTS.md states the narrower, truthful claim ('no expected red required check ever sits against an implementing snapshot'), and the red clears via regate once this attestation's board is pushed."
+    reason: "Inherent and correct gate semantics: an unreviewed or stale-reviewed PR should not be green. AGENTS.md states the narrower, truthful claim ('no expected red required check ever sits against an implementing snapshot'), and the red clears once the current-head record is on the pushed board and the gate re-runs — demonstrated live on run 33942062209, which went from failure to full success after the round-2 board push."
   - id: F-007
     severity: minor
     summary: "kanmer-execute/SKILL.md justifies the strict binding with 'because a `pull_request` event re-evaluates the workflow file that is on the PR branch at that time'. The actual mechanism is that ready_for_review is a configured trigger type and the event payload's pull_request.draft is then false. Carried forward from round 1; the author did not take this optional reword."
@@ -54,164 +54,165 @@ findings:
     severity: note
     summary: "The string 93e59f938b3f3a52a5c17e11c6cccb1e0d2e0f6a still occurs once in the post-implementation report, inside the 'Review round 1 remediation' section, where it is explicitly named as the non-existent SHA that was corrected."
     disposition: accepted-risk
-    reason: "Correct record-keeping, not a live claim. commits[] and scratch/notes.md are clean, and the gate reads commits[] frontmatter, not document prose — confirmed by run 33942062209, where COMMITS_UNREACHABLE no longer appears."
+    reason: "Correct record-keeping, not a live claim. commits[] and scratch/notes.md are clean, and the gate reads commits[] frontmatter, not document prose — confirmed by runs 33942062209 and 33943839974, where COMMITS_UNREACHABLE no longer appears."
   - id: F-010
     severity: note
-    summary: "The coordinator's round-2 brief expected the merged pr.yml to carry node-version 24. It does not, and should not: the merge parent is 32aa54fc (GUI-152 #323, on top of DOC-028 bd368549 #321); CORE-140 (#322) landed on main afterwards at 94165031 and is not an ancestor of this head, so pr.yml here still reads node-version 20 at lines 58 and 76."
+    summary: "Round 2: the head 99256964 did not carry CORE-140's node-version 24, because its merge parent 32aa54fc predated CORE-140 (#322, landed on main at 94165031). The round-2 record predicted the pending update-branch would take those lines cleanly since this PR never edits them."
+    disposition: fixed
+  - id: F-011
+    severity: note
+    summary: "commits[] names 93e59f93 and 99256964 but not the current head 2e44b805, which the update-branch produced."
     disposition: accepted-risk
-    reason: "Not a defect and matches the post-implementation report's Deviations section, which states node-version was left untouched. This PR never edits those lines, so the pending update-branch onto 94165031 will take CORE-140's Node 24 change cleanly with no conflict."
+    reason: "Both recorded commits remain reachable from 2e44b805 (99256964 is its first parent), so the reachability check passes — confirmed on run 33943839974, whose only gate error is STALE_REVIEW. kanmer-verify binds to the GitHub merge SHA, not to commits[], so nothing downstream depends on the merge head being listed."
 ---
 
-# Review — CORE-138 (PR #324), round 2
+# Review — CORE-138 (PR #324), round 3 (delta re-bind)
 
-Delta review of PR #324 at head `992569647df7ceaac058d949cf93a8bc01b02314`,
+Delta re-bind of PR #324 to head `2e44b8059c5bc238a98ccf3ba6f5d3fb81fe4241`,
 branch `CORE-138-gate-handoff`. Board tip reviewed against
-`9373d30d43ed88e3f797723df887d8d0a048893a` (local == remote, ahead 0). This
-record replaces the round-1 `needs-changes` attestation bound to
-`93e59f93e7f1ef1550c99d0af5268b8cca05dd42`. Reviewer is not the author.
+`ea3038205afd07423aede2e0da66e66046cd3ca8` (local == remote, ahead 0). This
+record replaces the round-2 `pass` attestation bound to
+`992569647df7ceaac058d949cf93a8bc01b02314`. Reviewer is not the author.
 
-No `move_item` back to Implementing was made in round 1 (the coordinator
-handled remediation in place), so no remediation budget was consumed and the
-ticket's `review_round` is unchanged. Scope of this round is the delta only:
-the two remediated board documents, `commits[]`, and the merge commit.
+**Verdict: pass — unchanged.** The only delta since round 2 is
+`gh pr update-branch`: a merge of `main` (`e474f317`) that contributes no new
+work of this ticket's own. No `move_item` back to Implementing has been made in
+any round, so no remediation budget has been consumed and the ticket's
+`review_round` is unchanged.
 
-**Verdict: pass.** F-001 and F-002 are `fixed`; nothing else regressed; the
-code, workflow and tests are byte-identical to the round-1 reviewed content.
+## 1. The delta is exactly the merge of main
 
-## 1. `commits[]` and the fabricated SHA
+`2e44b805` is a merge commit whose parents are
+`992569647df7ceaac058d949cf93a8bc01b02314 e474f317eaf7d7989667d8b44442d7845953956d`.
+Main now carries CORE-140 (`94165031` #322), DOC-026 (`37b83b14` #326) and
+MCP-057 (`e474f317` #325) on top of the previously merged GUI-152/DOC-028.
 
-`commits[]` is now
-`["93e59f93e7f1ef1550c99d0af5268b8cca05dd42", "992569647df7ceaac058d949cf93a8bc01b02314"]`.
-Both are real objects (`git cat-file -t` → `commit`) and both are reachable
-from the PR head — `93e59f93` is the first parent of the merge commit
-`99256964`, whose parents are
-`93e59f93e7f1ef1550c99d0af5268b8cca05dd42 32aa54fc0c7fa4dfafee2eeb57ec8bf60dbdc507`.
+`git diff e474f317...2e44b805 --stat` — this PR's contribution measured against
+the main it just merged — is **exactly the seven seam files**:
 
-`93e59f938b3f3a52a5c17e11c6cccb1e0d2e0f6a` is gone from `commits[]` and from
-`scratch/notes.md`. It survives once in the post-implementation report as an
-explicitly labelled historical citation (F-009), which is correct
-record-keeping.
+```
+ .github/workflows/pr.yml                      | 24 ++++++++---
+ AGENTS.md                                     | 30 ++++++++++++--
+ packages/mcp-server/src/check-pr.mjs          | 44 +++++++++++++++++++-
+ packages/mcp-server/src/check-pr.test.mjs     | 59 +++++++++++++++++++++++++++
+ plugins/kanmer/skills/kanmer-execute/SKILL.md | 24 +++++++++--
+ plugins/kanmer/skills/kanmer-review/SKILL.md  |  7 ++++
+ scripts/pr-workflow.test.mjs                  | 29 ++++++++++++-
+ 7 files changed, 202 insertions(+), 15 deletions(-)
+```
 
-**CI confirms the fix mechanically.** On run 33942062209 (this head), the
-`kanmer-gate` findings no longer include `COMMITS_UNREACHABLE`; the sole
-remaining error is `STALE_REVIEW`, which is the round-1 attestation being
-bound to the old head and is exactly what this record clears.
+Identical totals to round 2 (202 insertions, 15 deletions). Nothing outside the
+ticket's seam is contributed by this PR, and no ticket-owned content was added
+or lost in the update-branch.
 
-## 2. The rewritten AT-21 paragraph vs `gh run view --json jobs`
+## 2. Seam blob hashes, `99256964` → `2e44b805`
 
-Every timestamp the rewritten report and `scratch/notes.md` quote was read back
-and matches:
-
-| claim | source |
-|---|---|
-| 33941013906 `verify` startedAt `03:08:15Z`, completedAt `03:13:44Z`, `cancelled` | `gh run view 33941013906 --json jobs` |
-| 33941099168 createdAt `03:10:06Z`; `kanmer-gate` completedAt `03:14:18Z`, success; `verify` skipped | `gh run view 33941099168 --json createdAt,jobs` |
-| 33941257446 createdAt `03:13:32Z` | `gh run view 33941257446 --json createdAt` |
-| 3m38s survival (`03:10:06Z` → `03:13:44Z`) | arithmetic on the above |
-| ~12s same-group cancellation (`03:13:32Z` → `03:13:44Z`) | arithmetic on the above |
-
-The corrected narrative is accurate on every point, including the attribution
-of the cancellation to the `ready_for_review` run sharing the ordinary
-(non-`meta-`) per-PR group rather than to the `edited` run. It also adds the
-stronger structural argument — an `edited` run never holds a slot in the
-original run's group, so it cannot cancel it on any timescale — which is the
-property the fix actually guarantees. It no longer overstates what was
-observed. F-002 is fixed.
-
-## 3. The merge changed nothing this ticket owns
-
-`git diff 93e59f93...99256964 --stat` brings in 23 files, all from DOC-028
-(`bd368549` #321) and GUI-152 (`32aa54fc` #323): `apps/gui/**`,
-`docs/functional/frd/FRD-036-focus-board.md`, both `agents-block-body.mjs`
-mirrors, `kanmer-setup/SKILL.md`, `scripts/agents-block-routing.test.mjs`,
-`scripts/verify-agents-block.mjs`, and `AGENTS.md`.
-
-Blob hashes of the seven seam files between `93e59f93` and `99256964`:
-
-| file | 93e59f93 | 99256964 | |
+| file | 99256964 | 2e44b805 | |
 |---|---|---|---|
-| `.github/workflows/pr.yml` | `bfee54d3` | `bfee54d3` | identical |
-| `AGENTS.md` | `1a2caaaf` | `5da1bed6` | changed |
+| `.github/workflows/pr.yml` | `bfee54d3` | `acb46e84` | changed (both sides touched) |
+| `AGENTS.md` | `5da1bed6` | `f66d3a03` | changed (both sides touched) |
 | `packages/mcp-server/src/check-pr.mjs` | `d3421952` | `d3421952` | identical |
 | `packages/mcp-server/src/check-pr.test.mjs` | `651ee474` | `651ee474` | identical |
 | `plugins/kanmer/skills/kanmer-execute/SKILL.md` | `4f71596f` | `4f71596f` | identical |
 | `plugins/kanmer/skills/kanmer-review/SKILL.md` | `20083f6d` | `20083f6d` | identical |
 | `scripts/pr-workflow.test.mjs` | `6bca7970` | `6bca7970` | identical |
 
-`AGENTS.md` is the one expected exception, because both branches edited it.
-The delta is a single hunk at `@@ -15,17 +15,19 @@` — the "Agent conduct"
-bullets — and it is byte-identical to DOC-028's own `c088be13..bd368549`
-`AGENTS.md` hunk. Section 6 "Pull-request merge gate" (line 516 onwards), which
-is what this ticket edits, is untouched by the merge. The auto-merge is correct.
+Exactly the two expected exceptions, and both resolve correctly.
 
-Decisive check: `git diff 32aa54fc...99256964 --stat` — this PR's contribution
-measured against the main it merged — is **exactly the seven seam files**, 202
-insertions, 15 deletions. Nothing outside the ticket's seam is contributed by
-this PR.
+### `pr.yml` — merged correctly
 
-The merged `pr.yml` keeps all three of this ticket's edits: the `meta-`
-concurrency expression (line 32), the conditional `--draft` argument (line 114)
-and `timeout 900 gh run watch` (line 164). It carries `node-version: 20` at
-lines 58 and 76 — see F-010; CORE-140 was not in the merged main and this is
-not a defect.
+`git diff 99256964..2e44b805 -- .github/workflows/pr.yml` is **only** CORE-140's
+two `node-version: 20 → 24` lines, at the `setup-node` steps of `verify` and
+`kanmer-gate`. Nothing else moved. The merged file at `2e44b805` carries, in one
+place:
 
-## 4. Checks on the merged tree (worktree at 99256964, clean)
+- line 32 — `group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.action == 'edited' && 'meta-' || '' }}${{ github.event.pull_request.number || github.ref }}`
+- lines 58 and 76 — `node-version: 24` (both jobs)
+- line 114 — `… --event "$GITHUB_EVENT_PATH" ${{ github.event.pull_request.draft && '--draft' || '' }}`
+- line 164 — `timeout 900 gh run watch "$run_id" --exit-status >/dev/null 2>&1 || true`
+
+The round-1 prediction that CORE-140 and CORE-138 touch disjoint hunks of
+`pr.yml` is now confirmed by the actual merge. F-010 is `fixed`.
+
+### `AGENTS.md` — merged correctly
+
+`git diff 99256964..2e44b805 -- AGENTS.md` has four hunks, at `@@ -97,6 +97,22 @@`,
+`@@ -227,12 +243,11 @@`, `@@ -489,11 +504,11 @@` and `@@ -501,7 +516,7 @@`. Its
+added/removed content lines are **byte-identical** to main's own
+`32aa54fc..e474f317` `AGENTS.md` delta, so the merge took main's changes verbatim
+and invented nothing:
+
+- DOC-026's new `## 0.1 Operating index and historical documents` section
+  (line 100) and the retired-`CLOSEOUT_PLAN.md` pointer (line 107);
+- CORE-140's rewritten `npm test` / `npm run verify` command rows describing
+  `dist/verify-stamp.json`, the `:built` variants and the refuse-rather-than-
+  rebuild rule (lines 507, 511);
+- the repository-layout row adjustment at line 243.
+
+All four hunks are above §6. This ticket's `### Pull-request merge gate` section
+survives intact at line 533, with every marker present: the `meta-`-prefixed
+carve-out paragraph (555), the regate `gh run watch … --exit-status`, up to 15
+minutes sentence (572), the `ADVISORY (draft):` / `$GITHUB_STEP_SUMMARY`
+paragraph (584), and the `--draft` command block (611).
+
+## 3. Checks on the re-merged tree (worktree at `2e44b805`, clean)
 
 ```
 npm run build:core                                                    exit 0
 node --test scripts/pr-workflow.test.mjs check-pr.test.mjs            14 pass, 0 fail
-npm run test:scripts                                                  184 pass, 11 suites, 0 fail
+npm run test:scripts                                                  193 pass, 13 suites, 0 fail
 npm run verify:skills                                                 ALL CHECKS PASSED
 npm run verify:docs                                                   PASS, manual up to date (22 chapters)
 npm run check:manual                                                  manual up to date
 ```
 
-`test:scripts` rose 180 → 184: DOC-028's `agents-block-routing.test.mjs` came in
-with the merge and passes alongside this ticket's assertions. `pr-workflow.test.mjs`
-still passes on the merged tree, so the concurrency, `--draft` and `regate`
-assertions survive the merge intact. The round-1 mutation testing of those
-assertions (three independent mutations, each caught) stands — the test file's
-blob is unchanged.
+`test:scripts` rose 184 → 193 across 13 suites: CORE-140's `verify-steps.test.mjs`
+and the other newly merged suites run alongside this ticket's assertions and all
+pass. `pr-workflow.test.mjs` passes on the merged tree, so the concurrency,
+`--draft` and `regate` assertions still hold against a `pr.yml` that now also
+carries Node 24. The test file's blob is unchanged from the round-1 reviewed
+content, so round 1's mutation testing of those assertions (three independent
+mutations, each caught) still stands.
 
-## 5. CI on the reviewed head
+## 4. CI
 
-Run **33942062209** (`pull_request`, head `99256964`, created 03:30:55Z):
+Run **33942062209** (previous head `99256964`) finished **fully green** after the
+round-2 board push — `kanmer-gate` success, `verify` success, `regate` skipped.
+That is live confirmation that a current-head `pass` attestation on the pushed
+board clears this gate.
 
-| job | result |
-|---|---|
-| `verify` | **success**, 03:30:58Z → 03:41:16Z (10m18s) |
-| `kanmer-gate` | **failure**, sole error `STALE_REVIEW` |
-| `regate` | skipped (by design for a `pull_request` event) |
+Run **33943839974** (`pull_request`, head `2e44b805`) is in progress: `verify`
+pending, `regate` skipped by design, `kanmer-gate` **failure** whose sole error is
+`STALE_REVIEW` — the round-2 record bound to `99256964`. `COMMITS_UNREACHABLE`,
+`WRONG_STAGE` and `NO_REVIEW_RECORD` are all absent. This record clears
+`STALE_REVIEW` once the board is pushed and the gate is re-run.
 
-`kanmer-gate` is red only because it was evaluated against the round-1
-`needs-changes` record bound to the previous head. `COMMITS_UNREACHABLE`,
-`WRONG_STAGE` and `NO_REVIEW_RECORD` are all absent. Once this record is on the
-pushed board and the gate is re-run, the expected result is green — that
-re-gate is the merger's confirmation step, not part of this verdict.
+`mergeStateStatus` is `BLOCKED`, `mergeable: MERGEABLE` — the block is the red
+gate, not a conflict.
 
-## 6. Threads and expected reviewers
+## 5. Threads and expected reviewers
 
 `reviewThreads.totalCount: 0`, 0 reviews, 0 issue comments on PR #324, so
 `threads_snapshot` is an empty list as a truthful value. The single named
-independent reviewer has settled on this exact head. No bot threads exist.
+independent reviewer has settled on this exact head. No bot threads exist on any
+head of this PR.
 
-## 7. Residual risk
+## 6. Findings
 
-Unchanged from round 1 and all dispositioned: the regate wait can still time out
-on an unusually slow rail (F-003, deferred to CORE-142); the step-summary
-surface is untested though proved by hand (F-004); a draft-converted PR keeps a
-stale strict result while remaining unmergeable (F-005); an unreviewed or
-stale-reviewed ready PR is expected-red (F-006); one imprecise causal clause in
-`kanmer-execute` prose (F-007); cosmetic AGENTS.md wrapping (F-008). No
-security, data-loss or destructive risk. No `pull_request_target`, no privileged
-token surface, no user-controlled data reaching a shell.
+Every finding carries forward with its round-2 disposition, with two changes:
+F-010 becomes `fixed` (the update-branch brought Node 24 in cleanly, exactly as
+predicted) and F-011 is added as a note for `commits[]` not naming the merge
+head. Nothing is `open` at any severity. F-003 stays deferred to CORE-142; F-004
+and F-007 remain optional, unaddressed, accepted risks; F-005, F-006, F-008,
+F-009 and F-011 are accepted risks with reasons.
 
-## 8. Merge preconditions still outstanding (not part of this verdict)
+No new defect was found in the delta. No security, data-loss or destructive risk
+exists in this PR: no `pull_request_target`, no privileged token surface, no
+branch-protection or repository-variable change, and no user-controlled data
+reaching a shell.
 
-1. `main` has moved again to `94165031` (CORE-140 #322). This PR is `BEHIND`;
-   an `update-branch` will produce a new head and invalidate this record. A
-   delta re-bind and a replacement attestation are required before merge — the
-   coordinator has said it will request that separately.
-2. `kanmer-gate` must be re-gated green on whatever head is merged.
+## 7. Remaining merge precondition (not part of this verdict)
 
-Both are sequencing, not defects. Nothing in this PR's content blocks the merge.
+`kanmer-gate` must be re-gated green on `2e44b805`, and `verify` must finish
+green on run 33943839974. Both are the merger's confirmation steps. Nothing in
+this PR's content blocks the merge.

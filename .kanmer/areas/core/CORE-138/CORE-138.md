@@ -13,17 +13,6 @@ stageEntered:
   review: '2026-09-05T03:09:05.355Z'
   verifying: '2026-09-05T04:21:00.958Z'
   done: '2026-09-05T13:10:07.785Z'
-taken_at: '2026-09-05T02:58:13.328Z'
-branch: CORE-138-gate-handoff
-worktree: .worktrees/core-138
-claim_expires_at: '2026-09-05T13:39:18.044Z'
-claim_controller: claude-code
-lease_id: 31536675-7b5c-422e-a6b9-3ed31ceeafd2
-lease_revision: 2
-lease_workspace: 'worktree:c:\users\alex\documents\github\kanmer\.worktrees\core-138'
-lease_phase: implementing
-lease_heartbeat_at: '2026-09-05T13:09:18.044Z'
-lease_reclaimed_from: claude-code
 labels:
   - ci
   - merge-gate
@@ -50,7 +39,7 @@ delivery_sha: 9945b1f2a0a4839cbb575437823fbd00926bd33e
 delivery_recorded_at: '2026-09-05T13:10:13.453Z'
 archived: false
 created: '2026-09-02T09:44:31.715Z'
-updated: '2026-09-05T13:20:38.182Z'
+updated: '2026-09-05T13:21:30.844Z'
 ---
 
 ## Problem

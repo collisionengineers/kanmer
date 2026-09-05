@@ -76,3 +76,14 @@ In progress, started per `/tmp/gui-test-heap-start.txt`, log `/tmp/gui-test-heap
 **Stopping per coordinator's branch (3): standalone GUI suite fails even with the larger heap.** No `npm run verify` attempt 3 was run. Steps 3-8 remain not run. All four logs preserved: `/tmp/npm-verify.log` (attempt 1), `/tmp/npm-verify2.log` (attempt 2), `/tmp/gui-test.log` (standalone run 1), `/tmp/gui-test-heap.log` (standalone diagnostic run 2 with 4GB heap). `npm run build` (root) succeeded cleanly (exit 0) and is not implicated.
 
 Awaiting coordinator decision on whether this is a real defect (possibly touching GUI-152/CORE-129 or the `ensureBoardWorktree`/`kanmerGit` real-git suite specifically) that windows-latest CI tolerates but this host does not, versus an accepted environmental gap for this operator machine.
+
+## Coordinator diagnosis and fix: host disk exhaustion, not RAM
+
+Coordinator found the real cause: 1,689 `kanmer*` disposable test-board directories (22,500 entries total) accumulated in `%TEMP%` from today's runs, with the disk at 96% full — the crash sat exactly at real-git worktree teardown against that saturated directory (matches the `kanmerGit.test.ts` real-git `ensureBoardWorktree` teardown location I identified). Coordinator removed all `kanmer*` temp dirs (1689 -> 1) plus two unregistered `.worktrees` residue dirs; free disk went from ~4% to 51GB free (95%->... now healthy). This explains why raising `--max-old-space-size` didn't help: it was never a V8 heap problem, it was disk/inode pressure under real git worktree creation in TEMP.
+
+### npm run test -w @kanmer/gui — standalone run 3 (post cleanup, no NODE_OPTIONS)
+`kanmer*` dirs in $TMP before run: 1. Command: `npm run test -w @kanmer/gui > /tmp/gui-test-3.log`. Result: **PASS**, exit 0. 57 test files passed (57/57), 646 tests passed (646/646). Start 17:48:36, duration 201.52s (~3m22s). `kanmer*` dirs in $TMP after run: **5**.
+
+**0.5.0 observation (recorded only, not filed as a ticket per coordinator's instruction):** the GUI test suite's disposable test-board directories are not fully cleaned up after a run — 1 -> 5 `kanmer*` temp dirs across one `npm run test -w @kanmer/gui` invocation. Left unaddressed by design of this phase; worth a cleanup/afterEach-teardown ticket for a future horizon so TEMP doesn't再 saturate disk over repeated CI/local runs the way it did today (1,689 accumulated).
+
+Proceeding to `npm run verify` attempt 3, justified per coordinator: reproducible host-state cause (disk exhaustion) identified and removed.
